@@ -12,12 +12,34 @@ type LogBase = {
   [key: string]: unknown
 }
 
+function safeStringify(obj: unknown): string {
+  try {
+    return JSON.stringify(obj, (key, value) => {
+      // 处理可能的循环引用和不可序列化的值
+      if (typeof value === 'object' && value !== null) {
+        if (value.constructor && value.constructor.name !== 'Object' && value.constructor.name !== 'Array') {
+          return `[${value.constructor.name}]`
+        }
+      }
+      if (typeof value === 'function') {
+        return '[Function]'
+      }
+      if (typeof value === 'undefined') {
+        return '[undefined]'
+      }
+      return value
+    })
+  } catch (error) {
+    return JSON.stringify({ error: 'Failed to serialize log entry', originalError: String(error) })
+  }
+}
+
 export function logInfo(payload: LogBase) {
   const entry = { level: 'info', ts: new Date().toISOString(), ...payload }
-  console.log(JSON.stringify(entry))
+  console.log(safeStringify(entry))
 }
 
 export function logError(payload: LogBase) {
   const entry = { level: 'error', ts: new Date().toISOString(), ...payload }
-  console.error(JSON.stringify(entry))
+  console.error(safeStringify(entry))
 }

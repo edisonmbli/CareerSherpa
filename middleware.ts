@@ -1,23 +1,179 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { i18n, isSupportedLocale } from './i18n-config'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { stackServerApp } from '@/stack/server';
+import { i18n, isSupportedLocale } from '@/i18n-config';
+import { logInfo, logError } from '@/lib/logger';
+import { generateUUID } from '@/lib/security/edge-crypto';
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-
-  if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
-    return NextResponse.next()
+function getLocale(request: NextRequest): string {
+  // 1. 检查Cookie中的语言设置
+  const cookieLang = request.cookies.get('lang')?.value;
+  if (cookieLang && isSupportedLocale(cookieLang)) {
+    return cookieLang;
   }
 
-  const hasLocale = i18n.locales.some((l) => pathname.startsWith(`/${l}`))
-  if (!hasLocale) {
-    const url = req.nextUrl.clone()
-    url.pathname = `/${i18n.defaultLocale}${pathname}`
-    return NextResponse.rewrite(url)
+  // 2. 检查Accept-Language头
+  const acceptLanguage = request.headers.get('Accept-Language');
+  if (acceptLanguage) {
+    // 解析Accept-Language头，获取首选语言
+    const preferredLang = acceptLanguage
+      .split(',')[0]
+      .split('-')[0]
+      .toLowerCase();
+    
+    if (isSupportedLocale(preferredLang)) {
+      return preferredLang;
+    }
   }
-  return NextResponse.next()
+
+  // 3. 默认回退到英语
+  return i18n.defaultLocale;
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const reqId = generateUUID();
+
+  // 检查路径是否已经包含locale
+  const pathnameHasLocale = i18n.locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+  );
+
+  // 如果路径不包含locale，进行重定向
+  if (!pathnameHasLocale) {
+    const locale = getLocale(request);
+    const newUrl = new URL(`/${locale}${pathname}`, request.url);
+    
+    // 保持查询参数
+    newUrl.search = request.nextUrl.search;
+    
+    return NextResponse.redirect(newUrl);
+  }
+
+  // 提取当前locale
+  const currentLocale = pathname.split('/')[1];
+
+  // 定义系统路径和公共资源（不需要认证）
+  const isPublicAsset = pathname.startsWith('/_next/') || 
+                       pathname.startsWith('/favicon.ico') ||
+                       pathname.startsWith('/static/') ||
+                       pathname.startsWith('/robots.txt') ||
+                       pathname.startsWith('/sitemap.xml');
+  
+  // Stack Auth 处理页面（登录、注册等）
+  const isStackAuthHandler = pathname.startsWith('/handler/');
+  
+  // 首页作为 landing page（唯一允许匿名访问的业务页面）
+  const isLandingPage = pathname === `/${currentLocale}` || pathname === `/${currentLocale}/`;
+  
+  // 定义白名单：不需要认证的路径
+  const isPublicPath = isPublicAsset || isStackAuthHandler || isLandingPage;
+
+  // 默认保护模式：除了白名单，所有路径都需要认证
+  const requiresAuth = !isPublicPath;
+
+  if (requiresAuth) {
+    try {
+      // 使用Stack Auth验证用户
+      const user = await stackServerApp.getUser();
+      
+      if (!user) {
+        logInfo({
+          reqId,
+          route: pathname,
+          userKey: 'anonymous',
+          phase: 'auth_check',
+          message: 'No authenticated user found'
+        });
+
+        // 检查是否为页面请求（非 API 路径）
+        const isPageRequest = !pathname.startsWith('/api/');
+        
+        // 对于页面请求，重定向到登录页面
+        if (isPageRequest) {
+          const signInUrl = new URL('/handler/signin', request.url);
+          signInUrl.searchParams.set('redirect', pathname);
+          return NextResponse.redirect(signInUrl);
+        }
+
+        // 对于API请求，返回401错误
+        return NextResponse.json(
+          { error: 'unauthorized', message: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+
+      // 在请求头中添加用户信息，供API路由使用
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-key', user.id);
+      requestHeaders.set('x-user-email', user.primaryEmail || '');
+      requestHeaders.set('x-req-id', reqId);
+      
+      // 添加语言信息到请求头
+      if (isSupportedLocale(currentLocale)) {
+        requestHeaders.set('x-locale', currentLocale);
+      }
+
+      logInfo({
+        reqId,
+        route: pathname,
+        userKey: user.id,
+        phase: 'auth_success',
+        message: 'Authentication successful'
+      });
+
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    } catch (error) {
+      logError({
+        reqId,
+        route: pathname,
+        userKey: 'unknown',
+        phase: 'auth_error',
+        error: error instanceof Error ? error.message : 'Authentication failed'
+      });
+
+      // 检查是否为页面请求（非 API 路径）
+      const isPageRequest = !pathname.startsWith('/api/');
+      
+      // 对于页面请求，重定向到错误页面
+      if (isPageRequest) {
+        const errorUrl = new URL('/handler/signin', request.url);
+        errorUrl.searchParams.set('error', 'auth_failed');
+        return NextResponse.redirect(errorUrl);
+      }
+
+      // 对于API请求，返回401错误
+      return NextResponse.json(
+        { error: 'auth_error', message: 'Authentication failed' },
+        { status: 401 }
+      );
+    }
+  }
+
+  // 对于其他路径，添加语言信息到请求头
+  const response = NextResponse.next();
+  if (isSupportedLocale(currentLocale)) {
+    response.headers.set('x-locale', currentLocale);
+  }
+  response.headers.set('x-req-id', reqId);
+
+  return response;
 }
 
 export const config = {
-  matcher: ['/((?!_next|.*\\..*).*)'],
-}
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - handler (Stack Auth handler)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|handler).*)',
+  ],
+};

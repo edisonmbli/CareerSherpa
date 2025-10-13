@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "neon_auth"]
+}
+
+// Neon Auth 自动管理的用户同步表（只读）
+model NeonUserSync {
+  id               String    @id
+  email            String?
+  displayName      String?   @map("display_name")  // 暂时注释掉，等数据库 schema 同步
+  profileImageUrl  String?   @map("profile_image_url")  // 暂时注释掉，等数据库 schema 同步
+  createdAt        DateTime  @map("created_at")
+  updatedAt        DateTime  @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  // 业务表关系
+  resumes          Resume[]
+  detailedResumes  DetailedResume[]
+  jobDescriptions  JobDescription[]
+  services         Service[]
+  tasks            Task[]
+  quotas           Quota?
+  payments         Payment[]
+  tokenUsageLogs   TokenUsageLog[]
+  auditLogs        AuditLog[]
+  documents        Document[]
+  knowledgeEntries KnowledgeEntry[]
+
+  @@map("users_sync")
+  @@schema("neon_auth")
+}
+
+model Resume {
+  id                String           @id @default(cuid())
+  title             String?
+  lang              String           @default("en")
+  originalText      String?          @map("original_text")
+  structuredJson    Json?            @map("structured_json")
+  resumeSummaryJson Json?            @map("resume_summary_json")
+  promptTokens      Int?             @map("prompt_tokens")
+  completionTokens  Int?             @map("completion_tokens")
+  totalTokens       Int?             @map("total_tokens")
+  active            Boolean          @default(true)
+  sourceType        String?          @map("source_type")
+  contentType       String?          @map("content_type")
+  charCount         Int?             @map("char_count")
+  mediaBase64       String?          @map("media_base64")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  userId            String           @map("user_id")
+  user              NeonUserSync     @relation(fields: [userId], references: [id])
+  resume_versions   ResumeVersion[]
+  services          Service[]
+
+  @@index([userId, lang, createdAt])
+  @@map("resumes")
+  @@schema("public")
+}
+
+model DetailedResume {
+  id                     String   @id @default(cuid())
+  title                  String?
+  lang                   String   @default("en")
+  originalText           String?  @map("original_text")
+  detailedSummaryJson    Json?    @map("detailed_summary_json")
+  promptTokens           Int?     @map("prompt_tokens")
+  completionTokens       Int?     @map("completion_tokens")
+  totalTokens            Int?     @map("total_tokens")
+  sourceType             String?  @map("source_type")
+  contentType            String?  @map("content_type")
+  charCount              Int?     @map("char_count")
+  mediaBase64            String?  @map("media_base64")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  userId                 String   @map("user_id")
+  user                   NeonUserSync @relation(fields: [userId], references: [id])
+
+  @@index([userId, lang, createdAt])
+  @@map("detailed_resumes")
+  @@schema("public")
+}
+
+model JobDescription {
+  id               String    @id @default(cuid())
+  title            String?
+  source           String?
+  rawText          String?   @map("raw_text")
+  parsedJson       Json?     @map("parsed_json")
+  jobSummaryJson   Json?     @map("job_summary_json")
+  promptTokens     Int?      @map("prompt_tokens")
+  completionTokens Int?      @map("completion_tokens")
+  totalTokens      Int?      @map("total_tokens")
+  lang             String?
+  sourceType       String?   @map("source_type")
+  contentType      String?   @map("content_type")
+  charCount        Int?      @map("char_count")
+  mediaBase64      String?   @map("media_base64")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  userId           String    @map("user_id")
+  user             NeonUserSync @relation(fields: [userId], references: [id])
+  services         Service[]
+
+  @@index([userId, lang, createdAt])
+  @@map("job_descriptions")
+  @@schema("public")
+}
+
+model Service {
+  id             String         @id @default(cuid())
+  resumeId       String?        @map("resume_id")
+  jobId          String         @map("job_id")
+  status         ServiceStatus  @default(created)
+  depth          ServiceDepth?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  userId         String         @map("user_id")
+  jobDescription JobDescription @relation(fields: [jobId], references: [id])
+  resume         Resume?        @relation(fields: [resumeId], references: [id])
+  user           NeonUserSync   @relation(fields: [userId], references: [id])
+  tasks          Task[]
+
+  @@index([userId, createdAt])
+  @@map("services")
+  @@schema("public")
+}
+
+model Task {
+  id               String       @id @default(cuid())
+  serviceId        String       @map("service_id")
+  kind             TaskKind
+  status           TaskStatus   @default(pending)
+  inputContextJson Json?        @map("input_context_json")
+  contextRefs      Json?        @map("context_refs")
+  startedAt        DateTime?    @map("started_at")
+  finishedAt       DateTime?    @map("finished_at")
+  meta             Json?
+  requestedBy      String       @map("requested_by")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  service          Service      @relation(fields: [serviceId], references: [id])
+  user             NeonUserSync @relation(fields: [requestedBy], references: [id])
+  outputs          TaskOutput[]
+
+  @@index([serviceId, status])
+  @@index([requestedBy, createdAt])
+  @@map("tasks")
+  @@schema("public")
+}
+
+model TaskOutput {
+  id                 String   @id @default(cuid())
+  taskId             String   @map("task_id")
+  version            Int      @default(1)
+  previousResponseId String?  @map("previous_response_id")
+  outputJson         Json?    @map("output_json")
+  outputText         String?  @map("output_text")
+  model              String?
+  provider           String?
+  inputTokens        Int?     @map("input_tokens")
+  outputTokens       Int?     @map("output_tokens")
+  cost               Decimal? @db.Decimal(10, 6)
+  createdAt          DateTime @default(now()) @map("created_at")
+  task               Task     @relation(fields: [taskId], references: [id])
+
+  @@unique([taskId, version])
+  @@map("task_outputs")
+  @@schema("public")
+}
+
+model ResumeVersion {
+  id           String                @id @default(cuid())
+  resumeId     String                @map("resume_id")
+  sourceTaskId String?               @map("source_task_id")
+  version      Int
+  contentText  String?               @map("content_text")
+  diffJson     Json?                 @map("diff_json")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  resume       Resume                @relation(fields: [resumeId], references: [id])
+
+  @@unique([resumeId, version])
+  @@map("resume_versions")
+  @@schema("public")
+}
+
+model Quota {
+  id           String   @id @default(cuid())
+  initialGrant Int      @default(0) @map("initial_grant")
+  purchased    Int      @default(0)
+  used         Int      @default(0)
+  remaining    Int      @default(0) // 新增字段：剩余配额，避免频繁计算 purchased - used
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  userId       String   @unique @map("user_id")
+  user         NeonUserSync @relation(fields: [userId], references: [id])
+
+  @@map("quotas")
+  @@schema("public")
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  stripeCheckoutId String?       @unique @map("stripe_checkout_id")
+  amount           Decimal       @db.Decimal(10, 2)
+  currency         String
+  status           PaymentStatus @default(pending)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  userId           String        @map("user_id")
+  user             NeonUserSync  @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+  @@schema("public")
+}
+
+model TokenUsageLog {
+  id           String   @id @default(cuid())
+  serviceId    String?  @map("service_id")
+  taskId       String?  @map("task_id")
+  provider     String?
+  model        String?
+  inputTokens  Int?     @map("input_tokens")
+  outputTokens Int?     @map("output_tokens")
+  cost         Decimal? @db.Decimal(10, 6)
+  createdAt    DateTime @default(now()) @map("created_at")
+  userId       String   @map("user_id")
+  user         NeonUserSync @relation(fields: [userId], references: [id])
+
+  @@map("token_usage_logs")
+  @@schema("public")
+}
+
+model IdempotencyKey {
+  key       String          @id
+  userKey   String          @map("user_key")
+  step      IdempotencyStep
+  ttlMs     Int             @map("ttl_ms")
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  @@map("idempotency_keys")
+  @@schema("public")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  userId     String   @map("user_id")
+  user       NeonUserSync @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+  @@schema("public")
+}
+
+// Vector storage for RAG system
+model Document {
+  id          String                     @id @default(cuid())
+  content     String
+  embedding   Unsupported("vector(1536)") // GLM embedding-3 dimension
+  metadata    Json?
+  sourceType  DocumentSourceType
+  sourceId    String                     @map("source_id") // Reference to original document (resume, job, etc.)
+  userId      String                     @map("user_id")
+  chunkIndex  Int?                       @map("chunk_index") // For document chunking
+  createdAt   DateTime                   @default(now()) @map("created_at")
+  updatedAt   DateTime                   @updatedAt @map("updated_at")
+  user        NeonUserSync               @relation(fields: [userId], references: [id])
+
+  @@index([userId, sourceType, sourceId])
+  @@index([sourceType, sourceId])
+  @@map("documents")
+  @@schema("public")
+}
+
+// Knowledge base for storing processed information
+model KnowledgeEntry {
+  id          String                     @id @default(cuid())
+  title       String?
+  content     String
+  embedding   Unsupported("vector(1536)") // GLM embedding-3 dimension
+  category    String?
+  tags        String[]
+  metadata    Json?
+  isPublic    Boolean                    @default(false) @map("is_public")
+  userId      String                     @map("user_id")
+  createdAt   DateTime                   @default(now()) @map("created_at")
+  updatedAt   DateTime                   @updatedAt @map("updated_at")
+  user        NeonUserSync               @relation(fields: [userId], references: [id])
+
+  @@index([userId, category])
+  @@index([isPublic, category])
+  @@map("knowledge_entries")
+  @@schema("public")
+}
+
+
+
+enum ServiceStatus {
+  created
+  running
+  done
+  error
+
+  @@schema("public")
+}
+
+enum ServiceDepth {
+  pre
+  a
+  b
+  c
+
+  @@schema("public")
+}
+
+enum TaskKind {
+  match
+  resume
+  interview
+
+  @@schema("public")
+}
+
+enum TaskStatus {
+  pending
+  running
+  done
+  error
+
+  @@schema("public")
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+
+  @@schema("public")
+}
+
+enum IdempotencyStep {
+  match
+  resume
+  interview
+
+  @@schema("public")
+}
+
+enum DocumentSourceType {
+  resume
+  job_description
+  detailed_resume
+  knowledge_base
+  user_upload
+
+  @@schema("public")
+}
