@@ -62,7 +62,7 @@ export function createSecurityEvent(
     reqId?: string
   }
 ): SecurityEvent {
-  return {
+  const event: SecurityEvent = {
     id: generateUUID(),
     timestamp: new Date().toISOString(),
     userKey,
@@ -70,12 +70,25 @@ export function createSecurityEvent(
     severity,
     success,
     details,
-    ipAddress: context?.ipAddress,
-    userAgent: context?.userAgent,
-    route: context?.route,
-    method: context?.method,
-    reqId: context?.reqId
   }
+  
+  if (context?.ipAddress !== undefined) {
+    event.ipAddress = context.ipAddress
+  }
+  if (context?.userAgent !== undefined) {
+    event.userAgent = context.userAgent
+  }
+  if (context?.route !== undefined) {
+    event.route = context.route
+  }
+  if (context?.method !== undefined) {
+    event.method = context.method
+  }
+  if (context?.reqId !== undefined) {
+    event.reqId = context.reqId
+  }
+  
+  return event
 }
 
 /**

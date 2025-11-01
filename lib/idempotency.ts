@@ -86,7 +86,7 @@ export async function checkIdempotency(config: IdempotencyConfig): Promise<Idemp
  */
 export const DEFAULT_TTL_MS = {
   match: 15 * 60 * 1000,      // 15 minutes
-  resume: 30 * 60 * 1000,     // 30 minutes
+  customize: 30 * 60 * 1000,  // 30 minutes
   interview: 30 * 60 * 1000,  // 30 minutes
 } as const
 

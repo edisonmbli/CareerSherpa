@@ -11,6 +11,7 @@ import {
 } from '@/lib/dal'
 import { prisma } from '@/lib/prisma'
 import { ApiContext } from '@/lib/api/utils'
+import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 
 export interface JobMatchRequest {
   service_id: string
@@ -66,8 +67,15 @@ export class BusinessLogicService {
     request: JobMatchRequest,
     context: ApiContext
   ): Promise<JobMatchResult> {
-    const { service_id, tier = 'free' } = request
+    const { service_id, tier } = request
     const { reqId, route, userKey } = context
+    
+    // 如果没有明确指定tier，根据用户quota动态确定
+    let finalTier = tier
+    if (!finalTier) {
+      const quotaStatus = await checkQuotaForService(userKey)
+      finalTier = quotaStatus.shouldUseFreeQueue ? 'free' : 'paid'
+    }
 
     logInfo({
       reqId,
@@ -75,7 +83,7 @@ export class BusinessLogicService {
       userKey,
       phase: 'job_match_start',
       service_id,
-      tier,
+      tier: finalTier,
     })
 
     // 获取服务数据
@@ -87,7 +95,7 @@ export class BusinessLogicService {
       JSON.stringify(serviceData.jobSummary),
       userKey,
       service_id,
-      { tier }
+      { tier: finalTier }
     )
 
     if (!result.success || !result.data) {
@@ -122,8 +130,15 @@ export class BusinessLogicService {
     request: ResumeEditRequest,
     context: ApiContext
   ): Promise<ResumeEditResult> {
-    const { service_id, tier = 'free' } = request
+    const { service_id, tier } = request
     const { reqId, route, userKey } = context
+    
+    // 如果没有明确指定tier，根据用户quota动态确定
+    let finalTier = tier
+    if (!finalTier) {
+      const quotaStatus = await checkQuotaForService(userKey)
+      finalTier = quotaStatus.shouldUseFreeQueue ? 'free' : 'paid'
+    }
 
     logInfo({
       reqId,
@@ -131,7 +146,7 @@ export class BusinessLogicService {
       userKey,
       phase: 'resume_edit_start',
       service_id,
-      tier,
+      tier: finalTier,
     })
 
     // 获取服务数据
@@ -144,7 +159,7 @@ export class BusinessLogicService {
       JSON.stringify(serviceData.detailedSummary),
       userKey,
       service_id,
-      { tier }
+      { tier: finalTier }
     )
 
     if (!result.success || !result.data) {
@@ -177,8 +192,15 @@ export class BusinessLogicService {
     request: InterviewPrepRequest,
     context: ApiContext
   ): Promise<InterviewPrepResult> {
-    const { service_id, tier = 'free' } = request
+    const { service_id, tier } = request
     const { reqId, route, userKey } = context
+    
+    // 如果没有明确指定tier，根据用户quota动态确定
+    let finalTier = tier
+    if (!finalTier) {
+      const quotaStatus = await checkQuotaForService(userKey)
+      finalTier = quotaStatus.shouldUseFreeQueue ? 'free' : 'paid'
+    }
 
     logInfo({
       reqId,
@@ -186,7 +208,7 @@ export class BusinessLogicService {
       userKey,
       phase: 'interview_prep_start',
       service_id,
-      tier,
+      tier: finalTier,
     })
 
     // 获取服务数据
@@ -199,7 +221,7 @@ export class BusinessLogicService {
       JSON.stringify(serviceData.detailedSummary),
       userKey,
       service_id,
-      { tier }
+      { tier: finalTier }
     )
 
     if (!result.success || !result.data) {

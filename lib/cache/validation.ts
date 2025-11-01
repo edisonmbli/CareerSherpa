@@ -51,7 +51,7 @@ export const DEFAULT_VALIDATION_CONFIG: ValidationConfig = {
   enableSchemaValidation: true,
   enableTimestampValidation: true,
   maxAge: 24 * 60 * 60 * 1000, // 24小时
-  secretKey: process.env.CACHE_VALIDATION_SECRET || 'default-secret-key'
+  secretKey: process.env['CACHE_VALIDATION_SECRET'] || 'default-secret-key'
 }
 
 // 定义可缓存的数据类型

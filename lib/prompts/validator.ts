@@ -119,10 +119,10 @@ export class OutputValidator {
     const dataObj = data as Record<string, unknown>
     const coercedData = { ...dataObj }
 
-    if (schema.type === 'object') {
+    if (schema['type'] === 'object') {
       // Check required fields
-      if (Array.isArray(schema.required)) {
-        for (const field of schema.required) {
+      if (Array.isArray(schema['required'])) {
+        for (const field of schema['required']) {
           if (typeof field === 'string' && !(field in dataObj)) {
             errors.push(`Missing required field: ${field}`)
           }
@@ -130,8 +130,8 @@ export class OutputValidator {
       }
 
       // Check field types and values
-      if (schema.properties && typeof schema.properties === 'object') {
-        for (const [field, fieldSchema] of Object.entries(schema.properties)) {
+      if (schema['properties'] && typeof schema['properties'] === 'object') {
+        for (const [field, fieldSchema] of Object.entries(schema['properties'])) {
           if (field in dataObj) {
             const fieldValidation = this.validateField(dataObj[field], fieldSchema, field, options)
             errors.push(...fieldValidation.errors)
@@ -146,8 +146,8 @@ export class OutputValidator {
 
       // Check for extra fields
       if (!options.allowExtraFields) {
-        const allowedFields = schema.properties && typeof schema.properties === 'object' 
-          ? Object.keys(schema.properties) 
+        const allowedFields = schema['properties'] && typeof schema['properties'] === 'object' 
+          ? Object.keys(schema['properties']) 
           : []
         const extraFields = Object.keys(dataObj).filter(field => !allowedFields.includes(field))
         if (extraFields.length > 0) {
@@ -156,7 +156,13 @@ export class OutputValidator {
       }
     }
 
-    return { errors, warnings, coercedData: JSON.stringify(coercedData) !== JSON.stringify(dataObj) ? coercedData : undefined }
+    const result: { errors: string[]; warnings: string[]; coercedData?: Record<string, unknown> } = { errors, warnings }
+    
+    if (JSON.stringify(coercedData) !== JSON.stringify(dataObj)) {
+      result.coercedData = coercedData
+    }
+    
+    return result
   }
 
   /**
@@ -180,9 +186,9 @@ export class OutputValidator {
     const schemaObj = schema as Record<string, unknown>
 
     // Type validation
-    if (schemaObj.type) {
+    if (schemaObj['type']) {
       const actualType = Array.isArray(value) ? 'array' : typeof value
-      const expectedType = schemaObj.type as string
+      const expectedType = schemaObj['type'] as string
       
       if (actualType !== expectedType) {
         if (options.coerceTypes) {
@@ -200,40 +206,40 @@ export class OutputValidator {
     }
 
     // Enum validation
-    if (schemaObj.enum && Array.isArray(schemaObj.enum) && !schemaObj.enum.includes(value)) {
-      errors.push(`Invalid value for ${fieldName}: must be one of ${(schemaObj.enum as unknown[]).join(', ')}`)
+    if (schemaObj['enum'] && Array.isArray(schemaObj['enum']) && !schemaObj['enum'].includes(value)) {
+      errors.push(`Invalid value for ${fieldName}: must be one of ${(schemaObj['enum'] as unknown[]).join(', ')}`)
     }
 
     // Number constraints
-    if (schemaObj.type === 'number') {
+    if (schemaObj['type'] === 'number') {
       const numValue = coercedValue !== undefined ? coercedValue : value
       if (typeof numValue === 'number') {
-        if (schemaObj.minimum !== undefined && numValue < (schemaObj.minimum as number)) {
-          errors.push(`${fieldName} must be >= ${schemaObj.minimum}`)
+        if (schemaObj['minimum'] !== undefined && numValue < (schemaObj['minimum'] as number)) {
+          errors.push(`${fieldName} must be >= ${schemaObj['minimum']}`)
         }
-        if (schemaObj.maximum !== undefined && numValue > (schemaObj.maximum as number)) {
-          errors.push(`${fieldName} must be <= ${schemaObj.maximum}`)
+        if (schemaObj['maximum'] !== undefined && numValue > (schemaObj['maximum'] as number)) {
+          errors.push(`${fieldName} must be <= ${schemaObj['maximum']}`)
         }
       }
     }
 
     // Array validation
-    if (schemaObj.type === 'array') {
+    if (schemaObj['type'] === 'array') {
       const arrValue = coercedValue !== undefined ? coercedValue : value
       if (Array.isArray(arrValue)) {
-        if (schemaObj.minItems !== undefined && arrValue.length < (schemaObj.minItems as number)) {
-          errors.push(`${fieldName} must have at least ${schemaObj.minItems} items`)
+        if (schemaObj['minItems'] !== undefined && arrValue.length < (schemaObj['minItems'] as number)) {
+          errors.push(`${fieldName} must have at least ${schemaObj['minItems']} items`)
         }
-        if (schemaObj.maxItems !== undefined && arrValue.length > (schemaObj.maxItems as number)) {
-          errors.push(`${fieldName} must have at most ${schemaObj.maxItems} items`)
+        if (schemaObj['maxItems'] !== undefined && arrValue.length > (schemaObj['maxItems'] as number)) {
+          errors.push(`${fieldName} must have at most ${schemaObj['maxItems']} items`)
         }
         
         // Validate array items
-        if (schemaObj.items) {
+        if (schemaObj['items']) {
           arrValue.forEach((item, index) => {
             const itemValidation = this.validateField(
               item,
-              schemaObj.items,
+              schemaObj['items'],
               `${fieldName}[${index}]`,
               options
             )
@@ -442,9 +448,12 @@ export function validateAndFix(
   // Then validate
   const result = outputValidator.validateOutput(templateId, fixed, options)
   
-  return {
-    ...result,
-    fixed: changes.length > 0 ? fixed : undefined,
-    changes: changes.length > 0 ? changes : undefined
+  const finalResult: ValidationResult & { fixed?: string; changes?: string[] } = { ...result }
+  
+  if (changes.length > 0) {
+    finalResult.fixed = fixed
+    finalResult.changes = changes
   }
+  
+  return finalResult
 }

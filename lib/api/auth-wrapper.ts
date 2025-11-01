@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { logInfo, logError } from '@/lib/logger'
-import { createOrUpdateUser } from '@/lib/dal'
+import { getUserByStackId } from '@/lib/dal'
 import { ensureMigrations } from '@/lib/db-migrations'
 
 /**
@@ -140,19 +140,24 @@ export function withApiAuth<T>(
       // 确保数据库迁移
       await ensureMigrations()
 
-      // 创建或更新用户（从请求中获取语言偏好）
-      const langPref = req.headers.get('x-lang') || 
-                      req.headers.get('accept-language')?.split(',')[0] || 
-                      'en'
+      // 获取用户信息（Stack Auth会自动同步到neon_auth.users_sync表）
+      const user = await getUserByStackId(userKey)
 
-      const user = await createOrUpdateUser({
-        stackUserId: userKey,
-        langPref,
-      })
+      if (!user) {
+        // 如果用户不在本地数据库中，这可能是新用户或同步延迟
+        // 我们使用userKey作为临时ID，Stack Auth会处理同步
+        logError({
+          reqId: context.reqId,
+          route: context.route,
+          userKey: context.userKey,
+          phase: 'user_sync',
+          error: 'User not found in local database, using Stack Auth ID'
+        })
+      }
 
       const apiUser: ApiUser = {
-        id: user.id,
-        email: user.email || '',
+        id: user?.id || userKey, // 使用本地用户ID或Stack Auth ID
+        email: user?.email || '', // 如果本地用户不存在，email为空
       }
 
       // 调用处理函数

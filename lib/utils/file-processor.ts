@@ -217,16 +217,21 @@ export async function processUploadedFile(
     throw new Error('unsupported_file_type')
   }
   
-  return {
+  const processResult = {
     content: result.content,
     metadata: {
       ...result.metadata,
       fileSize: file.size,
       fileName: file.name
     },
-    hash,
-    mediaBase64: result.mediaBase64
+    hash
+  } as FileProcessResult
+  
+  if ('mediaBase64' in result && result.mediaBase64 !== undefined) {
+    processResult.mediaBase64 = result.mediaBase64
   }
+  
+  return processResult
 }
 
 /**

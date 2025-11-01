@@ -113,7 +113,7 @@ export function createActionSuccess<T>(
   return {
     success: true,
     data,
-    message,
+    ...(message && { message }),
   }
 }
 

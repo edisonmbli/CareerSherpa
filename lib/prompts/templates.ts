@@ -1,10 +1,32 @@
 /**
  * Prompt Templates for CareerShaper
- * 
+ *
  * This module contains all LLM prompt templates organized by functionality.
  * Each template follows a consistent structure and supports variable substitution.
  */
 
+import {
+  enhancePromptTemplate,
+  JSON_FORMAT_CONFIGS,
+} from './json-format-enhancer'
+
+/**
+ * JSON Schema type definition
+ */
+export interface JsonSchema {
+  type: string
+  properties?: Record<string, any>
+  items?: any
+  required?: string[]
+  enum?: any[]
+  minimum?: number
+  maximum?: number
+  [key: string]: unknown
+}
+
+/**
+ * Prompt template interface
+ */
 export interface PromptTemplate {
   id: string
   name: string
@@ -12,7 +34,7 @@ export interface PromptTemplate {
   systemPrompt: string
   userPrompt: string
   variables: string[]
-  outputSchema?: any
+  outputSchema?: JsonSchema
   maxTokens?: number
   temperature?: number
 }
@@ -77,12 +99,12 @@ export const JOB_MATCH_TEMPLATE: PromptTemplate = {
       score: { type: 'number', minimum: 0, maximum: 100 },
       highlights: { type: 'array', items: { type: 'string' } },
       gaps: { type: 'array', items: { type: 'string' } },
-      dm_script: { type: 'string' }
+      dm_script: { type: 'string' },
     },
-    required: ['score', 'highlights', 'gaps', 'dm_script']
+    required: ['score', 'highlights', 'gaps', 'dm_script'],
   },
-  maxTokens: 900,
-  temperature: 0.3
+  maxTokens: 6000,
+  temperature: 0.3,
 }
 
 /**
@@ -155,16 +177,16 @@ export const RESUME_EDIT_TEMPLATE: PromptTemplate = {
             content: { type: 'string' },
             reason: { type: 'string' },
             from: { type: 'string' },
-            to: { type: 'string' }
+            to: { type: 'string' },
           },
-          required: ['type', 'reason']
-        }
-      }
+          required: ['type', 'reason'],
+        },
+      },
     },
-    required: ['summary', 'ops']
+    required: ['summary', 'ops'],
   },
   maxTokens: 1200,
-  temperature: 0.2
+  temperature: 0.2,
 }
 
 /**
@@ -220,16 +242,16 @@ export const INTERVIEW_PREP_TEMPLATE: PromptTemplate = {
           properties: {
             question: { type: 'string' },
             framework: { type: 'string' },
-            hints: { type: 'array', items: { type: 'string' } }
+            hints: { type: 'array', items: { type: 'string' } },
           },
-          required: ['question', 'framework', 'hints']
-        }
-      }
+          required: ['question', 'framework', 'hints'],
+        },
+      },
     },
-    required: ['intro', 'qa_items']
+    required: ['intro', 'qa_items'],
   },
   maxTokens: 1200,
-  temperature: 0.4
+  temperature: 0.4,
 }
 
 /**
@@ -238,147 +260,244 @@ export const INTERVIEW_PREP_TEMPLATE: PromptTemplate = {
 export const RESUME_SUMMARY_TEMPLATE: PromptTemplate = {
   id: 'resume_summary',
   name: '简历摘要提取',
-  description: '从简历文本中提取结构化摘要',
+  description: '从简历文本中提取结构化摘要，最大程度保留简历内容',
   systemPrompt: SYSTEM_BASE,
-  userPrompt: `请分析以下简历内容，提取关键信息并以JSON格式返回：
+  userPrompt: `请分析以下简历内容，最大程度地提取所有关键信息并以JSON格式返回。
 
 简历内容：
 {{resumeText}}
 
+提取要求：
+- 简历内容较短，需要最大程度地把其中的内容提取出来
+- 不要遗漏任何重要信息，包括具体的项目、成就、技能等
+- 按照指定的结构化字段进行组织
+
 请返回JSON格式：
 {
-  "name": "姓名",
-  "title": "当前职位/求职意向",
-  "experience": ["工作经历要点"],
-  "skills": ["技能列表"],
-  "education": ["教育背景"],
-  "highlights": ["核心亮点"],
+  "personal_info": {
+    "name": "姓名",
+    "title": "当前职位/求职意向", 
+    "contact": ["联系方式"],
+    "location": "所在地区"
+  },
+  "education": [
+    {
+      "school": "学校名称",
+      "degree": "学位",
+      "major": "专业",
+      "duration": "时间段",
+      "details": ["相关详情、成绩、荣誉等"]
+    }
+  ],
+  "highlights": [
+    "核心亮点1：具体描述",
+    "核心亮点2：具体描述"
+  ],
+  "key_skills": {
+    "technical": ["技术技能"],
+    "soft": ["软技能"],
+    "languages": ["语言能力"],
+    "certifications": ["认证证书"]
+  },
+  "working_experiences": [
+    {
+      "company": "公司名称",
+      "position": "职位",
+      "duration": "时间段",
+      "responsibilities": ["职责描述"],
+      "achievements": ["具体成就"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "项目名称",
+      "description": "项目描述",
+      "technologies": ["使用技术"],
+      "achievements": ["项目成果"]
+    }
+  ],
   "years_experience": 3,
-  "industry": "所属行业"
+  "industry": ["所属行业"]
 }`,
   variables: ['resumeText'],
   outputSchema: {
     type: 'object',
     properties: {
-      name: { type: 'string' },
-      title: { type: 'string' },
-      experience: { type: 'array', items: { type: 'string' } },
-      skills: { type: 'array', items: { type: 'string' } },
-      education: { type: 'array', items: { type: 'string' } },
+      personal_info: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          title: { type: 'string' },
+          contact: { type: 'array', items: { type: 'string' } },
+          location: { type: 'string' },
+        },
+        required: ['name', 'title'],
+      },
+      education: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            school: { type: 'string' },
+            degree: { type: 'string' },
+            major: { type: 'string' },
+            duration: { type: 'string' },
+            details: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
       highlights: { type: 'array', items: { type: 'string' } },
+      key_skills: {
+        type: 'object',
+        properties: {
+          technical: { type: 'array', items: { type: 'string' } },
+          soft: { type: 'array', items: { type: 'string' } },
+          languages: { type: 'array', items: { type: 'string' } },
+          certifications: { type: 'array', items: { type: 'string' } },
+        },
+      },
+      working_experiences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            company: { type: 'string' },
+            position: { type: 'string' },
+            duration: { type: 'string' },
+            responsibilities: { type: 'array', items: { type: 'string' } },
+            achievements: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      projects: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            description: { type: 'string' },
+            technologies: { type: 'array', items: { type: 'string' } },
+            achievements: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
       years_experience: { type: 'number' },
-      industry: { type: 'string' }
+      industry: { type: 'array', items: { type: 'string' } },
     },
-    required: ['name', 'title', 'experience', 'skills']
+    required: [
+      'personal_info',
+      'highlights',
+      'key_skills',
+      'working_experiences',
+    ],
   },
-  maxTokens: 800,
-  temperature: 0.2
+  maxTokens: 8000, // 增加token限制以支持更详细的提取
+  temperature: 0.2,
 }
 
 /**
  * Detailed Resume Extraction Template
- * Implements verbatim extraction for complete information preservation
+ * Implements detailed extraction and refinement for complete information preservation
  */
 export const DETAILED_RESUME_TEMPLATE: PromptTemplate = {
   id: 'detailed_resume',
   name: '详细简历信息提取',
-  description: '逐字提取详细简历信息，确保信息完整性',
-  systemPrompt: `你是一位专业的简历信息提取专家，专门负责从详细简历中进行逐字逐句的信息提取。
+  description: '详细提取简历信息，最大程度还原履历细节',
+  systemPrompt: `你是一位专业的简历信息提取专家，专门负责从详细简历中进行深度信息提取和提炼。
 
 核心原则：
-1. VERBATIM EXTRACTION - 逐字提取，不得省略任何信息
-2. 100% 信息保留 - 完整保留原文的所有细节
-3. 结构化组织 - 将信息按工作经历组织成 jobs 数组
+1. DETAILED EXTRACTION - 详细提取，最大程度保留重要信息
+2. 信息提炼 - 将原文信息提炼成结构化的详细描述
+3. 结构化组织 - 将信息按工作经历组织成 work_detail 数组
 4. 严格按照 JSON 格式输出
 5. 使用与输入一致的语言
 
-CRITICAL RULES:
-- 这是 VERBATIM DETAILED 简历提取。必须从输入文本中逐字提取所有内容并组织到 "jobs" 数组中
-- 不得总结、压缩或省略任何细节
-- 复制每个完整的句子和段落，包括所有成就、项目详情、学习经历、具体数字、指标和描述
-- 如果原文有200字的描述，提取结果应包含完整的200字描述，而不是50字的总结
-- 不得缩短、总结或压缩任何内容，按原文完整提取段落和句子
+提取策略：
+- 这是详细简历提取任务，需要最大程度地还原详细履历的细节
+- 将原文信息提炼成详细的结构化描述，保留关键细节和具体内容
+- 包含所有重要的成就、项目详情、学习经历、具体数字、指标和描述
+- 提炼而非简单复制，但要保持信息的完整性和详细程度
+- 确保每个字段都包含丰富的细节信息
 
 输出要求：
-- 必须返回包含 "jobs" 数组的 JSON 格式
-- 每个 job 对象必须填充从原文中提取的完整内容
-- 保持原文的完整长度和细节`,
-  userPrompt: `请从以下详细简历文本中进行逐字信息提取：
+- 必须返回包含 "work_detail" 数组的 JSON 格式
+- 每个 work_detail 对象必须填充详细的提炼信息
+- 保持信息的详细程度和完整性`,
+  userPrompt: `请从以下详细简历文本中进行深度信息提取和提炼：
 
 简历内容：
 {{resumeText}}
 
 请返回 JSON 格式，包含以下结构：
 {
-  "jobs": [
+  "work_detail": [
     {
       "company": "公司名称",
-      "title": "职位标题",
-      "position": "职位名称（备用）",
-      "keywords": ["关键技能/技术"],
-      "duration": "时间段",
-      "highlights": ["完整的成就描述"],
-      "project_experiences": ["完整的项目描述"],
-      "contributions": ["完整的量化结果"],
-      "learnings": ["完整的技能发展描述"],
-      "improvements": ["完整的流程优化描述"],
-      "co_working": ["完整的团队合作示例"],
-      "leadership": ["完整的团队管理描述"],
-      "problem_solving": ["完整的挑战解决描述"]
+      "role": "职位角色",
+      "keywords": ["关键技能/技术/工具"],
+      "duration": "工作时间段",
+      "highlights": ["主要成就和亮点的详细描述"],
+      "projects": ["项目经历的详细描述，包括项目背景、技术栈、个人贡献"],
+      "key_contribution": ["关键贡献和价值创造的详细说明"],
+      "learning": ["技能发展和学习成长的详细描述"],
+      "improvement": ["流程优化和改进措施的详细说明"],
+      "co_operation": ["团队合作和跨部门协作的详细示例"],
+      "leadership": ["领导力和团队管理的详细体现"],
+      "problem_solving": ["问题解决和挑战应对的详细案例"]
     }
   ]
 }
 
-字段映射说明：
-- company/title: 工作信息
-- keywords: 关键技能/技术
-- duration: 时间段
-- highlights: 完整的成就描述
-- project_experiences: 完整的项目描述
-- contributions: 完整的量化结果
-- learnings: 完整的技能发展描述
-- improvements: 完整的流程优化描述
-- co_working: 完整的团队合作示例
-- leadership: 完整的团队管理描述
-- problem_solving: 完整的挑战解决描述
+字段要求说明：
+- company: 公司名称
+- role: 具体职位角色
+- keywords: 关键技能、技术、工具等
+- duration: 工作时间段
+- highlights: 主要成就和亮点，包含具体数据和影响
+- projects: 项目经历，包含项目背景、技术实现、个人贡献
+- key_contribution: 关键贡献，量化的价值创造
+- learning: 技能发展，学习的新技术、方法、知识
+- improvement: 流程优化，改进的具体措施和效果
+- co_operation: 团队合作，跨部门协作的具体示例
+- leadership: 领导力体现，团队管理、指导他人的经历
+- problem_solving: 问题解决，面临的挑战和解决方案
 
-VERBATIM 要求：
-- 从上述详细简历文本中逐字提取所有信息并组织到 JSON 结构中
-- 不得总结、压缩或缩短 - 复制每个完整的句子、段落、成就、项目描述和经历，完全按照原文书写
-- 如果输入有具体数字、日期、项目名称、成就、完整描述 - 在相应字段中完全按照原文包含所有内容
-- 每个字段应包含完整的原始句子和段落，而不是缩短版本
-- 保持原始描述的完整长度和细节`,
+提取要求：
+- 从简历文本中提炼出详细的工作经历信息
+- 每个字段都要包含丰富的细节描述，不是简单的关键词列表
+- 保留具体的数字、时间、项目名称、技术栈等关键信息
+- 将相关信息合理归类到对应字段中
+- 确保信息的完整性和详细程度，为后续步骤提供充分的上下文`,
   variables: ['resumeText'],
   outputSchema: {
     type: 'object',
     properties: {
-      jobs: {
+      work_detail: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
             company: { type: 'string' },
-            title: { type: 'string' },
-            position: { type: 'string' },
+            role: { type: 'string' },
             keywords: { type: 'array', items: { type: 'string' } },
             duration: { type: 'string' },
             highlights: { type: 'array', items: { type: 'string' } },
-            project_experiences: { type: 'array', items: { type: 'string' } },
-            contributions: { type: 'array', items: { type: 'string' } },
-            learnings: { type: 'array', items: { type: 'string' } },
-            improvements: { type: 'array', items: { type: 'string' } },
-            co_working: { type: 'array', items: { type: 'string' } },
+            projects: { type: 'array', items: { type: 'string' } },
+            key_contribution: { type: 'array', items: { type: 'string' } },
+            learning: { type: 'array', items: { type: 'string' } },
+            improvement: { type: 'array', items: { type: 'string' } },
+            co_operation: { type: 'array', items: { type: 'string' } },
             leadership: { type: 'array', items: { type: 'string' } },
-            problem_solving: { type: 'array', items: { type: 'string' } }
+            problem_solving: { type: 'array', items: { type: 'string' } },
           },
-          required: ['company', 'title', 'keywords', 'duration']
-        }
-      }
+          required: ['company', 'role', 'keywords', 'duration'],
+        },
+      },
     },
-    required: ['jobs']
+    required: ['work_detail'],
   },
-  maxTokens: 60000, // 详细提取需要更多 token
-  temperature: 0.1 // 低温度确保一致性
+  maxTokens: 30000, // 根据智谱官网文档，GLM-4.5支持最大98304 tokens
+  temperature: 0.1, // 低温度确保一致性
 }
 
 export const JOB_SUMMARY_TEMPLATE: PromptTemplate = {
@@ -415,12 +534,98 @@ export const JOB_SUMMARY_TEMPLATE: PromptTemplate = {
       benefits: { type: 'array', items: { type: 'string' } },
       level: { type: 'string' },
       industry: { type: 'string' },
-      location: { type: 'string' }
+      location: { type: 'string' },
     },
-    required: ['title', 'requirements', 'responsibilities', 'skills']
+    required: ['title', 'requirements', 'responsibilities', 'skills'],
   },
-  maxTokens: 800,
-  temperature: 0.2
+  maxTokens: 6000,
+  temperature: 0.2,
+}
+
+/**
+ * OCR Text Extraction Template
+ */
+export const OCR_EXTRACT_TEMPLATE: PromptTemplate = {
+  id: 'ocr_extract',
+  name: 'OCR文本抽取',
+  description: '从图片或PDF扫描件中抽取文本内容',
+  systemPrompt: `你是一位专业的OCR文本识别专家，专门负责从图片和PDF扫描件中准确提取文本内容。
+
+核心原则：
+1. 准确识别 - 尽可能准确地识别图片中的所有文字
+2. 结构保持 - 保持原文档的结构和格式
+3. 完整提取 - 不遗漏任何重要信息
+4. 智能纠错 - 对明显的OCR错误进行合理纠正
+5. 分类整理 - 根据内容类型进行适当的分类和整理
+
+识别策略：
+- 仔细观察图片中的所有文字内容，包括标题、正文、表格、列表等
+- 保持原有的段落结构和层次关系
+- 对于表格数据，尽量保持表格格式
+- 识别并保留重要的格式信息（如粗体、标题层级等）
+- 对于模糊或不清晰的文字，基于上下文进行合理推测
+
+输出要求：
+- 必须返回有效的JSON格式
+- 提取的文本应该结构清晰、易于阅读
+- 保持与原文档相同的语言（中文/英文）
+- 对于无法识别的内容，标注为"[无法识别]"`,
+  userPrompt: `请从以下图片中提取所有文本内容：
+
+图片类型：{{sourceType}}
+图片内容：[图片已提供]
+
+请仔细识别图片中的所有文字，并按照以下JSON格式返回：
+
+{
+  "extracted_text": "完整的提取文本，保持原有结构和格式",
+  "content_type": "文档类型（如：简历、职位描述、证书、合同等）",
+  "language": "主要语言（中文/英文/其他）",
+  "structure": {
+    "has_tables": false,
+    "has_lists": false,
+    "sections": ["识别到的主要章节或部分"]
+  },
+  "confidence": 0.95,
+  "notes": ["识别过程中的注意事项或不确定的地方"]
+}
+
+识别要求：
+- 仔细观察图片中的每一个文字和符号
+- 保持原有的段落分隔和结构层次
+- 对于表格内容，尽量保持表格的行列关系
+- 识别标题、副标题、正文等不同层级的内容
+- 对于手写文字或特殊字体，尽力识别并标注不确定性
+- 置信度评分基于整体识别的准确性和清晰度`,
+  variables: ['sourceType'],
+  outputSchema: {
+    type: 'object',
+    properties: {
+      extracted_text: { type: 'string' },
+      content_type: { type: 'string' },
+      language: { type: 'string' },
+      structure: {
+        type: 'object',
+        properties: {
+          has_tables: { type: 'boolean' },
+          has_lists: { type: 'boolean' },
+          sections: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['has_tables', 'has_lists', 'sections'],
+      },
+      confidence: { type: 'number', minimum: 0, maximum: 1 },
+      notes: { type: 'array', items: { type: 'string' } },
+    },
+    required: [
+      'extracted_text',
+      'content_type',
+      'language',
+      'structure',
+      'confidence',
+    ],
+  },
+  maxTokens: 8000,
+  temperature: 0.1,
 }
 
 /**
@@ -433,6 +638,7 @@ export const PROMPT_TEMPLATES = {
   resume_summary: RESUME_SUMMARY_TEMPLATE,
   job_summary: JOB_SUMMARY_TEMPLATE,
   detailed_resume: DETAILED_RESUME_TEMPLATE,
+  ocr_extract: OCR_EXTRACT_TEMPLATE,
 } as const
 
 export type TemplateId = keyof typeof PROMPT_TEMPLATES
@@ -456,34 +662,140 @@ export function renderTemplate(
   variables: Record<string, string>
 ): { systemPrompt: string; userPrompt: string } {
   const template = getTemplate(templateId)
-  
+
   // Check required variables
-  const missingVars = template.variables.filter(v => !(v in variables))
+  const missingVars = template.variables.filter((v) => !(v in variables))
   if (missingVars.length > 0) {
     throw new Error(`Missing template variables: ${missingVars.join(', ')}`)
   }
-  
+
+  // Check for undefined or null values
+  const undefinedVars = template.variables.filter(
+    (v) =>
+      variables[v] === undefined ||
+      variables[v] === null ||
+      variables[v] === 'undefined'
+  )
+  if (undefinedVars.length > 0) {
+    throw new Error(
+      `Template variables have undefined values: ${undefinedVars.join(
+        ', '
+      )}. Variables: ${JSON.stringify(variables)}`
+    )
+  }
+
   // Replace variables in user prompt
   let userPrompt = template.userPrompt
   for (const [key, value] of Object.entries(variables)) {
     const placeholder = `{{${key}}}`
     userPrompt = userPrompt.replace(new RegExp(placeholder, 'g'), value)
   }
-  
+
   return {
     systemPrompt: template.systemPrompt,
-    userPrompt
+    userPrompt,
   }
 }
 
 /**
- * Get template configuration for LLM
+ * Get template configuration for LLM execution
  */
 export function getTemplateConfig(templateId: TemplateId) {
   const template = getTemplate(templateId)
   return {
-    maxTokens: template.maxTokens,
-    temperature: template.temperature,
-    outputSchema: template.outputSchema
+    maxTokens: template.maxTokens || 4000,
+    temperature: template.temperature || 0.3,
   }
+}
+
+/**
+ * Enhanced templates with improved JSON format guidance
+ * 增强版模板，包含改进的 JSON 格式指导
+ */
+export const ENHANCED_PROMPT_TEMPLATES = {
+  job_match: enhancePromptTemplate(
+    JOB_MATCH_TEMPLATE,
+    JSON_FORMAT_CONFIGS.standard
+  ),
+  resume_edit: enhancePromptTemplate(
+    RESUME_EDIT_TEMPLATE,
+    JSON_FORMAT_CONFIGS.standard
+  ),
+  interview_prep: enhancePromptTemplate(
+    INTERVIEW_PREP_TEMPLATE,
+    JSON_FORMAT_CONFIGS.standard
+  ),
+  resume_summary: enhancePromptTemplate(
+    RESUME_SUMMARY_TEMPLATE,
+    JSON_FORMAT_CONFIGS.strict
+  ),
+  job_summary: enhancePromptTemplate(
+    JOB_SUMMARY_TEMPLATE,
+    JSON_FORMAT_CONFIGS.standard
+  ),
+  detailed_resume: enhancePromptTemplate(
+    DETAILED_RESUME_TEMPLATE,
+    JSON_FORMAT_CONFIGS.strict
+  ),
+  ocr_extract: enhancePromptTemplate(
+    OCR_EXTRACT_TEMPLATE,
+    JSON_FORMAT_CONFIGS.strict
+  ),
+} as const
+
+/**
+ * Lightweight enhanced templates for performance-critical scenarios
+ * 轻量级增强模板，用于性能敏感场景
+ */
+export const LIGHTWEIGHT_ENHANCED_TEMPLATES = {
+  job_match: enhancePromptTemplate(
+    JOB_MATCH_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+  resume_edit: enhancePromptTemplate(
+    RESUME_EDIT_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+  interview_prep: enhancePromptTemplate(
+    INTERVIEW_PREP_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+  resume_summary: enhancePromptTemplate(
+    RESUME_SUMMARY_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+  job_summary: enhancePromptTemplate(
+    JOB_SUMMARY_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+  detailed_resume: enhancePromptTemplate(
+    DETAILED_RESUME_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+  ocr_extract: enhancePromptTemplate(
+    OCR_EXTRACT_TEMPLATE,
+    JSON_FORMAT_CONFIGS.minimal
+  ),
+} as const
+
+/**
+ * Get enhanced template with improved JSON format guidance
+ * 获取包含改进 JSON 格式指导的增强模板
+ */
+export function getEnhancedTemplate(id: TemplateId): PromptTemplate {
+  const enhancedTemplate = ENHANCED_PROMPT_TEMPLATES[id]
+  if (!enhancedTemplate) {
+    throw new Error(`Enhanced template not found: ${id}`)
+  }
+  return enhancedTemplate
+}
+
+/**
+ * Get lightweight enhanced template for performance-critical scenarios
+ * 获取轻量级增强模板，用于性能敏感场景
+ */
+export function getLightweightEnhancedTemplate(
+  templateId: TemplateId
+): PromptTemplate {
+  return LIGHTWEIGHT_ENHANCED_TEMPLATES[templateId]
 }

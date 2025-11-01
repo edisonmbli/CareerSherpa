@@ -1,4 +1,10 @@
-import { authenticateAndSyncUser, type ServerActionAuthResult } from './auth'
+import { 
+  authenticateAndSyncUser, 
+  authenticateAndSyncUserWithDb,
+  type ServerActionAuthResult,
+  type ServerActionAuthResultWithDb,
+  type ServerActionUserWithDb
+} from './auth'
 import { ActionResult } from './utils'
 
 /**
@@ -11,6 +17,30 @@ export function withAuth<T extends any[], R>(
 ) {
   const wrappedAction = async (...args: T): Promise<R | ActionResult> => {
     const authResult = await authenticateAndSyncUser(actionName)
+    
+    if (!authResult.user) {
+      return {
+        success: false,
+        error: 'unauthorized',
+        message: authResult.error || 'Authentication required',
+      } as ActionResult
+    }
+
+    return handler(authResult.user, ...args)
+  }
+  
+  return wrappedAction
+}
+
+/**
+ * 增强的认证包装器 - 返回完整的数据库用户信息，避免重复查询
+ */
+export function withAuthDb<T extends any[], R>(
+  actionName: string,
+  handler: (user: NonNullable<ServerActionUserWithDb>, ...args: T) => Promise<R>
+) {
+  const wrappedAction = async (...args: T): Promise<R | ActionResult> => {
+    const authResult = await authenticateAndSyncUserWithDb(actionName)
     
     if (!authResult.user) {
       return {

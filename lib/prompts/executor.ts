@@ -1,6 +1,6 @@
 import { TemplateId, renderTemplate, getTemplateConfig } from './templates'
 import { validateAndFix, ValidationOptions, ValidationResult } from './validator'
-import { executeLLMTask, LLMTaskResult } from '../llm/worker-pool'
+import { executeLLMTask, LLMTaskResult } from '../llm/llm-scheduler'
 import { LLMConfig } from '../llm/providers'
 
 export interface PromptExecutionOptions {
@@ -46,22 +46,33 @@ export class PromptExecutor {
       const templateConfig = getTemplateConfig(templateId)
       
       // Step 2: Prepare LLM configuration
-      const llmConfig: Partial<LLMConfig> = {
-        maxTokens: templateConfig.maxTokens,
-        temperature: templateConfig.temperature,
+      const llmConfig: Partial<LLMConfig> = {}
+      if (templateConfig.maxTokens !== undefined) {
+        llmConfig.maxTokens = templateConfig.maxTokens
+      }
+      if (templateConfig.temperature !== undefined) {
+        llmConfig.temperature = templateConfig.temperature
       }
       
       // Step 3: Execute LLM task
       const llmResult = await executeLLMTask(
-        userId,
-        serviceId,
-        this.getStepForTemplate(templateId),
-        this.buildFullPrompt(systemPrompt, userPrompt),
+        {
+          id: `${userId}-${serviceId}-${Date.now()}`,
+          userId,
+          serviceId,
+          type: 'text',
+          step: this.getStepForTemplate(templateId),
+          prompt: this.buildFullPrompt(systemPrompt, userPrompt),
+          priority: options.priority ?? 1,
+          createdAt: new Date(),
+          retries: 0,
+          maxRetries: options.maxRetries ?? 3,
+          tier: options.tier ?? 'free',
+          config: llmConfig,
+        },
         {
           tier: options.tier ?? 'free',
           priority: options.priority ?? 1,
-          maxRetries: options.maxRetries ?? 3,
-          config: llmConfig,
         }
       )
       
@@ -102,16 +113,19 @@ export class PromptExecutor {
         }
       }
       
-      return {
+      const result: PromptExecutionResult = {
         success: validation.valid,
-        data: finalData,
-        rawOutput,
-        fixedOutput,
-        validation,
-        llmResult,
-        error: validation.valid ? undefined : `Validation failed: ${validation.errors.join(', ')}`,
         duration: Date.now() - startTime,
       }
+      
+      if (finalData !== undefined) result.data = finalData
+      if (rawOutput !== undefined) result.rawOutput = rawOutput
+      if (fixedOutput !== undefined) result.fixedOutput = fixedOutput
+      if (validation !== undefined) result.validation = validation
+      if (llmResult !== undefined) result.llmResult = llmResult
+      if (!validation.valid) result.error = `Validation failed: ${validation.errors.join(', ')}`
+      
+      return result
       
     } catch (error) {
       return {
@@ -172,9 +186,9 @@ export class PromptExecutor {
     }
     
     // Fallback to secondary template
+    // 保持原有的tier设置，不强制降级到free tier
     const fallbackOptions = {
       ...options,
-      tier: 'free' as const, // Use free tier for fallback
       priority: Math.max((options.priority ?? 1) - 1, 1), // Lower priority
     }
     
@@ -187,12 +201,13 @@ export class PromptExecutor {
     )
     
     // Combine results to show both attempts
-    return {
-      ...fallbackResult,
-      error: fallbackResult.success 
-        ? undefined 
-        : `Primary failed: ${primaryResult.error}. Fallback failed: ${fallbackResult.error}`,
+    const result: PromptExecutionResult = { ...fallbackResult }
+    
+    if (!fallbackResult.success) {
+      result.error = `Primary failed: ${primaryResult.error}. Fallback failed: ${fallbackResult.error}`
     }
+    
+    return result
   }
   
   /**
@@ -312,7 +327,7 @@ export async function executeSummaryGeneration(
   resumeSummary: PromptExecutionResult
   jobSummary: PromptExecutionResult
 }> {
-  const [resumeSummary, jobSummary] = await promptExecutor.executeParallel([
+  const results = await promptExecutor.executeParallel([
     {
       templateId: 'resume_summary',
       variables: { resumeText },
@@ -336,6 +351,11 @@ export async function executeSummaryGeneration(
       },
     },
   ])
+  
+  const [resumeSummary, jobSummary] = results
+  if (!resumeSummary || !jobSummary) {
+    throw new Error('Failed to execute summary generation')
+  }
   
   return { resumeSummary, jobSummary }
 }

@@ -5,7 +5,7 @@
 
 // 简单的同步hash函数，避免Edge Runtime问题
 import { z } from 'zod'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo } from '../logger'
 
 // 简单的字符串hash函数（FNV-1a算法的简化版本）
 function simpleHash(str: string): string {
@@ -56,7 +56,7 @@ export const FAST_VALIDATION_CONFIG: OptimizedValidationConfig = {
 export const SECURE_VALIDATION_CONFIG: OptimizedValidationConfig = {
   level: ValidationLevel.STRICT,
   maxAge: 24 * 60 * 60 * 1000,
-  secretKey: process.env.CACHE_VALIDATION_SECRET || 'default-secret-key',
+  secretKey: process.env['CACHE_VALIDATION_SECRET'] || 'default-secret-key',
   enableCompression: true,
   skipValidationForTrustedSources: false,
   trustedSources: new Set()
@@ -252,7 +252,7 @@ export function preheatCache<T>(
 ): Map<string, LightCacheData> {
   const cacheMap = new Map<string, LightCacheData>()
 
-  for (const [key, data] of dataMap) {
+  for (const [key, data] of Array.from(dataMap.entries())) {
     const cacheData = createLightCacheData(data, config, ttlMs)
     cacheMap.set(key, cacheData)
   }

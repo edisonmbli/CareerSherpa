@@ -3,9 +3,9 @@
  * 避免阻塞主流程，提高性能
  */
 
-import { prisma } from '@/lib/prisma'
-import { logInfo, logError } from '@/lib/logger'
-import { isProdRedisReady } from '@/lib/env'
+import { prisma } from '../prisma'
+import { logInfo, logError } from '../logger'
+import { isProdRedisReady } from '../env'
 import type { Prisma } from '@prisma/client'
 
 // 审计日志条目接口
@@ -155,7 +155,7 @@ class AuditLogQueue {
                 action: entry.action,
                 entityType: entry.entityType,
                 entityId: entry.entityId,
-                metadata: entry.metadata,
+                ...(entry.metadata !== undefined && { metadata: entry.metadata }),
                 createdAt: entry.timestamp || new Date()
               }
             })
@@ -219,7 +219,7 @@ export async function logAuditSync(entry: AuditLogEntry): Promise<boolean> {
         action: entry.action,
         entityType: entry.entityType,
         entityId: entry.entityId,
-        metadata: entry.metadata,
+        ...(entry.metadata !== undefined && { metadata: entry.metadata }),
         createdAt: entry.timestamp || new Date()
       }
     })
@@ -284,11 +284,11 @@ export function auditUserAction(
     action,
     entityType,
     entityId,
-    metadata,
-    reqId: context?.reqId,
-    route: context?.route,
-    userAgent: context?.userAgent,
-    ipAddress: context?.ipAddress
+    ...(metadata !== undefined && { metadata }),
+    ...(context?.reqId && { reqId: context.reqId }),
+    ...(context?.route && { route: context.route }),
+    ...(context?.userAgent && { userAgent: context.userAgent }),
+    ...(context?.ipAddress && { ipAddress: context.ipAddress })
   })
 }
 
@@ -312,11 +312,11 @@ export function auditServiceOperation(
     action: `service_${operation}`,
     entityType: 'service',
     entityId: serviceId,
-    metadata,
-    reqId: context?.reqId,
-    route: context?.route,
-    userAgent: context?.userAgent,
-    ipAddress: context?.ipAddress
+    ...(metadata !== undefined && { metadata }),
+    ...(context?.reqId && { reqId: context.reqId }),
+    ...(context?.route && { route: context.route }),
+    ...(context?.userAgent && { userAgent: context.userAgent }),
+    ...(context?.ipAddress && { ipAddress: context.ipAddress })
   })
 }
 
@@ -342,12 +342,12 @@ export function auditQuotaOperation(
     entityId: userId, // 配额以用户ID作为实体ID
     metadata: {
       amount,
-      ...metadata
+      ...(metadata && metadata)
     },
-    reqId: context?.reqId,
-    route: context?.route,
-    userAgent: context?.userAgent,
-    ipAddress: context?.ipAddress
+    ...(context?.reqId && { reqId: context.reqId }),
+    ...(context?.route && { route: context.route }),
+    ...(context?.userAgent && { userAgent: context.userAgent }),
+    ...(context?.ipAddress && { ipAddress: context.ipAddress })
   })
 }
 
@@ -373,12 +373,12 @@ export function auditAuthOperation(
     entityId: userId,
     metadata: {
       success,
-      ...metadata
+      ...(metadata && metadata)
     },
-    reqId: context?.reqId,
-    route: context?.route,
-    userAgent: context?.userAgent,
-    ipAddress: context?.ipAddress
+    ...(context?.reqId && { reqId: context.reqId }),
+    ...(context?.route && { route: context.route }),
+    ...(context?.userAgent && { userAgent: context.userAgent }),
+    ...(context?.ipAddress && { ipAddress: context.ipAddress })
   })
 }
 

@@ -74,22 +74,42 @@ export async function searchDocuments(
       userId,
       limit: finalConfig.limit,
       threshold: finalConfig.minSimilarity,
-      sourceType: finalConfig.sourceTypes?.[0] // 取第一个类型，或者需要修改函数支持多类型
+    }
+    
+    // 只有当 sourceTypes 存在且有值时才设置 sourceType
+    if (finalConfig.sourceTypes && finalConfig.sourceTypes.length > 0) {
+      const firstSourceType = finalConfig.sourceTypes[0]
+      if (firstSourceType) {
+        searchParams.sourceType = firstSourceType
+      }
     }
 
     // 执行向量搜索
     const documents = await searchSimilarDocuments(searchParams)
 
     // 转换结果格式
-    const results: SearchResult[] = documents.map(doc => ({
-      id: doc.id,
-      content: doc.content,
-      similarity: doc.similarity,
-      sourceType: doc.sourceType,
-      sourceId: doc.sourceId,
-      metadata: doc.metadata,
-      chunkIndex: doc.chunkIndex
-    }))
+    const results: SearchResult[] = documents.map(doc => {
+      const result: SearchResult = {
+        id: doc.id,
+        content: doc.content,
+        similarity: doc.similarity
+      }
+      
+      if (doc.sourceType !== undefined) {
+        result.sourceType = doc.sourceType
+      }
+      if (doc.sourceId !== undefined) {
+        result.sourceId = doc.sourceId
+      }
+      if (doc.metadata !== undefined) {
+        result.metadata = doc.metadata
+      }
+      if (doc.chunkIndex !== undefined) {
+        result.chunkIndex = doc.chunkIndex
+      }
+      
+      return result
+    })
 
     logInfo({
       reqId: 'rag-query',
@@ -153,14 +173,23 @@ export async function searchKnowledge(
     const entries = await searchSimilarKnowledgeEntries(searchParams)
 
     // 转换结果格式
-    const results: KnowledgeSearchResult[] = entries.map(entry => ({
-      id: entry.id,
-      title: entry.title || '',
-      content: entry.content,
-      similarity: entry.similarity,
-      category: entry.category,
-      metadata: entry.metadata
-    }))
+    const results: KnowledgeSearchResult[] = entries.map(entry => {
+      const result: KnowledgeSearchResult = {
+        id: entry.id,
+        title: entry.title || '',
+        content: entry.content,
+        similarity: entry.similarity
+      }
+      
+      if (entry.category !== undefined) {
+        result.category = entry.category
+      }
+      if (entry.metadata !== undefined) {
+        result.metadata = entry.metadata
+      }
+      
+      return result
+    })
 
     logInfo({
       reqId: 'rag-query',
@@ -219,7 +248,10 @@ export async function findRelevantJobDescriptions(
     }
 
     // 使用简历内容作为查询
-    const resumeContent = resumeChunks[0].content
+    const resumeContent = resumeChunks[0]?.content
+    if (!resumeContent) {
+      return { success: false, results: [], error: 'Resume content not found' }
+    }
     
     // 搜索相关的职位描述
     return await searchDocuments(resumeContent, userId, {
@@ -275,7 +307,10 @@ export async function findRelevantResumes(
     }
 
     // 使用职位描述内容作为查询
-    const jobContent = jobChunks[0].content
+    const jobContent = jobChunks[0]?.content
+    if (!jobContent) {
+      return { success: false, results: [], error: 'Job description content not found' }
+    }
     
     // 搜索相关的简历
     return await searchDocuments(jobContent, userId, {
@@ -337,12 +372,16 @@ export async function hybridSearch(
     })
 
     // 并行执行文档搜索和知识库搜索
+    const documentSearchConfig: Partial<QueryConfig> = {
+      limit: documentLimit,
+      minSimilarity,
+    }
+    if (sourceTypes !== undefined) {
+      documentSearchConfig.sourceTypes = sourceTypes
+    }
+    
     const [documentResult, knowledgeResult] = await Promise.all([
-      searchDocuments(query, userId, {
-        limit: documentLimit,
-        minSimilarity,
-        sourceTypes
-      }),
+      searchDocuments(query, userId, documentSearchConfig),
       searchKnowledge(query, userId, knowledgeCategory, knowledgeLimit, minSimilarity)
     ])
 
@@ -358,12 +397,22 @@ export async function hybridSearch(
       success
     })
 
-    return {
+    const result = {
       success,
       documents: documentResult.results,
       knowledge: knowledgeResult.results,
-      error
+    } as {
+      success: boolean
+      documents: SearchResult[]
+      knowledge: KnowledgeSearchResult[]
+      error?: string
     }
+    
+    if (error !== undefined) {
+      result.error = error
+    }
+    
+    return result
   } catch (error) {
     logError({
       reqId: 'rag-query',

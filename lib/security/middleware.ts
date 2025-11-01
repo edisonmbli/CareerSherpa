@@ -229,14 +229,19 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
         { error: headerValidation.error }
       )
 
-      logError({
+      const logPayload = {
         reqId: context.reqId,
         route: context.route,
         userKey: context.userKey,
         phase: 'header_validation',
-        error: headerValidation.error,
         auditLog
-      })
+      } as any
+      
+      if (headerValidation.error !== undefined) {
+        logPayload.error = headerValidation.error
+      }
+      
+      logError(logPayload)
 
       return NextResponse.json(
         { error: 'Invalid request headers', code: 'INVALID_HEADERS' },
@@ -263,14 +268,19 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
         { error: authResult.error }
       )
 
-      logError({
+      const authLogPayload = {
         reqId: context.reqId,
         route: context.route,
         userKey: context.userKey,
         phase: 'auth_validation',
-        error: authResult.error,
         auditLog
-      })
+      } as any
+      
+      if (authResult.error !== undefined) {
+        authLogPayload.error = authResult.error
+      }
+      
+      logError(authLogPayload)
 
       return NextResponse.json(
         { error: authResult.error, code: 'UNAUTHORIZED' },

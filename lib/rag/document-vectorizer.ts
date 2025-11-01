@@ -103,9 +103,25 @@ export async function vectorizeResume(
     // 存储到数据库
     let successCount = 0
     for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]
+      const embedding = embeddings[i]
+      
+      if (!chunk || !embedding) {
+        logError({
+          reqId: 'vectorizer',
+          route: 'vectorizeResume',
+          userKey: userId,
+          error: `Missing chunk or embedding at index ${i}`,
+          index: i,
+          hasChunk: !!chunk,
+          hasEmbedding: !!embedding
+        })
+        continue
+      }
+      
       const params: CreateDocumentParams = {
-        content: chunks[i],
-        embedding: embeddings[i],
+        content: chunk,
+        embedding: embedding,
         sourceType: 'resume',
         sourceId: resumeId,
         userId,
@@ -188,9 +204,25 @@ export async function vectorizeJobDescription(
     // 存储到数据库
     let successCount = 0
     for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]
+      const embedding = embeddings[i]
+      
+      if (!chunk || !embedding) {
+        logError({
+          reqId: 'vectorizer',
+          route: 'vectorizeJobDescription',
+          userKey: userId,
+          error: `Missing chunk or embedding at index ${i}`,
+          index: i,
+          hasChunk: !!chunk,
+          hasEmbedding: !!embedding
+        })
+        continue
+      }
+      
       const params: CreateDocumentParams = {
-        content: chunks[i],
-        embedding: embeddings[i],
+        content: chunk,
+        embedding: embedding,
         sourceType: 'job_description',
         sourceId: jobId,
         userId,
@@ -267,9 +299,12 @@ export async function vectorizeKnowledgeEntry(
       content,
       embedding,
       title,
-      category,
       userId,
       metadata
+    }
+    
+    if (category) {
+      params.category = category
     }
 
     const knowledgeEntry = await createKnowledgeEntry(params)
@@ -338,12 +373,20 @@ export async function batchVectorizeDocuments(
         result = { success: false, chunksCreated: 0, error: 'Unsupported source type' }
       }
 
-      results.push({
+      const resultItem: { sourceId: string; success: boolean; chunksCreated?: number; error?: string } = {
         sourceId: doc.sourceId,
         success: result.success,
-        chunksCreated: result.chunksCreated,
-        error: result.error
-      })
+      }
+      
+      if (result.chunksCreated !== undefined) {
+        resultItem.chunksCreated = result.chunksCreated
+      }
+      
+      if (result.error) {
+        resultItem.error = result.error
+      }
+      
+      results.push(resultItem)
     } catch (error) {
       results.push({
         sourceId: doc.sourceId,

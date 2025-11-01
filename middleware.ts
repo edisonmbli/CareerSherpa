@@ -13,15 +13,15 @@ function getLocale(request: NextRequest): string {
   }
 
   // 2. 检查Accept-Language头
-  const acceptLanguage = request.headers.get('Accept-Language');
-  if (acceptLanguage) {
+  const acceptLanguageHeader = request.headers.get('Accept-Language');
+  if (acceptLanguageHeader) {
     // 解析Accept-Language头，获取首选语言
-    const preferredLang = acceptLanguage
-      .split(',')[0]
-      .split('-')[0]
-      .toLowerCase();
+    const preferredLang = acceptLanguageHeader
+      ?.split(',')[0]
+      ?.split('-')[0]
+      ?.toLowerCase() ?? '';
     
-    if (isSupportedLocale(preferredLang)) {
+    if (preferredLang && isSupportedLocale(preferredLang)) {
       return preferredLang;
     }
   }

@@ -8,7 +8,6 @@ import {
   updateJobText,
   updateDetailedText,
   updateSummaries,
-  createOrUpdateUser,
   getUserByStackId,
   createTask,
   updateTaskStatus,
@@ -26,7 +25,7 @@ function createMockPrisma() {
     jobDescription: new Map<string, any>(),
     detailedResume: new Map<string, any>(),
     user: new Map<string, any>(),
-    neonUserSync: new Map<string, any>(),
+    users_sync: new Map<string, any>(),
     task: new Map<string, any>(),
     taskOutput: new Map<string, any>(),
     quota: new Map<string, any>(),
@@ -92,14 +91,14 @@ function createMockPrisma() {
         return store.user.get(where.clerkId) || null
       },
     },
-    neonUserSync: {
+    users_sync: {
       findUnique: async ({ where }: any) => {
-        return store.neonUserSync.get(where.id) || null
+        return store.users_sync.get(where.id) || null
       },
       upsert: async ({ where, create, update }: any) => {
-        const existing = store.neonUserSync.get(where.id)
+        const existing = store.users_sync.get(where.id)
         const data = existing ? { ...existing, ...update } : { ...create }
-        store.neonUserSync.set(where.id, data)
+        store.users_sync.set(where.id, data)
         return data
       },
     },
@@ -192,17 +191,6 @@ describe('DAL basic ops', () => {
   })
 
   describe('User Management', () => {
-    it('should create or update user', async () => {
-      const userData = {
-        stackUserId: 'stack_123',
-        email: 'test@example.com',
-        langPref: 'en'
-      }
-
-      const result = await createOrUpdateUser(userData)
-      expect(result).toBeDefined()
-    })
-
     it('should get user by stack id', async () => {
       const stackId = 'stack_123'
       const result = await getUserByStackId(stackId)

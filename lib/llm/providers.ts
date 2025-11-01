@@ -1,11 +1,13 @@
 import { ChatZhipuAI } from '@langchain/community/chat_models/zhipuai'
 import { ChatOpenAI } from '@langchain/openai'
-import { ENV } from '@/lib/env'
+import { ChatDeepSeek } from '@langchain/deepseek'
+import { ENV } from '../env'
 
 export interface LLMConfig {
   model: string
   maxTokens?: number
   temperature?: number
+  timeout?: number // 添加 timeout 参数（以秒为单位）
   provider: 'zhipu' | 'deepseek' | 'openai'
   tier: 'free' | 'paid'
 }
@@ -16,8 +18,16 @@ export interface LLMResponse {
     inputTokens?: number
     outputTokens?: number
     totalTokens?: number
+    cost?: number
   }
   metadata?: any
+  prompt?: string
+  modelConfig?: {
+    model: string
+    provider: string
+    maxTokens?: number
+    temperature?: number
+  }
 }
 
 export interface LLMProvider {
@@ -54,29 +64,40 @@ export class ZhipuProvider implements LLMProvider {
 
   parseResponse(response: any): LLMResponse {
     const content = response?.content || ''
-    const usage = response?.response_metadata?.tokenUsage || 
-                  response?.response_metadata?.token_usage ||
-                  response?.additional_kwargs?.usage
+    const usage =
+      response?.response_metadata?.tokenUsage ||
+      response?.response_metadata?.token_usage ||
+      response?.additional_kwargs?.usage
 
-    return {
+    const result: LLMResponse = {
       content,
-      usage: usage ? {
+      metadata: response?.response_metadata,
+    }
+
+    if (usage) {
+      result.usage = {
         inputTokens: usage.prompt_tokens || usage.input_tokens,
         outputTokens: usage.completion_tokens || usage.output_tokens,
         totalTokens: usage.total_tokens || usage.totalTokens,
-      } : undefined,
-      metadata: response?.response_metadata
+      }
     }
+
+    return result
   }
 
   private getDefaultMaxTokens(model: string): number {
-    if (model.includes('thinking') || model.includes('vision') || model.includes('1v')) {
-      return 8000
+    // 基于智谱官网信息：GLM-4.5和GLM-4.5-Flash的max_tokens限制为65536
+    if (
+      model.includes('thinking') ||
+      model.includes('vision') ||
+      model.includes('1v')
+    ) {
+      return 16000 // 视觉模型提高到16000
     }
-    if (model.includes('flash')) {
-      return 6000
+    if (model.includes('flash') || model.includes('glm-4.5')) {
+      return 30000 // GLM-4.5和GLM-4.5-Flash提高到30000
     }
-    return 4000
+    return 4000 // 其他模型保持默认
   }
 }
 
@@ -96,31 +117,40 @@ export class DeepSeekProvider implements LLMProvider {
       throw new Error('DeepSeek API key not configured')
     }
 
-    return new ChatOpenAI({
+    // 将timeout从毫秒转换为秒，并确保有兜底值
+    const timeoutInSeconds = config.timeout
+      ? Math.ceil(config.timeout / 1000)
+      : 180 // 默认3分钟
+
+    return new ChatDeepSeek({
       apiKey: ENV.DEEPSEEK_API_KEY,
-      configuration: {
-        baseURL: 'https://api.deepseek.com',
-      },
       model: config.model,
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? 4000,
+      timeout: timeoutInSeconds, // DeepSeek期望秒
     })
   }
 
   parseResponse(response: any): LLMResponse {
     const content = response?.content || ''
-    const usage = response?.response_metadata?.tokenUsage ||
-                  response?.additional_kwargs?.usage
+    const usage =
+      response?.response_metadata?.tokenUsage ||
+      response?.additional_kwargs?.usage
 
-    return {
+    const result: LLMResponse = {
       content,
-      usage: usage ? {
+      metadata: response?.response_metadata,
+    }
+
+    if (usage) {
+      result.usage = {
         inputTokens: usage.prompt_tokens,
         outputTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,
-      } : undefined,
-      metadata: response?.response_metadata
+      }
     }
+
+    return result
   }
 }
 
@@ -140,28 +170,40 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error('OpenAI API key not configured')
     }
 
+    // 将timeout从毫秒转换为秒，并确保有兜底值
+    const timeoutInSeconds = config.timeout
+      ? Math.ceil(config.timeout / 1000)
+      : 180 // 默认3分钟
+
     return new ChatOpenAI({
       apiKey: ENV.OPENAI_API_KEY,
       model: config.model,
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? 4000,
+      timeout: timeoutInSeconds, // OpenAI期望秒
     })
   }
 
   parseResponse(response: any): LLMResponse {
     const content = response?.content || ''
-    const usage = response?.response_metadata?.tokenUsage ||
-                  response?.additional_kwargs?.usage
+    const usage =
+      response?.response_metadata?.tokenUsage ||
+      response?.additional_kwargs?.usage
 
-    return {
+    const result: LLMResponse = {
       content,
-      usage: usage ? {
+      metadata: response?.response_metadata,
+    }
+
+    if (usage) {
+      result.usage = {
         inputTokens: usage.prompt_tokens,
         outputTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,
-      } : undefined,
-      metadata: response?.response_metadata
+      }
     }
+
+    return result
   }
 }
 
@@ -186,8 +228,9 @@ export class ProviderRegistry {
   }
 
   getAvailable(tier?: 'free' | 'paid'): LLMProvider[] {
-    return Array.from(this.providers.values())
-      .filter(p => p.isReady() && (!tier || p.tier === tier))
+    return Array.from(this.providers.values()).filter(
+      (p) => p.isReady() && (!tier || p.tier === tier)
+    )
   }
 
   getPreferred(tier: 'free' | 'paid'): LLMProvider | null {
@@ -196,11 +239,14 @@ export class ProviderRegistry {
 
     // Preference order
     if (tier === 'free') {
-      return available.find(p => p.name === 'zhipu') || available[0]
+      return available.find((p) => p.name === 'zhipu') || available[0] || null
     } else {
-      return available.find(p => p.name === 'deepseek') || 
-             available.find(p => p.name === 'openai') || 
-             available[0]
+      return (
+        available.find((p) => p.name === 'deepseek') ||
+        available.find((p) => p.name === 'openai') ||
+        available[0] ||
+        null
+      )
     }
   }
 }
@@ -218,34 +264,40 @@ export const MODEL_CONFIGS = {
       provider: 'zhipu' as const,
       model: ENV.ZHIPU_TEXT_MODEL || 'glm-4.5-flash',
       tier: 'free' as const,
-      maxTokens: 6000,
+      maxTokens: 30000, // 提高到30000以支持detailed_resume任务，GLM-4.5-Flash官方限制65536
     },
     vision: {
       provider: 'zhipu' as const,
       model: ENV.ZHIPU_VISION_MODEL || 'glm-4.1v-thinking-flash',
       tier: 'free' as const,
-      maxTokens: 8000,
+      maxTokens: 16000, // 视觉模型也适当提高
     },
   },
   // Paid tier models
   paid: {
     text: {
       provider: 'deepseek' as const,
-      model: 'deepseek-v3',
+      model: 'deepseek-chat',
       tier: 'paid' as const,
-      maxTokens: 4000,
+      maxTokens: 8000,
+    },
+    text_fallback: {
+      provider: 'zhipu' as const,
+      model: 'glm-4.5',
+      tier: 'paid' as const,
+      maxTokens: 30000, // GLM-4.5官方限制65536，提高到30000
     },
     reasoning: {
       provider: 'deepseek' as const,
       model: 'deepseek-reasoner',
       tier: 'paid' as const,
-      maxTokens: 8000,
+      maxTokens: 30000, // 提升到30000以支持detailed_resume任务
     },
     vision: {
       provider: 'zhipu' as const,
       model: ENV.ZHIPU_VISION_MODEL || 'glm-4.1v-thinking-flash',
       tier: 'paid' as const,
-      maxTokens: 8000,
+      maxTokens: 16000, // 视觉模型也适当提高
     },
   },
 } as const
@@ -255,17 +307,21 @@ export const MODEL_CONFIGS = {
  */
 export function getModelConfig(
   tier: 'free' | 'paid',
-  type: 'text' | 'vision' | 'reasoning' = 'text'
+  type: 'text' | 'vision' | 'reasoning' | 'text_fallback' = 'text'
 ): LLMConfig {
   const configs = MODEL_CONFIGS[tier]
-  
+
   if (type === 'reasoning' && tier === 'paid') {
     return (configs as typeof MODEL_CONFIGS.paid).reasoning
   }
-  
+
+  if (type === 'text_fallback' && tier === 'paid') {
+    return (configs as typeof MODEL_CONFIGS.paid).text_fallback
+  }
+
   if (type === 'vision' && configs.vision) {
     return configs.vision
   }
-  
+
   return configs.text
 }

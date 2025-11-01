@@ -152,7 +152,7 @@ describe('Idempotency', () => {
   describe('getDefaultTTL', () => {
     it('should return correct TTL for each step', () => {
       expect(getDefaultTTL('match')).toBe(DEFAULT_TTL_MS.match)
-      expect(getDefaultTTL('resume')).toBe(DEFAULT_TTL_MS.resume)
+      expect(getDefaultTTL('customize')).toBe(DEFAULT_TTL_MS.customize)
       expect(getDefaultTTL('interview')).toBe(DEFAULT_TTL_MS.interview)
     })
 

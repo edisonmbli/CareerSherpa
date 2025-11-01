@@ -76,12 +76,17 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
         throw new Error('Invalid embedding response from GLM API')
       }
 
-      return {
-        embedding: data.data[0].embedding,
-        usage: data.usage ? {
-          totalTokens: data.usage.total_tokens
-        } : undefined
+      const result: EmbeddingResult = {
+        embedding: data.data[0].embedding
       }
+      
+      if (data.usage) {
+        result.usage = {
+          totalTokens: data.usage.total_tokens
+        }
+      }
+      
+      return result
     } catch (error) {
       console.error('GLM embedding error:', error)
       throw error

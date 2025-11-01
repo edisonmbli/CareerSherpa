@@ -3,11 +3,11 @@
  * 防止竞态条件攻击，确保quota扣费的准确性和一致性
  */
 
-import { prisma } from '@/lib/prisma'
-import { acquireLock, releaseLock } from '@/lib/concurrencyLock'
-import { isProdRedisReady } from '@/lib/env'
-import { logInfo, logError } from '@/lib/logger'
-import { auditQuotaOperation } from '@/lib/audit/async-audit'
+import { prisma } from '../prisma'
+import { acquireLock, releaseLock } from '../concurrencyLock'
+import { isProdRedisReady } from '../env'
+import { logInfo, logError } from '../logger'
+import { auditQuotaOperation } from '../audit/async-audit'
 import type { Prisma } from '@prisma/client'
 
 // 性能监控指标
@@ -53,9 +53,9 @@ export function getPerformanceStats() {
 async function clearQuotaCache(userId: string): Promise<void> {
   if (isProdRedisReady()) {
     try {
-      await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/del/quota:${userId}`, {
+      await fetch(`${process.env['UPSTASH_REDIS_REST_URL']}/del/quota:${userId}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` }
+        headers: { Authorization: `Bearer ${process.env['UPSTASH_REDIS_REST_TOKEN']}` }
       })
     } catch {
       // 忽略缓存清除错误
@@ -69,10 +69,10 @@ async function batchClearQuotaCache(userIds: string[]): Promise<void> {
   
   try {
     const pipeline = userIds.map(userId => `del quota:${userId}`).join('\n')
-    await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    await fetch(`${process.env['UPSTASH_REDIS_REST_URL']}/pipeline`, {
       method: 'POST',
       headers: { 
-        Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+        Authorization: `Bearer ${process.env['UPSTASH_REDIS_REST_TOKEN']}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(pipeline.split('\n').map(cmd => cmd.split(' ')))
@@ -106,10 +106,10 @@ export async function preloadQuotaCache(userIds: string[]): Promise<void> {
     ])
     
     if (pipeline.length > 0) {
-      await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+      await fetch(`${process.env['UPSTASH_REDIS_REST_URL']}/pipeline`, {
         method: 'POST',
         headers: { 
-          Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+          Authorization: `Bearer ${process.env['UPSTASH_REDIS_REST_TOKEN']}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(pipeline)
@@ -160,15 +160,111 @@ export interface BatchQuotaOperationResult {
   }
 }
 
+export interface QuotaCheckResult {
+  hasQuota: boolean
+  shouldUseFreeQueue: boolean
+  quotaInfo?: {
+    id: string
+    userId: string
+    used: number
+    remaining: number
+    initialGrant: number
+    purchased: number
+  }
+  error?: 'quota_not_found' | 'quota_exceeded' | 'quota_operation_locked'
+}
+
+/**
+ * 检查用户quota状态，决定是否使用免费队列
+ * 这个函数不会扣费，只是检查状态
+ */
+export async function checkQuotaForService(
+  userId: string
+): Promise<QuotaCheckResult> {
+  try {
+    const quota = await prisma.quota.findUnique({
+      where: { userId }
+    })
+
+    // 如果用户没有quota记录，使用免费队列
+    if (!quota) {
+      logInfo({ 
+        reqId: `quota-check-${Date.now()}`, 
+        route: 'check-quota-for-service',
+        userKey: userId,
+        decision: 'free_queue_no_quota'
+      })
+      
+      return {
+        hasQuota: false,
+        shouldUseFreeQueue: true
+      }
+    }
+
+    // 如果用户有quota但余额不足，使用免费队列
+    if (quota.remaining <= 0) {
+      logInfo({ 
+        reqId: `quota-check-${Date.now()}`, 
+        route: 'check-quota-for-service',
+        userKey: userId,
+        decision: 'free_queue_insufficient_quota',
+        remaining: quota.remaining
+      })
+      
+      return {
+        hasQuota: true,
+        shouldUseFreeQueue: true,
+        quotaInfo: quota,
+        error: 'quota_exceeded'
+      }
+    }
+
+    // 用户有足够的quota，使用付费队列
+    logInfo({ 
+      reqId: `quota-check-${Date.now()}`, 
+      route: 'check-quota-for-service',
+      userKey: userId,
+      decision: 'paid_queue_sufficient_quota',
+      remaining: quota.remaining
+    })
+    
+    return {
+      hasQuota: true,
+      shouldUseFreeQueue: false,
+      quotaInfo: quota
+    }
+
+  } catch (error) {
+    logError({ 
+      reqId: `quota-check-${Date.now()}`, 
+      route: 'check-quota-for-service',
+      userKey: userId,
+      error: error instanceof Error ? error.message : 'unknown_error'
+    })
+    
+    // 出错时默认使用免费队列，确保服务可用性
+    return {
+      hasQuota: false,
+      shouldUseFreeQueue: true
+    }
+  }
+}
+
 /**
  * 原子性quota扣费操作（优化版）
  * 使用数据库事务确保检查和扣费的原子性，添加性能监控
+ * 
+ * @param userId 用户ID
+ * @param amount 扣费数量
+ * @param operation 操作类型
+ * @param allowFreeQueue 是否允许在quota不足时使用免费队列
  */
 export async function atomicQuotaDeduction(
   userId: string, 
   amount: number,
-  operation: string = 'service_creation'
-): Promise<QuotaOperationResult> {
+  operation: string = 'service_creation',
+  allowFreeQueue: boolean = true
+): Promise<QuotaOperationResult & { shouldUseFreeQueue?: boolean }> {
   const startTime = Date.now()
   const lockWaitStart = Date.now()
   const cacheHit = false
@@ -193,6 +289,17 @@ export async function atomicQuotaDeduction(
       userKey: userId,
       error: 'quota_operation_locked'
     })
+    
+    // 如果允许免费队列且获取锁失败，建议使用免费队列
+    if (allowFreeQueue) {
+      return { 
+        success: false, 
+        error: 'quota_operation_locked',
+        shouldUseFreeQueue: true,
+        metrics: { duration, cacheHit: false, lockWaitTime }
+      }
+    }
+    
     return { 
       success: false, 
       error: 'quota_operation_locked',
@@ -206,7 +313,8 @@ export async function atomicQuotaDeduction(
       route: 'atomic-quota-deduction',
       userKey: userId,
       operation,
-      amount
+      amount,
+      allowFreeQueue
     })
 
     const dbQueryStart = Date.now()
@@ -217,11 +325,32 @@ export async function atomicQuotaDeduction(
       })
 
       if (!quota) {
+        if (allowFreeQueue) {
+          logInfo({ 
+            reqId: `quota-${Date.now()}`, 
+            route: 'atomic-quota-deduction',
+            userKey: userId,
+            decision: 'free_queue_no_quota_record'
+          })
+          throw new Error('quota_not_found_use_free_queue')
+        }
         throw new Error('quota_not_found')
       }
 
-      // 2. 检查remaining字段是否足够（优先使用remaining字段）
-      if (quota.remaining < amount) {
+      // 2. 检查remaining字段是否足够（仅对正数扣费检查，负数为回滚操作）
+      if (amount > 0 && quota.remaining < amount) {
+        if (allowFreeQueue) {
+          logInfo({ 
+            reqId: `quota-${Date.now()}`, 
+            route: 'atomic-quota-deduction',
+            userKey: userId,
+            decision: 'free_queue_insufficient_quota',
+            currentRemaining: quota.remaining,
+            requestAmount: amount
+          })
+          throw new Error('insufficient_quota_use_free_queue')
+        }
+        
         logError({ 
           reqId: `quota-${Date.now()}`, 
           route: 'atomic-quota-deduction',
@@ -233,8 +362,16 @@ export async function atomicQuotaDeduction(
         throw new Error('insufficient_quota')
       }
 
-      // 3. 检查是否为负数（防止恶意回滚）
-      if (amount < 0) {
+      // 3. 对于回滚操作（负数），确保不会导致used字段变为负数
+      if (amount < 0 && quota.used + amount < 0) {
+        logError({ 
+          reqId: `quota-${Date.now()}`, 
+          route: 'atomic-quota-deduction',
+          userKey: userId,
+          error: 'invalid_rollback_amount',
+          currentUsed: quota.used,
+          rollbackAmount: amount
+        })
         throw new Error('invalid_amount')
       }
 
@@ -300,6 +437,7 @@ export async function atomicQuotaDeduction(
     return { 
       success: true, 
       quota: result,
+      shouldUseFreeQueue: false,
       metrics: { duration, cacheHit, lockWaitTime }
     }
 
@@ -323,6 +461,25 @@ export async function atomicQuotaDeduction(
       error: errorMessage,
       duration
     })
+
+    // 处理免费队列相关的错误
+    if (errorMessage === 'quota_not_found_use_free_queue') {
+      return { 
+        success: false, 
+        error: 'quota_not_found',
+        shouldUseFreeQueue: true,
+        metrics: { duration, cacheHit, lockWaitTime }
+      }
+    }
+    
+    if (errorMessage === 'insufficient_quota_use_free_queue') {
+      return { 
+        success: false, 
+        error: 'insufficient_quota',
+        shouldUseFreeQueue: true,
+        metrics: { duration, cacheHit, lockWaitTime }
+      }
+    }
 
     if (errorMessage === 'quota_not_found') {
       return { 
@@ -385,12 +542,20 @@ export async function batchQuotaDeduction(
       op.operation || 'batch_operation'
     )
     
-    results.push({
+    const resultItem: {
+      userId: string
+      success: boolean
+      quota?: any
+      error?: string
+    } = {
       userId: op.userId,
       success: result.success,
-      quota: result.quota,
-      error: result.error
-    })
+    }
+    
+    if (result.quota) resultItem.quota = result.quota
+    if (result.error) resultItem.error = result.error
+    
+    results.push(resultItem)
     
     if (result.metrics?.cacheHit) {
       totalCacheHits++

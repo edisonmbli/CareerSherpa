@@ -12,7 +12,7 @@ import {
   FILE_PROCESS_ERRORS,
   type SupportedFileType,
 } from '@/lib/utils/file-processor'
-import { createOrUpdateUser, createResume, createDetailedResume, createJobDescription } from '@/lib/dal'
+import { createResume, createDetailedResume, createJobDescription } from '@/lib/dal'
 import { ensureMigrations } from '@/lib/db-migrations'
 import {
   ActionResult,
@@ -55,22 +55,32 @@ async function handleFileUpload(
   try {
     await ensureMigrations()
 
-    // 提取文件和语言信息
-    const { file, lang } = extractFileFromFormData(formData)
+    // 提取语言信息
+    const lang = (formData.get('lang') as string) || 'en'
     
-    // 处理文件
-    const result = await processUploadedFile(file, fileType)
+    // 检查是文件上传还是文本输入
+    const file = formData.get('file') as File | null
+    const text = formData.get('text') as string | null
     
-    // 创建或更新用户
-    const user = await createOrUpdateUser({
-      stackUserId: userKey,
-      langPref: lang,
-    })
+    let result: any
+    
+    if (file) {
+      // 处理文件上传
+      result = await processUploadedFile(file, fileType)
+    } else if (text) {
+      // 处理文本输入
+      result = await processTextInput(text, fileType)
+    } else {
+      throw new Error('missing_fields: file or text required')
+    }
+    
+    // 用户已通过withAuth包装器认证，直接使用userKey作为userId
+    // Stack Auth会自动处理用户同步到neon_auth.users_sync表
 
     // 创建实体记录
     const entityData: any = {
       id: crypto.randomUUID(),
-      userId: user.id,
+      userId: userKey, // 使用Stack Auth用户ID
       lang,
       sourceType: result.metadata.sourceType,
       contentType: result.metadata.mimeType,
@@ -154,7 +164,7 @@ export const uploadBatch = withAuth(
 
         const resumeResult = await uploadResume(resumeFormData)
         if (resumeResult.success) {
-          results.resume = resumeResult.data
+          results['resume'] = resumeResult.data
         } else {
           errors.push(`Resume upload failed: ${resumeResult.error}`)
         }
@@ -176,7 +186,7 @@ export const uploadBatch = withAuth(
 
         const jdResult = await uploadJobDescription(jdFormData)
         if (jdResult.success) {
-          results.jobDescription = jdResult.data
+          results['jobDescription'] = jdResult.data
         } else {
           errors.push(`Job description upload failed: ${jdResult.error}`)
         }
@@ -198,7 +208,7 @@ export const uploadBatch = withAuth(
 
         const detailedResult = await uploadDetailedResume(detailedFormData)
         if (detailedResult.success) {
-          results.detailedResume = detailedResult.data
+          results['detailedResume'] = detailedResult.data
         } else {
           errors.push(`Detailed resume upload failed: ${detailedResult.error}`)
         }

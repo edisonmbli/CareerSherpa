@@ -141,11 +141,16 @@ export async function createKnowledgeEntry(params: CreateKnowledgeEntryParams): 
     `
 
     // 获取创建的知识条目
+    const whereClause: any = {
+      userId: params.userId,
+    }
+    
+    if (params.title) {
+      whereClause.title = params.title
+    }
+    
     const knowledgeEntry = await prisma.knowledgeEntry.findFirst({
-      where: {
-        userId: params.userId,
-        title: params.title || undefined
-      },
+      where: whereClause,
       orderBy: { createdAt: 'desc' }
     })
 
@@ -176,15 +181,20 @@ export async function createKnowledgeEntry(params: CreateKnowledgeEntryParams): 
  */
 export async function searchSimilarDocuments(params: SimilaritySearchParams): Promise<SimilaritySearchResult[]> {
   try {
-    logInfo({
+    const logData: any = {
       reqId: 'vector-store',
       route: 'searchSimilarDocuments',
-      userKey: params.userId,
       limit: params.limit,
       threshold: params.threshold,
       sourceType: params.sourceType,
-      embeddingDim: params.queryEmbedding.length
-    })
+      embeddingDim: params.queryEmbedding.length,
+    }
+    
+    if (params.userId) {
+      logData.userKey = params.userId
+    }
+    
+    logInfo(logData)
 
     const queryEmbeddingStr = `[${params.queryEmbedding.join(',')}]`
     
@@ -233,7 +243,7 @@ export async function searchSimilarDocuments(params: SimilaritySearchParams): Pr
     logInfo({
       reqId: 'vector-store',
       route: 'searchSimilarDocuments',
-      userKey: params.userId,
+      ...(params.userId && { userKey: params.userId }),
       resultsCount: searchResults.length,
       success: true
     })
@@ -243,7 +253,7 @@ export async function searchSimilarDocuments(params: SimilaritySearchParams): Pr
     logError({
       reqId: 'vector-store',
       route: 'searchSimilarDocuments',
-      userKey: params.userId,
+      ...(params.userId && { userKey: params.userId }),
       error: error instanceof Error ? error.message : 'Unknown error',
       limit: params.limit,
       sourceType: params.sourceType
@@ -260,10 +270,10 @@ export async function searchSimilarKnowledgeEntries(params: SimilaritySearchPara
     logInfo({
       reqId: 'vector-store',
       route: 'searchSimilarKnowledgeEntries',
-      userKey: params.userId,
+      ...(params.userId && { userKey: params.userId }),
       limit: params.limit,
       threshold: params.threshold,
-      embeddingDim: params.queryEmbedding.length
+      embeddingDim: params.queryEmbedding.length,
     })
 
     const queryEmbeddingStr = `[${params.queryEmbedding.join(',')}]`
@@ -307,7 +317,7 @@ export async function searchSimilarKnowledgeEntries(params: SimilaritySearchPara
     logInfo({
       reqId: 'vector-store',
       route: 'searchSimilarKnowledgeEntries',
-      userKey: params.userId,
+      ...(params.userId && { userKey: params.userId }),
       resultsCount: searchResults.length,
       success: true
     })
@@ -317,7 +327,7 @@ export async function searchSimilarKnowledgeEntries(params: SimilaritySearchPara
     logError({
       reqId: 'vector-store',
       route: 'searchSimilarKnowledgeEntries',
-      userKey: params.userId,
+      ...(params.userId && { userKey: params.userId }),
       error: error instanceof Error ? error.message : 'Unknown error',
       limit: params.limit
     })
@@ -391,7 +401,7 @@ export async function getDocumentCount(sourceType?: DocumentSourceType, userId?:
     logError({
       reqId: 'vector-store',
       route: 'getDocumentCount',
-      userKey: userId,
+      ...(userId && { userKey: userId }),
       error: error instanceof Error ? error.message : 'Unknown error',
       sourceType
     })

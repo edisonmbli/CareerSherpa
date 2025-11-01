@@ -69,7 +69,12 @@ describe('Cache Validation System Tests', () => {
   describe('Signature Generation and Validation', () => {
     it('should generate and validate signatures correctly', () => {
       const data = { name: 'test', value: 123 }
-      const metadata = { timestamp: Date.now(), version: '1.0' }
+      const metadata = { 
+        timestamp: Date.now(), 
+        version: '1.0',
+        ttl: 60 * 60 * 1000,
+        checksum: generateChecksum(data)
+      }
       const secretKey = 'test-secret-key'
 
       const signature = generateSignature(data, metadata, secretKey)
@@ -81,7 +86,12 @@ describe('Cache Validation System Tests', () => {
 
     it('should detect signature tampering', () => {
       const data = { name: 'test', value: 123 }
-      const metadata = { timestamp: Date.now(), version: '1.0' }
+      const metadata = { 
+        timestamp: Date.now(), 
+        version: '1.0',
+        ttl: 60 * 60 * 1000,
+        checksum: generateChecksum(data)
+      }
       const secretKey = 'test-secret-key'
 
       const signature = generateSignature(data, metadata, secretKey)
@@ -91,7 +101,12 @@ describe('Cache Validation System Tests', () => {
       expect(validateSignature(tamperedData, metadata, signature, secretKey)).toBe(false)
 
       // 篡改元数据
-      const tamperedMetadata = { timestamp: Date.now() + 1000, version: '1.0' }
+      const tamperedMetadata = { 
+        timestamp: Date.now() + 1000, 
+        version: '1.0',
+        ttl: 60 * 60 * 1000,
+        checksum: generateChecksum(data)
+      }
       expect(validateSignature(data, tamperedMetadata, signature, secretKey)).toBe(false)
     })
   })
@@ -366,10 +381,10 @@ describe('Cache Validation System Tests', () => {
         }
       }
 
-      const sanitized = sanitizeCacheData(maliciousData)
+      const sanitized = sanitizeCacheData(maliciousData) as { name: string; nested: { value: number } }
 
-      expect(sanitized.nested).not.toHaveProperty('__proto__')
-      expect(sanitized.nested).toHaveProperty('value', 456)
+      expect(sanitized?.nested).not.toHaveProperty('__proto__')
+      expect(sanitized?.nested).toHaveProperty('value', 456)
     })
   })
 

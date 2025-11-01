@@ -1,110 +1,83 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["public", "neon_auth"]
-}
-
-// Neon Auth 自动管理的用户同步表（只读）
-model NeonUserSync {
-  id               String    @id
-  email            String?
-  displayName      String?   @map("display_name")  // 暂时注释掉，等数据库 schema 同步
-  profileImageUrl  String?   @map("profile_image_url")  // 暂时注释掉，等数据库 schema 同步
-  createdAt        DateTime  @map("created_at")
-  updatedAt        DateTime  @map("updated_at")
-  deletedAt        DateTime? @map("deleted_at")
-
-  // 业务表关系
-  resumes          Resume[]
-  detailedResumes  DetailedResume[]
-  jobDescriptions  JobDescription[]
-  services         Service[]
-  tasks            Task[]
-  quotas           Quota?
-  payments         Payment[]
-  tokenUsageLogs   TokenUsageLog[]
-  auditLogs        AuditLog[]
-  documents        Document[]
-  knowledgeEntries KnowledgeEntry[]
-
-  @@map("users_sync")
-  @@schema("neon_auth")
+  schemas  = ["neon_auth", "public"]
 }
 
 model Resume {
-  id                String           @id @default(cuid())
+  id                String          @id @default(cuid())
   title             String?
-  lang              String           @default("en")
-  originalText      String?          @map("original_text")
-  structuredJson    Json?            @map("structured_json")
-  resumeSummaryJson Json?            @map("resume_summary_json")
-  promptTokens      Int?             @map("prompt_tokens")
-  completionTokens  Int?             @map("completion_tokens")
-  totalTokens       Int?             @map("total_tokens")
-  active            Boolean          @default(true)
-  sourceType        String?          @map("source_type")
-  contentType       String?          @map("content_type")
-  charCount         Int?             @map("char_count")
-  mediaBase64       String?          @map("media_base64")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  userId            String           @map("user_id")
-  user              NeonUserSync     @relation(fields: [userId], references: [id])
+  lang              String?
+  originalText      String?         @map("original_text")
+  structuredJson    Json?           @map("structured_json")
+  resumeSummaryJson Json?           @map("resume_summary_json")
+  promptTokens      Int?            @map("prompt_tokens")
+  completionTokens  Int?            @map("completion_tokens")
+  totalTokens       Int?            @map("total_tokens")
+  active            Boolean         @default(true)
+  sourceType        String?         @map("source_type")
+  contentType       String?         @map("content_type")
+  charCount         Int?            @map("char_count")
+  mediaBase64       String?         @map("media_base64")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  userId            String          @map("user_id")
   resume_versions   ResumeVersion[]
+  user              users_sync      @relation(fields: [userId], references: [id])
   services          Service[]
 
-  @@index([userId, lang, createdAt])
+  @@index([userId, active])
   @@map("resumes")
   @@schema("public")
 }
 
 model DetailedResume {
-  id                     String   @id @default(cuid())
-  title                  String?
-  lang                   String   @default("en")
-  originalText           String?  @map("original_text")
-  detailedSummaryJson    Json?    @map("detailed_summary_json")
-  promptTokens           Int?     @map("prompt_tokens")
-  completionTokens       Int?     @map("completion_tokens")
-  totalTokens            Int?     @map("total_tokens")
-  sourceType             String?  @map("source_type")
-  contentType            String?  @map("content_type")
-  charCount              Int?     @map("char_count")
-  mediaBase64            String?  @map("media_base64")
-  createdAt              DateTime @default(now()) @map("created_at")
-  updatedAt              DateTime @updatedAt @map("updated_at")
-  userId                 String   @map("user_id")
-  user                   NeonUserSync @relation(fields: [userId], references: [id])
+  id                  String     @id @default(cuid())
+  title               String?
+  lang                String?
+  originalText        String?    @map("original_text")
+  detailedSummaryJson Json?      @map("detailed_summary_json")
+  promptTokens        Int?       @map("prompt_tokens")
+  completionTokens    Int?       @map("completion_tokens")
+  totalTokens         Int?       @map("total_tokens")
+  sourceType          String?    @map("source_type")
+  contentType         String?    @map("content_type")
+  charCount           Int?       @map("char_count")
+  mediaBase64         String?    @map("media_base64")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+  userId              String     @map("user_id")
+  user                users_sync @relation(fields: [userId], references: [id])
 
-  @@index([userId, lang, createdAt])
+  @@index([userId])
   @@map("detailed_resumes")
   @@schema("public")
 }
 
 model JobDescription {
-  id               String    @id @default(cuid())
+  id               String     @id @default(cuid())
   title            String?
   source           String?
-  rawText          String?   @map("raw_text")
-  parsedJson       Json?     @map("parsed_json")
-  jobSummaryJson   Json?     @map("job_summary_json")
-  promptTokens     Int?      @map("prompt_tokens")
-  completionTokens Int?      @map("completion_tokens")
-  totalTokens      Int?      @map("total_tokens")
+  rawText          String?    @map("raw_text")
+  parsedJson       Json?      @map("parsed_json")
+  jobSummaryJson   Json?      @map("job_summary_json")
+  promptTokens     Int?       @map("prompt_tokens")
+  completionTokens Int?       @map("completion_tokens")
+  totalTokens      Int?       @map("total_tokens")
   lang             String?
-  sourceType       String?   @map("source_type")
-  contentType      String?   @map("content_type")
-  charCount        Int?      @map("char_count")
-  mediaBase64      String?   @map("media_base64")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  userId           String    @map("user_id")
-  user             NeonUserSync @relation(fields: [userId], references: [id])
+  sourceType       String?    @map("source_type")
+  contentType      String?    @map("content_type")
+  charCount        Int?       @map("char_count")
+  mediaBase64      String?    @map("media_base64")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  userId           String     @map("user_id")
+  user             users_sync @relation(fields: [userId], references: [id])
   services         Service[]
 
   @@index([userId, lang, createdAt])
@@ -123,7 +96,7 @@ model Service {
   userId         String         @map("user_id")
   jobDescription JobDescription @relation(fields: [jobId], references: [id])
   resume         Resume?        @relation(fields: [resumeId], references: [id])
-  user           NeonUserSync   @relation(fields: [userId], references: [id])
+  user           users_sync     @relation(fields: [userId], references: [id])
   tasks          Task[]
 
   @@index([userId, createdAt])
@@ -141,14 +114,13 @@ model Task {
   startedAt        DateTime?    @map("started_at")
   finishedAt       DateTime?    @map("finished_at")
   meta             Json?
-  requestedBy      String       @map("requested_by")
   createdAt        DateTime     @default(now()) @map("created_at")
-  service          Service      @relation(fields: [serviceId], references: [id])
-  user             NeonUserSync @relation(fields: [requestedBy], references: [id])
+  requestedBy      String       @map("requested_by")
   outputs          TaskOutput[]
+  user             users_sync   @relation(fields: [requestedBy], references: [id])
+  service          Service      @relation(fields: [serviceId], references: [id])
 
-  @@index([serviceId, status])
-  @@index([requestedBy, createdAt])
+  @@index([serviceId, kind, status])
   @@map("tasks")
   @@schema("public")
 }
@@ -156,7 +128,7 @@ model Task {
 model TaskOutput {
   id                 String   @id @default(cuid())
   taskId             String   @map("task_id")
-  version            Int      @default(1)
+  version            Int
   previousResponseId String?  @map("previous_response_id")
   outputJson         Json?    @map("output_json")
   outputText         String?  @map("output_text")
@@ -169,19 +141,20 @@ model TaskOutput {
   task               Task     @relation(fields: [taskId], references: [id])
 
   @@unique([taskId, version])
+  @@index([taskId, createdAt])
   @@map("task_outputs")
   @@schema("public")
 }
 
 model ResumeVersion {
-  id           String                @id @default(cuid())
-  resumeId     String                @map("resume_id")
-  sourceTaskId String?               @map("source_task_id")
+  id           String   @id @default(cuid())
+  resumeId     String   @map("resume_id")
+  sourceTaskId String?  @map("source_task_id")
   version      Int
-  contentText  String?               @map("content_text")
-  diffJson     Json?                 @map("diff_json")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  resume       Resume                @relation(fields: [resumeId], references: [id])
+  contentText  String?  @map("content_text")
+  diffJson     Json?    @map("diff_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+  resume       Resume   @relation(fields: [resumeId], references: [id])
 
   @@unique([resumeId, version])
   @@map("resume_versions")
@@ -189,14 +162,14 @@ model ResumeVersion {
 }
 
 model Quota {
-  id           String   @id @default(cuid())
-  initialGrant Int      @default(0) @map("initial_grant")
-  purchased    Int      @default(0)
-  used         Int      @default(0)
-  remaining    Int      @default(0) // 新增字段：剩余配额，避免频繁计算 purchased - used
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  userId       String   @unique @map("user_id")
-  user         NeonUserSync @relation(fields: [userId], references: [id])
+  id           String     @id @default(cuid())
+  initialGrant Int        @default(0) @map("initial_grant")
+  purchased    Int        @default(0)
+  used         Int        @default(0)
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  userId       String     @unique @map("user_id")
+  remaining    Int        @default(0)
+  user         users_sync @relation(fields: [userId], references: [id])
 
   @@map("quotas")
   @@schema("public")
@@ -210,24 +183,24 @@ model Payment {
   status           PaymentStatus @default(pending)
   createdAt        DateTime      @default(now()) @map("created_at")
   userId           String        @map("user_id")
-  user             NeonUserSync  @relation(fields: [userId], references: [id])
+  user             users_sync    @relation(fields: [userId], references: [id])
 
   @@map("payments")
   @@schema("public")
 }
 
 model TokenUsageLog {
-  id           String   @id @default(cuid())
-  serviceId    String?  @map("service_id")
-  taskId       String?  @map("task_id")
+  id           String     @id @default(cuid())
+  serviceId    String?    @map("service_id")
+  taskId       String?    @map("task_id")
   provider     String?
   model        String?
-  inputTokens  Int?     @map("input_tokens")
-  outputTokens Int?     @map("output_tokens")
-  cost         Decimal? @db.Decimal(10, 6)
-  createdAt    DateTime @default(now()) @map("created_at")
-  userId       String   @map("user_id")
-  user         NeonUserSync @relation(fields: [userId], references: [id])
+  inputTokens  Int?       @map("input_tokens")
+  outputTokens Int?       @map("output_tokens")
+  cost         Decimal?   @db.Decimal(10, 6)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  userId       String     @map("user_id")
+  user         users_sync @relation(fields: [userId], references: [id])
 
   @@map("token_usage_logs")
   @@schema("public")
@@ -245,32 +218,72 @@ model IdempotencyKey {
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
+  id         String     @id @default(cuid())
   action     String
-  entityType String   @map("entity_type")
-  entityId   String   @map("entity_id")
+  entityType String     @map("entity_type")
+  entityId   String     @map("entity_id")
   metadata   Json?
-  createdAt  DateTime @default(now()) @map("created_at")
-  userId     String   @map("user_id")
-  user       NeonUserSync @relation(fields: [userId], references: [id])
+  createdAt  DateTime   @default(now()) @map("created_at")
+  userId     String     @map("user_id")
+  user       users_sync @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
   @@schema("public")
 }
 
-// Vector storage for RAG system
+model users {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @unique @map("clerk_user_id")
+  email       String   @unique
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  firstName   String?  @map("first_name")
+  imageUrl    String?  @map("image_url")
+  lastName    String?  @map("last_name")
+
+  @@map("users")
+  @@schema("public")
+}
+
+model users_sync {
+  raw_json         Json
+  id               String           @id @default(dbgenerated("(raw_json ->> 'id'::text)"))
+  name             String?          @default(dbgenerated("(raw_json ->> 'display_name'::text)"))
+  email            String?          @default(dbgenerated("(raw_json ->> 'primary_email'::text)"))
+  created_at       DateTime?        @default(dbgenerated("to_timestamp((trunc((((raw_json ->> 'signed_up_at_millis'::text))::bigint)::double precision) / (1000)::double precision))")) @db.Timestamptz(6)
+  updated_at       DateTime?        @db.Timestamptz(6)
+  deleted_at       DateTime?        @db.Timestamptz(6)
+  auditLogs        AuditLog[]
+  detailedResumes  DetailedResume[]
+  documents        Document[]
+  jobDescriptions  JobDescription[]
+  knowledgeEntries KnowledgeEntry[]
+
+  payments         Payment[]
+  quotas           Quota?
+  resumes          Resume[]
+  services         Service[]
+  tasks            Task[]
+  tokenUsageLogs   TokenUsageLog[]
+
+  @@index([deleted_at])
+  @@schema("neon_auth")
+}
+
+
+
 model Document {
-  id          String                     @id @default(cuid())
-  content     String
-  embedding   Unsupported("vector(1536)") // GLM embedding-3 dimension
-  metadata    Json?
-  sourceType  DocumentSourceType
-  sourceId    String                     @map("source_id") // Reference to original document (resume, job, etc.)
-  userId      String                     @map("user_id")
-  chunkIndex  Int?                       @map("chunk_index") // For document chunking
-  createdAt   DateTime                   @default(now()) @map("created_at")
-  updatedAt   DateTime                   @updatedAt @map("updated_at")
-  user        NeonUserSync               @relation(fields: [userId], references: [id])
+  id         String                 @id @default(cuid())
+  content    String
+  embedding  Unsupported("vector")?
+  sourceType DocumentSourceType     @map("source_type")
+  sourceId   String                 @map("source_id")
+  userId     String                 @map("user_id")
+  metadata   Json?                  @default("{}")
+  chunkIndex Int?                   @map("chunk_index")
+  createdAt  DateTime               @default(now()) @map("created_at")
+  updatedAt  DateTime               @updatedAt @map("updated_at")
+  user       users_sync             @relation(fields: [userId], references: [id])
 
   @@index([userId, sourceType, sourceId])
   @@index([sourceType, sourceId])
@@ -278,28 +291,24 @@ model Document {
   @@schema("public")
 }
 
-// Knowledge base for storing processed information
 model KnowledgeEntry {
-  id          String                     @id @default(cuid())
-  title       String?
-  content     String
-  embedding   Unsupported("vector(1536)") // GLM embedding-3 dimension
-  category    String?
-  tags        String[]
-  metadata    Json?
-  isPublic    Boolean                    @default(false) @map("is_public")
-  userId      String                     @map("user_id")
-  createdAt   DateTime                   @default(now()) @map("created_at")
-  updatedAt   DateTime                   @updatedAt @map("updated_at")
-  user        NeonUserSync               @relation(fields: [userId], references: [id])
+  id        String                 @id @default(cuid())
+  content   String
+  embedding Unsupported("vector")?
+  title     String?
+  category  String?
+  userId    String                 @map("user_id")
+  metadata  Json?                  @default("{}")
+  isPublic  Boolean                @default(false) @map("is_public")
+  createdAt DateTime               @default(now()) @map("created_at")
+  updatedAt DateTime               @updatedAt @map("updated_at")
+  user      users_sync             @relation(fields: [userId], references: [id])
 
   @@index([userId, category])
   @@index([isPublic, category])
   @@map("knowledge_entries")
   @@schema("public")
 }
-
-
 
 enum ServiceStatus {
   created
@@ -321,14 +330,19 @@ enum ServiceDepth {
 
 enum TaskKind {
   match
-  resume
+  customize
   interview
+  extract
+  resume
+  job
+  detailed
 
   @@schema("public")
 }
 
 enum TaskStatus {
   pending
+  queued
   running
   done
   error
@@ -338,7 +352,8 @@ enum TaskStatus {
 
 enum PaymentStatus {
   pending
-  completed
+  succeeded
+  refunded
   failed
 
   @@schema("public")
@@ -346,11 +361,13 @@ enum PaymentStatus {
 
 enum IdempotencyStep {
   match
-  resume
+  customize
   interview
 
   @@schema("public")
 }
+
+
 
 enum DocumentSourceType {
   resume

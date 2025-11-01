@@ -17,6 +17,10 @@ alwaysApply: true
 - **Goal**: To complete a three-step closed loop of (a) job description matching, (b) resume customization, and (c) interview key points generation, all achieved with minimal token consumption and stable, structured output.
 - **Scope**: The service is exclusively for the personal job search scenario. The MVP will not include a browser extension, a template library, or an automated application submission feature.
 
+# Danger Operation
+
+- **Reset Database**: Use `npx prisma migrate reset --force` will reset the database schema and data. This operation is **dangerous** and should only be performed in a controlled environment. Do ask for confirmation before executing.
+
 # Architectural Overview (MVP)
 
 1.  **Frontend/Backend**: Next.js 15 App Router + Tailwind CSS + shadcn/ui, deployed to Vercel.

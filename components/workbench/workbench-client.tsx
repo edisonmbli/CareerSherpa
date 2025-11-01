@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { randomUUID } from 'crypto'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,6 +8,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { uploadResume, uploadDetailedResume, uploadJobDescription } from '@/lib/actions/upload'
 import { createServiceAction, type CreateServiceParams } from '@/lib/actions/service'
+import { SimpleErrorDisplay } from '@/components/ui/error-display'
+import { errorHandler } from '@/lib/errors/error-handler'
+import type { UserFriendlyError } from '@/lib/errors/error-mapping'
+
 interface Dictionary {
   workbench_title: string
   lang_label: string
@@ -40,21 +43,53 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
   const [jobDescriptionFile, setJobDescriptionFile] = useState<File | null>(null)
   const [response, setResponse] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<UserFriendlyError | null>(null)
+  
+  // Track uploaded IDs
+  const [uploadedResumeId, setUploadedResumeId] = useState<string | null>(null)
+  const [uploadedDetailedResumeId, setUploadedDetailedResumeId] = useState<string | null>(null)
+  const [uploadedJobId, setUploadedJobId] = useState<string | null>(null)
 
   const handleUploadResume = async () => {
     if (!user) return
     setIsLoading(true)
+    setError(null)
+    
     try {
       const formData = new FormData()
-      formData.append('userId', user.id)
       formData.append('lang', locale)
-      if (resumeText) formData.append('text', resumeText)
-      if (resumeFile) formData.append('file', resumeFile)
+      
+      // Priority: File > Text (if both are provided, use file)
+      if (resumeFile) {
+        formData.append('file', resumeFile)
+      } else if (resumeText) {
+        formData.append('text', resumeText)
+      }
 
       const result = await uploadResume(formData)
-      setResponse(JSON.stringify(result, null, 2))
+      
+      if (result.success && result.data?.resume_id) {
+        setUploadedResumeId(result.data.resume_id)
+        setResponse(JSON.stringify(result, null, 2))
+      } else {
+        // 使用错误处理系统
+        const errorResponse = errorHandler.handleError(
+          new Error(result.message || 'Resume upload failed'),
+          undefined,
+          undefined,
+          locale
+        )
+        setError({
+          ...errorResponse.error,
+          actionable: true
+        })
+      }
     } catch (error) {
-      setResponse(`Error: ${error}`)
+      const errorResponse = errorHandler.handleError(error as Error, undefined, undefined, locale)
+      setError({
+        ...errorResponse.error,
+        actionable: true
+      })
     } finally {
       setIsLoading(false)
     }
@@ -63,17 +98,42 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
   const handleUploadDetailedResume = async () => {
     if (!user) return
     setIsLoading(true)
+    setError(null)
+    
     try {
       const formData = new FormData()
-      formData.append('userId', user.id)
       formData.append('lang', locale)
-      if (detailedResumeText) formData.append('text', detailedResumeText)
-      if (detailedResumeFile) formData.append('file', detailedResumeFile)
+      
+      // Priority: File > Text (if both are provided, use file)
+      if (detailedResumeFile) {
+        formData.append('file', detailedResumeFile)
+      } else if (detailedResumeText) {
+        formData.append('text', detailedResumeText)
+      }
 
       const result = await uploadDetailedResume(formData)
-      setResponse(JSON.stringify(result, null, 2))
+      
+      if (result.success && result.data?.detailed_resume_id) {
+        setUploadedDetailedResumeId(result.data.detailed_resume_id)
+        setResponse(JSON.stringify(result, null, 2))
+      } else {
+        const errorResponse = errorHandler.handleError(
+          new Error(result.message || 'Detailed resume upload failed'),
+          undefined,
+          undefined,
+          locale
+        )
+        setError({
+          ...errorResponse.error,
+          actionable: true
+        })
+      }
     } catch (error) {
-      setResponse(`Error: ${error}`)
+      const errorResponse = errorHandler.handleError(error as Error, undefined, undefined, locale)
+      setError({
+        ...errorResponse.error,
+        actionable: true
+      })
     } finally {
       setIsLoading(false)
     }
@@ -82,17 +142,42 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
   const handleUploadJobDescription = async () => {
     if (!user) return
     setIsLoading(true)
+    setError(null)
+    
     try {
       const formData = new FormData()
-      formData.append('userId', user.id)
       formData.append('lang', locale)
-      if (jobDescriptionText) formData.append('text', jobDescriptionText)
-      if (jobDescriptionFile) formData.append('file', jobDescriptionFile)
+      
+      // Priority: File > Text (if both are provided, use file)
+      if (jobDescriptionFile) {
+        formData.append('file', jobDescriptionFile)
+      } else if (jobDescriptionText) {
+        formData.append('text', jobDescriptionText)
+      }
 
       const result = await uploadJobDescription(formData)
-      setResponse(JSON.stringify(result, null, 2))
+      
+      if (result.success && result.data?.jd_id) {
+        setUploadedJobId(result.data.jd_id)
+        setResponse(JSON.stringify(result, null, 2))
+      } else {
+        const errorResponse = errorHandler.handleError(
+          new Error(result.message || 'Job description upload failed'),
+          undefined,
+          undefined,
+          locale
+        )
+        setError({
+          ...errorResponse.error,
+          actionable: true
+        })
+      }
     } catch (error) {
-      setResponse(`Error: ${error}`)
+      const errorResponse = errorHandler.handleError(error as Error, undefined, undefined, locale)
+      setError({
+        ...errorResponse.error,
+        actionable: true
+      })
     } finally {
       setIsLoading(false)
     }
@@ -100,20 +185,50 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
 
   const handleCreateService = async () => {
     if (!user) return
+    
+    // Check if required uploads are completed
+    if (!uploadedResumeId || !uploadedJobId) {
+      setResponse('Error: Please upload both resume and job description first')
+      return
+    }
+    
     setIsLoading(true)
+    setError(null)
     try {
-      // Note: This is a simplified version. In a real implementation,
-      // you would need to have resumeId and jobId from previous uploads
       const params: CreateServiceParams = {
-        resumeId: 'temp-resume-id', // This should come from actual resume upload
-        jobId: 'temp-job-id', // This should come from actual job description upload
+        resumeId: uploadedResumeId,
+        jobId: uploadedJobId,
+        ...(uploadedDetailedResumeId && { detailedResumeId: uploadedDetailedResumeId }),
         lang: locale,
-        idempotencyKey: randomUUID()
+        idempotencyKey: crypto.randomUUID()
       }
+      
+      // Starting service creation
+      
       const result = await createServiceAction(params)
-      setResponse(JSON.stringify(result, null, 2))
+      
+      // Service creation completed
+      
+      if (result.success) {
+        setResponse(JSON.stringify(result, null, 2))
+      } else {
+        const errorResponse = errorHandler.handleError(
+          new Error(result.message || 'Service creation failed'),
+          undefined,
+          undefined,
+          locale
+        )
+        setError({
+          ...errorResponse.error,
+          actionable: true
+        })
+      }
     } catch (error) {
-      setResponse(`Error: ${error}`)
+      const errorResponse = errorHandler.handleError(error as Error, undefined, undefined, locale)
+      setError({
+        ...errorResponse.error,
+        actionable: true
+      })
     } finally {
       setIsLoading(false)
     }
@@ -131,14 +246,35 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {/* Resume Upload */}
+    <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <SimpleErrorDisplay error={error} />
+      )}
+      
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* Resume Upload - Required */}
       <Card>
         <CardHeader>
-          <CardTitle>{dictionary.resume_label}</CardTitle>
-          <CardDescription>Upload your resume as text or PDF file</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            {dictionary.resume_label}
+            <span className="text-red-500 text-sm">*</span>
+          </CardTitle>
+          <CardDescription>Upload your resume as PDF file or paste as text (required)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="resume-file">Resume File</Label>
+            <Input
+              id="resume-file"
+              type="file"
+              accept=".pdf,.txt,.doc,.docx"
+              onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+            />
+            {resumeFile && (
+              <p className="text-sm text-green-600 mt-1">✓ File selected: {resumeFile.name}</p>
+            )}
+          </div>
           <div>
             <Label htmlFor="resume-text">Resume Text</Label>
             <Textarea
@@ -148,15 +284,11 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
               onChange={(e) => setResumeText(e.target.value)}
               className="min-h-[100px]"
             />
-          </div>
-          <div>
-            <Label htmlFor="resume-file">Resume File</Label>
-            <Input
-              id="resume-file"
-              type="file"
-              accept=".pdf,.txt,.doc,.docx"
-              onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-            />
+            {resumeFile && resumeText.trim() && (
+              <p className="text-sm text-amber-600 mt-1">
+                ⚠️ Both file and text provided. File will be used.
+              </p>
+            )}
           </div>
           <Button 
             onClick={handleUploadResume} 
@@ -168,49 +300,28 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
         </CardContent>
       </Card>
 
-      {/* Detailed Resume Upload */}
+      {/* Job Description Upload - Required */}
       <Card>
         <CardHeader>
-          <CardTitle>{dictionary.detailed_label}</CardTitle>
-          <CardDescription>Upload your detailed resume</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            {dictionary.jd_label}
+            <span className="text-red-500 text-sm">*</span>
+          </CardTitle>
+          <CardDescription>Upload job description as image/PDF or paste as text (required)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="detailed-text">Detailed Resume Text</Label>
-            <Textarea
-              id="detailed-text"
-              placeholder="Paste your detailed resume text here..."
-              value={detailedResumeText}
-              onChange={(e) => setDetailedResumeText(e.target.value)}
-              className="min-h-[100px]"
-            />
-          </div>
-          <div>
-            <Label htmlFor="detailed-file">Detailed Resume File</Label>
+            <Label htmlFor="jd-file">Job Description File</Label>
             <Input
-              id="detailed-file"
+              id="jd-file"
               type="file"
-              accept=".pdf,.txt,.doc,.docx"
-              onChange={(e) => setDetailedResumeFile(e.target.files?.[0] || null)}
+              accept=".pdf,.txt,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={(e) => setJobDescriptionFile(e.target.files?.[0] || null)}
             />
+            {jobDescriptionFile && (
+              <p className="text-sm text-green-600 mt-1">✓ File selected: {jobDescriptionFile.name}</p>
+            )}
           </div>
-          <Button 
-            onClick={handleUploadDetailedResume} 
-            disabled={isLoading || (!detailedResumeText && !detailedResumeFile)}
-            className="w-full"
-          >
-            {dictionary.submit_detailed}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Job Description Upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictionary.jd_label}</CardTitle>
-          <CardDescription>Upload job description as text or image</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
           <div>
             <Label htmlFor="jd-text">Job Description Text</Label>
             <Textarea
@@ -220,15 +331,11 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
               onChange={(e) => setJobDescriptionText(e.target.value)}
               className="min-h-[100px]"
             />
-          </div>
-          <div>
-            <Label htmlFor="jd-file">Job Description File</Label>
-            <Input
-              id="jd-file"
-              type="file"
-              accept=".pdf,.txt,.doc,.docx,.jpg,.jpeg,.png"
-              onChange={(e) => setJobDescriptionFile(e.target.files?.[0] || null)}
-            />
+            {jobDescriptionFile && jobDescriptionText.trim() && (
+              <p className="text-sm text-amber-600 mt-1">
+                ⚠️ Both file and text provided. File will be used.
+              </p>
+            )}
           </div>
           <Button 
             onClick={handleUploadJobDescription} 
@@ -236,6 +343,53 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
             className="w-full"
           >
             {dictionary.submit_jd}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Detailed Resume Upload - Optional */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {dictionary.detailed_label}
+            <span className="text-gray-500 text-sm">(Optional)</span>
+          </CardTitle>
+          <CardDescription>Upload your detailed resume for better results (optional but recommended)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="detailed-file">Detailed Resume File</Label>
+            <Input
+              id="detailed-file"
+              type="file"
+              accept=".pdf,.txt,.doc,.docx"
+              onChange={(e) => setDetailedResumeFile(e.target.files?.[0] || null)}
+            />
+            {detailedResumeFile && (
+              <p className="text-sm text-green-600 mt-1">✓ File selected: {detailedResumeFile.name}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="detailed-text">Detailed Resume Text</Label>
+            <Textarea
+              id="detailed-text"
+              placeholder="Paste your detailed resume text here..."
+              value={detailedResumeText}
+              onChange={(e) => setDetailedResumeText(e.target.value)}
+              className="min-h-[100px]"
+            />
+            {detailedResumeFile && detailedResumeText.trim() && (
+              <p className="text-sm text-amber-600 mt-1">
+                ⚠️ Both file and text provided. File will be used.
+              </p>
+            )}
+          </div>
+          <Button 
+            onClick={handleUploadDetailedResume} 
+            disabled={isLoading || (!detailedResumeText && !detailedResumeFile)}
+            className="w-full"
+          >
+            {dictionary.submit_detailed}
           </Button>
         </CardContent>
       </Card>
@@ -249,12 +403,17 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
         <CardContent>
           <Button 
             onClick={handleCreateService} 
-            disabled={isLoading}
+            disabled={isLoading || !uploadedResumeId || !uploadedJobId}
             size="lg"
             className="w-full"
           >
-            {dictionary.create_service}
+            {isLoading ? 'Creating Service...' : dictionary.create_service}
           </Button>
+          {!uploadedResumeId || !uploadedJobId ? (
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              Please upload both resume and job description first
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -271,6 +430,7 @@ export function WorkbenchClient({ user, locale, dictionary }: WorkbenchClientPro
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   )
 }
