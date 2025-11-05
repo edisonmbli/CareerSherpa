@@ -37,7 +37,7 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
   constructor(config?: Partial<EmbeddingConfig>) {
     this.config = {
       model: 'embedding-3',
-      dimensions: 1536,
+      dimensions: 2048,
       maxTokens: 8192,
       batchSize: 100,
       ...config
@@ -63,6 +63,7 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
         body: JSON.stringify({
           model: this.config.model,
           input: text,
+          dimensions: this.config.dimensions,
         }),
       })
 
@@ -115,6 +116,7 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
           body: JSON.stringify({
             model: this.config.model,
             input: batch,
+            dimensions: this.config.dimensions,
           }),
         })
 

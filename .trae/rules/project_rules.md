@@ -84,13 +84,13 @@ This is a core architectural rule and must be strictly followed.
 
 - **Prisma Schema**:
   - **Single Source of Truth**: All data models, enums, and relations **must** be defined exclusively in the `prisma/schema.prisma` file.
-  - **pgvector Integration**: For vector storage, **must** use the `Unsupported("vector(1536)")` type to define vector fields. The dimension (1536) must match the output dimension of the embedding model (GLM embedding-3).
+  - **pgvector Integration**: For vector storage, **must** use the `Unsupported("vector(2048)")` type to define vector fields. The dimension (2048) must match the output dimension of the embedding model (GLM embedding-3).
     ```prisma
     // prisma/schema.prisma
     model Document {
       id        Int      @id @default(autoincrement())
       content   String
-      embedding Unsupported("vector(1536)")? // Dimension for GLM embedding-3
+      embedding Unsupported("vector(2048)")? // Dimension for GLM embedding-3
     }
     ```
   - **Database Migrations**: After modifying `schema.prisma`, **must** run `npx prisma migrate dev` to generate and apply database migrations.
@@ -407,3 +407,10 @@ Neon Auth consists of two components:
   LEFT JOIN neon_auth.users_sync u ON p.author_id = u.id
   WHERE u.deleted_at IS NULL;
   ```
+
+# 9. UPSTASH REDIS/QSATSH INTEGRATION
+
+use context7 MCP when needed.
+
+- https://context7.com/websites/upstash-redis/llms.txt
+- https://context7.com/websites/upstash-qstash/llms.txt

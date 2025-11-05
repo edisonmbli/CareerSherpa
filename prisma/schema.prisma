@@ -1,380 +1,310 @@
+// ================================================================= //
+//  1. Generator & Datasource (From Prototype, Must Keep)
+// ================================================================= //
+
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["neon_auth", "public"]
+  schemas  = ["neon_auth", "public"] // Required for Neon Auth
 }
 
-model Resume {
-  id                String          @id @default(cuid())
-  title             String?
-  lang              String?
-  originalText      String?         @map("original_text")
-  structuredJson    Json?           @map("structured_json")
-  resumeSummaryJson Json?           @map("resume_summary_json")
-  promptTokens      Int?            @map("prompt_tokens")
-  completionTokens  Int?            @map("completion_tokens")
-  totalTokens       Int?            @map("total_tokens")
-  active            Boolean         @default(true)
-  sourceType        String?         @map("source_type")
-  contentType       String?         @map("content_type")
-  charCount         Int?            @map("char_count")
-  mediaBase64       String?         @map("media_base64")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
-  userId            String          @map("user_id")
-  resume_versions   ResumeVersion[]
-  user              users_sync      @relation(fields: [userId], references: [id])
-  services          Service[]
+// ================================================================= //
+//  2. Authentication (From Prototype, Must Keep)
+// ================================================================= //
+//  This table is managed by Neon Auth. We ONLY REFERENCE it.
+//  DO NOT MODIFY.
+// ================================================================= //
 
-  @@index([userId, active])
-  @@map("resumes")
-  @@schema("public")
-}
+model users_sync {
+  id                   String           @id 
+  raw_json             Json?            
+  name                 String?          
+  email                String?          
+  created_at           DateTime?        
+  deleted_at           DateTime?        
+  updated_at           DateTime?        
 
-model DetailedResume {
-  id                  String     @id @default(cuid())
-  title               String?
-  lang                String?
-  originalText        String?    @map("original_text")
-  detailedSummaryJson Json?      @map("detailed_summary_json")
-  promptTokens        Int?       @map("prompt_tokens")
-  completionTokens    Int?       @map("completion_tokens")
-  totalTokens         Int?       @map("total_tokens")
-  sourceType          String?    @map("source_type")
-  contentType         String?    @map("content_type")
-  charCount           Int?       @map("char_count")
-  mediaBase64         String?    @map("media_base64")
-  createdAt           DateTime   @default(now()) @map("created_at")
-  updatedAt           DateTime   @updatedAt @map("updated_at")
-  userId              String     @map("user_id")
-  user                users_sync @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@map("detailed_resumes")
-  @@schema("public")
-}
-
-model JobDescription {
-  id               String     @id @default(cuid())
-  title            String?
-  source           String?
-  rawText          String?    @map("raw_text")
-  parsedJson       Json?      @map("parsed_json")
-  jobSummaryJson   Json?      @map("job_summary_json")
-  promptTokens     Int?       @map("prompt_tokens")
-  completionTokens Int?       @map("completion_tokens")
-  totalTokens      Int?       @map("total_tokens")
-  lang             String?
-  sourceType       String?    @map("source_type")
-  contentType      String?    @map("content_type")
-  charCount        Int?       @map("char_count")
-  mediaBase64      String?    @map("media_base64")
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
-  userId           String     @map("user_id")
-  user             users_sync @relation(fields: [userId], references: [id])
+  // --- NEW: Links to our business tables ---
+  quota            Quota?
+  resumes          Resume[]
+  detailedResumes  DetailedResume[]
   services         Service[]
+  paymentWaitlists PaymentWaitlist[]
+  analyticsEvents  AnalyticsEvent[]
 
-  @@index([userId, lang, createdAt])
-  @@map("job_descriptions")
-  @@schema("public")
+
+
+  @@map("users_sync")
+  @@schema("neon_auth")
 }
 
-model Service {
-  id             String         @id @default(cuid())
-  resumeId       String?        @map("resume_id")
-  jobId          String         @map("job_id")
-  status         ServiceStatus  @default(created)
-  depth          ServiceDepth?
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
-  userId         String         @map("user_id")
-  jobDescription JobDescription @relation(fields: [jobId], references: [id])
-  resume         Resume?        @relation(fields: [resumeId], references: [id])
-  user           users_sync     @relation(fields: [userId], references: [id])
-  tasks          Task[]
+// ================================================================= //
+//  3. NEW: Commercialization Models (Quotas & Payments)
+//     (Replaces prototype 'Payment', adds 'Quota')
+// ================================================================= //
 
-  @@index([userId, createdAt])
-  @@map("services")
-  @@schema("public")
-}
-
-model Task {
-  id               String       @id @default(cuid())
-  serviceId        String       @map("service_id")
-  kind             TaskKind
-  status           TaskStatus   @default(pending)
-  inputContextJson Json?        @map("input_context_json")
-  contextRefs      Json?        @map("context_refs")
-  startedAt        DateTime?    @map("started_at")
-  finishedAt       DateTime?    @map("finished_at")
-  meta             Json?
-  createdAt        DateTime     @default(now()) @map("created_at")
-  requestedBy      String       @map("requested_by")
-  outputs          TaskOutput[]
-  user             users_sync   @relation(fields: [requestedBy], references: [id])
-  service          Service      @relation(fields: [serviceId], references: [id])
-
-  @@index([serviceId, kind, status])
-  @@map("tasks")
-  @@schema("public")
-}
-
-model TaskOutput {
-  id                 String   @id @default(cuid())
-  taskId             String   @map("task_id")
-  version            Int
-  previousResponseId String?  @map("previous_response_id")
-  outputJson         Json?    @map("output_json")
-  outputText         String?  @map("output_text")
-  model              String?
-  provider           String?
-  inputTokens        Int?     @map("input_tokens")
-  outputTokens       Int?     @map("output_tokens")
-  cost               Decimal? @db.Decimal(10, 6)
-  createdAt          DateTime @default(now()) @map("created_at")
-  task               Task     @relation(fields: [taskId], references: [id])
-
-  @@unique([taskId, version])
-  @@index([taskId, createdAt])
-  @@map("task_outputs")
-  @@schema("public")
-}
-
-model ResumeVersion {
-  id           String   @id @default(cuid())
-  resumeId     String   @map("resume_id")
-  sourceTaskId String?  @map("source_task_id")
-  version      Int
-  contentText  String?  @map("content_text")
-  diffJson     Json?    @map("diff_json")
-  createdAt    DateTime @default(now()) @map("created_at")
-  resume       Resume   @relation(fields: [resumeId], references: [id])
-
-  @@unique([resumeId, version])
-  @@map("resume_versions")
-  @@schema("public")
-}
-
+// NEW: Tracks user's "coin" balance (Requirement 2.2.4)
 model Quota {
-  id           String     @id @default(cuid())
-  initialGrant Int        @default(0) @map("initial_grant")
-  purchased    Int        @default(0)
-  used         Int        @default(0)
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-  userId       String     @unique @map("user_id")
-  remaining    Int        @default(0)
-  user         users_sync @relation(fields: [userId], references: [id])
+  id        String     @id @default(cuid())
+  // 1-to-1 link to the user
+  userId    String     @unique @map("user_id")
+  user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "quota_user_id_fkey")
+
+  balance   Int        @default(0) // Coin balance
+
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
 
   @@map("quotas")
   @@schema("public")
 }
 
-model Payment {
-  id               String        @id @default(cuid())
-  stripeCheckoutId String?       @unique @map("stripe_checkout_id")
-  amount           Decimal       @db.Decimal(10, 2)
-  currency         String
-  status           PaymentStatus @default(pending)
-  createdAt        DateTime      @default(now()) @map("created_at")
-  userId           String        @map("user_id")
-  user             users_sync    @relation(fields: [userId], references: [id])
+// ================================================================= //
+//  4. REFACTORED: Payment Model (PaymentWaitlist -> PaymentOrder)
+//     (Replaces prototype 'PaymentWaitlist')
+// ================================================================= //
+model PaymentWaitlist {
+  id        String     @id @default(cuid())
+  userId    String     @unique @map("user_id") // 1-to-1 link
+  user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  email     String     // The email to notify
+  createdAt DateTime   @default(now()) @map("created_at")
 
-  @@map("payments")
+  @@map("payment_waitlist")
   @@schema("public")
 }
 
-model TokenUsageLog {
-  id           String     @id @default(cuid())
-  serviceId    String?    @map("service_id")
-  taskId       String?    @map("task_id")
-  provider     String?
-  model        String?
-  inputTokens  Int?       @map("input_tokens")
-  outputTokens Int?       @map("output_tokens")
-  cost         Decimal?   @db.Decimal(10, 6)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  userId       String     @map("user_id")
-  user         users_sync @relation(fields: [userId], references: [id])
+// ================================================================= //
+//  5. REFACTORED: User Asset Models (Resume & DetailedResume)
+//     (Replaces prototype 'Resume' & 'DetailedResume')
+// ================================================================= //
 
-  @@map("token_usage_logs")
+// REFACTORED: Cleaned up prototype 'Resume'
+// This is Asset 1 (General Resume)
+model Resume {
+  id                String           @id @default(cuid())
+  // 1-to-1 link to the user
+  userId            String           @unique @map("user_id")
+  user              users_sync       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "resume_user_id_fkey")
+
+  originalText      String?          @map("original_text")
+  resumeSummaryJson Json?            @map("resume_summary_json")
+
+  // NEW: Status for async polling (Requirement 2.3.0)
+  status            AsyncTaskStatus  @default(PENDING)
+
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  // Link to all services that USED this resume
+  services          Service[]
+
+  // DROPPED (from prototype): title, lang, active, tokens, mediaBase64, etc. (too complex)
+  // DROPPED (from prototype): ResumeVersion model (not in MVP scope)
+
+  @@map("resumes")
   @@schema("public")
 }
 
-model IdempotencyKey {
-  key       String          @id
-  userKey   String          @map("user_key")
-  step      IdempotencyStep
-  ttlMs     Int             @map("ttl_ms")
-  createdAt DateTime        @default(now()) @map("created_at")
+// REFACTORED: Cleaned up prototype 'DetailedResume'
+// This is Asset 2 (Detailed History)
+model DetailedResume {
+  id                  String           @id @default(cuid())
+  // 1-to-1 link to the user
+  userId              String           @unique @map("user_id")
+  user                users_sync       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "detailed_resume_user_id_fkey")
 
-  @@map("idempotency_keys")
+  originalText        String?          @map("original_text")
+  detailedSummaryJson Json?            @map("detailed_summary_json") // Renamed from prototype
+
+  // NEW: Status for async polling (Requirement 2.3.0)
+  status              AsyncTaskStatus  @default(PENDING)
+
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  // Link to all services that USED this detailed resume
+  services            Service[]
+
+  @@map("detailed_resumes")
   @@schema("public")
 }
 
-model AuditLog {
-  id         String     @id @default(cuid())
-  action     String
-  entityType String     @map("entity_type")
-  entityId   String     @map("entity_id")
-  metadata   Json?
-  createdAt  DateTime   @default(now()) @map("created_at")
-  userId     String     @map("user_id")
-  user       users_sync @relation(fields: [userId], references: [id])
 
-  @@map("audit_logs")
+// ================================================================= //
+//  6. REFACTORED: Core Service Flow Models
+//     (Replaces prototype 'Service' and DROPS 'ServiceTask')
+// ================================================================= //
+
+// REFACTORED: The "Hub" model, simplified from prototype 'Service'
+// Represents one "Job Customization" request (FR-2.4)
+model Service {
+  id               String          @id @default(cuid())
+  userId           String          @map("user_id")
+  user             users_sync      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "service_user_id_fkey")
+
+  // --- Links to the *exact* assets used for this Service ---
+  resumeId         String          @map("resume_id")
+  resume           Resume          @relation(fields: [resumeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  detailedResumeId String?         @map("detailed_resume_id")
+  detailedResume   DetailedResume? @relation(fields: [detailedResumeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  // --- Step Tracking (Replaces prototype 'ServiceStatus' and 'ServiceDepth') ---
+  currentStep      ServiceStep     @default(MATCH) @map("current_step")
+
+  // --- NEW: Decoupled 1-to-1 links to service outputs ---
+  job              Job?
+  match            Match?
+  customizedResume CustomizedResume?
+  interview        Interview?
+
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  // DROPPED (from prototype): resultJson (now decoupled), status (use currentStep)
+  // DROPPED (from prototype): ServiceTask model (handled by QStash + KV)
+
+  @@index([userId, createdAt(sort: Desc)]) // For history list (FR-2.7)
+  @@map("services")
   @@schema("public")
 }
 
-model users {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkUserId String   @unique @map("clerk_user_id")
-  email       String   @unique
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  firstName   String?  @map("first_name")
-  imageUrl    String?  @map("image_url")
-  lastName    String?  @map("last_name")
+// --- NEW: Decoupled Service Output Models ---
 
-  @@map("users")
+// NEW: Stores the Job (JD) extraction result
+model Job {
+  id             String           @id @default(cuid())
+  // 1-to-1 link to the Service
+  serviceId      String           @unique @map("service_id")
+  service        Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  originalText   String?          @map("original_text")
+  originalImage  String?          @map("original_image") // URL or Base64 of screenshot
+  jobSummaryJson Json?            @map("job_summary_json")
+
+  // NEW: Status for async OCR polling (Requirement 2.3.3)
+  status         AsyncTaskStatus  @default(PENDING)
+
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  @@map("jobs")
   @@schema("public")
 }
 
-model users_sync {
-  raw_json         Json
-  id               String           @id @default(dbgenerated("(raw_json ->> 'id'::text)"))
-  name             String?          @default(dbgenerated("(raw_json ->> 'display_name'::text)"))
-  email            String?          @default(dbgenerated("(raw_json ->> 'primary_email'::text)"))
-  created_at       DateTime?        @default(dbgenerated("to_timestamp((trunc((((raw_json ->> 'signed_up_at_millis'::text))::bigint)::double precision) / (1000)::double precision))")) @db.Timestamptz(6)
-  updated_at       DateTime?        @db.Timestamptz(6)
-  deleted_at       DateTime?        @db.Timestamptz(6)
-  auditLogs        AuditLog[]
-  detailedResumes  DetailedResume[]
-  documents        Document[]
-  jobDescriptions  JobDescription[]
-  knowledgeEntries KnowledgeEntry[]
+// NEW: Stores the Step 1 (Match) result
+model Match {
+  id               String           @id @default(cuid())
+  serviceId        String           @unique @map("service_id")
+  service          Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  payments         Payment[]
-  quotas           Quota?
-  resumes          Resume[]
-  services         Service[]
-  tasks            Task[]
-  tokenUsageLogs   TokenUsageLog[]
+  matchSummaryJson Json?            @map("match_summary_json") // Stores score, analysis, etc.
+  status           AsyncTaskStatus  @default(PENDING) // PENDING (for SSE), COMPLETED, FAILED
 
-  @@index([deleted_at])
-  @@schema("neon_auth")
-}
-
-
-
-model Document {
-  id         String                 @id @default(cuid())
-  content    String
-  embedding  Unsupported("vector")?
-  sourceType DocumentSourceType     @map("source_type")
-  sourceId   String                 @map("source_id")
-  userId     String                 @map("user_id")
-  metadata   Json?                  @default("{}")
-  chunkIndex Int?                   @map("chunk_index")
-  createdAt  DateTime               @default(now()) @map("created_at")
-  updatedAt  DateTime               @updatedAt @map("updated_at")
-  user       users_sync             @relation(fields: [userId], references: [id])
-
-  @@index([userId, sourceType, sourceId])
-  @@index([sourceType, sourceId])
-  @@map("documents")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  @@map("matches")
   @@schema("public")
 }
 
+// NEW: Stores the Step 2 (Customize) result
+model CustomizedResume {
+  id               String           @id @default(cuid())
+  serviceId        String           @unique @map("service_id")
+  service          Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  // The editable markdown (FR-6.2)
+  markdownContent  String?          @map("markdown_content")
+  status           AsyncTaskStatus  @default(PENDING) // For async polling (Requirement 2.3.4)
+
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  @@map("customized_resumes")
+  @@schema("public")
+}
+
+// NEW: Stores the Step 3 (Interview) result
+model Interview {
+  id                String           @id @default(cuid())
+  serviceId         String           @unique @map("service_id")
+  service           Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  interviewTipsJson Json?            @map("interview_tips_json") // Stores self-intro, tips list
+  status            AsyncTaskStatus  @default(PENDING) // PENDING (for SSE), COMPLETED, FAILED
+
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  @@map("interviews")
+  @@schema("public")
+}
+
+
+// ================================================================= //
+//  7. REFACTORED: RAG Model (Knowledge Base)
+//     (Replaces prototype 'KnowledgeEntry')
+// ================================================================= //
+
+// REFACTORED: Simplified prototype 'KnowledgeEntry' for a global RAG store (Req 2.2.2)
 model KnowledgeEntry {
   id        String                 @id @default(cuid())
-  content   String
-  embedding Unsupported("vector")?
-  title     String?
-  category  String?
-  userId    String                 @map("user_id")
-  metadata  Json?                  @default("{}")
-  isPublic  Boolean                @default(false) @map("is_public")
+  content   String                 // The text chunk
+
+  // NOTE: Set vector dimensions to match your embedding model (e.g., 2048 for zhipu embedding-3)
+  embedding Unsupported("vector(2048)")?
+
+  lang     String                  // 'en' or 'zh'
+  source    String?                // e.g., 'resume_writing_guide.pdf'
+  category  String?                // 'match', 'customize', 'interview' (FR-4.3)
+  isPublic  Boolean                @default(true) @map("is_public")
+
   createdAt DateTime               @default(now()) @map("created_at")
   updatedAt DateTime               @updatedAt @map("updated_at")
-  user      users_sync             @relation(fields: [userId], references: [id])
 
-  @@index([userId, category])
-  @@index([isPublic, category])
+  // DROPPED (from prototype): userId, user relation, metadata.
+  // REASON: RAG knowledge base is global (admin-managed), not per-user, for MVP.
+
+  @@index([lang, category, isPublic])
   @@map("knowledge_entries")
   @@schema("public")
 }
 
-enum ServiceStatus {
-  created
-  running
-  done
-  error
-
+// NEW: A reusable status for all async tasks (Req 2.3.0)
+// Replaces prototype 'TaskStatus'
+enum AsyncTaskStatus {
+  PENDING   // Covers 'queued' and 'running' from prototype
+  COMPLETED // Renamed from 'done'
+  FAILED    // Renamed from 'error'
   @@schema("public")
 }
 
-enum ServiceDepth {
-  pre
-  a
-  b
-  c
-
+// NEW: Tracks progress through the 3-step service (Req 2.1.2)
+// Replaces prototype 'ServiceDepth'
+enum ServiceStep {
+  MATCH
+  CUSTOMIZE
+  INTERVIEW
+  COMPLETED // All 3 steps are done
   @@schema("public")
 }
 
-enum TaskKind {
-  match
-  customize
-  interview
-  extract
-  resume
-  job
-  detailed
+// Tracks key user actions for internal analysis (100% data ownership)
+model AnalyticsEvent {
+  id        String     @id @default(cuid())
 
-  @@schema("public")
-}
+  // Can be null for anonymous events (like page_view on landing)
+  userId    String?    @map("user_id")
+  user      users_sync? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
-enum TaskStatus {
-  pending
-  queued
-  running
-  done
-  error
+  eventName String     @map("event_name") // e.g., "TASK_CREATED"
+  payload   Json?      // e.g., { "task": "match", "isFree": true }
 
-  @@schema("public")
-}
+  createdAt DateTime   @default(now()) @map("created_at")
 
-enum PaymentStatus {
-  pending
-  succeeded
-  refunded
-  failed
-
-  @@schema("public")
-}
-
-enum IdempotencyStep {
-  match
-  customize
-  interview
-
-  @@schema("public")
-}
-
-
-
-enum DocumentSourceType {
-  resume
-  job_description
-  detailed_resume
-  knowledge_base
-  user_upload
-
+  @@index([eventName, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("analytics_events")
   @@schema("public")
 }

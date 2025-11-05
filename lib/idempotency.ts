@@ -1,6 +1,7 @@
 import crypto from 'crypto'
-import { createIdempotencyKey, getIdempotencyKey } from './dal'
-import type { IdempotencyStep } from '@prisma/client'
+import { createIdempotencyKey, getIdempotencyKey } from '@/lib/dal'
+// Local type to avoid relying on Prisma enums here
+export type IdempotencyStep = 'match' | 'customize' | 'interview'
 
 export interface IdempotencyConfig {
   step: IdempotencyStep
@@ -84,17 +85,17 @@ export async function checkIdempotency(config: IdempotencyConfig): Promise<Idemp
 /**
  * Default TTL configurations for different steps
  */
-export const DEFAULT_TTL_MS = {
+export const DEFAULT_TTL_MS: Record<IdempotencyStep, number> = {
   match: 15 * 60 * 1000,      // 15 minutes
   customize: 30 * 60 * 1000,  // 30 minutes
   interview: 30 * 60 * 1000,  // 30 minutes
-} as const
+}
 
 /**
  * Helper function to get default TTL for a step
  */
 export function getDefaultTTL(step: IdempotencyStep): number {
-  return DEFAULT_TTL_MS[step] || 15 * 60 * 1000
+  return DEFAULT_TTL_MS[step] ?? 15 * 60 * 1000
 }
 
 /**
