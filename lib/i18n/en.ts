@@ -8,5 +8,17 @@ const dict = {
   submit_detailed: 'Upload Detailed',
   submit_jd: 'Upload JD',
   create_service: 'Create Service',
+  // Namespaced additions (backward compatible)
+  designSystem: {
+    title: 'Design System',
+    sections: {
+      buttonsBadges: 'Buttons & Badges',
+      alerts: 'Alerts',
+      formControls: 'Form Controls',
+    },
+  },
+  workbench: {
+    title: 'Workbench',
+  },
 }
 export default dict
