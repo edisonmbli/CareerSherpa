@@ -3,7 +3,7 @@
  * 负责向量检索和相似度搜索
  */
 
-import { generateEmbedding } from '@/lib/llm/embeddings'
+import { runEmbedding } from '@/lib/llm/service'
 import { 
   searchSimilarDocuments, 
   searchSimilarKnowledgeEntries,
@@ -65,8 +65,12 @@ export async function searchDocuments(
       config: finalConfig
     })
 
-    // 生成查询向量
-    const queryEmbedding = await generateEmbedding(query)
+    // 生成查询向量（统一入口，含详细使用日志）
+    const embRes = await runEmbedding(query, { userId })
+    if (!embRes.ok || !embRes.vector) {
+      throw new Error(embRes.error || 'Failed to generate query embedding')
+    }
+    const queryEmbedding = embRes.vector
 
     // 构建搜索参数
     const searchParams: SimilaritySearchParams = {
@@ -158,8 +162,12 @@ export async function searchKnowledge(
       minSimilarity
     })
 
-    // 生成查询向量
-    const queryEmbedding = await generateEmbedding(query)
+    // 生成查询向量（统一入口，含详细使用日志）
+    const embRes = await runEmbedding(query, { userId })
+    if (!embRes.ok || !embRes.vector) {
+      throw new Error(embRes.error || 'Failed to generate query embedding')
+    }
+    const queryEmbedding = embRes.vector
 
     // 构建搜索参数
     const searchParams: SimilaritySearchParams = {

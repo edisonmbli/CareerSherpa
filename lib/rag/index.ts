@@ -39,10 +39,14 @@ export {
   type SimilaritySearchResult
 } from '../dal/vector-store'
 
-// 嵌入服务
+// 嵌入服务统一入口（建议使用）
 export {
-  generateEmbedding,
-  generateEmbeddings,
+  runEmbedding,
+  runEmbeddingBatch,
+} from '../llm/service'
+
+// 仅类型导出（保留 Provider 类型与配置）
+export {
   type EmbeddingConfig,
   type EmbeddingResult,
   type EmbeddingProvider

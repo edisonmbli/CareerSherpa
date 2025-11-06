@@ -2,6 +2,7 @@ import { ChatZhipuAI } from '@langchain/community/chat_models/zhipuai'
 import { ChatOpenAI } from '@langchain/openai'
 import { ChatDeepSeek } from '@langchain/deepseek'
 import { ENV } from '../env'
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 export interface LLMConfig {
   model: string
@@ -281,12 +282,12 @@ export const MODEL_CONFIGS = {
       tier: 'paid' as const,
       maxTokens: 8000,
     },
-    text_fallback: {
-      provider: 'zhipu' as const,
-      model: 'glm-4.5',
-      tier: 'paid' as const,
-      maxTokens: 30000, // GLM-4.5官方限制65536，提高到30000
-    },
+    // text_fallback: {
+    //   provider: 'zhipu' as const,
+    //   model: 'glm-4.5',
+    //   tier: 'paid' as const,
+    //   maxTokens: 30000, // GLM-4.5官方限制65536，提高到30000
+    // },
     reasoning: {
       provider: 'deepseek' as const,
       model: 'deepseek-reasoner',
@@ -305,23 +306,101 @@ export const MODEL_CONFIGS = {
 /**
  * Get model configuration for a specific use case
  */
-export function getModelConfig(
-  tier: 'free' | 'paid',
-  type: 'text' | 'vision' | 'reasoning' | 'text_fallback' = 'text'
-): LLMConfig {
-  const configs = MODEL_CONFIGS[tier]
+// export function getModelConfig(
+//   tier: 'free' | 'paid',
+//   type: 'text' | 'vision' | 'reasoning' | 'text_fallback' = 'text'
+// ): LLMConfig {
+//   const configs = MODEL_CONFIGS[tier]
 
-  if (type === 'reasoning' && tier === 'paid') {
-    return (configs as typeof MODEL_CONFIGS.paid).reasoning
+//   if (type === 'reasoning' && tier === 'paid') {
+//     return (configs as typeof MODEL_CONFIGS.paid).reasoning
+//   }
+
+//   if (type === 'text_fallback' && tier === 'paid') {
+//     return (configs as typeof MODEL_CONFIGS.paid).text_fallback
+//   }
+
+//   if (type === 'vision' && configs.vision) {
+//     return configs.vision
+//   }
+
+//   return configs.text
+// }
+
+// --- M4: Export canonical ModelId and getModel per routing table ---
+export type ModelId =
+  | 'deepseek-reasoner'
+  | 'deepseek-chat'
+  | 'glm-4.5-flash'
+  | 'glm-4.1v-thinking-flash'
+  | 'glm-embedding-3'
+
+export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' {
+  if (modelId.startsWith('deepseek')) return 'deepseek'
+  return 'zhipu'
+}
+
+export function getModel(
+  modelId: ModelId,
+  opts: { temperature?: number; maxTokens?: number; timeoutMs?: number } = {}
+): BaseChatModel {
+  const { temperature, maxTokens, timeoutMs } = opts
+
+  if (modelId === 'deepseek-reasoner') {
+    // DeepSeek via OpenAI-compatible endpoint
+    const params: any = {
+      apiKey: ENV.DEEPSEEK_API_KEY,
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-reasoner',
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(maxTokens !== undefined ? { maxTokens } : {}),
+      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+    }
+    return new ChatOpenAI(params)
   }
 
-  if (type === 'text_fallback' && tier === 'paid') {
-    return (configs as typeof MODEL_CONFIGS.paid).text_fallback
+  if (modelId === 'deepseek-chat') {
+    const params: any = {
+      apiKey: ENV.DEEPSEEK_API_KEY,
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(maxTokens !== undefined ? { maxTokens } : {}),
+      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+    }
+    return new ChatOpenAI(params)
   }
 
-  if (type === 'vision' && configs.vision) {
-    return configs.vision
+  if (modelId === 'glm-4.5-flash') {
+    const params: any = {
+      apiKey: ENV.ZHIPUAI_API_KEY,
+      modelName: 'glm-4.5-flash',
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(maxTokens !== undefined ? { maxTokens } : {}),
+      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+    }
+    return new ChatZhipuAI(params)
   }
 
-  return configs.text
+  if (modelId === 'glm-4.1v-thinking-flash') {
+    const params: any = {
+      apiKey: ENV.ZHIPUAI_API_KEY,
+      modelName: 'glm-4.1v-thinking-flash',
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(maxTokens !== undefined ? { maxTokens } : {}),
+      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+    }
+    return new ChatZhipuAI(params)
+  }
+
+  // Fallback: paid text
+  const params: any = {
+    apiKey: ENV.DEEPSEEK_API_KEY,
+    baseURL: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    ...(temperature !== undefined ? { temperature } : {}),
+    ...(maxTokens !== undefined ? { maxTokens } : {}),
+    ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+  }
+  return new ChatOpenAI(params)
 }

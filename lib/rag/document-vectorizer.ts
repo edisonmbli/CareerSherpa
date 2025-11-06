@@ -3,7 +3,7 @@
  * 负责将文档内容转换为向量并存储到数据库
  */
 
-import { generateEmbedding, generateEmbeddings } from '@/lib/llm/embeddings'
+import { runEmbedding, runEmbeddingBatch } from '@/lib/llm/service'
 import { 
   createDocument, 
   createKnowledgeEntry, 
@@ -97,8 +97,12 @@ export async function vectorizeResume(
       return { success: false, chunksCreated: 0, error: 'No valid chunks created' }
     }
 
-    // 批量生成嵌入
-    const embeddings = await generateEmbeddings(chunks)
+    // 批量生成嵌入（统一入口，含详细使用日志）
+    const batchRes = await runEmbeddingBatch(chunks, { userId })
+    if (!batchRes.ok || !batchRes.vectors) {
+      throw new Error(batchRes.error || 'Failed to generate embeddings')
+    }
+    const embeddings = batchRes.vectors
 
     // 存储到数据库
     let successCount = 0
@@ -198,8 +202,12 @@ export async function vectorizeJobDescription(
       return { success: false, chunksCreated: 0, error: 'No valid chunks created' }
     }
 
-    // 批量生成嵌入
-    const embeddings = await generateEmbeddings(chunks)
+    // 批量生成嵌入（统一入口，含详细使用日志）
+    const batchRes = await runEmbeddingBatch(chunks, { userId })
+    if (!batchRes.ok || !batchRes.vectors) {
+      throw new Error(batchRes.error || 'Failed to generate embeddings')
+    }
+    const embeddings = batchRes.vectors
 
     // 存储到数据库
     let successCount = 0
@@ -291,8 +299,12 @@ export async function vectorizeKnowledgeEntry(
       contentLength: content.length
     })
 
-    // 生成嵌入
-    const embedding = await generateEmbedding(content)
+    // 生成嵌入（统一入口，含详细使用日志）
+    const embRes = await runEmbedding(content, { userId })
+    if (!embRes.ok || !embRes.vector) {
+      throw new Error(embRes.error || 'Failed to generate embedding')
+    }
+    const embedding = embRes.vector
 
     // 存储到数据库
     const params: CreateKnowledgeEntryParams = {

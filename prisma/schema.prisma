@@ -1,310 +1,267 @@
-// ================================================================= //
-//  1. Generator & Datasource (From Prototype, Must Keep)
-// ================================================================= //
-
 generator client {
   provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["neon_auth", "public"] // Required for Neon Auth
+  schemas  = ["neon_auth", "public"]
 }
 
-// ================================================================= //
-//  2. Authentication (From Prototype, Must Keep)
-// ================================================================= //
-//  This table is managed by Neon Auth. We ONLY REFERENCE it.
-//  DO NOT MODIFY.
-// ================================================================= //
-
 model users_sync {
-  id                   String           @id 
-  raw_json             Json?            
-  name                 String?          
-  email                String?          
-  created_at           DateTime?        
-  deleted_at           DateTime?        
-  updated_at           DateTime?        
+  id               String           @id @db.Text
+  name             String?          @db.Text
+  email            String?          @db.Text
+  created_at       DateTime?        @db.Timestamptz(6)
+  updated_at       DateTime?        @db.Timestamptz(6)
+  deleted_at       DateTime?        @db.Timestamptz(6)
 
-  // --- NEW: Links to our business tables ---
-  quota            Quota?
-  resumes          Resume[]
-  detailedResumes  DetailedResume[]
-  services         Service[]
-  paymentWaitlists PaymentWaitlist[]
+  // 关系字段（从其他模型指向此表的外键）
   analyticsEvents  AnalyticsEvent[]
+  detailedResumes  DetailedResume?
+  paymentWaitlists PaymentWaitlist?
+  quota            Quota?
+  resumes          Resume?
+  services         Service[]
 
-
-
+  @@index([deleted_at])
   @@map("users_sync")
   @@schema("neon_auth")
 }
 
-// ================================================================= //
-//  3. NEW: Commercialization Models (Quotas & Payments)
-//     (Replaces prototype 'Payment', adds 'Quota')
-// ================================================================= //
-
-// NEW: Tracks user's "coin" balance (Requirement 2.2.4)
 model Quota {
   id        String     @id @default(cuid())
-  // 1-to-1 link to the user
   userId    String     @unique @map("user_id")
-  user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "quota_user_id_fkey")
-
-  balance   Int        @default(0) // Coin balance
-
+  balance   Int        @default(0)
   createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at")
+  user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade, map: "quota_user_id_fkey")
 
   @@map("quotas")
   @@schema("public")
 }
 
-// ================================================================= //
-//  4. REFACTORED: Payment Model (PaymentWaitlist -> PaymentOrder)
-//     (Replaces prototype 'PaymentWaitlist')
-// ================================================================= //
 model PaymentWaitlist {
   id        String     @id @default(cuid())
-  userId    String     @unique @map("user_id") // 1-to-1 link
-  user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  email     String     // The email to notify
+  userId    String     @unique @map("user_id")
+  email     String
   createdAt DateTime   @default(now()) @map("created_at")
+  user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payment_waitlist")
   @@schema("public")
 }
 
-// ================================================================= //
-//  5. REFACTORED: User Asset Models (Resume & DetailedResume)
-//     (Replaces prototype 'Resume' & 'DetailedResume')
-// ================================================================= //
-
-// REFACTORED: Cleaned up prototype 'Resume'
-// This is Asset 1 (General Resume)
 model Resume {
-  id                String           @id @default(cuid())
-  // 1-to-1 link to the user
-  userId            String           @unique @map("user_id")
-  user              users_sync       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "resume_user_id_fkey")
-
-  originalText      String?          @map("original_text")
-  resumeSummaryJson Json?            @map("resume_summary_json")
-
-  // NEW: Status for async polling (Requirement 2.3.0)
-  status            AsyncTaskStatus  @default(PENDING)
-
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-
-  // Link to all services that USED this resume
+  id                String          @id @default(cuid())
+  userId            String          @unique @map("user_id")
+  originalText      String?         @map("original_text")
+  resumeSummaryJson Json?           @map("resume_summary_json")
+  status            AsyncTaskStatus @default(PENDING)
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+  user              users_sync      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "resume_user_id_fkey")
   services          Service[]
-
-  // DROPPED (from prototype): title, lang, active, tokens, mediaBase64, etc. (too complex)
-  // DROPPED (from prototype): ResumeVersion model (not in MVP scope)
 
   @@map("resumes")
   @@schema("public")
 }
 
-// REFACTORED: Cleaned up prototype 'DetailedResume'
-// This is Asset 2 (Detailed History)
 model DetailedResume {
-  id                  String           @id @default(cuid())
-  // 1-to-1 link to the user
-  userId              String           @unique @map("user_id")
-  user                users_sync       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "detailed_resume_user_id_fkey")
-
-  originalText        String?          @map("original_text")
-  detailedSummaryJson Json?            @map("detailed_summary_json") // Renamed from prototype
-
-  // NEW: Status for async polling (Requirement 2.3.0)
-  status              AsyncTaskStatus  @default(PENDING)
-
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-
-  // Link to all services that USED this detailed resume
+  id                  String          @id @default(cuid())
+  userId              String          @unique @map("user_id")
+  originalText        String?         @map("original_text")
+  detailedSummaryJson Json?           @map("detailed_summary_json")
+  status              AsyncTaskStatus @default(PENDING)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at")
+  user                users_sync      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "detailed_resume_user_id_fkey")
   services            Service[]
 
   @@map("detailed_resumes")
   @@schema("public")
 }
 
-
-// ================================================================= //
-//  6. REFACTORED: Core Service Flow Models
-//     (Replaces prototype 'Service' and DROPS 'ServiceTask')
-// ================================================================= //
-
-// REFACTORED: The "Hub" model, simplified from prototype 'Service'
-// Represents one "Job Customization" request (FR-2.4)
 model Service {
-  id               String          @id @default(cuid())
-  userId           String          @map("user_id")
-  user             users_sync      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "service_user_id_fkey")
-
-  // --- Links to the *exact* assets used for this Service ---
-  resumeId         String          @map("resume_id")
-  resume           Resume          @relation(fields: [resumeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  detailedResumeId String?         @map("detailed_resume_id")
-  detailedResume   DetailedResume? @relation(fields: [detailedResumeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-
-  // --- Step Tracking (Replaces prototype 'ServiceStatus' and 'ServiceDepth') ---
-  currentStep      ServiceStep     @default(MATCH) @map("current_step")
-
-  // --- NEW: Decoupled 1-to-1 links to service outputs ---
-  job              Job?
-  match            Match?
+  id               String            @id @default(cuid())
+  userId           String            @map("user_id")
+  resumeId         String            @map("resume_id")
+  detailedResumeId String?           @map("detailed_resume_id")
+  currentStep      ServiceStep       @default(MATCH) @map("current_step")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at")
   customizedResume CustomizedResume?
   interview        Interview?
+  job              Job?
+  match            Match?
+  user             users_sync        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "service_user_id_fkey")
+  detailedResume   DetailedResume?   @relation(fields: [detailedResumeId], references: [id])
+  resume           Resume            @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-
-  // DROPPED (from prototype): resultJson (now decoupled), status (use currentStep)
-  // DROPPED (from prototype): ServiceTask model (handled by QStash + KV)
-
-  @@index([userId, createdAt(sort: Desc)]) // For history list (FR-2.7)
+  @@index([userId(sort: Desc), createdAt(sort: Desc)])
   @@map("services")
   @@schema("public")
 }
 
-// --- NEW: Decoupled Service Output Models ---
-
-// NEW: Stores the Job (JD) extraction result
 model Job {
-  id             String           @id @default(cuid())
-  // 1-to-1 link to the Service
-  serviceId      String           @unique @map("service_id")
-  service        Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id             String          @id @default(cuid())
+  serviceId      String          @unique @map("service_id")
+  originalText   String?         @map("original_text")
+  originalImage  String?         @map("original_image")
+  jobSummaryJson Json?           @map("job_summary_json")
+  status         AsyncTaskStatus @default(PENDING)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+  service        Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
-  originalText   String?          @map("original_text")
-  originalImage  String?          @map("original_image") // URL or Base64 of screenshot
-  jobSummaryJson Json?            @map("job_summary_json")
-
-  // NEW: Status for async OCR polling (Requirement 2.3.3)
-  status         AsyncTaskStatus  @default(PENDING)
-
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
   @@map("jobs")
   @@schema("public")
 }
 
-// NEW: Stores the Step 1 (Match) result
 model Match {
-  id               String           @id @default(cuid())
-  serviceId        String           @unique @map("service_id")
-  service          Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id               String          @id @default(cuid())
+  serviceId        String          @unique @map("service_id")
+  matchSummaryJson Json?           @map("match_summary_json")
+  status           AsyncTaskStatus @default(PENDING)
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at")
+  service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
-  matchSummaryJson Json?            @map("match_summary_json") // Stores score, analysis, etc.
-  status           AsyncTaskStatus  @default(PENDING) // PENDING (for SSE), COMPLETED, FAILED
-
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
   @@map("matches")
   @@schema("public")
 }
 
-// NEW: Stores the Step 2 (Customize) result
 model CustomizedResume {
-  id               String           @id @default(cuid())
-  serviceId        String           @unique @map("service_id")
-  service          Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id              String          @id @default(cuid())
+  serviceId       String          @unique @map("service_id")
+  markdownContent String?         @map("markdown_content")
+  status          AsyncTaskStatus @default(PENDING)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
+  service         Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
-  // The editable markdown (FR-6.2)
-  markdownContent  String?          @map("markdown_content")
-  status           AsyncTaskStatus  @default(PENDING) // For async polling (Requirement 2.3.4)
-
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
   @@map("customized_resumes")
   @@schema("public")
 }
 
-// NEW: Stores the Step 3 (Interview) result
 model Interview {
-  id                String           @id @default(cuid())
-  serviceId         String           @unique @map("service_id")
-  service           Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  id                String          @id @default(cuid())
+  serviceId         String          @unique @map("service_id")
+  interviewTipsJson Json?           @map("interview_tips_json")
+  status            AsyncTaskStatus @default(PENDING)
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+  service           Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
-  interviewTipsJson Json?            @map("interview_tips_json") // Stores self-intro, tips list
-  status            AsyncTaskStatus  @default(PENDING) // PENDING (for SSE), COMPLETED, FAILED
-
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
   @@map("interviews")
   @@schema("public")
 }
 
-
-// ================================================================= //
-//  7. REFACTORED: RAG Model (Knowledge Base)
-//     (Replaces prototype 'KnowledgeEntry')
-// ================================================================= //
-
-// REFACTORED: Simplified prototype 'KnowledgeEntry' for a global RAG store (Req 2.2.2)
 model KnowledgeEntry {
   id        String                 @id @default(cuid())
-  content   String                 // The text chunk
-
-  // NOTE: Set vector dimensions to match your embedding model (e.g., 2048 for zhipu embedding-3)
+  title     String?
+  content   String
   embedding Unsupported("vector(2048)")?
-
-  lang     String                  // 'en' or 'zh'
-  source    String?                // e.g., 'resume_writing_guide.pdf'
-  category  String?                // 'match', 'customize', 'interview' (FR-4.3)
+  lang      String
+  source    String?
+  category  String?
   isPublic  Boolean                @default(true) @map("is_public")
-
   createdAt DateTime               @default(now()) @map("created_at")
-  updatedAt DateTime               @updatedAt @map("updated_at")
-
-  // DROPPED (from prototype): userId, user relation, metadata.
-  // REASON: RAG knowledge base is global (admin-managed), not per-user, for MVP.
+  updatedAt DateTime               @default(now()) @updatedAt @map("updated_at")
 
   @@index([lang, category, isPublic])
   @@map("knowledge_entries")
   @@schema("public")
 }
 
-// NEW: A reusable status for all async tasks (Req 2.3.0)
-// Replaces prototype 'TaskStatus'
-enum AsyncTaskStatus {
-  PENDING   // Covers 'queued' and 'running' from prototype
-  COMPLETED // Renamed from 'done'
-  FAILED    // Renamed from 'error'
+// RAG 文档存储（向量检索）
+model Document {
+  id         String                 @id @default(cuid())
+  content    String
+  embedding  Unsupported("vector(2048)")?
+  userId     String                 @map("user_id")
+  sourceType DocumentSourceType     @map("source_type")
+  sourceId   String                 @map("source_id")
+  metadata   Json?
+  chunkIndex Int?                   @map("chunk_index")
+  createdAt  DateTime               @default(now()) @map("created_at")
+  updatedAt  DateTime               @default(now()) @updatedAt @map("updated_at")
+
+  @@index([userId, sourceType, sourceId])
+  @@index([sourceType, createdAt(sort: Desc)])
+  @@map("documents")
   @@schema("public")
 }
 
-// NEW: Tracks progress through the 3-step service (Req 2.1.2)
-// Replaces prototype 'ServiceDepth'
-enum ServiceStep {
-  MATCH
-  CUSTOMIZE
-  INTERVIEW
-  COMPLETED // All 3 steps are done
+// 文档来源类型（与代码中的字符串保持一致）
+enum DocumentSourceType {
+  resume
+  job_description
+
   @@schema("public")
 }
 
-// Tracks key user actions for internal analysis (100% data ownership)
 model AnalyticsEvent {
-  id        String     @id @default(cuid())
-
-  // Can be null for anonymous events (like page_view on landing)
-  userId    String?    @map("user_id")
-  user      users_sync? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-
-  eventName String     @map("event_name") // e.g., "TASK_CREATED"
-  payload   Json?      // e.g., { "task": "match", "isFree": true }
-
-  createdAt DateTime   @default(now()) @map("created_at")
+  id        String      @id @default(cuid())
+  userId    String?     @map("user_id")
+  eventName String      @map("event_name")
+  payload   Json?
+  createdAt DateTime    @default(now()) @map("created_at")
+  user      users_sync? @relation(fields: [userId], references: [id])
 
   @@index([eventName, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@map("analytics_events")
+  @@schema("public")
+}
+
+model LlmUsageLog {
+  id             String   @id @default(cuid())
+
+  // Associations
+  userId         String?  @map("user_id")
+  serviceId      String?  @map("service_id")
+  taskTemplateId String   @map("task_template_id")
+
+  // Provider & Model
+  provider       String
+  modelId        String   @map("model_id")
+  modelName      String?  @map("model_name")
+
+  // Performance & Cost
+  inputTokens    Int      @default(0) @map("input_tokens")
+  outputTokens   Int      @default(0) @map("output_tokens")
+  totalTokens    Int      @default(0) @map("total_tokens")
+  latencyMs      Int      @map("latency_ms")
+  cost           Float?   @default(0)
+
+  // Status
+  isStream       Boolean  @default(false) @map("is_stream")
+  isSuccess      Boolean  @default(true) @map("is_success")
+  errorMessage   String?  @map("error_message")
+
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([taskTemplateId, createdAt(sort: Desc)])
+  @@map("llm_usage_logs")
+  @@schema("public")
+}
+
+enum AsyncTaskStatus {
+  PENDING
+  COMPLETED
+  FAILED
+
+  @@schema("public")
+}
+
+enum ServiceStep {
+  MATCH
+  CUSTOMIZE
+  INTERVIEW
+  COMPLETED
+
   @@schema("public")
 }

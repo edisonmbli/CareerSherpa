@@ -275,10 +275,10 @@ JD原文:
 """
 
 请执行以下操作：
-1.  **突出优势**：放大 `match_analysis_json` 中提到的所有 `strengths`。
+1.  **突出优势**：放大 \`match_analysis_json\` 中提到的所有 \`strengths\`。
 2.  **量化成就**：使用 RAG 知识库中的“XYZ 法则” 和“动作动词” 重写项目描述。
-3.  **关键词匹配**：确保 `job_summary_json` 中的“mustHaves”关键词在新简历中显眼地出现。
-4.  **规避劣势**：弱化或删除与 JD 无关、且暴露劣势（`weaknesses`）的条目。
+3.  **关键词匹配**：确保 \`job_summary_json\` 中的“mustHaves”关键词在新简历中显眼地出现。
+4.  **规避劣势**：弱化或删除与 JD 无关、且暴露劣势（\`weaknesses\`）的条目。
 5.  **输出 Markdown**：严格按照 Schema 输出完整的 Markdown 简历和修改摘要。`,
     variables: ['rag_context', 'resume_text', 'job_summary_json', 'match_analysis_json'],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
@@ -314,7 +314,7 @@ JD原文:
 请执行以下操作：
 1.  **自我介绍**：结合 RAG 知识库中的“P-P-F”结构，生成一段 1 分钟的自我介绍，**必须**突出简历中最匹配 JD 的亮点。
 2.  **高频问题**：预测 5-7 个**最可能**被问到的问题。
-    * **必须**包含针对 `match_analysis_json` 中 `weaknesses`（劣势） 的压力测试问题（例如：“我看到你只有 2 年经验，我们这个岗位要求 5 年，你如何胜任？”）。
+    * **必须**包含针对 \`match_analysis_json\` 中 \`weaknesses\`（劣势） 的压力测试问题（例如：“我看到你只有 2 年经验，我们这个岗位要求 5 年，你如何胜任？”）。
     * **必须**结合 RAG 知识库，为每个问题提供“回答思路”和“STAR 案例建议”。
 3.  **反问问题**：结合 RAG 知识库，提供 3 个高质量的反问问题。`,
     variables: ['rag_context', 'customized_resume_md', 'job_summary_json', 'match_analysis_json'],
