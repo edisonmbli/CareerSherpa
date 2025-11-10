@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { execSync } from 'child_process'
 import { ENV } from './env'
+import { buildPrismaUrl } from './prismaConnection'
+import { PrismaNeon } from '@prisma/adapter-neon'
+import { neonConfig } from '@neondatabase/serverless'
+
+// Use fetch channel to avoid WebSocket dependency in Node
+neonConfig.poolQueryViaFetch = true
 
 let _prisma: PrismaClient | null = null
 let _migrated = false
@@ -10,13 +16,9 @@ export function getPrismaClient() {
     if (!ENV.DATABASE_URL) {
       throw new Error('missing_DATABASE_URL')
     }
-    _prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: ENV.DATABASE_URL
-        }
-      }
-    })
+    const connectionString = buildPrismaUrl(ENV.DATABASE_URL)
+    const adapter = new PrismaNeon({ connectionString })
+    _prisma = new PrismaClient({ adapter })
   }
   return _prisma
 }

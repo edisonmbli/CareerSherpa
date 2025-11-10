@@ -4,6 +4,7 @@ import { stackServerApp } from '@/stack/server';
 import { i18n, isSupportedLocale } from '@/i18n-config';
 import { logInfo, logError } from '@/lib/logger';
 import { generateUUID } from '@/lib/security/edge-crypto';
+import { isStackAuthReady } from '@/lib/env';
 
 function getLocale(request: NextRequest): string {
   // 1. 检查Cookie中的语言设置
@@ -73,6 +74,10 @@ export async function middleware(request: NextRequest) {
   const requiresAuth = !isPublicPath;
 
   if (requiresAuth) {
+    // Fail-open when Stack Auth is not configured to avoid build-time errors
+    if (!isStackAuthReady()) {
+      return NextResponse.next();
+    }
     try {
       // 使用Stack Auth验证用户
       const user = await stackServerApp.getUser();

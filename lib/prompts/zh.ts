@@ -320,4 +320,57 @@ JD原文:
     variables: ['rag_context', 'customized_resume_md', 'job_summary_json', 'match_analysis_json'],
     outputSchema: SCHEMAS_V2.INTERVIEW_PREP,
   },
+  // 非生成型任务（嵌入/RAG流水线）占位模板
+  rag_embedding: {
+    id: 'rag_embedding',
+    name: 'RAG 嵌入生成',
+    description: '仅用于嵌入生成与日志记录的占位模板（不进行文本生成）。',
+    systemPrompt: SYSTEM_BASE,
+    userPrompt: `返回一个空的 JSON 对象。本模板仅作为嵌入任务的占位符。`,
+    variables: ['text'],
+    outputSchema: { type: 'object', properties: {} } as JsonSchema,
+  },
+  // --- 视觉OCR提取 ---
+  ocr_extract: {
+    id: 'ocr_extract',
+    name: 'OCR 文本提取',
+    description: '对 Base64 编码的图像执行 OCR，并返回结构化文本。',
+    systemPrompt: SYSTEM_BASE,
+    userPrompt: `你将收到一张 Base64 编码的图像及其来源类型。
+你的任务是进行 OCR 并返回严格有效的 JSON 对象，遵循以下 Schema。
+
+说明：
+- 只包含你有把握提取的文本，不要臆造。
+- 如有版式特征（表格、列表、章节），请检测并标注。
+- 如果图像不是以文本为主，请在 notes 中说明。
+- 必须以 JSON 对象形式输出，不要包含多余说明文字。
+
+输入：
+- source_type: {{source_type}}
+- image_base64:
+"""
+{{image}}
+"""`,
+    variables: ['image', 'source_type'],
+    outputSchema: {
+      type: 'object',
+      properties: {
+        extracted_text: { type: 'string' },
+        content_type: { type: 'string' },
+        language: { type: 'string' },
+        structure: {
+          type: 'object',
+          properties: {
+            has_tables: { type: 'boolean' },
+            has_lists: { type: 'boolean' },
+            sections: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['has_tables', 'has_lists', 'sections'],
+        },
+        confidence: { type: 'number' },
+        notes: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['extracted_text', 'content_type', 'language', 'structure'],
+    } as JsonSchema,
+  },
 };

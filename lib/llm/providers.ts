@@ -3,6 +3,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import { ChatDeepSeek } from '@langchain/deepseek'
 import { ENV } from '../env'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
+import { generateEmbedding, generateEmbeddings, getEmbeddingDimensions } from './embeddings'
 
 export interface LLMConfig {
   model: string
@@ -403,4 +404,23 @@ export function getModel(
     ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
   }
   return new ChatOpenAI(params)
+}
+
+/**
+ * 返回一个兼容 LlamaIndex TS 的 EmbeddingModel
+ * - 方法：getTextEmbedding / getTextEmbeddings
+ * - 维度：通过 GLMEmbeddingProvider 的 getEmbeddingDimensions 保持 2048
+ */
+export function getLlamaIndexEmbeddingModel() {
+  const dimensions = getEmbeddingDimensions()
+  return {
+    dimension: dimensions,
+    // LlamaIndex TS 约定的方法名
+    async getTextEmbedding(text: string): Promise<number[]> {
+      return await generateEmbedding(text)
+    },
+    async getTextEmbeddings(texts: string[]): Promise<number[][]> {
+      return await generateEmbeddings(texts)
+    },
+  }
 }

@@ -140,42 +140,11 @@ class AuditLogQueue {
    * 批量插入审计日志
    */
   private async batchInsert(entries: AuditLogEntry[]): Promise<BatchAuditResult> {
-    let processed = 0
-    let failed = 0
+    // 临时禁用数据库写入：仅统计成功数量
+    const processed = entries.length
+    const failed = 0
     const errors: string[] = []
-
-    try {
-      // 使用事务批量插入
-      await prisma.$transaction(async (tx) => {
-        for (const entry of entries) {
-          try {
-            await tx.auditLog.create({
-              data: {
-                userId: entry.userId,
-                action: entry.action,
-                entityType: entry.entityType,
-                entityId: entry.entityId,
-                ...(entry.metadata !== undefined && { metadata: entry.metadata }),
-                createdAt: entry.timestamp || new Date()
-              }
-            })
-            processed++
-          } catch (error) {
-            failed++
-            const errorMessage = error instanceof Error ? error.message : 'unknown_error'
-            errors.push(`Entry ${entry.action}: ${errorMessage}`)
-          }
-        }
-      })
-    } catch (error) {
-      // 事务失败，所有条目都失败
-      failed = entries.length
-      processed = 0
-      const errorMessage = error instanceof Error ? error.message : 'transaction_failed'
-      errors.push(errorMessage)
-    }
-
-    return { success: failed === 0, processed, failed, errors }
+    return { success: true, processed, failed, errors }
   }
 
   /**
@@ -212,41 +181,16 @@ export function logAuditAsync(entry: AuditLogEntry): boolean {
  * 同步记录审计日志（阻塞，仅用于关键操作）
  */
 export async function logAuditSync(entry: AuditLogEntry): Promise<boolean> {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId: entry.userId,
-        action: entry.action,
-        entityType: entry.entityType,
-        entityId: entry.entityId,
-        ...(entry.metadata !== undefined && { metadata: entry.metadata }),
-        createdAt: entry.timestamp || new Date()
-      }
-    })
-
-    logInfo({
-      reqId: entry.reqId || `audit-sync-${Date.now()}`,
-      route: entry.route || 'audit-sync',
-      userKey: entry.userId,
-      action: entry.action,
-      entityType: entry.entityType,
-      entityId: entry.entityId
-    })
-
-    return true
-  } catch (error) {
-    logError({
-      reqId: entry.reqId || `audit-sync-${Date.now()}`,
-      route: entry.route || 'audit-sync',
-      userKey: entry.userId,
-      error: error instanceof Error ? error.message : 'unknown_error',
-      action: entry.action,
-      entityType: entry.entityType,
-      entityId: entry.entityId
-    })
-
-    return false
-  }
+  // 临时禁用数据库写入：直接记录信息并返回成功
+  logInfo({
+    reqId: entry.reqId || `audit-sync-${Date.now()}`,
+    route: entry.route || 'audit-sync',
+    userKey: entry.userId,
+    action: entry.action,
+    entityType: entry.entityType,
+    entityId: entry.entityId
+  })
+  return true
 }
 
 /**

@@ -406,4 +406,65 @@ Please perform the following actions:
     ],
     outputSchema: SCHEMAS_V2.INTERVIEW_PREP,
   },
+  // Placeholder for non-generative embedding task (logging only)
+  rag_embedding: {
+    id: 'rag_embedding',
+    name: 'RAG Embedding',
+    description: 'Embedding-only task placeholder (no text generation).',
+    systemPrompt: SYSTEM_BASE,
+    userPrompt: `Return an empty JSON object. This template is a placeholder for embedding tasks.`,
+    variables: ['text'],
+    outputSchema: { type: 'object', properties: {} } as JsonSchema,
+  },
+  // --- Vision OCR extraction ---
+  ocr_extract: {
+    id: 'ocr_extract',
+    name: 'OCR Text Extraction',
+    description: 'Extract structured text from a base64-encoded image using a vision model.',
+    systemPrompt: SYSTEM_BASE,
+    userPrompt: `You will receive an image encoded in Base64 along with the source type.
+Your task is to perform OCR and return a strictly valid JSON object following the schema below.
+
+Instructions:
+- Only include text you can confidently extract; do not hallucinate.
+- Detect layout features (tables, lists, sections) if present.
+- If the image is not primarily text, set 'notes' accordingly.
+- ALWAYS respond with a valid JSON object, no prose.
+
+Inputs:
+- source_type: {{source_type}}
+- image_base64:
+"""
+{{image}}
+"""
+
+Output JSON Schema fields:
+- extracted_text: string
+- content_type: string (e.g., 'document_scan', 'screenshot', 'photo')
+- language: string (BCP-47 or simple code like 'en', 'zh')
+- structure: { has_tables: boolean, has_lists: boolean, sections: string[] }
+- confidence: number (0.0 to 1.0)
+- notes: string[] (optional)`,
+    variables: ['image', 'source_type'],
+    outputSchema: {
+      type: 'object',
+      properties: {
+        extracted_text: { type: 'string' },
+        content_type: { type: 'string' },
+        language: { type: 'string' },
+        structure: {
+          type: 'object',
+          properties: {
+            has_tables: { type: 'boolean' },
+            has_lists: { type: 'boolean' },
+            sections: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['has_tables', 'has_lists', 'sections'],
+        },
+        confidence: { type: 'number' },
+        notes: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['extracted_text', 'content_type', 'language', 'structure'],
+    } as JsonSchema,
+  },
 }

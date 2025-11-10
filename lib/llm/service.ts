@@ -6,7 +6,7 @@ import { routeTask } from '@/lib/llm/task-router'
 import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts'
 import { getTaskSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
 import { validateJson } from '@/lib/llm/json-validator'
-import { createLlmUsageLog, createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
+import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
 import { getProvider, getCost } from '@/lib/llm/utils'
 import { glmEmbeddingProvider } from '@/lib/llm/embeddings'
 
@@ -69,10 +69,17 @@ export async function runLlmTask<T extends TaskTemplateId>(
   // 统一入口：根据路由决策选择结构化或流式执行
   const userHasQuota = (options.tier ?? 'paid') === 'paid'
   const hasImage = options.hasImage ?? Boolean(variables['image'] || variables['jobImage'])
-  const decision = routeTask(taskId, userHasQuota, {
-    hasImage,
-    preferReasoning: options.preferReasoning,
-  })
+  const decision = routeTask(
+    taskId,
+    userHasQuota,
+    {
+      hasImage,
+      // exactOptionalPropertyTypes: 仅在定义时传入，否则省略
+      ...(options.preferReasoning !== undefined
+        ? { preferReasoning: options.preferReasoning }
+        : {})
+    }
+  )
 
   if (decision.worker === 'stream') {
     return runStreamingLlmTask(decision.modelId, taskId, locale, variables, {}) as Promise<RunLlmTaskResult<T>>

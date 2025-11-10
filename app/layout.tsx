@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import { stackServerApp } from "@/stack/server";
+import { isStackAuthReady } from "@/lib/env";
 import { Suspense } from "react";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import "./globals.css";
@@ -46,15 +47,23 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <StackProvider app={stackServerApp}>
-          <StackTheme theme={theme}>
-            <TooltipProvider>
-              <Suspense fallback={<div>Loading...</div>}>
-                {children}
-              </Suspense>
-            </TooltipProvider>
-          </StackTheme>
-        </StackProvider>
+        {isStackAuthReady() ? (
+          <StackProvider app={stackServerApp}>
+            <StackTheme theme={theme}>
+              <TooltipProvider>
+                <Suspense fallback={<div>Loading...</div>}>
+                  {children}
+                </Suspense>
+              </TooltipProvider>
+            </StackTheme>
+          </StackProvider>
+        ) : (
+          <TooltipProvider>
+            <Suspense fallback={<div>Loading...</div>}>
+              {children}
+            </Suspense>
+          </TooltipProvider>
+        )}
       </body>
     </html>
   );

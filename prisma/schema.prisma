@@ -160,45 +160,21 @@ model Interview {
 
 model KnowledgeEntry {
   id        String                 @id @default(cuid())
-  title     String?
-  content   String
+  title     String?                // H3 标题
+  content   String                 // 分块后的文本
+
+  // 根据 Zhipu 官方文档，默认维度为 2048
   embedding Unsupported("vector(2048)")?
-  lang      String
-  source    String?
-  category  String?
+
+  lang      String                 // "zh" or "en"
+  source    String?                // e.g., "求职干货宝典_rag_zh.md"
+  category  String?                // "cv_customize", "job_match", "interview_strategies" etc.
   isPublic  Boolean                @default(true) @map("is_public")
   createdAt DateTime               @default(now()) @map("created_at")
-  updatedAt DateTime               @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime               @updatedAt @map("updated_at")
 
   @@index([lang, category, isPublic])
   @@map("knowledge_entries")
-  @@schema("public")
-}
-
-// RAG 文档存储（向量检索）
-model Document {
-  id         String                 @id @default(cuid())
-  content    String
-  embedding  Unsupported("vector(2048)")?
-  userId     String                 @map("user_id")
-  sourceType DocumentSourceType     @map("source_type")
-  sourceId   String                 @map("source_id")
-  metadata   Json?
-  chunkIndex Int?                   @map("chunk_index")
-  createdAt  DateTime               @default(now()) @map("created_at")
-  updatedAt  DateTime               @default(now()) @updatedAt @map("updated_at")
-
-  @@index([userId, sourceType, sourceId])
-  @@index([sourceType, createdAt(sort: Desc)])
-  @@map("documents")
-  @@schema("public")
-}
-
-// 文档来源类型（与代码中的字符串保持一致）
-enum DocumentSourceType {
-  resume
-  job_description
-
   @@schema("public")
 }
 

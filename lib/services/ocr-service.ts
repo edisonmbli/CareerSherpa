@@ -5,9 +5,7 @@
  * the unified llm-scheduler and prompt template system.
  */
 
-import { llmScheduler, executeLLMTask } from '../llm/llm-scheduler'
-import { PromptExecutor } from '../prompts/executor'
-import { renderTemplate } from '../prompts/templates'
+import { runLlmTask } from '@/lib/llm/service'
 import { logInfo, logError } from '../logger'
 
 /**
@@ -32,11 +30,7 @@ export interface OCRResult {
  * OCR Service class
  */
 export class OCRService {
-  private promptExecutor: PromptExecutor
-
-  constructor() {
-    this.promptExecutor = new PromptExecutor()
-  }
+  constructor() {}
 
   /**
    * Extract text from media using vision model
@@ -58,33 +52,13 @@ export class OCRService {
         mediaSize: mediaBase64.length
       })
 
-      // Build OCR prompt using template
-      const ocrPrompt = this.buildOCRPrompt(sourceType)
+      // Execute OCR using unified LLM service with vision routing
+      const result = await runLlmTask('ocr_extract', 'en', {
+        image: mediaBase64,
+        source_type: sourceType,
+      }, { tier: 'free', hasImage: true, temperature: 0.1, maxTokens: 8000 })
 
-      // Prepare the vision task for LLM scheduler
-      const visionTask = {
-        id: `ocr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        userId,
-        serviceId,
-        type: 'vision' as const,
-        step: 'extract' as const,
-        prompt: ocrPrompt,
-        mediaBase64,
-        priority: 2,
-        maxRetries: 2,
-        tier: 'free' as const,
-        createdAt: new Date(),
-        retries: 0,
-        config: {
-          maxTokens: 8000,
-          temperature: 0.1
-        }
-      }
-
-      // Execute OCR using LLM scheduler
-      const result = await executeLLMTask(visionTask)
-
-      if (!result.success || !result.response) {
+      if (!result.ok || !result.data) {
         logError({
           reqId: `ocr_${serviceId}`,
           route: 'ocr/extract',
@@ -99,9 +73,15 @@ export class OCRService {
         }
       }
 
-      // Parse the OCR result
-      const responseContent = result.response.content
-      const ocrData = this.parseOCRResponse(responseContent)
+      // Parse structured OCR result
+      const ocrData = result.data as unknown as {
+        extracted_text: string
+        content_type: string
+        language: string
+        structure: { has_tables: boolean; has_lists: boolean; sections: string[] }
+        confidence?: number
+        notes?: string[]
+      }
 
       if (!ocrData) {
         return {
@@ -130,7 +110,7 @@ export class OCRService {
         contentType: ocrData.content_type,
         language: ocrData.language,
         structure: ocrData.structure,
-        confidence: ocrData.confidence,
+        confidence: ocrData.confidence ?? 0.95,
         notes: ocrData.notes || []
       }
 
@@ -151,15 +131,7 @@ export class OCRService {
   }
 
   /**
-   * Build OCR prompt using template system
-   */
-  private buildOCRPrompt(sourceType: string): string {
-    const { systemPrompt, userPrompt } = renderTemplate('ocr_extract', { sourceType })
-    return `${systemPrompt}\n\n${userPrompt}`
-  }
-
-  /**
-   * Parse OCR response from LLM
+   * Parse OCR response from LLM (legacy fallback for providers returning raw JSON text)
    */
   private parseOCRResponse(content: string): {
     extracted_text: string

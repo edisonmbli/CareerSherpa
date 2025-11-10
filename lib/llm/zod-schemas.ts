@@ -92,6 +92,22 @@ const interviewPrepSchema = z.object({
   reverse_questions: z.array(z.string()).min(1),
 })
 
+// OCR extraction schema (vision task)
+const ocrExtractSchema = z.object({
+  extracted_text: z.string().min(1),
+  content_type: z.string().min(1),
+  language: z.string().min(1),
+  structure: z
+    .object({
+      has_tables: z.boolean(),
+      has_lists: z.boolean(),
+      sections: z.array(z.string()),
+    })
+    .default({ has_tables: false, has_lists: false, sections: [] }),
+  confidence: z.number().min(0).max(1).optional(),
+  notes: z.array(z.string()).optional(),
+})
+
 // 统一映射
 const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   resume_summary: resumeSummarySchema,
@@ -100,6 +116,9 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   job_match: jobMatchSchema,
   resume_customize: resumeCustomizeSchema,
   interview_prep: interviewPrepSchema,
+  ocr_extract: ocrExtractSchema,
+  // 非生成型任务（嵌入/RAG流水线）占位
+  rag_embedding: z.object({}),
 }
 
 export type TaskOutput<T extends TaskTemplateId> = z.infer<(typeof SCHEMA_MAP)[T]>

@@ -39,7 +39,8 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
       model: 'embedding-3',
       dimensions: 2048,
       maxTokens: 8192,
-      batchSize: 100,
+      // 许多嵌入 API 对每次请求的数组长度有限制，保守默认 16
+      batchSize: 16,
       ...config
     }
   }
@@ -101,10 +102,12 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
 
     // 分批处理以避免超过API限制
     const results: EmbeddingResult[] = []
-    const batchSize = this.config.batchSize
+    const batchSize = Math.max(1, Math.min(this.config.batchSize, 16))
 
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize)
+      const cleanBatch = batch.map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t.length > 0)
+      if (cleanBatch.length === 0) continue
       
       try {
         const response = await fetch('https://open.bigmodel.cn/api/paas/v4/embeddings', {
@@ -115,13 +118,14 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
           },
           body: JSON.stringify({
             model: this.config.model,
-            input: batch,
+            input: cleanBatch,
             dimensions: this.config.dimensions,
           }),
         })
 
         if (!response.ok) {
-          throw new Error(`GLM API error: ${response.status} ${response.statusText}`)
+          const bodyText = await response.text().catch(() => '')
+          throw new Error(`GLM API error: ${response.status} ${response.statusText} ${bodyText}`)
         }
 
         const data = await response.json()
@@ -153,7 +157,10 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
 }
 
 // 全局嵌入提供商实例
-export const glmEmbeddingProvider = new GLMEmbeddingProvider()
+export const glmEmbeddingProvider = new GLMEmbeddingProvider({
+  // 允许通过环境变量控制每次请求的批大小，但仍做上限保护
+  batchSize: Math.max(1, Math.min(ENV.BATCH_OPERATION_SIZE || 10, 16)),
+})
 
 /**
  * 便捷函数：生成单个文本的嵌入

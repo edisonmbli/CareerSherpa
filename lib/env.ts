@@ -1,14 +1,5 @@
-import { config } from 'dotenv'
-import path from 'path'
-import { fileURLToPath } from 'url'
-
-// 获取项目根目录的绝对路径
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const projectRoot = path.resolve(__dirname, '..')
-
-// 加载环境变量，使用绝对路径
-config({ path: path.join(projectRoot, '.env.local') })
+// Edge/Node 兼容的环境变量读取：仅使用 process.env
+// Next.js 会在运行时/构建时注入 .env.local，无需手动加载。
 
 export const ENV = {
   OPENAI_API_KEY: process.env['OPENAI_API_KEY'] ?? '',

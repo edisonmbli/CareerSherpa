@@ -29,6 +29,7 @@ export type TaskTemplateId =
   | 'job_match'
   | 'resume_customize'
   | 'interview_prep'
+  | 'ocr_extract'
   // 非对话/非生成型任务的统一日志标识（用于嵌入生成、RAG流水线）
   | 'rag_embedding'
 
