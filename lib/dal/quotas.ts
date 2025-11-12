@@ -3,30 +3,36 @@ import { withPrismaGuard } from '@/lib/guard/prismaGuard'
 import { Prisma } from '@prisma/client'
 
 // 初始赠送金币（可通过环境变量配置，默认 8）
-const INITIAL_FREE_QUOTA = parseInt((process.env['INITIAL_FREE_QUOTA'] ?? '8'), 10)
+const INITIAL_FREE_QUOTA = parseInt(
+  process.env['INITIAL_FREE_QUOTA'] ?? '8',
+  10
+)
 
 /**
  * 获取或创建用户的金币账户（延迟初始化）
  */
 export async function getOrCreateQuota(userId: string) {
-  return await withPrismaGuard(async (client) => {
-    const existing = await client.quota.findUnique({ where: { userId } })
-    if (existing) return existing
+  return await withPrismaGuard(
+    async (client) => {
+      const existing = await client.quota.findUnique({ where: { userId } })
+      if (existing) return existing
 
-    try {
-      return await client.quota.create({
-        data: { userId, balance: INITIAL_FREE_QUOTA },
-      })
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        return await client.quota.findUniqueOrThrow({ where: { userId } })
+      try {
+        return await client.quota.create({
+          data: { userId, balance: INITIAL_FREE_QUOTA },
+        })
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          return await client.quota.findUniqueOrThrow({ where: { userId } })
+        }
+        throw error
       }
-      throw error
-    }
-  }, { attempts: 3, prewarm: true })
+    },
+    { attempts: 3, prewarm: true }
+  )
 }
 
 /**
@@ -45,19 +51,24 @@ export async function deductQuota(
       where: { userId, balance: { gte: amount } },
       data: { balance: { decrement: amount } },
     })
-    if (result.count === 0) return { success: false, error: 'InsufficientQuota' }
+    if (result.count === 0)
+      return { success: false, error: 'InsufficientQuota' }
     return { success: true }
   }
 
   // 无事务时，走守护重试路径
-  return await withPrismaGuard(async (client) => {
-    const result = await client.quota.updateMany({
-      where: { userId, balance: { gte: amount } },
-      data: { balance: { decrement: amount } },
-    })
-    if (result.count === 0) return { success: false, error: 'InsufficientQuota' }
-    return { success: true }
-  }, { attempts: 3, prewarm: true })
+  return await withPrismaGuard(
+    async (client) => {
+      const result = await client.quota.updateMany({
+        where: { userId, balance: { gte: amount } },
+        data: { balance: { decrement: amount } },
+      })
+      if (result.count === 0)
+        return { success: false, error: 'InsufficientQuota' }
+      return { success: true }
+    },
+    { attempts: 3, prewarm: true }
+  )
 }
 
 /**
@@ -75,12 +86,15 @@ export async function addQuota(
       data: { balance: { increment: amount } },
     })
   }
-  return await withPrismaGuard(async (client) => {
-    return await client.quota.update({
-      where: { userId },
-      data: { balance: { increment: amount } },
-    })
-  }, { attempts: 3, prewarm: true })
+  return await withPrismaGuard(
+    async (client) => {
+      return await client.quota.update({
+        where: { userId },
+        data: { balance: { increment: amount } },
+      })
+    },
+    { attempts: 3, prewarm: true }
+  )
 }
 
 /**

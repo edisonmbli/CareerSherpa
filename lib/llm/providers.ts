@@ -9,7 +9,7 @@ export interface LLMConfig {
   model: string
   maxTokens?: number
   temperature?: number
-  timeout?: number // 添加 timeout 参数（以秒为单位）
+  timeout?: number // 以毫秒为单位（与 LangChain/OpenAI 客户端一致）
   provider: 'zhipu' | 'deepseek' | 'openai'
   tier: 'free' | 'paid'
 }
@@ -119,17 +119,12 @@ export class DeepSeekProvider implements LLMProvider {
       throw new Error('DeepSeek API key not configured')
     }
 
-    // 将timeout从毫秒转换为秒，并确保有兜底值
-    const timeoutInSeconds = config.timeout
-      ? Math.ceil(config.timeout / 1000)
-      : 180 // 默认3分钟
-
     return new ChatDeepSeek({
       apiKey: ENV.DEEPSEEK_API_KEY,
       model: config.model,
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? 4000,
-      timeout: timeoutInSeconds, // DeepSeek期望秒
+      timeout: config.timeout ?? 180000, // 毫秒；默认3分钟
     })
   }
 
@@ -172,17 +167,12 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error('OpenAI API key not configured')
     }
 
-    // 将timeout从毫秒转换为秒，并确保有兜底值
-    const timeoutInSeconds = config.timeout
-      ? Math.ceil(config.timeout / 1000)
-      : 180 // 默认3分钟
-
     return new ChatOpenAI({
       apiKey: ENV.OPENAI_API_KEY,
       model: config.model,
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? 4000,
-      timeout: timeoutInSeconds, // OpenAI期望秒
+      timeout: config.timeout ?? 180000, // 毫秒；默认3分钟
     })
   }
 
@@ -329,12 +319,16 @@ export const MODEL_CONFIGS = {
 // }
 
 // --- M4: Export canonical ModelId and getModel per routing table ---
-export type ModelId =
-  | 'deepseek-reasoner'
-  | 'deepseek-chat'
-  | 'glm-4.5-flash'
-  | 'glm-4.1v-thinking-flash'
-  | 'glm-embedding-3'
+// 运行时可用的模型 ID 常量，避免仅类型导出导致的运行时 undefined
+export const ModelId = {
+  DEEPSEEK_REASONER: 'deepseek-reasoner',
+  DEEPSEEK_CHAT: 'deepseek-chat',
+  GLM_45_FLASH: 'glm-4.5-flash',
+  GLM_VISION_THINKING_FLASH: 'glm-4.1v-thinking-flash',
+  GLM_EMBEDDING_3: 'glm-embedding-3',
+} as const
+
+export type ModelId = typeof ModelId[keyof typeof ModelId]
 
 export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' {
   if (modelId.startsWith('deepseek')) return 'deepseek'
@@ -346,39 +340,39 @@ export function getModel(
   opts: { temperature?: number; maxTokens?: number; timeoutMs?: number } = {}
 ): BaseChatModel {
   const { temperature, maxTokens, timeoutMs } = opts
+  const timeout = timeoutMs ?? undefined
+  // 收敛 provider 层的调试输出：参数确认交由路由层打印一次
 
   if (modelId === 'deepseek-reasoner') {
-    // DeepSeek via OpenAI-compatible endpoint
+    // Prefer native DeepSeek adapter to avoid OpenAI adapter timeout issues
     const params: any = {
       apiKey: ENV.DEEPSEEK_API_KEY,
-      baseURL: 'https://api.deepseek.com/v1',
       model: 'deepseek-reasoner',
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
-      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
     }
-    return new ChatOpenAI(params)
+    return new ChatDeepSeek(params)
   }
 
   if (modelId === 'deepseek-chat') {
     const params: any = {
       apiKey: ENV.DEEPSEEK_API_KEY,
-      baseURL: 'https://api.deepseek.com/v1',
       model: 'deepseek-chat',
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
-      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
     }
-    return new ChatOpenAI(params)
+    return new ChatDeepSeek(params)
   }
 
   if (modelId === 'glm-4.5-flash') {
     const params: any = {
       apiKey: ENV.ZHIPUAI_API_KEY,
-      modelName: 'glm-4.5-flash',
+      model: 'glm-4.5-flash',
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
-      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
     }
     return new ChatZhipuAI(params)
   }
@@ -386,10 +380,10 @@ export function getModel(
   if (modelId === 'glm-4.1v-thinking-flash') {
     const params: any = {
       apiKey: ENV.ZHIPUAI_API_KEY,
-      modelName: 'glm-4.1v-thinking-flash',
+      model: 'glm-4.1v-thinking-flash',
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
-      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
     }
     return new ChatZhipuAI(params)
   }
@@ -401,7 +395,7 @@ export function getModel(
     model: 'deepseek-chat',
     ...(temperature !== undefined ? { temperature } : {}),
     ...(maxTokens !== undefined ? { maxTokens } : {}),
-    ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+    ...(timeout !== undefined ? { timeout } : {}),
   }
   return new ChatOpenAI(params)
 }

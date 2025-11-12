@@ -1,4 +1,5 @@
-import { ENV, isProdRedisReady } from './env'
+import { isProdRedisReady } from './env'
+import { getRedis } from '@/lib/redis/client'
 
 type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
 
@@ -8,37 +9,37 @@ const boundLimit = 15
 
 const mem = new Map<string, { count: number; resetAt: number }>()
 
-async function upstashPipeline(cmds: string[][]) {
-  const res = await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/pipeline`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(cmds),
-  })
-  if (!res.ok) {
-    throw new Error('upstash_request_failed')
-  }
-  return res.json()
-}
-
+// 统一 Upstash 访问方式：改用 getRedis 客户端
 async function upstashRate(key: string, limit: number): Promise<RateResult> {
-  const out = await upstashPipeline([
-    ['INCR', key],
-    ['EXPIRE', key, String(windowSec)],
-    ['TTL', key],
-  ])
-  const countRes = out?.[0]?.result
-  const ttlRes = out?.[2]?.result
-  const c = Number(countRes)
-  const t = Number(ttlRes)
-  if (Number.isNaN(c) || Number.isNaN(t)) {
+  const redis = getRedis()
+  const cRaw = await redis.incr(key)
+  const c = Number(cRaw)
+  if (Number.isNaN(c)) {
     return { ok: false, retryAfter: windowSec }
   }
-  if (c > limit) {
-    return { ok: false, retryAfter: t > 0 ? t : windowSec }
+
+  // 仅首次设置过期，避免每次都写 EXPIRE
+  if (c === 1) {
+    try {
+      await redis.expire(key, windowSec)
+    } catch {
+      // 忽略过期设置失败，限流按窗口秒回退
+    }
   }
+
+  // 仅超限时读取 TTL，以估算精确的 retryAfter
+  if (c > limit) {
+    let retryAfter = windowSec
+    try {
+      const tRaw = await redis.ttl(key)
+      const t = Number(tRaw)
+      if (!Number.isNaN(t) && t > 0) retryAfter = t
+    } catch {
+      // 读取 TTL 失败时，保守回退到窗口秒
+    }
+    return { ok: false, retryAfter }
+  }
+
   return { ok: true, remaining: Math.max(0, limit - c) }
 }
 

@@ -1,21 +1,9 @@
-import { ENV, isProdRedisReady } from './env'
+import { isProdRedisReady } from './env'
+import { getRedis } from '@/lib/redis/client'
 
 const memLocks = new Map<string, number>()
 
-async function upstashPipeline(cmds: string[][]) {
-  const res = await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/pipeline`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(cmds),
-  })
-  if (!res.ok) {
-    throw new Error('upstash_request_failed')
-  }
-  return res.json()
-}
+// 统一 Upstash 访问方式：改用 getRedis 客户端
 
 export async function acquireLock(
   identity: string,
@@ -25,10 +13,8 @@ export async function acquireLock(
   const key = `lock:${identity}:${taskKind}`
   if (isProdRedisReady()) {
     try {
-      const out = await upstashPipeline([
-        ['SET', key, '1', 'NX', 'EX', String(ttlSec)],
-      ])
-      const setRes = out?.[0]?.result
+      const redis = getRedis()
+      const setRes = await redis.set(key, '1', { nx: true, ex: ttlSec })
       return setRes === 'OK'
     } catch {
       // fall through to memory
@@ -45,7 +31,8 @@ export async function releaseLock(identity: string, taskKind: string) {
   const key = `lock:${identity}:${taskKind}`
   if (isProdRedisReady()) {
     try {
-      await upstashPipeline([['DEL', key]])
+      const redis = getRedis()
+      await redis.del(key)
       return
     } catch {
       // fall through to memory

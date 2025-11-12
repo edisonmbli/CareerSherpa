@@ -1,4 +1,5 @@
-import { ENV, isProdRedisReady } from '@/lib/env'
+import { isProdRedisReady } from '@/lib/env'
+import { getRedis } from '@/lib/redis/client'
 
 type BackpressureResult = {
   ok: boolean
@@ -10,20 +11,7 @@ type BackpressureResult = {
 // In-memory fallback for local/dev when Upstash is not configured
 const memCounters = new Map<string, { count: number; expiresAt: number }>()
 
-async function upstashPipeline(cmds: string[][]) {
-  const res = await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/pipeline`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(cmds),
-  })
-  if (!res.ok) {
-    throw new Error('upstash_request_failed')
-  }
-  return res.json()
-}
+// 统一 Upstash 访问方式：改用 getRedis 客户端
 
 function nowMs() {
   return Date.now()
@@ -82,23 +70,29 @@ export async function bumpPending(
   }
 
   try {
-    const out = await upstashPipeline([
-      ['INCR', key],
-      ['EXPIRE', key, String(ttlSec)],
-      ['TTL', key],
-    ])
-    const c = Number(out?.[0]?.result)
-    const t = Number(out?.[2]?.result)
-    const retryAfter = t > 0 ? t : ttlSec
-    if (Number.isNaN(c)) return { ok: false, retryAfter }
+    const redis = getRedis()
+    const cRaw = await redis.incr(key)
+    const c = Number(cRaw)
+    if (Number.isNaN(c)) return { ok: false, retryAfter: ttlSec }
+    // 仅首次设置过期，减少 EXPIRE 写
+    if (c === 1) {
+      try { await redis.expire(key, ttlSec) } catch {}
+    }
     if (c > maxPending) {
       // roll back to previous value
       try {
-        await upstashPipeline([['DECR', key]])
+        await redis.decr(key)
       } catch {
         // ignore rollback failure; consumer will still see backpressure
       }
       const pending = Math.max(0, c - 1)
+      // 仅在超限时读取 TTL 以提供更准确的重试时间
+      let retryAfter = ttlSec
+      try {
+        const tRaw = await redis.ttl(key)
+        const t = Number(tRaw)
+        if (!Number.isNaN(t) && t > 0) retryAfter = t
+      } catch {}
       return { ok: false, pending, remaining: 0, retryAfter }
     }
     return { ok: true, pending: c, remaining: Math.max(0, maxPending - c) }
@@ -117,13 +111,10 @@ export async function decPending(key: string): Promise<number> {
     return memoryDec(key)
   }
   try {
-    const out = await upstashPipeline([
-      ['DECR', key],
-      ['GET', key],
-    ])
-    const val = Number(out?.[1]?.result)
-    if (Number.isNaN(val) || val < 0) return 0
-    return val
+    const redis = getRedis()
+    await redis.decr(key)
+    // 这里无需读取当前值；调用方未使用返回值，直接返回 0 以减少额外 GET 读
+    return 0
   } catch {
     return memoryDec(key)
   }
@@ -134,12 +125,9 @@ export async function getPending(key: string): Promise<number> {
     return memoryGet(key)
   }
   try {
-    const out = await upstashPipeline([
-      ['GET', key],
-      ['TTL', key],
-    ])
-    const val = Number(out?.[0]?.result)
-    const ttl = Number(out?.[1]?.result)
+    const redis = getRedis()
+    const val = Number(await redis.get(key))
+    const ttl = Number(await redis.ttl(key))
     if (Number.isNaN(val) || ttl <= 0) return 0
     return val
   } catch {

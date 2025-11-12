@@ -1,109 +1,132 @@
+// AI IDE: Overwrite this file aligned with M6 routing spec
 import type { TaskTemplateId } from '@/lib/prompts/types'
-import type { ModelId } from '@/lib/llm/providers'
+import { ModelId as MODEL } from '@/lib/llm/providers'
+import type { ModelId as ModelIdType } from '@/lib/llm/providers'
 
-export type WorkerType = 'structured' | 'stream'
-export type Tier = 'free' | 'paid'
+// 规范: M6 队列按“体验模式”+“付费等级”划分
+export enum QueueId {
+  PAID_STREAM = 'q_paid_stream',
+  PAID_BATCH = 'q_paid_batch',
+  PAID_VISION = 'q_paid_vision',
 
-// Queue identifiers (aligning with QStash naming in docs)
-export type QueueId =
-  | 'q_deepseek_reasoner'
-  | 'q_deepseek_chat'
-  | 'q_glm_flash'
-  | 'q_glm_vision_paid'
-  | 'q_glm_vision_free'
-
-// Canonical model IDs imported from providers.ts
-
-export interface RouteDecision {
-  tier: Tier
-  modelId: ModelId
-  queueId: QueueId
-  worker: WorkerType
+  FREE_STREAM = 'q_free_stream',
+  FREE_BATCH = 'q_free_batch',
+  FREE_VISION = 'q_free_vision',
 }
 
-export interface RouteOptions {
-  hasImage?: boolean
-  preferReasoning?: boolean
+interface TaskRouting {
+  modelId: ModelIdType
+  queueId: QueueId
+  isStream: boolean // 标记此任务是否应流式
+}
+
+const ROUTING_TABLE: Partial<Record<
+  TaskTemplateId,
+  { paid: TaskRouting; free: TaskRouting }
+>> = {
+  // --- M7 资产流 (Batch) ---
+  resume_summary: {
+    paid: {
+      modelId: MODEL.DEEPSEEK_CHAT,
+      queueId: QueueId.PAID_BATCH,
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GLM_45_FLASH,
+      queueId: QueueId.FREE_BATCH,
+      isStream: false,
+    },
+  },
+  detailed_resume_summary: {
+    paid: {
+      modelId: MODEL.DEEPSEEK_REASONER,
+      queueId: QueueId.PAID_BATCH,
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GLM_45_FLASH,
+      queueId: QueueId.FREE_BATCH,
+      isStream: false,
+    },
+  },
+  job_summary: {
+    // JD 文本摘要 (Batch)
+    paid: {
+      modelId: MODEL.DEEPSEEK_CHAT,
+      queueId: QueueId.PAID_BATCH,
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GLM_45_FLASH,
+      queueId: QueueId.FREE_BATCH,
+      isStream: false,
+    },
+  },
+
+  // --- M8/M9 服务流 (Stream) ---
+  job_match: {
+    paid: {
+      modelId: MODEL.DEEPSEEK_REASONER,
+      queueId: QueueId.PAID_STREAM,
+      isStream: true,
+    },
+    free: {
+      modelId: MODEL.GLM_45_FLASH,
+      queueId: QueueId.FREE_STREAM,
+      isStream: true,
+    },
+  },
+  interview_prep: {
+    paid: {
+      modelId: MODEL.DEEPSEEK_CHAT,
+      queueId: QueueId.PAID_STREAM,
+      isStream: true,
+    },
+    free: {
+      modelId: MODEL.GLM_45_FLASH,
+      queueId: QueueId.FREE_STREAM,
+      isStream: true,
+    },
+  },
+
+  // --- M9 服务流 (Batch) ---
+  resume_customize: {
+    paid: {
+      modelId: MODEL.DEEPSEEK_CHAT,
+      queueId: QueueId.PAID_BATCH,
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GLM_45_FLASH,
+      queueId: QueueId.FREE_BATCH,
+      isStream: false,
+    },
+  },
 }
 
 /**
- * Select model, queue and worker type based on template and user quota.
+ * M8/M9 Server Action 调用的核心函数
  */
-export function routeTask(
+export const getTaskRouting = (
   templateId: TaskTemplateId,
-  userHasQuota: boolean,
-  options: RouteOptions = {}
-): RouteDecision {
-  const tier: Tier = userHasQuota ? 'paid' : 'free'
+  hasQuota: boolean
+) => {
+  const route = ROUTING_TABLE[templateId]
+  if (!route) throw new Error(`Routing for task ${templateId} not found.`)
+  return hasQuota ? route.paid : route.free
+}
 
-  // Vision tasks (job parsing / matching with image)
-  if (options.hasImage) {
-    if (tier === 'paid') {
-      return {
-        tier,
-        modelId: 'glm-4.1v-thinking-flash',
-        queueId: 'q_glm_vision_paid',
-        worker: 'structured',
+// M9 特殊任务：JD 截图
+export const getJobVisionTaskRouting = (hasQuota: boolean): TaskRouting => {
+  return hasQuota
+    ? {
+        modelId: MODEL.GLM_VISION_THINKING_FLASH,
+        queueId: QueueId.PAID_VISION,
+        isStream: false,
       }
-    }
-    return {
-      tier,
-      modelId: 'glm-4.1v-thinking-flash',
-      queueId: 'q_glm_vision_free',
-      worker: 'structured',
-    }
-  }
-
-  // Detailed resume prefers reasoning when paid
-  if (templateId === 'detailed_resume_summary') {
-    // if (tier === 'paid' || options.preferReasoning) {
-    if (tier === 'paid') {
-      return {
-        tier,
-        modelId: 'deepseek-reasoner',
-        queueId: 'q_deepseek_reasoner',
-        worker: 'structured',
+    : {
+        modelId: MODEL.GLM_VISION_THINKING_FLASH,
+        queueId: QueueId.FREE_VISION,
+        isStream: false,
       }
-    }
-    return {
-      tier,
-      modelId: 'glm-4.5-flash',
-      queueId: 'q_glm_flash',
-      worker: 'structured',
-    }
-  }
-
-  // Match and Interview tend to benefit from streaming UX
-  if (templateId === 'job_match' || templateId === 'interview_prep') {
-    if (tier === 'paid') {
-      return {
-        tier,
-        modelId: 'deepseek-chat',
-        queueId: 'q_deepseek_chat',
-        worker: 'stream',
-      }
-    }
-    return {
-      tier,
-      modelId: 'glm-4.5-flash',
-      queueId: 'q_glm_flash',
-      worker: 'stream',
-    }
-  }
-
-  // Default routing: structured text
-  if (tier === 'paid') {
-    return {
-      tier,
-      modelId: 'deepseek-chat',
-      queueId: 'q_deepseek_chat',
-      worker: 'structured',
-    }
-  }
-  return {
-    tier,
-    modelId: 'glm-4.5-flash',
-    queueId: 'q_glm_flash',
-    worker: 'structured',
-  }
 }

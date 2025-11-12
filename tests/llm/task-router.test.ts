@@ -1,64 +1,52 @@
 import { describe, it, expect } from 'vitest'
-import { routeTask, type RouteDecision } from '@/lib/llm/task-router'
+import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
 
-describe('task-router: routeTask', () => {
-  it('routes paid + reasoning for detailed_resume_summary to deepseek-reasoner structured', () => {
-    const decision: RouteDecision = routeTask('detailed_resume_summary', true, { preferReasoning: true })
-    expect(decision.tier).toBe('paid')
+describe('task-router: getTaskRouting', () => {
+  it('routes detailed_resume_summary: paid deepseek-reasoner structured', () => {
+    const decision = getTaskRouting('detailed_resume_summary', true)
     expect(decision.modelId).toBe('deepseek-reasoner')
-    expect(decision.queueId).toBe('q_deepseek_reasoner')
-    expect(decision.worker).toBe('structured')
+    expect(decision.isStream).toBe(false)
   })
 
-  it('routes free detailed_resume_summary to glm-4.5-flash structured', () => {
-    const decision = routeTask('detailed_resume_summary', false, {})
-    expect(decision.tier).toBe('free')
+  it('routes detailed_resume_summary: free glm-4.5-flash structured', () => {
+    const decision = getTaskRouting('detailed_resume_summary', false)
     expect(decision.modelId).toBe('glm-4.5-flash')
-    expect(decision.queueId).toBe('q_glm_flash')
-    expect(decision.worker).toBe('structured')
+    expect(decision.isStream).toBe(false)
   })
 
-  it('routes job_match (paid) to deepseek-chat stream', () => {
-    const decision = routeTask('job_match', true, {})
-    expect(decision.tier).toBe('paid')
-    expect(decision.modelId).toBe('deepseek-chat')
-    expect(decision.queueId).toBe('q_deepseek_chat')
-    expect(decision.worker).toBe('stream')
+  it('routes job_match (paid) to deepseek-reasoner stream', () => {
+    const decision = getTaskRouting('job_match', true)
+    expect(decision.modelId).toBe('deepseek-reasoner')
+    expect(decision.isStream).toBe(true)
   })
 
   it('routes job_match (free) to glm-4.5-flash stream', () => {
-    const decision = routeTask('job_match', false, {})
-    expect(decision.tier).toBe('free')
+    const decision = getTaskRouting('job_match', false)
     expect(decision.modelId).toBe('glm-4.5-flash')
-    expect(decision.queueId).toBe('q_glm_flash')
-    expect(decision.worker).toBe('stream')
+    expect(decision.isStream).toBe(true)
   })
 
-  it('routes hasImage true to glm-4.1v-thinking-flash structured (paid)', () => {
-    const decision = routeTask('job_summary', true, { hasImage: true })
-    expect(decision.tier).toBe('paid')
+  it('routes vision (paid) to glm-4.1v-thinking-flash structured', () => {
+    const decision = getJobVisionTaskRouting(true)
     expect(decision.modelId).toBe('glm-4.1v-thinking-flash')
-    expect(decision.queueId).toBe('q_glm_vision_paid')
-    expect(decision.worker).toBe('structured')
+    expect(decision.isStream).toBe(false)
   })
 
-  it('routes hasImage true to glm-4.1v-thinking-flash structured (free)', () => {
-    const decision = routeTask('job_summary', false, { hasImage: true })
-    expect(decision.tier).toBe('free')
+  it('routes vision (free) to glm-4.1v-thinking-flash structured', () => {
+    const decision = getJobVisionTaskRouting(false)
     expect(decision.modelId).toBe('glm-4.1v-thinking-flash')
-    expect(decision.queueId).toBe('q_glm_vision_free')
-    expect(decision.worker).toBe('structured')
+    expect(decision.isStream).toBe(false)
   })
 
   it('defaults paid text to deepseek-chat structured', () => {
-    const decision = routeTask('resume_summary', true, {})
+    const decision = getTaskRouting('resume_summary', true)
     expect(decision.modelId).toBe('deepseek-chat')
-    expect(decision.worker).toBe('structured')
+    expect(decision.isStream).toBe(false)
   })
 
   it('defaults free text to glm-4.5-flash structured', () => {
-    const decision = routeTask('resume_summary', false, {})
+    const decision = getTaskRouting('resume_summary', false)
     expect(decision.modelId).toBe('glm-4.5-flash')
-    expect(decision.worker).toBe('structured')
+    expect(decision.isStream).toBe(false)
   })
 })

@@ -5,6 +5,10 @@ export const ENV = {
   OPENAI_API_KEY: process.env['OPENAI_API_KEY'] ?? '',
   UPSTASH_REDIS_REST_URL: process.env['UPSTASH_REDIS_REST_URL'] ?? '',
   UPSTASH_REDIS_REST_TOKEN: process.env['UPSTASH_REDIS_REST_TOKEN'] ?? '',
+  QSTASH_URL: process.env['QSTASH_URL'] ?? '',
+  QSTASH_TOKEN: process.env['QSTASH_TOKEN'] ?? '',
+  QSTASH_CURRENT_SIGNING_KEY: process.env['QSTASH_CURRENT_SIGNING_KEY'] ?? '',
+  QSTASH_NEXT_SIGNING_KEY: process.env['QSTASH_NEXT_SIGNING_KEY'] ?? '',
   NEXT_PUBLIC_APP_BASE_URL: process.env['NEXT_PUBLIC_APP_BASE_URL'] ?? '',
   DATABASE_URL: process.env['DATABASE_URL'] ?? '',
   ZHIPUAI_API_KEY: process.env['ZHIPUAI_API_KEY'] ?? '',
@@ -40,10 +44,29 @@ export const ENV = {
   
   // 缓存验证密钥
   CACHE_VALIDATION_SECRET: process.env['CACHE_VALIDATION_SECRET'] ?? 'default-secret-key',
+  
+  // 调试开关：启用后在关键 LLM 调用处输出详细日志（仅服务器侧）
+  LLM_DEBUG: (process.env['LLM_DEBUG'] ?? '0').toLowerCase() === '1' || (process.env['LLM_DEBUG'] ?? '').toLowerCase() === 'true',
+
+  // Redis Streams 合并写入配置
+  // 时间窗口（毫秒）：在该窗口内的 token 事件被合并为一次写入
+  STREAM_FLUSH_INTERVAL_MS: Number(process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '400'),
+  // 长度阈值（事件数量）：达到该数量立即触发 flush（窗口未到也立即写）
+  STREAM_FLUSH_SIZE: Number(process.env['STREAM_FLUSH_SIZE'] ?? '8'),
+
+  // Redis Streams 后处理配置（终止事件触发）
+  // TTL（秒）：在收到 done/error 终止事件后为缓冲流键设置过期时间；<=0 表示禁用
+  STREAM_TTL_SECONDS: Number(process.env['STREAM_TTL_SECONDS'] ?? '240'),
+  // 修剪长度：在收到终止事件后使用 XTRIM MAXLEN 近似修剪；<=0 表示禁用
+  STREAM_TRIM_MAXLEN: Number(process.env['STREAM_TRIM_MAXLEN'] ?? '256'),
 }
 
 export function isProdRedisReady() {
   return !!ENV.UPSTASH_REDIS_REST_URL && !!ENV.UPSTASH_REDIS_REST_TOKEN
+}
+
+export function isQstashReady() {
+  return !!ENV.QSTASH_TOKEN && !!ENV.QSTASH_CURRENT_SIGNING_KEY && !!ENV.QSTASH_NEXT_SIGNING_KEY
 }
 
 export function assertRequiredKeysForRun() {

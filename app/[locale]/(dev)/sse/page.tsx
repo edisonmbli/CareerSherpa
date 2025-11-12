@@ -1,0 +1,65 @@
+import type { Locale } from '@/i18n-config'
+import { SseStreamViewer } from '@/components/dev/SseStreamViewer'
+import { pushTask } from '@/lib/queue/producer'
+import type { TaskTemplateId } from '@/lib/prompts/types'
+import { redirect } from 'next/navigation'
+
+export const dynamic = 'force-dynamic'
+
+export default async function Page({ params, searchParams }: { params: Promise<{ locale: Locale }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { locale } = await params
+  const sp = await searchParams
+  const defaults = {
+    userId: 'u_dev',
+    serviceId: 'svc_stream',
+    taskId: `t_${Date.now()}`,
+  }
+  const readParam = (key: string): string | undefined => {
+    const v = sp[key]
+    return Array.isArray(v) ? v[0] : v
+  }
+  const current = {
+    userId: readParam('userId') ?? defaults.userId,
+    serviceId: readParam('serviceId') ?? defaults.serviceId,
+    taskId: readParam('taskId') ?? defaults.taskId,
+    templateId: readParam('templateId') as TaskTemplateId | undefined,
+  }
+
+  async function triggerStream(formData: FormData) {
+    'use server'
+    const userId = (formData.get('userId') as string) || 'u_dev'
+    const serviceId = (formData.get('serviceId') as string) || 'svc_stream'
+    const taskId = (formData.get('taskId') as string) || `t_${Date.now()}`
+    const templateId = (formData.get('templateId') as string) as TaskTemplateId
+    const locale = formData.get('locale') as Locale
+
+    await pushTask({
+      kind: 'stream',
+      serviceId,
+      taskId,
+      userId,
+      locale,
+      templateId,
+      variables: { prompt: 'Hello stream from dev page' },
+    })
+    // 重定向到带查询参数的同一路径，以同步 Viewer 与提交值
+    redirect(`/${locale}/sse?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&templateId=${encodeURIComponent(templateId)}`)
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-xl font-semibold">SSE Stream Dev ({locale})</h1>
+      <form action={triggerStream} className="space-y-3">
+        <input type="hidden" name="locale" value={locale} />
+        <div className="grid grid-cols-3 gap-2">
+          <input name="userId" defaultValue={current.userId} className="border rounded px-2 py-1" />
+          <input name="serviceId" defaultValue={current.serviceId} className="border rounded px-2 py-1" />
+          <input name="taskId" defaultValue={current.taskId} className="border rounded px-2 py-1" />
+        </div>
+        <input name="templateId" defaultValue={current.templateId ?? ''} placeholder="Template ID" className="border rounded px-2 py-1 w-full" />
+        <button type="submit" className="border rounded px-3 py-1">Push Stream Task</button>
+      </form>
+      <SseStreamViewer userId={current.userId} serviceId={current.serviceId} taskId={current.taskId} />
+    </div>
+  )
+}

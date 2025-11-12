@@ -1,6 +1,7 @@
-import { ENV, isProdRedisReady } from '@/lib/env'
+import { isProdRedisReady } from '@/lib/env'
 import { prisma } from '@/lib/prisma'
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
+import { getRedis } from '@/lib/redis/client'
 
 export type IdempotencyStep = 'match' | 'customize' | 'interview'
 
@@ -23,14 +24,11 @@ export async function getIdempotencyKey(
 ): Promise<StoredIdempotencyKey | null> {
   if (isProdRedisReady()) {
     try {
-      const res = await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`, {
-        headers: { Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}` },
-      })
-      if (!res.ok) return null
-      const data = await res.json()
-      if (!data?.result) return null
+      const redis = getRedis()
+      const raw = (await redis.get(key)) as string | null
+      if (!raw) return null
       try {
-        const parsed = JSON.parse(data.result)
+        const parsed = JSON.parse(raw)
         // revive createdAt
         if (parsed && parsed.createdAt) parsed.createdAt = new Date(parsed.createdAt)
         return parsed as StoredIdempotencyKey
@@ -66,13 +64,9 @@ export async function createIdempotencyKey(
   if (isProdRedisReady()) {
     try {
       const ttlSec = Math.max(1, Math.floor(ttlMs / 1000))
-      const payload = encodeURIComponent(JSON.stringify(record))
-      const res = await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/setex/${encodeURIComponent(key)}/${ttlSec}/${payload}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}` },
-      })
-      if (!res.ok) {
-        // fall back to memory on failure
+      const redis = getRedis()
+      const res = await redis.set(key, JSON.stringify(record), { ex: ttlSec })
+      if (res !== 'OK') {
         memIdem.set(key, record)
       }
     } catch {
