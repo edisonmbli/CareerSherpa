@@ -1,12 +1,15 @@
 import { z } from 'zod'
-import { ENV } from '@/lib/env'
-import { acquireLock, releaseLock } from '@/lib/concurrencyLock'
+import { ENV, getConcurrencyConfig, getPerformanceConfig } from '@/lib/env'
+import { acquireLock, releaseLock } from '@/lib/redis/lock'
 import { bumpPending, decPending } from '@/lib/redis/counter'
 import { buildEventChannel, buildEventStreamKey } from '@/lib/pubsub/channels'
 import { getRedis } from '@/lib/redis/client'
 import { auditUserAction } from '@/lib/audit/async-audit'
 import { i18n, type Locale } from '@/i18n-config'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
+import { getProvider } from '@/lib/llm/utils'
+import type { ModelId as ModelIdType } from '@/lib/llm/providers'
+import { getQStash } from '@/lib/queue/qstash'
 
 export type WorkerKind = 'stream' | 'batch'
 
@@ -17,19 +20,23 @@ export const workerBodySchema = z.object({
   locale: z.enum(i18n.locales as readonly [Locale, ...Locale[]]),
   templateId: z.string().min(1),
   variables: z.record(z.any()).default({}),
+  enqueuedAt: z.number().optional(),
+  retryCount: z.number().optional(),
 })
 
 export type WorkerBody = z.infer<typeof workerBodySchema>
 
-export async function parseWorkerBody(req: Request): Promise<
-  | { ok: true; body: WorkerBody }
-  | { ok: false; response: Response }
-> {
+export async function parseWorkerBody(
+  req: Request
+): Promise<{ ok: true; body: WorkerBody } | { ok: false; response: Response }> {
   try {
     const json = await req.json()
     const parsed = workerBodySchema.safeParse(json)
     if (!parsed.success) {
-      return { ok: false, response: new Response('bad_request', { status: 400 }) }
+      return {
+        ok: false,
+        response: new Response('bad_request', { status: 400 }),
+      }
     }
     return { ok: true, body: parsed.data }
   } catch {
@@ -54,8 +61,95 @@ export function buildCounterKey(userId: string, serviceId: string): string {
   return `bp:${userId}:${serviceId}`
 }
 
-export function getChannel(userId: string, serviceId: string, taskId: string): string {
+export function getChannel(
+  userId: string,
+  serviceId: string,
+  taskId: string
+): string {
   return buildEventChannel(userId, serviceId, taskId)
+}
+
+export function getMaxTotalWaitMs(kind: WorkerKind): number {
+  const perf = getPerformanceConfig()
+  return kind === 'stream'
+    ? perf.maxTotalWaitMs.stream
+    : perf.maxTotalWaitMs.batch
+}
+
+export async function requeueWithDelay(
+  kind: WorkerKind,
+  service: string,
+  body: WorkerBody,
+  delaySec: number
+) {
+  const client = getQStash()
+  const base = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
+  const url = `${base}/api/worker/${kind}/${encodeURIComponent(service)}`
+  const nextRetry = Math.max(0, Number(body.retryCount || 0) + 1)
+  const payload = { ...body, retryCount: nextRetry }
+  const notBefore = Math.floor(Date.now() / 1000) + Math.max(1, Math.floor(delaySec))
+  await client.publishJSON({
+    url,
+    body: payload,
+    retries: 0,
+    notBefore,
+    delay: Math.max(1, Math.floor(delaySec)),
+  })
+}
+
+// 队列级背压键（按 QueueId 维度）
+export function buildQueueCounterKey(queueId: string): string {
+  return `bp:queue:${queueId}`
+}
+
+export function getQueueMaxSize(queueId: string): number {
+  const cfg = getConcurrencyConfig()
+  const id = queueId.toLowerCase()
+  if (id.includes('paid') && id.includes('stream'))
+    return cfg.queueLimits.paidStream
+  if (id.includes('free') && id.includes('stream'))
+    return cfg.queueLimits.freeStream
+  if (id.includes('paid') && id.includes('batch'))
+    return cfg.queueLimits.paidBatch
+  if (id.includes('free') && id.includes('batch'))
+    return cfg.queueLimits.freeBatch
+  if (id.includes('paid') && id.includes('vision'))
+    return cfg.queueLimits.paidVision
+  if (id.includes('free') && id.includes('vision'))
+    return cfg.queueLimits.freeVision
+  return cfg.queueMaxSize
+}
+
+// 模型维度并发键（按模型+付费等级维度）
+export function buildModelActiveKey(
+  modelId: ModelIdType,
+  tier: 'paid' | 'free'
+): string {
+  return `active:model:${modelId}:${tier}`
+}
+
+export function getTierFromQueueId(queueId: string): 'paid' | 'free' {
+  return queueId.toLowerCase().includes('paid') ? 'paid' : 'free'
+}
+
+export function getMaxWorkersForModel(
+  modelId: ModelIdType,
+  tier: 'paid' | 'free'
+): number {
+  const cfg = getConcurrencyConfig()
+  const id = modelId.toLowerCase()
+  if (id === 'deepseek-reasoner' && tier === 'paid')
+    return cfg.modelTierLimits.dsReasonerPaid
+  if (id === 'deepseek-chat' && tier === 'paid')
+    return cfg.modelTierLimits.dsChatPaid
+  if (id === 'glm-4.5-flash' && tier === 'free')
+    return cfg.modelTierLimits.glmFlashFree
+  if (id === 'glm-4.1v-thinking-flash' && tier === 'paid')
+    return cfg.modelTierLimits.glmVisionPaid
+  if (id === 'glm-4.1v-thinking-flash' && tier === 'free')
+    return cfg.modelTierLimits.glmVisionFree
+  const provider = getProvider(modelId)
+  return provider === 'deepseek' ? cfg.deepseekMaxWorkers : cfg.glmMaxWorkers
 }
 
 export async function enterGuards(
@@ -63,28 +157,38 @@ export async function enterGuards(
   kind: WorkerKind,
   counterKey: string,
   ttlSec: number,
-  maxSize: number
+  maxSize: number,
+  doQueueBump: boolean = true
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
   const locked = await acquireLock(userId, kind, ttlSec)
   if (!locked) {
-    return { ok: false, response: new Response('concurrency_locked', { status: 429 }) }
-  }
-
-  const bp = await bumpPending(counterKey, ttlSec, maxSize)
-  if (!bp.ok) {
-    await releaseLock(userId, kind)
     return {
       ok: false,
-      response: new Response('backpressure', {
-        status: 429,
-        headers: { 'Retry-After': String(bp.retryAfter || ttlSec) },
-      }),
+      response: new Response('concurrency_locked', { status: 429 }),
+    }
+  }
+
+  if (doQueueBump) {
+    const bp = await bumpPending(counterKey, ttlSec, maxSize)
+    if (!bp.ok) {
+      await releaseLock(userId, kind)
+      return {
+        ok: false,
+        response: new Response('backpressure', {
+          status: 429,
+          headers: { 'Retry-After': String(bp.retryAfter || ttlSec) },
+        }),
+      }
     }
   }
   return { ok: true }
 }
 
-export async function exitGuards(userId: string, kind: WorkerKind, counterKey: string) {
+export async function exitGuards(
+  userId: string,
+  kind: WorkerKind,
+  counterKey: string
+) {
   try {
     await decPending(counterKey)
   } finally {
@@ -92,19 +196,89 @@ export async function exitGuards(userId: string, kind: WorkerKind, counterKey: s
   }
 }
 
-export async function publishEvent(channel: string, event: Record<string, any>) {
+// 模型维度并发控制：进入/退出
+export async function enterModelConcurrency(
+  modelId: ModelIdType,
+  queueId: string,
+  ttlSec: number
+): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const tier = getTierFromQueueId(queueId)
+  const key = buildModelActiveKey(modelId, tier)
+  const maxWorkers = getMaxWorkersForModel(modelId, tier)
+  const act = await bumpPending(key, ttlSec, Math.max(1, maxWorkers))
+  if (!act.ok) {
+    return {
+      ok: false,
+      response: new Response('model_concurrency', {
+        status: 429,
+        headers: { 'Retry-After': String(act.retryAfter || ttlSec) },
+      }),
+    }
+  }
+  return { ok: true }
+}
+
+export async function exitModelConcurrency(modelId: ModelIdType, queueId: string) {
+  const tier = getTierFromQueueId(queueId)
+  const key = buildModelActiveKey(modelId, tier)
+  await decPending(key)
+}
+
+export function buildUserActiveKey(userId: string, kind: WorkerKind): string {
+  return `active:user:${userId}:${kind}`
+}
+
+export async function enterUserConcurrency(
+  userId: string,
+  kind: WorkerKind,
+  ttlSec: number
+): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const cfg = getConcurrencyConfig()
+  const maxActive =
+    kind === 'stream' ? cfg.userMaxActive.stream : cfg.userMaxActive.batch
+  const key = buildUserActiveKey(userId, kind)
+  const act = await bumpPending(key, ttlSec, Math.max(1, maxActive))
+  if (!act.ok) {
+    return {
+      ok: false,
+      response: new Response('user_concurrency', {
+        status: 429,
+        headers: { 'Retry-After': String(act.retryAfter || ttlSec) },
+      }),
+    }
+  }
+  return { ok: true }
+}
+
+export async function exitUserConcurrency(userId: string, kind: WorkerKind) {
+  const key = buildUserActiveKey(userId, kind)
+  await decPending(key)
+}
+
+export async function publishEvent(
+  channel: string,
+  event: Record<string, any>
+) {
   const redis = getRedis()
 
   // 在生产环境抑制调试事件采样：不发布、不入流
-  const isDebugEvent = String((event as any)?.type || '').toLowerCase() === 'debug'
+  const isDebugEvent =
+    String((event as any)?.type || '').toLowerCase() === 'debug'
   if (process.env.NODE_ENV === 'production' && isDebugEvent) {
     return
   }
 
   // --- 合并窗口 + 长度阈值：仅针对 token 事件进行合并 ---
-  type Batcher = { tokens: string[]; timer?: ReturnType<typeof setTimeout>; startedAt: number }
-  const batchers = (globalThis as any).__cs_token_batchers__ as Map<string, Batcher> | undefined
-  const tokenBatchers: Map<string, Batcher> = batchers ?? new Map<string, Batcher>()
+  type Batcher = {
+    tokens: string[]
+    timer?: ReturnType<typeof setTimeout>
+    startedAt: number
+  }
+  const batchers = (globalThis as any).__cs_token_batchers__ as
+    | Map<string, Batcher>
+    | undefined
+  const tokenBatchers: Map<string, Batcher> =
+    batchers ?? new Map<string, Batcher>()
   if (!(globalThis as any).__cs_token_batchers__) {
     ;(globalThis as any).__cs_token_batchers__ = tokenBatchers
   }
@@ -136,7 +310,7 @@ export async function publishEvent(channel: string, event: Record<string, any>) 
             Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify([["XADD", streamKey, "*", "event", payloadStr]]),
+          body: JSON.stringify([['XADD', streamKey, '*', 'event', payloadStr]]),
         })
       } catch {
         // 忽略缓冲写入错误
@@ -146,7 +320,8 @@ export async function publishEvent(channel: string, event: Record<string, any>) 
     tokenBatchers.delete(ch)
   }
 
-  const isTokenEvent = String((event as any)?.type || '').toLowerCase() === 'token'
+  const isTokenEvent =
+    String((event as any)?.type || '').toLowerCase() === 'token'
   if (isTokenEvent) {
     const text = String((event as any)?.text ?? '')
     let buf = tokenBatchers.get(channel)
@@ -154,7 +329,10 @@ export async function publishEvent(channel: string, event: Record<string, any>) 
       buf = { tokens: [], startedAt: Date.now() }
       tokenBatchers.set(channel, buf)
       // 定时器：时间窗口先到即 flush（互补策略）
-      buf.timer = setTimeout(() => flush(channel), Math.max(ENV.STREAM_FLUSH_INTERVAL_MS, 50))
+      buf.timer = setTimeout(
+        () => flush(channel),
+        Math.max(ENV.STREAM_FLUSH_INTERVAL_MS, 50)
+      )
     }
     buf.tokens.push(text)
     // 长度阈值先到即立即 flush（互补策略）
@@ -186,8 +364,14 @@ export async function publishEvent(channel: string, event: Record<string, any>) 
           serviceId,
           channel,
           ...(event && event['type'] && { eventType: event['type'] as string }),
-          ...(event && (event as any)['requestId'] && { reqId: (event as any)['requestId'] as string }),
-          ...(event && (event as any)['traceId'] && { traceId: (event as any)['traceId'] as string }),
+          ...(event &&
+            (event as any)['requestId'] && {
+              reqId: (event as any)['requestId'] as string,
+            }),
+          ...(event &&
+            (event as any)['traceId'] && {
+              traceId: (event as any)['traceId'] as string,
+            }),
         })
       }
     }
@@ -200,16 +384,16 @@ export async function publishEvent(channel: string, event: Record<string, any>) 
     const streamKey = `${channel}:stream`
     const t = String((event as any)?.type || '').toLowerCase()
     const isTerminal = t === 'done' || t === 'error'
-    const commands: any[] = [["XADD", streamKey, "*", "event", payload]]
+    const commands: any[] = [['XADD', streamKey, '*', 'event', payload]]
     if (isTerminal) {
       const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
       const maxlen = Math.max(0, Number(ENV.STREAM_TRIM_MAXLEN || 0))
       if (ttl > 0) {
-        commands.push(["EXPIRE", streamKey, ttl])
+        commands.push(['EXPIRE', streamKey, ttl])
       }
       if (maxlen > 0) {
         // 近似修剪，控制缓冲长度，降低长尾存储成本
-        commands.push(["XTRIM", streamKey, "MAXLEN", "~", maxlen])
+        commands.push(['XTRIM', streamKey, 'MAXLEN', '~', maxlen])
       }
     }
     try {

@@ -333,7 +333,8 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   templateId: T,
   locale: Locale,
   variables: Record<string, any>,
-  context: TaskContext = {}
+  context: TaskContext = {},
+  onToken?: (t: string) => void | Promise<void>
 ) {
   const start = Date.now()
   const template = getTemplate(locale, templateId)
@@ -350,6 +351,9 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   for await (const chunk of stream) {
     const text = (chunk as any)?.content ?? (chunk as any)?.text ?? ''
     fullText += text
+    if (text && onToken) {
+      await onToken(text)
+    }
   }
   const end = Date.now()
 

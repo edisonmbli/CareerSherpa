@@ -20,10 +20,9 @@ interface TaskRouting {
   isStream: boolean // 标记此任务是否应流式
 }
 
-const ROUTING_TABLE: Partial<Record<
-  TaskTemplateId,
-  { paid: TaskRouting; free: TaskRouting }
->> = {
+const ROUTING_TABLE: Partial<
+  Record<TaskTemplateId, { paid: TaskRouting; free: TaskRouting }>
+> = {
   // --- M7 资产流 (Batch) ---
   resume_summary: {
     paid: {

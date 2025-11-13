@@ -26,7 +26,15 @@ vi.mock('@langchain/core/prompts', () => {
 })
 
 vi.mock('@/lib/llm/providers', async () => {
+  const ModelId = {
+    DEEPSEEK_REASONER: 'deepseek-reasoner',
+    DEEPSEEK_CHAT: 'deepseek-chat',
+    GLM_45_FLASH: 'glm-4.5-flash',
+    GLM_VISION_THINKING_FLASH: 'glm-4.1v-thinking-flash',
+    GLM_EMBEDDING_3: 'glm-embedding-3',
+  } as const
   return {
+    ModelId,
     getModel: (_modelId: string, _opts?: any) => currentModel,
   }
 })

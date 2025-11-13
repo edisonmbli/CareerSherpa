@@ -11,17 +11,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Info } from 'lucide-react'
 
-interface Props {
-  params: { locale: Locale }
-}
-
-export default async function DesignSystemPage({ params }: Props) {
+export default async function DesignSystemPage({ params }: { params: Promise<{ locale: Locale }> }) {
+  const { locale } = await params
   // Dev-only showcase page
   if (process.env.NODE_ENV !== 'development') {
     return null
   }
 
-  const dict = await getDictionary(params.locale)
+  const dict = await getDictionary(locale)
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">

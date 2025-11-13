@@ -1,5 +1,6 @@
 import { NodeWithScore, MetadataMode } from 'llamaindex'
 import { vectorStore } from '@/lib/rag/vectorStore'
+import { trackEvent } from '@/lib/analytics/index'
 
 export type RagLocale = 'en' | 'zh'
 
@@ -110,6 +111,19 @@ async function queryRagViaLlamaIndex(
     }
     out.push(item)
   }
+
+  // Analytics: RAG 检索完成（一次性）
+  try {
+    trackEvent('RAG_QUERY_COMPLETED', {
+      payload: {
+        matchedCount: out.length,
+        topK,
+        minScore,
+        category: category || undefined,
+        lang,
+      },
+    })
+  } catch {}
 
   // The retriever already returns sorted results
   return out

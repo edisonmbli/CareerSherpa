@@ -27,9 +27,17 @@ export const ENV = {
   DEEPSEEK_MAX_WORKERS: Number(process.env['DEEPSEEK_MAX_WORKERS'] ?? '5'), // DeepSeek最大并发数
   GLM_MAX_WORKERS: Number(process.env['GLM_MAX_WORKERS'] ?? '5'), // GLM最大并发数
   WORKER_TIMEOUT_MS: Number(process.env['WORKER_TIMEOUT_MS'] ?? '60000'), // Worker超时时间（毫秒）
-  QUEUE_MAX_SIZE: Number(process.env['QUEUE_MAX_SIZE'] ?? '100'), // 队列最大长度
+  QUEUE_MAX_SIZE: Number(process.env['QUEUE_MAX_SIZE'] ?? '100'), // 队列最大长度（默认）
   QUEUE_POSITION_UPDATE_INTERVAL_MS: Number(process.env['QUEUE_POSITION_UPDATE_INTERVAL_MS'] ?? '2000'), // 队列位置更新间隔
-  
+
+  // 队列分级上限（覆盖默认）
+  QUEUE_MAX_PAID_STREAM: Number(process.env['QUEUE_MAX_PAID_STREAM'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+  QUEUE_MAX_FREE_STREAM: Number(process.env['QUEUE_MAX_FREE_STREAM'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+  QUEUE_MAX_PAID_BATCH: Number(process.env['QUEUE_MAX_PAID_BATCH'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+  QUEUE_MAX_FREE_BATCH: Number(process.env['QUEUE_MAX_FREE_BATCH'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+  QUEUE_MAX_PAID_VISION: Number(process.env['QUEUE_MAX_PAID_VISION'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+  QUEUE_MAX_FREE_VISION: Number(process.env['QUEUE_MAX_FREE_VISION'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+
   // 性能优化配置
   CACHE_TTL_SECONDS: Number(process.env['CACHE_TTL_SECONDS'] ?? '300'), // 缓存TTL（秒）
   BATCH_OPERATION_SIZE: Number(process.env['BATCH_OPERATION_SIZE'] ?? '10'), // 批量操作大小
@@ -59,10 +67,23 @@ export const ENV = {
   STREAM_TTL_SECONDS: Number(process.env['STREAM_TTL_SECONDS'] ?? '240'),
   // 修剪长度：在收到终止事件后使用 XTRIM MAXLEN 近似修剪；<=0 表示禁用
   STREAM_TRIM_MAXLEN: Number(process.env['STREAM_TRIM_MAXLEN'] ?? '256'),
+
+  // 用户级并发上限
+  USER_MAX_ACTIVE_STREAM: Number(process.env['USER_MAX_ACTIVE_STREAM'] ?? '3'),
+  USER_MAX_ACTIVE_BATCH: Number(process.env['USER_MAX_ACTIVE_BATCH'] ?? '3'),
+
+  // 模型×tier并发上限（覆盖值）
+  MAX_DS_REASONER_PAID: Number(process.env['MAX_DS_REASONER_PAID'] ?? '5'),
+  MAX_DS_CHAT_PAID: Number(process.env['MAX_DS_CHAT_PAID'] ?? '5'),
+  MAX_GLM_FLASH_FREE: Number(process.env['MAX_GLM_FLASH_FREE'] ?? '2'),
+  MAX_GLM_VISION_PAID: Number(process.env['MAX_GLM_VISION_PAID'] ?? '3'),
+  MAX_GLM_VISION_FREE: Number(process.env['MAX_GLM_VISION_FREE'] ?? '2'),
+  MAX_TOTAL_WAIT_MS_STREAM: Number(process.env['MAX_TOTAL_WAIT_MS_STREAM'] ?? '480000'),
+  MAX_TOTAL_WAIT_MS_BATCH: Number(process.env['MAX_TOTAL_WAIT_MS_BATCH'] ?? '600000'),
 }
 
 export function isProdRedisReady() {
-  return !!ENV.UPSTASH_REDIS_REST_URL && !!ENV.UPSTASH_REDIS_REST_TOKEN
+  return !!ENV.UPSTASH_REDIS_REST_URL && !!ENV.UPSTASH_REDIS_REST_TOKEN && process.env.NODE_ENV !== 'test'
 }
 
 export function isQstashReady() {
@@ -101,7 +122,26 @@ export function getConcurrencyConfig() {
     glmMaxWorkers: ENV.GLM_MAX_WORKERS,
     workerTimeoutMs: ENV.WORKER_TIMEOUT_MS,
     queueMaxSize: ENV.QUEUE_MAX_SIZE,
-    queuePositionUpdateIntervalMs: ENV.QUEUE_POSITION_UPDATE_INTERVAL_MS
+    queuePositionUpdateIntervalMs: ENV.QUEUE_POSITION_UPDATE_INTERVAL_MS,
+    queueLimits: {
+      paidStream: ENV.QUEUE_MAX_PAID_STREAM,
+      freeStream: ENV.QUEUE_MAX_FREE_STREAM,
+      paidBatch: ENV.QUEUE_MAX_PAID_BATCH,
+      freeBatch: ENV.QUEUE_MAX_FREE_BATCH,
+      paidVision: ENV.QUEUE_MAX_PAID_VISION,
+      freeVision: ENV.QUEUE_MAX_FREE_VISION,
+    },
+    userMaxActive: {
+      stream: ENV.USER_MAX_ACTIVE_STREAM,
+      batch: ENV.USER_MAX_ACTIVE_BATCH,
+    },
+    modelTierLimits: {
+      dsReasonerPaid: ENV.MAX_DS_REASONER_PAID,
+      dsChatPaid: ENV.MAX_DS_CHAT_PAID,
+      glmFlashFree: ENV.MAX_GLM_FLASH_FREE,
+      glmVisionPaid: ENV.MAX_GLM_VISION_PAID,
+      glmVisionFree: ENV.MAX_GLM_VISION_FREE,
+    }
   }
 }
 
@@ -109,6 +149,10 @@ export function getPerformanceConfig() {
   return {
     cacheTtlSeconds: ENV.CACHE_TTL_SECONDS,
     batchOperationSize: ENV.BATCH_OPERATION_SIZE,
-    concurrencyLockTimeoutMs: ENV.CONCURRENCY_LOCK_TIMEOUT_MS
+    concurrencyLockTimeoutMs: ENV.CONCURRENCY_LOCK_TIMEOUT_MS,
+    maxTotalWaitMs: {
+      stream: ENV.MAX_TOTAL_WAIT_MS_STREAM,
+      batch: ENV.MAX_TOTAL_WAIT_MS_BATCH,
+    }
   }
 }

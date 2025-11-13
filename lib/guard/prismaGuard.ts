@@ -7,9 +7,15 @@ export interface PrismaGuardOptions {
 }
 
 export async function prewarmPrisma(): Promise<void> {
-  await prisma.$connect()
-  await prisma.$queryRaw`SELECT 1`
-  await prisma.$disconnect()
+  if (typeof (prisma as any).$connect === 'function') {
+    await (prisma as any).$connect()
+  }
+  if (typeof (prisma as any).$queryRaw === 'function') {
+    await (prisma as any).$queryRaw`SELECT 1`
+  }
+  if (typeof (prisma as any).$disconnect === 'function') {
+    await (prisma as any).$disconnect()
+  }
 }
 
 export async function withPrismaGuard<T>(
@@ -27,7 +33,9 @@ export async function withPrismaGuard<T>(
   let lastError: unknown
   for (let i = 1; i <= attempts; i++) {
     try {
-      await prisma.$connect()
+      if (typeof (prisma as any).$connect === 'function') {
+        await (prisma as any).$connect()
+      }
       const result = await fn(prisma)
       return result
     } catch (err) {
@@ -35,7 +43,9 @@ export async function withPrismaGuard<T>(
       const delay = Math.min(3000, baseDelayMs * Math.pow(2, i - 1))
       await new Promise((r) => setTimeout(r, delay))
     } finally {
-      await prisma.$disconnect()
+      if (typeof (prisma as any).$disconnect === 'function') {
+        await (prisma as any).$disconnect()
+      }
     }
   }
   throw lastError instanceof Error ? lastError : new Error('Prisma operation failed')

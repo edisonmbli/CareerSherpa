@@ -32,6 +32,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     const taskId = (formData.get('taskId') as string) || `t_${Date.now()}`
     const templateId = (formData.get('templateId') as string) as TaskTemplateId
     const locale = formData.get('locale') as Locale
+    const image = (formData.get('image') as string) || ''
+    const tierOverride = (formData.get('tierOverride') as string) || 'auto'
 
     await pushTask({
       kind: 'stream',
@@ -40,7 +42,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       userId,
       locale,
       templateId,
-      variables: { prompt: 'Hello stream from dev page' },
+      variables: {
+        prompt: 'Hello stream from dev page',
+        ...(image ? { image } : {}),
+        ...(tierOverride === 'paid' ? { wasPaid: true, cost: 1, tierOverride: 'paid' } : {}),
+        ...(tierOverride === 'free' ? { wasPaid: false, tierOverride: 'free' } : {}),
+        ...(tierOverride === 'auto' ? { tierOverride: 'auto' } : {}),
+      },
     })
     // 重定向到带查询参数的同一路径，以同步 Viewer 与提交值
     redirect(`/${locale}/sse?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&templateId=${encodeURIComponent(templateId)}`)
@@ -57,6 +65,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <input name="taskId" defaultValue={current.taskId} className="border rounded px-2 py-1" />
         </div>
         <input name="templateId" defaultValue={current.templateId ?? ''} placeholder="Template ID" className="border rounded px-2 py-1 w-full" />
+        <div className="grid grid-cols-2 gap-2">
+          <input name="image" placeholder="Image URL (trigger vision)" className="border rounded px-2 py-1 w-full" />
+          <select name="tierOverride" className="border rounded px-2 py-1">
+            <option value="auto">Auto</option>
+            <option value="paid">Force Paid</option>
+            <option value="free">Force Free</option>
+          </select>
+        </div>
         <button type="submit" className="border rounded px-3 py-1">Push Stream Task</button>
       </form>
       <SseStreamViewer userId={current.userId} serviceId={current.serviceId} taskId={current.taskId} />
