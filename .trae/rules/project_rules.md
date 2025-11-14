@@ -414,3 +414,51 @@ use context7 MCP when needed.
 
 - https://context7.com/websites/upstash-redis/llms.txt
 - https://context7.com/websites/upstash-qstash/llms.txt
+
+## 10. Worker & Queue Architecture (M6 Refactor Best Practices)
+
+- QStash 多队列（命名队列）
+  - 必须在 QStash Console 创建 6 个命名队列：`q_paid_stream/q_free_stream/q_paid_batch/q_free_batch/q_paid_vision/q_free_vision`，并为每队列设置并行度（Parallelism）。
+  - 生产者发布时必须显式指定队列：使用 `client.queue({ queueName }).enqueueJSON({ url, body, retries })`，而不是默认 `publishJSON`。
+  - 生产者统一入口 URL：`/api/worker/{stream|batch}/[service]`（视觉任务映射到 `batch`），消息体同时包含 `queueId` 以便工人侧审计与守卫。
+  - 队列选择优先级：`tierOverride → wasPaid → 真实配额`（统一于生产者与工人）。实现参考 `lib/queue/producer.ts:43-50, 192-206` 与 `lib/worker/handlers.ts:62-72`。
+
+- Worker 路由与职责
+  - 仅保留两个核心路由入口：`/api/worker/stream/[service]` 与 `/api/worker/batch/[service]`（App Router）。
+  - 路由必须保持“薄”，只做签名校验（`verifySignatureAppRouter`）、参数解析与调用处理器，不得引入业务复杂逻辑。参考 `app/api/worker/stream/[service]/route.ts`、`app/api/worker/batch/[service]/route.ts`。
+  - 禁止路由之间相互 import，避免开发态递归与 AsyncHooks 膨胀。
+
+- 处理器管线化（纯函数步骤）
+  - 步骤划分与目录规范：
+    - 验证：`lib/worker/types.ts`（Zod schema），`parseWorkerBody` 在 `lib/worker/common.ts:19-35`。
+    - 决策：`lib/worker/steps/decision.ts:1-13`（`computeDecision(templateId, variables, userHasQuota)`）。
+    - 元信息：`lib/worker/steps/meta.ts:1-10`（`getRequestMeta(req, taskId)` 统一生成 `requestId/traceId`）。
+    - 守卫：`lib/worker/steps/guards.ts:1-66`（`guardUser/guardModel/guardQueue`），失败统一通过 `guardBlocked` 发事件。
+    - 执行：`lib/worker/steps/execute.ts:1-35`（`executeStreaming/executeStructured` 返回统计信息）。
+    - 事件：`lib/worker/pipeline.ts:1-67`（`publishStart/guardBlocked/emitStreamIdle`）。
+    - 清理：`lib/worker/steps/cleanup.ts:1-13`（`cleanupFinal` 统一退出并发与背压计数）。
+  - 处理器文件只按顺序调用上述步骤，行为保持不变；参考 `lib/worker/handlers.ts`。
+
+- 并发与背压（分层控制）
+  - 队列层（QStash）：使用命名队列的并行度作为粗粒度闸门，支持暂停/恢复与 DLQ。生产者端的应用层重试（如 `requeueWithDelay`）已移除，统一依赖 QStash 的 `retries`。
+  - 模型层（Redis）：按 `modelId+tier` 控制并发。
+    - 键构造与阈值统一在 `lib/config/concurrency.ts:15-35`（`buildModelActiveKey/getMaxWorkersForModel`）。
+    - 进入/退出在 `lib/worker/common.ts:176-201`。
+  - 用户层（Redis）：按用户维度限制并发。
+    - 键构造在 `lib/config/concurrency.ts:37-40`（`buildUserActiveKey`），使用于 `lib/worker/common.ts:207-216`。
+  - 队列背压计数：队列大小读取统一在 `lib/config/concurrency.ts:1-13`（`queueMaxSizeFor`）；构造键在 `lib/config/concurrency.ts:42-44`（`buildQueueCounterKey`）。
+
+- 日志与审计统一
+  - 使用 `lib/observability/logger.ts` 的 `logEvent/logAudit`，禁止在业务中直接调用 `trackEvent/auditUserAction`。
+  - 事件名必须为 `AnalyticsEventName`，统一字段 `{ userId, serviceId, taskId, payload }`；参考 `lib/queue/producer.ts` 与 `lib/worker/handlers.ts` 中的替换实现。
+
+- SSE 与可观测性
+  - `start` 事件必须包含 `queueId/provider/modelId/requestId/traceId`，Viewer 顶部需显示队列与模型信息。参考 `lib/worker/pipeline.ts` 与 `components/dev/SseStreamViewer.tsx:96-101, 136-142`。
+  - 流式空闲心跳：长时间无 token 时发布 `info: stream_idle` 事件，用于高负载期排查（DeepSeek keep-alive 场景）。
+
+- 配置集中化
+  - 并发与队列大小读取、键构造函数集中于 `lib/config/concurrency.ts`，避免分散常量与重复逻辑。
+  - 生产者与工人均应依赖该集中入口，减少参数不一致风险。
+
+- 开发与压测
+  - 离线模拟脚本：`scripts/dev/worker-sim.ts` 支持 `stream|batch free|paid job_match` 的本地压测，不依赖页面即可验证处理器行为与守卫路径。

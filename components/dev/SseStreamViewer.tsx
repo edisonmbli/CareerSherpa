@@ -11,6 +11,7 @@ export function SseStreamViewer({ userId, serviceId, taskId }: Props) {
   const [events, setEvents] = useState<string[]>([])
   const esRef = useRef<EventSource | null>(null)
   const [closed, setClosed] = useState(false)
+  const [summary, setSummary] = useState<{ queueId?: string; provider?: string; modelId?: string }>({})
 
   useEffect(() => {
     const url = `/api/sse-stream?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&fromLatest=1`
@@ -21,6 +22,10 @@ export function SseStreamViewer({ userId, serviceId, taskId }: Props) {
         const data = JSON.parse(evt.data)
         const text = typeof data === 'string' ? data : JSON.stringify(data)
         setEvents((prev) => [...prev, text])
+
+        if (data?.type === 'start') {
+          setSummary({ queueId: data?.queueId, provider: data?.provider, modelId: data?.modelId })
+        }
 
         // 接收终止事件后主动关闭连接，减少 Redis 读取
         const isTerminal = (data?.type === 'done') || (data?.type === 'error' && ['invoke_or_stream', 'invoke', 'guards'].includes(String(data?.stage)))
@@ -95,8 +100,11 @@ export function SseStreamViewer({ userId, serviceId, taskId }: Props) {
 
       if (ev.type === 'start') {
         const timeoutText = typeof ev.timeoutSec === 'number' ? `（超时：${ev.timeoutSec}s）` : ''
+        const meta = [ev.queueId ? `Queue: ${ev.queueId}` : null, ev.provider ? `Provider: ${ev.provider}` : null, ev.modelId ? `Model: ${ev.modelId}` : null]
+          .filter(Boolean)
+          .join(' · ')
         const ids = reqTrace ? ` （${reqTrace}）` : ''
-        return { text: `开始 · 阶段：${stageLabel(ev.stage)}${timeoutText}${ids}`, kind: 'info' }
+        return { text: `开始 · 阶段：${stageLabel(ev.stage)}${timeoutText}${meta ? ` · ${meta}` : ''}${ids}`, kind: 'info' }
       }
 
       if (ev.type === 'done') {
@@ -134,6 +142,11 @@ export function SseStreamViewer({ userId, serviceId, taskId }: Props) {
   return (
     <div className="space-y-2">
       <div className="text-sm text-muted-foreground">SSE connected: {userId}/{serviceId}/{taskId}</div>
+      <div className="text-xs flex gap-3 items-center">
+        {summary.queueId ? <span className="px-2 py-0.5 rounded bg-neutral-200 dark:bg-neutral-800">Queue: {summary.queueId}</span> : null}
+        {summary.provider ? <span className="px-2 py-0.5 rounded bg-neutral-200 dark:bg-neutral-800">Provider: {summary.provider}</span> : null}
+        {summary.modelId ? <span className="px-2 py-0.5 rounded bg-neutral-200 dark:bg-neutral-800">Model: {summary.modelId}</span> : null}
+      </div>
       <div className="border rounded p-2 h-64 overflow-auto text-sm font-mono whitespace-pre-wrap">
         {events.map((e, i) => (
           <div key={i} className="space-y-1">

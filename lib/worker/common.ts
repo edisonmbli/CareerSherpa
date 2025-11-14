@@ -1,5 +1,5 @@
-import { z } from 'zod'
 import { ENV, getConcurrencyConfig, getPerformanceConfig } from '@/lib/env'
+import { queueMaxSizeFor, buildUserActiveKey } from '@/lib/config/concurrency'
 import { acquireLock, releaseLock } from '@/lib/redis/lock'
 import { bumpPending, decPending } from '@/lib/redis/counter'
 import { buildEventChannel, buildEventStreamKey } from '@/lib/pubsub/channels'
@@ -8,23 +8,14 @@ import { auditUserAction } from '@/lib/audit/async-audit'
 import { i18n, type Locale } from '@/i18n-config'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import { getProvider } from '@/lib/llm/utils'
+import { buildModelActiveKey, getMaxWorkersForModel } from '@/lib/config/concurrency'
 import type { ModelId as ModelIdType } from '@/lib/llm/providers'
 import { getQStash } from '@/lib/queue/qstash'
+import { workerBodySchema, type WorkerBody } from '@/lib/worker/types'
 
 export type WorkerKind = 'stream' | 'batch'
 
-export const workerBodySchema = z.object({
-  taskId: z.string().min(1),
-  userId: z.string().min(1),
-  serviceId: z.string().min(1),
-  locale: z.enum(i18n.locales as readonly [Locale, ...Locale[]]),
-  templateId: z.string().min(1),
-  variables: z.record(z.any()).default({}),
-  enqueuedAt: z.number().optional(),
-  retryCount: z.number().optional(),
-})
-
-export type WorkerBody = z.infer<typeof workerBodySchema>
+export type { WorkerBody }
 
 export async function parseWorkerBody(
   req: Request
@@ -98,58 +89,13 @@ export async function requeueWithDelay(
 }
 
 // 队列级背压键（按 QueueId 维度）
-export function buildQueueCounterKey(queueId: string): string {
-  return `bp:queue:${queueId}`
-}
-
 export function getQueueMaxSize(queueId: string): number {
-  const cfg = getConcurrencyConfig()
-  const id = queueId.toLowerCase()
-  if (id.includes('paid') && id.includes('stream'))
-    return cfg.queueLimits.paidStream
-  if (id.includes('free') && id.includes('stream'))
-    return cfg.queueLimits.freeStream
-  if (id.includes('paid') && id.includes('batch'))
-    return cfg.queueLimits.paidBatch
-  if (id.includes('free') && id.includes('batch'))
-    return cfg.queueLimits.freeBatch
-  if (id.includes('paid') && id.includes('vision'))
-    return cfg.queueLimits.paidVision
-  if (id.includes('free') && id.includes('vision'))
-    return cfg.queueLimits.freeVision
-  return cfg.queueMaxSize
+  return queueMaxSizeFor(queueId)
 }
 
 // 模型维度并发键（按模型+付费等级维度）
-export function buildModelActiveKey(
-  modelId: ModelIdType,
-  tier: 'paid' | 'free'
-): string {
-  return `active:model:${modelId}:${tier}`
-}
-
 export function getTierFromQueueId(queueId: string): 'paid' | 'free' {
   return queueId.toLowerCase().includes('paid') ? 'paid' : 'free'
-}
-
-export function getMaxWorkersForModel(
-  modelId: ModelIdType,
-  tier: 'paid' | 'free'
-): number {
-  const cfg = getConcurrencyConfig()
-  const id = modelId.toLowerCase()
-  if (id === 'deepseek-reasoner' && tier === 'paid')
-    return cfg.modelTierLimits.dsReasonerPaid
-  if (id === 'deepseek-chat' && tier === 'paid')
-    return cfg.modelTierLimits.dsChatPaid
-  if (id === 'glm-4.5-flash' && tier === 'free')
-    return cfg.modelTierLimits.glmFlashFree
-  if (id === 'glm-4.1v-thinking-flash' && tier === 'paid')
-    return cfg.modelTierLimits.glmVisionPaid
-  if (id === 'glm-4.1v-thinking-flash' && tier === 'free')
-    return cfg.modelTierLimits.glmVisionFree
-  const provider = getProvider(modelId)
-  return provider === 'deepseek' ? cfg.deepseekMaxWorkers : cfg.glmMaxWorkers
 }
 
 export async function enterGuards(
@@ -222,10 +168,6 @@ export async function exitModelConcurrency(modelId: ModelIdType, queueId: string
   const tier = getTierFromQueueId(queueId)
   const key = buildModelActiveKey(modelId, tier)
   await decPending(key)
-}
-
-export function buildUserActiveKey(userId: string, kind: WorkerKind): string {
-  return `active:user:${userId}:${kind}`
 }
 
 export async function enterUserConcurrency(

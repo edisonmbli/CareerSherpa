@@ -9,8 +9,7 @@ import {
   getDefaultTTL,
   type IdempotencyStep,
 } from '@/lib/idempotency'
-import { auditUserAction } from '@/lib/audit/async-audit'
-import { trackEvent } from '@/lib/analytics/index'
+import { logAudit, logEvent } from '@/lib/observability/logger'
 import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
 import { getConcurrencyConfig } from '@/lib/env'
 import { bumpPending } from '@/lib/redis/counter'
@@ -41,24 +40,26 @@ export async function pushTask(params: PushTaskParams): Promise<{
   const client = getQStash()
   const base = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
   const quotaInfo = await checkQuotaForService(params.userId)
-  const hasQuota = !quotaInfo.shouldUseFreeQueue
+  const tierOverride = (params.variables as any)?.tierOverride
+  const hasQuota = tierOverride === 'paid'
+    ? true
+    : tierOverride === 'free'
+    ? false
+    : typeof (params.variables as any)?.wasPaid === 'boolean'
+    ? Boolean((params.variables as any)?.wasPaid)
+    : !quotaInfo.shouldUseFreeQueue
   const hasImage = Boolean(
     params.variables?.['image'] || params.variables?.['jobImage']
   )
   const decision = hasImage
     ? getJobVisionTaskRouting(hasQuota)
     : getTaskRouting(params.templateId, hasQuota)
-  let tierSegment = 'free'
   let kindSegment = params.kind
   const qid = String(decision.queueId).toLowerCase()
-  if (qid.includes('paid')) {
-    tierSegment = 'paid'
-  }
   if (qid.includes('vision')) {
-    tierSegment = 'vision'
     kindSegment = 'batch'
   }
-  const url = `${base}/api/worker/${tierSegment}/${kindSegment}/${encodeURIComponent(
+  const url = `${base}/api/worker/${kindSegment}/${encodeURIComponent(
     params.serviceId
   )}`
 
@@ -71,23 +72,9 @@ export async function pushTask(params: PushTaskParams): Promise<{
   )
   if (!rate.ok) {
     // Audit and early return on rate limiting
-    auditUserAction(params.userId, 'rate_limited', 'task', params.taskId, {
-      serviceId: params.serviceId,
-      templateId: params.templateId,
-      kind: params.kind,
-      retryAfter: rate.retryAfter,
-    })
+    logAudit(params.userId, 'rate_limited', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, retryAfter: rate.retryAfter })
     // Analytics: producer-side rate limiting (non-blocking)
-    trackEvent('TASK_RATE_LIMITED', {
-      userId: params.userId,
-      serviceId: params.serviceId,
-      taskId: params.taskId,
-      payload: {
-        templateId: params.templateId,
-        kind: params.kind,
-        retryAfter: rate.retryAfter,
-      },
-    })
+    logEvent('TASK_RATE_LIMITED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, retryAfter: rate.retryAfter })
     return {
       url,
       rateLimited: true,
@@ -119,25 +106,9 @@ export async function pushTask(params: PushTaskParams): Promise<{
     idemKey = idem.key
     if (!idem.shouldProcess) {
       // Audit and early return on idempotent replay
-      auditUserAction(
-        params.userId,
-        'idempotent_replay',
-        'task',
-        params.taskId,
-        {
-          serviceId: params.serviceId,
-          templateId: params.templateId,
-          kind: params.kind,
-          idemKey,
-        }
-      )
+      logAudit(params.userId, 'idempotent_replay', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, idemKey })
       // Analytics: idempotent replay detected (non-blocking)
-      trackEvent('TASK_REPLAYED', {
-        userId: params.userId,
-        serviceId: params.serviceId,
-        taskId: params.taskId,
-        payload: { templateId: params.templateId, kind: params.kind, idemKey },
-      })
+      logEvent('TASK_REPLAYED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, idemKey })
       return { url, replay: true, idemKey }
     }
   }
@@ -164,24 +135,8 @@ export async function pushTask(params: PushTaskParams): Promise<{
   const bp = await bumpPending(queueCounterKey, ttlSec, maxSize)
   if (!bp.ok) {
     // 审计与分析：生产者侧背压拒绝
-    auditUserAction(params.userId, 'backpressure', 'task', params.taskId, {
-      serviceId: params.serviceId,
-      templateId: params.templateId,
-      kind: params.kind,
-      queueId: String(decision.queueId || ''),
-      retryAfter: bp.retryAfter,
-    })
-    trackEvent('TASK_BACKPRESSURED', {
-      userId: params.userId,
-      serviceId: params.serviceId,
-      taskId: params.taskId,
-      payload: {
-        templateId: params.templateId,
-        kind: params.kind,
-        queueId: String(decision.queueId || ''),
-        retryAfter: bp.retryAfter,
-      },
-    })
+    logAudit(params.userId, 'backpressure', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, queueId: String(decision.queueId || ''), retryAfter: bp.retryAfter })
+    logEvent('TASK_BACKPRESSURED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, queueId: String(decision.queueId || ''), retryAfter: bp.retryAfter })
     return {
       url,
       backpressured: true,
@@ -189,7 +144,7 @@ export async function pushTask(params: PushTaskParams): Promise<{
     }
   }
 
-  const res = await client.publishJSON({
+  const res = await client.queue({ queueName: String(decision.queueId) }).enqueueJSON({
     url,
     body: {
       taskId: params.taskId,
@@ -205,28 +160,10 @@ export async function pushTask(params: PushTaskParams): Promise<{
   })
 
   // Audit successful enqueue
-  auditUserAction(params.userId, 'enqueue', 'task', params.taskId, {
-    serviceId: params.serviceId,
-    templateId: params.templateId,
-    kind: params.kind,
-    url,
-    messageId: res.messageId,
-    idemKey,
-  })
+  logAudit(params.userId, 'enqueue', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, url, messageId: res.messageId, idemKey })
 
   // Analytics: task enqueued successfully
-  trackEvent('TASK_ENQUEUED', {
-    userId: params.userId,
-    serviceId: params.serviceId,
-    taskId: params.taskId,
-    payload: {
-      templateId: params.templateId,
-      kind: params.kind,
-      url,
-      messageId: res.messageId,
-      ...(idemKey ? { idemKey } : {}),
-    },
-  })
+  logEvent('TASK_ENQUEUED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, url, messageId: res.messageId, ...(idemKey ? { idemKey } : {}) })
 
   return { messageId: res.messageId, url, ...(idemKey ? { idemKey } : {}) }
 }
