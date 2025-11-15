@@ -6,6 +6,7 @@ import { isStackAuthReady } from "@/lib/env";
 import { Suspense } from "react";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,6 +54,7 @@ export default function RootLayout({
               <TooltipProvider>
                 <Suspense fallback={<div>Loading...</div>}>
                   {children}
+                  <Toaster />
                 </Suspense>
               </TooltipProvider>
             </StackTheme>
@@ -61,6 +63,7 @@ export default function RootLayout({
           <TooltipProvider>
             <Suspense fallback={<div>Loading...</div>}>
               {children}
+              <Toaster />
             </Suspense>
           </TooltipProvider>
         )}

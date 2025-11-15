@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Info } from 'lucide-react'
+import FeedbackDemo from '@/components/dev/FeedbackDemo'
+import PrimaryDemo from '@/components/dev/PrimaryDemo'
 
 export default async function DesignSystemPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -23,7 +25,7 @@ export default async function DesignSystemPage({ params }: { params: Promise<{ l
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{dict.workbench_title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{dict.designSystem.title}</h1>
         <div className="flex items-center gap-2">
           <I18nToggle />
           <ThemeToggle />
@@ -32,7 +34,82 @@ export default async function DesignSystemPage({ params }: { params: Promise<{ l
 
       <AppCard>
         <AppCardHeader>
-          <AppCardTitle>Buttons & Badges</AppCardTitle>
+          <AppCardTitle>{dict.designSystem.sections.primaryDemo ?? 'Primary Demo'}</AppCardTitle>
+        </AppCardHeader>
+        <AppCardContent>
+          <PrimaryDemo labels={{
+            default: dict.designSystem.samples.primary?.default ?? 'Primary Button',
+            disabled: dict.designSystem.samples.primary?.disabled ?? 'Disabled',
+            focus: dict.designSystem.samples.primary?.focus ?? 'Focus-visible'
+          }} />
+        </AppCardContent>
+      </AppCard>
+
+      <AppCard>
+        <AppCardHeader>
+          <AppCardTitle>{dict.designSystem.sections.typography}</AppCardTitle>
+        </AppCardHeader>
+        <AppCardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="text-2xl lg:text-3xl font-semibold tracking-tight leading-tight">{dict.designSystem.samples.typography.h1}</div>
+            <div className="text-xl font-semibold tracking-tight leading-snug">{dict.designSystem.samples.typography.h2}</div>
+            <p className="text-base leading-relaxed">{dict.designSystem.samples.typography.body}</p>
+            <p className="text-sm text-muted-foreground">{dict.designSystem.samples.typography.muted}</p>
+          </div>
+        </AppCardContent>
+      </AppCard>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <AppCard>
+          <AppCardHeader>
+            <AppCardTitle>{dict.designSystem.sections.colorSurface}</AppCardTitle>
+          </AppCardHeader>
+          <AppCardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="h-12 w-full rounded bg-background border"></div>
+                <div className="text-sm">{dict.designSystem.samples.colors.pageBackground}</div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-12 w-full rounded bg-card shadow"></div>
+                <div className="text-sm">{dict.designSystem.samples.colors.cardBackground}</div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-12 w-full rounded bg-primary"></div>
+                <div className="text-sm">{dict.designSystem.samples.colors.primary}</div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-12 w-full rounded bg-muted"></div>
+                <div className="text-sm">{dict.designSystem.samples.colors.muted}</div>
+              </div>
+            </div>
+          </AppCardContent>
+        </AppCard>
+
+        <AppCard>
+          <AppCardHeader>
+            <AppCardTitle>{dict.designSystem.sections.cardSpacing}</AppCardTitle>
+          </AppCardHeader>
+          <AppCardContent className="space-y-4">
+            <div className="grid gap-8">
+              <AppCard>
+                <AppCardContent>
+                  <div className="text-sm text-muted-foreground">{dict.designSystem.samples.spacing.cardInner}</div>
+                </AppCardContent>
+              </AppCard>
+              <AppCard>
+                <AppCardContent>
+                  <div className="text-sm text-muted-foreground">{dict.designSystem.samples.spacing.cardBetween}</div>
+                </AppCardContent>
+              </AppCard>
+            </div>
+          </AppCardContent>
+        </AppCard>
+      </div>
+
+      <AppCard>
+        <AppCardHeader>
+          <AppCardTitle>{dict.designSystem.sections.buttonsBadges}</AppCardTitle>
         </AppCardHeader>
         <AppCardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -58,7 +135,7 @@ export default async function DesignSystemPage({ params }: { params: Promise<{ l
 
       <AppCard>
         <AppCardHeader>
-          <AppCardTitle>Alerts</AppCardTitle>
+          <AppCardTitle>{dict.designSystem.sections.alerts}</AppCardTitle>
         </AppCardHeader>
         <AppCardContent className="space-y-4">
           <Alert>
@@ -95,7 +172,27 @@ export default async function DesignSystemPage({ params }: { params: Promise<{ l
 
       <AppCard>
         <AppCardHeader>
-          <AppCardTitle>Form Controls</AppCardTitle>
+          <AppCardTitle>{dict.designSystem.sections.feedback}</AppCardTitle>
+        </AppCardHeader>
+        <AppCardContent>
+          <FeedbackDemo labels={dict.designSystem.samples.feedback} />
+        </AppCardContent>
+      </AppCard>
+
+      <AppCard>
+        <AppCardHeader>
+          <AppCardTitle>{dict.designSystem.sections.fileSupport ?? 'File Support'}</AppCardTitle>
+        </AppCardHeader>
+        <AppCardContent>
+          <p className="text-sm text-muted-foreground">
+            {dict.designSystem.samples.pdfNotice ?? '目前仅支持文本型 PDF，扫描件/图片暂不支持；请上传含文本内容的 PDF。'}
+          </p>
+        </AppCardContent>
+      </AppCard>
+
+      <AppCard>
+        <AppCardHeader>
+          <AppCardTitle>{dict.designSystem.sections.formControls}</AppCardTitle>
         </AppCardHeader>
         <AppCardContent className="space-y-4">
           <div className="grid gap-4">

@@ -87,7 +87,7 @@ export async function getUserByStackId(id: string): Promise<any | null> {
   if (!id || typeof id !== 'string') return null
   try {
     return await withPrismaGuard(async (client) => {
-      const user = await client.users_sync.findUnique({ where: { id } })
+      const user = await client.users_sync.findFirst({ where: { id, deleted_at: null } })
       return user ?? null
     }, { attempts: 3, prewarm: true })
   } catch {

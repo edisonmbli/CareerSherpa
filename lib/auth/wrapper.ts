@@ -1,5 +1,6 @@
 import { stackServerApp } from '@/stack/server'
-import { prisma } from '@/lib/prisma'
+import { authenticateAndSyncUserWithDb } from '@/lib/actions/auth'
+import { getUserByStackId } from '@/lib/dal'
 
 /**
  * Server Action 认证封装器（M2）
@@ -19,24 +20,38 @@ export function withAuth<TInput, TOutput>(
   action: AuthenticatedAction<TInput, TOutput>
 ) {
   return async (input: TInput): Promise<TOutput> => {
-    // 1) 获取当前会话用户（Stack Auth）
     const stackUser = await stackServerApp.getUser()
     if (!stackUser || !stackUser.id) {
       throw new Error('AuthenticationRequired: User is not authenticated.')
     }
-
-    // 2) 从 users_sync 读取有效用户（过滤软删除）
-    const dbUser = await prisma.users_sync.findFirst({
-      where: { id: stackUser.id, deleted_at: null },
-      select: { id: true, email: true },
-    })
-
+    const dbUser = await getUserByStackId(stackUser.id)
     if (!dbUser) {
-      // Neon Auth 同步有延迟或用户刚创建；上层可重试或提示
       throw new Error('UserNotFound: User record not found or is deleted.')
     }
-
-    // 3) 执行业务逻辑
     return await action(input, { id: dbUser.id, email: dbUser.email })
+  }
+}
+
+export function requireAuthForAction(actionName: string) {
+  return async () => {
+    const res = await authenticateAndSyncUserWithDb(actionName)
+    if (!res.user) {
+      throw new Error('AuthenticationRequired')
+    }
+    return res.user
+  }
+}
+
+export function withServerActionAuthWrite<TIn, TOut>(
+  actionName: string,
+  handler: (input: TIn, ctx: { userId: string; email?: string; dbUser?: any }) => Promise<TOut>
+) {
+  return async (input: TIn): Promise<TOut> => {
+    const res = await authenticateAndSyncUserWithDb(actionName)
+    if (!res.user) {
+      throw new Error('AuthenticationRequired')
+    }
+    const { id, email, primaryEmail, dbUser } = res.user
+    return await handler(input, { userId: id, email: email ?? primaryEmail, dbUser })
   }
 }

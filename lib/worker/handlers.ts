@@ -443,6 +443,32 @@ export async function handleBatch(
           requestId,
           traceId,
         })
+        // 写回资产流结果（resume/detailed_resume）
+        try {
+          if (String(templateId) === 'resume_summary') {
+            const resumeId = String((variables as any)?.resumeId || '')
+            if (resumeId) {
+              await (await import('@/lib/prisma')).prisma.resume.update({
+                where: { id: resumeId },
+                data: {
+                  resumeSummaryJson: exec.result.ok ? (exec.result as any).data : undefined,
+                  status: exec.result.ok ? ('COMPLETED' as any) : ('FAILED' as any),
+                },
+              })
+            }
+          } else if (String(templateId) === 'detailed_resume_summary') {
+            const detailedId = String((variables as any)?.detailedResumeId || '')
+            if (detailedId) {
+              await (await import('@/lib/prisma')).prisma.detailedResume.update({
+                where: { id: detailedId },
+                data: {
+                  detailedSummaryJson: exec.result.ok ? (exec.result as any).data : undefined,
+                  status: exec.result.ok ? ('COMPLETED' as any) : ('FAILED' as any),
+                },
+              })
+            }
+          }
+        } catch {}
         await createLlmUsageLogDetailed({
           taskTemplateId: templateId,
           provider: getProvider(decision.modelId),
@@ -505,6 +531,22 @@ export async function handleBatch(
             await updateMatchStatus(serviceId, 'FAILED' as any)
           } else if (String(templateId) === 'resume_customize') {
             await updateCustomizedResumeStatus(serviceId, 'FAILED' as any)
+          } else if (String(templateId) === 'resume_summary') {
+            const resumeId = String((variables as any)?.resumeId || '')
+            if (resumeId) {
+              await (await import('@/lib/prisma')).prisma.resume.update({
+                where: { id: resumeId },
+                data: { status: 'FAILED' as any },
+              })
+            }
+          } else if (String(templateId) === 'detailed_resume_summary') {
+            const detailedId = String((variables as any)?.detailedResumeId || '')
+            if (detailedId) {
+              await (await import('@/lib/prisma')).prisma.detailedResume.update({
+                where: { id: detailedId },
+                data: { status: 'FAILED' as any },
+              })
+            }
           }
         } catch {}
         const wasPaid = !!(variables as any)?.wasPaid

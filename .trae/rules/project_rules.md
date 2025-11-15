@@ -415,50 +415,38 @@ use context7 MCP when needed.
 - https://context7.com/websites/upstash-redis/llms.txt
 - https://context7.com/websites/upstash-qstash/llms.txt
 
-## 10. Worker & Queue Architecture (M6 Refactor Best Practices)
+# 10. General Code Quality & Best Practices
 
-- QStash 多队列（命名队列）
-  - 必须在 QStash Console 创建 6 个命名队列：`q_paid_stream/q_free_stream/q_paid_batch/q_free_batch/q_paid_vision/q_free_vision`，并为每队列设置并行度（Parallelism）。
-  - 生产者发布时必须显式指定队列：使用 `client.queue({ queueName }).enqueueJSON({ url, body, retries })`，而不是默认 `publishJSON`。
-  - 生产者统一入口 URL：`/api/worker/{stream|batch}/[service]`（视觉任务映射到 `batch`），消息体同时包含 `queueId` 以便工人侧审计与守卫。
-  - 队列选择优先级：`tierOverride → wasPaid → 真实配额`（统一于生产者与工人）。实现参考 `lib/queue/producer.ts:43-50, 192-206` 与 `lib/worker/handlers.ts:62-72`。
+To ensure long-term maintainability, readability, and testability, all code contributions must adhere to these quality standards. These rules are designed to prevent "waterfall" (long, procedural) code and promote a modular, functional, and well-documented codebase.
 
-- Worker 路由与职责
-  - 仅保留两个核心路由入口：`/api/worker/stream/[service]` 与 `/api/worker/batch/[service]`（App Router）。
-  - 路由必须保持“薄”，只做签名校验（`verifySignatureAppRouter`）、参数解析与调用处理器，不得引入业务复杂逻辑。参考 `app/api/worker/stream/[service]/route.ts`、`app/api/worker/batch/[service]/route.ts`。
-  - 禁止路由之间相互 import，避免开发态递归与 AsyncHooks 膨胀。
+## 10.1. Modularity & Single Responsibility Principle (SRP)
 
-- 处理器管线化（纯函数步骤）
-  - 步骤划分与目录规范：
-    - 验证：`lib/worker/types.ts`（Zod schema），`parseWorkerBody` 在 `lib/worker/common.ts:19-35`。
-    - 决策：`lib/worker/steps/decision.ts:1-13`（`computeDecision(templateId, variables, userHasQuota)`）。
-    - 元信息：`lib/worker/steps/meta.ts:1-10`（`getRequestMeta(req, taskId)` 统一生成 `requestId/traceId`）。
-    - 守卫：`lib/worker/steps/guards.ts:1-66`（`guardUser/guardModel/guardQueue`），失败统一通过 `guardBlocked` 发事件。
-    - 执行：`lib/worker/steps/execute.ts:1-35`（`executeStreaming/executeStructured` 返回统计信息）。
-    - 事件：`lib/worker/pipeline.ts:1-67`（`publishStart/guardBlocked/emitStreamIdle`）。
-    - 清理：`lib/worker/steps/cleanup.ts:1-13`（`cleanupFinal` 统一退出并发与背压计数）。
-  - 处理器文件只按顺序调用上述步骤，行为保持不变；参考 `lib/worker/handlers.ts`。
+- **Keep Functions Focused**: Every function, method, or Server Action must have a single, clear responsibility. Avoid monolithic functions that fetch data, transform it, handle business logic, and format a response all in one block.
+- **Decompose Complex Logic**: If a function (especially a Server Action or React component) exceeds 50 lines, has multiple levels of nesting, or handles several distinct "steps," it **must** be refactored. Break it down into smaller, private helper functions, each responsible for one step.
+- **Isolate Business Logic**: Business logic (e.g., calculating resume match scores, validating user permissions) **must** be isolated from framework-specific code (e.g., Next.js `Request` objects, React hooks). Place this logic in pure TypeScript functions (e.g., in `lib/services/` or `lib/utils/`) that can be easily understood and tested independently.
 
-- 并发与背压（分层控制）
-  - 队列层（QStash）：使用命名队列的并行度作为粗粒度闸门，支持暂停/恢复与 DLQ。生产者端的应用层重试（如 `requeueWithDelay`）已移除，统一依赖 QStash 的 `retries`。
-  - 模型层（Redis）：按 `modelId+tier` 控制并发。
-    - 键构造与阈值统一在 `lib/config/concurrency.ts:15-35`（`buildModelActiveKey/getMaxWorkersForModel`）。
-    - 进入/退出在 `lib/worker/common.ts:176-201`。
-  - 用户层（Redis）：按用户维度限制并发。
-    - 键构造在 `lib/config/concurrency.ts:37-40`（`buildUserActiveKey`），使用于 `lib/worker/common.ts:207-216`。
-  - 队列背压计数：队列大小读取统一在 `lib/config/concurrency.ts:1-13`（`queueMaxSizeFor`）；构造键在 `lib/config/concurrency.ts:42-44`（`buildQueueCounterKey`）。
+## 10.2. Readability & Naming
 
-- 日志与审计统一
-  - 使用 `lib/observability/logger.ts` 的 `logEvent/logAudit`，禁止在业务中直接调用 `trackEvent/auditUserAction`。
-  - 事件名必须为 `AnalyticsEventName`，统一字段 `{ userId, serviceId, taskId, payload }`；参考 `lib/queue/producer.ts` 与 `lib/worker/handlers.ts` 中的替换实现。
+- **Descriptive Naming**: All variables, functions, and file names must be descriptive and unambiguous. Use `fetchUserProfileById` instead of `getData`. Use `isProcessing` instead of `flag`.
+- **Avoid Ambiguous Acronyms**: Prefer explicit names over short or ambiguous acronyms (e.g., `userProfile` is better than `uProf`).
+- **Consistent Structure**: Follow a consistent pattern for function definitions. For example, a Server Action should clearly separate (1) validation, (2) the core operation (often calling the DAL), and (3) the return value.
 
-- SSE 与可观测性
-  - `start` 事件必须包含 `queueId/provider/modelId/requestId/traceId`，Viewer 顶部需显示队列与模型信息。参考 `lib/worker/pipeline.ts` 与 `components/dev/SseStreamViewer.tsx:96-101, 136-142`。
-  - 流式空闲心跳：长时间无 token 时发布 `info: stream_idle` 事件，用于高负载期排查（DeepSeek keep-alive 场景）。
+## 10.3. Documentation & Commenting
 
-- 配置集中化
-  - 并发与队列大小读取、键构造函数集中于 `lib/config/concurrency.ts`，避免分散常量与重复逻辑。
-  - 生产者与工人均应依赖该集中入口，减少参数不一致风险。
+- **Comment the "Why", Not the "What"**: Code should be self-documenting. Use comments _only_ to explain the "why"—the business constraints, the reason for a complex workaround, or the high-level purpose of a module.
+  - **Bad**: `// Increment i`
+  - **Good**: `// We must re-validate the user session here because the previous step may have refreshed their permissions.`
+- **JSDoc for Public Functions**: All exported functions in the DAL, services, utilities, and Server Actions **must** have JSDoc comments. At a minimum, include a description of its purpose, `@param` for its parameters, and `@returns` for its return value.
+- **File-Level Comments**: Complex files or new features should have a comment block at the top explaining the file's overall role and how it fits into the application.
 
-- 开发与压测
-  - 离线模拟脚本：`scripts/dev/worker-sim.ts` 支持 `stream|batch free|paid job_match` 的本地压测，不依赖页面即可验证处理器行为与守卫路径。
+## 10.4. File & Module Structure
+
+- **Single-Purpose Files**: Files must have a single, clear purpose. Do not create a single, massive `lib/utils.ts` "junk drawer." Instead, categorize utilities by domain (e.g., `lib/utils/date.ts`, `lib/utils/text.ts`).
+- **Index Exports**: Use `index.ts` files within feature folders (e.g., `components/user-profile/index.ts`) to provide a clean public interface for that module, exporting only the necessary components or functions.
+
+## 10.5. Clean Code Practices
+
+- **No Magic Values**: Hardcoded strings, numbers, or configuration values (e.g., page sizes, API URLs, default error messages) **must** be extracted into a constants file (e.g., `lib/constants.ts`) and imported.
+- **Prefer Immutability**: Avoid mutating data and objects directly. Use non-mutating array/object methods (e.g., `map`, `filter`, spread syntax `...`) to create new state, reducing side effects and improving predictability.
+- **Graceful Error Handling**: All data fetching, mutations, and external API calls **must** be wrapped in `try...catch` blocks.
+- **Structured Error Returns**: Server Actions, especially those used with `useFormState`, **must** return a structured response (e.g., `{ success: true, data: ... }` or `{ success: false, error: 'User-friendly message' }`). This ensures the UI can easily display feedback without relying on parsing thrown error messages.

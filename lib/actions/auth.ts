@@ -37,31 +37,31 @@ export async function authenticateServerAction(
   try {
     // 使用Stack Auth验证用户
     const user = await stackServerApp.getUser()
-    
+
     if (!user) {
       logError({
         reqId: 'server-action',
         route: actionName,
         userKey: 'anonymous',
         phase: 'authentication',
-        error: 'No authenticated user found'
+        error: 'No authenticated user found',
       })
-      
+
       return {
         user: null,
-        error: 'Authentication required'
+        error: 'Authentication required',
       }
     }
 
     return {
       user: {
         id: user.id,
-        ...(user.primaryEmail && { 
+        ...(user.primaryEmail && {
           email: user.primaryEmail,
-          primaryEmail: user.primaryEmail 
-        })
+          primaryEmail: user.primaryEmail,
+        }),
       },
-      error: null
+      error: null,
     }
   } catch (error) {
     logError({
@@ -69,12 +69,12 @@ export async function authenticateServerAction(
       route: actionName,
       userKey: 'unknown',
       phase: 'authentication',
-      error: error instanceof Error ? error.message : 'Authentication failed'
+      error: error instanceof Error ? error.message : 'Authentication failed',
     })
 
     return {
       user: null,
-      error: 'Authentication failed'
+      error: 'Authentication failed',
     }
   }
 }
@@ -89,26 +89,26 @@ export async function authenticateAndSyncUser(
   try {
     // 使用Stack Auth验证用户
     const stackUser = await stackServerApp.getUser()
-    
+
     if (!stackUser) {
       logError({
         reqId: 'server-action',
         route: actionName,
         userKey: 'anonymous',
         phase: 'authentication',
-        error: 'No authenticated user found'
+        error: 'No authenticated user found',
       })
-      
+
       return {
         user: null,
-        error: 'Authentication required'
+        error: 'Authentication required',
       }
     }
 
     // Stack Auth会自动同步用户数据到neon_auth.users_sync表
     // 我们只需要验证用户在本地数据库中是否存在
     const localUser = await getUserByStackId(stackUser.id)
-    
+
     if (!localUser) {
       // 如果用户不在本地数据库中，这可能是新用户或同步延迟
       // Stack Auth会处理同步，我们返回Stack用户信息
@@ -117,19 +117,19 @@ export async function authenticateAndSyncUser(
         route: actionName,
         userKey: stackUser.id,
         phase: 'user_sync',
-        error: 'User not found in local database, Stack Auth will handle sync'
+        error: 'User not found in local database, Stack Auth will handle sync',
       })
     }
 
     return {
       user: {
         id: stackUser.id,
-        ...(stackUser.primaryEmail && { 
+        ...(stackUser.primaryEmail && {
           email: stackUser.primaryEmail,
-          primaryEmail: stackUser.primaryEmail 
-        })
+          primaryEmail: stackUser.primaryEmail,
+        }),
       },
-      error: null
+      error: null,
     }
   } catch (error) {
     logError({
@@ -137,12 +137,12 @@ export async function authenticateAndSyncUser(
       route: actionName,
       userKey: 'unknown',
       phase: 'authentication',
-      error: error instanceof Error ? error.message : 'Authentication failed'
+      error: error instanceof Error ? error.message : 'Authentication failed',
     })
 
     return {
       user: null,
-      error: 'Authentication failed'
+      error: 'Authentication failed',
     }
   }
 }
@@ -156,25 +156,25 @@ export async function authenticateAndSyncUserWithDb(
   try {
     // 使用Stack Auth验证用户
     const stackUser = await stackServerApp.getUser()
-    
+
     if (!stackUser) {
       logError({
         reqId: 'server-action',
         route: actionName,
         userKey: 'anonymous',
         phase: 'authentication',
-        error: 'No authenticated user found'
+        error: 'No authenticated user found',
       })
-      
+
       return {
         user: null,
-        error: 'Authentication required'
+        error: 'Authentication required',
       }
     }
 
     // 获取完整的数据库用户信息
     const localUser = await getUserByStackId(stackUser.id)
-    
+
     if (!localUser) {
       // 如果用户不在本地数据库中，这可能是新用户或同步延迟
       logError({
@@ -182,20 +182,20 @@ export async function authenticateAndSyncUserWithDb(
         route: actionName,
         userKey: stackUser.id,
         phase: 'user_sync',
-        error: 'User not found in local database, Stack Auth will handle sync'
+        error: 'User not found in local database, Stack Auth will handle sync',
       })
     }
 
     return {
       user: {
         id: stackUser.id,
-        ...(stackUser.primaryEmail && { 
+        ...(stackUser.primaryEmail && {
           email: stackUser.primaryEmail,
-          primaryEmail: stackUser.primaryEmail 
+          primaryEmail: stackUser.primaryEmail,
         }),
-        dbUser: localUser // 包含完整的数据库用户信息
+        dbUser: localUser, // 包含完整的数据库用户信息
       },
-      error: null
+      error: null,
     }
   } catch (error) {
     logError({
@@ -203,12 +203,12 @@ export async function authenticateAndSyncUserWithDb(
       route: actionName,
       userKey: 'unknown',
       phase: 'authentication',
-      error: error instanceof Error ? error.message : 'Authentication failed'
+      error: error instanceof Error ? error.message : 'Authentication failed',
     })
 
     return {
       user: null,
-      error: 'Authentication failed'
+      error: 'Authentication failed',
     }
   }
 }
