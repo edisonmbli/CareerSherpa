@@ -1,0 +1,3 @@
+export const LEDGER_PAGE_SIZE = 10
+export const LEDGER_TYPES = ['SIGNUP_BONUS', 'PURCHASE', 'SERVICE_DEBIT', 'FAILURE_REFUND', 'MANUAL_ADJUST'] as const
+export const LEDGER_STATUS = ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'] as const

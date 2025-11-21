@@ -55,6 +55,8 @@ export const ENV = {
   
   // 调试开关：启用后在关键 LLM 调用处输出详细日志（仅服务器侧）
   LLM_DEBUG: (process.env['LLM_DEBUG'] ?? '0').toLowerCase() === '1' || (process.env['LLM_DEBUG'] ?? '').toLowerCase() === 'true',
+  LLM_STRICT_MODE: (process.env['LLM_STRICT_MODE'] ?? '1').toLowerCase() === '1' || (process.env['LLM_STRICT_MODE'] ?? '').toLowerCase() === 'true',
+  RESUME_SCHEMA_V2_ENABLED: (process.env['RESUME_SCHEMA_V2_ENABLED'] ?? '1').toLowerCase() === '1' || (process.env['RESUME_SCHEMA_V2_ENABLED'] ?? '').toLowerCase() === 'true',
 
   // Redis Streams 合并写入配置
   // 时间窗口（毫秒）：在该窗口内的 token 事件被合并为一次写入

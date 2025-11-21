@@ -1,7 +1,9 @@
 import { getQStash } from '@/lib/queue/qstash'
+import { recordRefund } from '@/lib/dal/coinLedger'
+import { addQuota } from '@/lib/dal/quotas'
 import { ENV } from '@/lib/env'
 import type { Locale } from '@/i18n-config'
-import type { TaskTemplateId } from '@/lib/prompts/types'
+import type { TaskTemplateId, VariablesFor } from '@/lib/prompts/types'
 import { checkRateLimit } from '@/lib/rateLimiter'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import {
@@ -10,25 +12,25 @@ import {
   type IdempotencyStep,
 } from '@/lib/idempotency'
 import { logAudit, logEvent } from '@/lib/observability/logger'
-import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
+import { getTaskRouting, getJobVisionTaskRouting, isServiceScoped } from '@/lib/llm/task-router'
 import { getConcurrencyConfig } from '@/lib/env'
 import { bumpPending } from '@/lib/redis/counter'
 
-export interface PushTaskParams {
+export interface PushTaskParams<T extends TaskTemplateId> {
   kind: 'stream' | 'batch'
   serviceId: string
   taskId: string
   userId: string
   locale: Locale
-  templateId: TaskTemplateId
-  variables: Record<string, any>
+  templateId: T
+  variables: VariablesFor<T>
 }
 
 /**
  * Push task with producer-side safeguards: rate limit + idempotency.
  * Returns messageId when published; on replay or rate limit, returns metadata without publishing.
  */
-export async function pushTask(params: PushTaskParams): Promise<{
+export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<T>): Promise<{
   messageId?: string
   url: string
   replay?: boolean
@@ -36,22 +38,22 @@ export async function pushTask(params: PushTaskParams): Promise<{
   retryAfter?: number
   idemKey?: string
   backpressured?: boolean
+  refunded?: boolean
+  error?: string
 }> {
   const client = getQStash()
   const base = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
   const quotaInfo = await checkQuotaForService(params.userId)
-  const tierOverride = (params.variables as any)?.tierOverride
-  const hasQuota = tierOverride === 'paid'
-    ? true
-    : tierOverride === 'free'
-    ? false
-    : typeof (params.variables as any)?.wasPaid === 'boolean'
-    ? Boolean((params.variables as any)?.wasPaid)
-    : !quotaInfo.shouldUseFreeQueue
-  const hasImage = Boolean(
-    params.variables?.['image'] || params.variables?.['jobImage']
-  )
-  const decision = hasImage
+  const tierOverride = params.variables.tierOverride
+  const hasQuota =
+    tierOverride === 'paid'
+      ? true
+      : tierOverride === 'free'
+      ? false
+      : typeof (params.variables as any)?.wasPaid === 'boolean'
+      ? Boolean((params.variables as any)?.wasPaid)
+      : !quotaInfo.shouldUseFreeQueue
+  const decision = (params.templateId === 'job_summary' && 'image' in params.variables && !!params.variables.image)
     ? getJobVisionTaskRouting(hasQuota)
     : getTaskRouting(params.templateId, hasQuota)
   let kindSegment = params.kind
@@ -72,16 +74,42 @@ export async function pushTask(params: PushTaskParams): Promise<{
   )
   if (!rate.ok) {
     // Audit and early return on rate limiting
-    logAudit(params.userId, 'rate_limited', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, retryAfter: rate.retryAfter })
+    logAudit(params.userId, 'rate_limited', 'task', params.taskId, {
+      serviceId: params.serviceId,
+      templateId: params.templateId,
+      kind: params.kind,
+      retryAfter: rate.retryAfter,
+    })
     // Analytics: producer-side rate limiting (non-blocking)
-    logEvent('TASK_RATE_LIMITED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, retryAfter: rate.retryAfter })
-    return {
-      url,
-      rateLimited: true,
-      ...(typeof rate.retryAfter === 'number'
-        ? { retryAfter: rate.retryAfter }
-        : {}),
+    logEvent(
+      'TASK_RATE_LIMITED',
+      {
+        userId: params.userId,
+        serviceId: params.serviceId,
+        taskId: params.taskId,
+      },
+      {
+        templateId: params.templateId,
+        kind: params.kind,
+        retryAfter: rate.retryAfter,
+      }
+    )
+    const wasPaid = !!params.variables.wasPaid
+    const cost = Number(params.variables.cost || 0)
+    const debitId = String((params.variables as any)?.debitId || '')
+    if (wasPaid && cost > 0 && debitId) {
+      const ledgerServiceId = isServiceScoped(params.templateId) ? params.serviceId : undefined
+      try {
+        await recordRefund({
+          userId: params.userId,
+          amount: cost,
+          relatedId: debitId,
+          ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+          templateId: params.templateId,
+        })
+      } catch {}
     }
+    return { url, rateLimited: true, refunded: wasPaid && cost > 0, ...(typeof rate.retryAfter === 'number' ? { retryAfter: rate.retryAfter } : {}), error: 'rate_limited' }
   }
 
   // Map template to idempotency step when applicable
@@ -106,9 +134,22 @@ export async function pushTask(params: PushTaskParams): Promise<{
     idemKey = idem.key
     if (!idem.shouldProcess) {
       // Audit and early return on idempotent replay
-      logAudit(params.userId, 'idempotent_replay', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, idemKey })
+      logAudit(params.userId, 'idempotent_replay', 'task', params.taskId, {
+        serviceId: params.serviceId,
+        templateId: params.templateId,
+        kind: params.kind,
+        idemKey,
+      })
       // Analytics: idempotent replay detected (non-blocking)
-      logEvent('TASK_REPLAYED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, idemKey })
+      logEvent(
+        'TASK_REPLAYED',
+        {
+          userId: params.userId,
+          serviceId: params.serviceId,
+          taskId: params.taskId,
+        },
+        { templateId: params.templateId, kind: params.kind, idemKey }
+      )
       return { url, replay: true, idemKey }
     }
   }
@@ -135,35 +176,89 @@ export async function pushTask(params: PushTaskParams): Promise<{
   const bp = await bumpPending(queueCounterKey, ttlSec, maxSize)
   if (!bp.ok) {
     // 审计与分析：生产者侧背压拒绝
-    logAudit(params.userId, 'backpressure', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, queueId: String(decision.queueId || ''), retryAfter: bp.retryAfter })
-    logEvent('TASK_BACKPRESSURED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, queueId: String(decision.queueId || ''), retryAfter: bp.retryAfter })
-    return {
-      url,
-      backpressured: true,
-      ...(bp.retryAfter ? { retryAfter: bp.retryAfter } : {}),
+    logAudit(params.userId, 'backpressure', 'task', params.taskId, {
+      serviceId: params.serviceId,
+      templateId: params.templateId,
+      kind: params.kind,
+      queueId: String(decision.queueId || ''),
+      retryAfter: bp.retryAfter,
+    })
+    logEvent(
+      'TASK_BACKPRESSURED',
+      {
+        userId: params.userId,
+        serviceId: params.serviceId,
+        taskId: params.taskId,
+      },
+      {
+        templateId: params.templateId,
+        kind: params.kind,
+        queueId: String(decision.queueId || ''),
+        retryAfter: bp.retryAfter,
+      }
+    )
+    const wasPaid = !!params.variables.wasPaid
+    const cost = Number(params.variables.cost || 0)
+    if (wasPaid && cost > 0) {
+      try { await addQuota(params.userId, cost) } catch {}
     }
+    return { url, backpressured: true, refunded: wasPaid && cost > 0, ...(bp.retryAfter ? { retryAfter: bp.retryAfter } : {}), error: 'backpressured' }
   }
 
-  const res = await client.queue({ queueName: String(decision.queueId) }).enqueueJSON({
-    url,
-    body: {
-      taskId: params.taskId,
-      userId: params.userId,
-      serviceId: params.serviceId,
-      locale: params.locale,
-      templateId: params.templateId,
-      variables: params.variables,
-      enqueuedAt: Date.now(),
-      retryCount: 0,
-    },
-    retries: 3,
-  })
+  let res: any
+  try {
+    res = await client
+      .queue({ queueName: String(decision.queueId) })
+      .enqueueJSON({
+        url,
+        body: {
+          taskId: params.taskId,
+          userId: params.userId,
+          serviceId: params.serviceId,
+          locale: params.locale,
+          templateId: params.templateId,
+          variables: params.variables,
+          enqueuedAt: Date.now(),
+          retryCount: 0,
+        },
+        retries: 0,
+      })
+  } catch (error) {
+    const wasPaid = !!(params.variables as any)?.wasPaid
+    const cost = Number((params.variables as any)?.cost || 0)
+    if (wasPaid && cost > 0) {
+      try { await addQuota(params.userId, cost) } catch {}
+    }
+    logEvent('TASK_FAILED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, error: error instanceof Error ? error.message : String(error) })
+    return { url, refunded: wasPaid && cost > 0, error: 'enqueue_failed' }
+  }
 
   // Audit successful enqueue
-  logAudit(params.userId, 'enqueue', 'task', params.taskId, { serviceId: params.serviceId, templateId: params.templateId, kind: params.kind, url, messageId: res.messageId, idemKey })
+  logAudit(params.userId, 'enqueue', 'task', params.taskId, {
+    serviceId: params.serviceId,
+    templateId: params.templateId,
+    kind: params.kind,
+    url,
+    messageId: res.messageId,
+    idemKey,
+  })
 
   // Analytics: task enqueued successfully
-  logEvent('TASK_ENQUEUED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, url, messageId: res.messageId, ...(idemKey ? { idemKey } : {}) })
+  logEvent(
+    'TASK_ENQUEUED',
+    {
+      userId: params.userId,
+      serviceId: params.serviceId,
+      taskId: params.taskId,
+    },
+    {
+      templateId: params.templateId,
+      kind: params.kind,
+      url,
+      messageId: res.messageId,
+      ...(idemKey ? { idemKey } : {}),
+    }
+  )
 
   return { messageId: res.messageId, url, ...(idemKey ? { idemKey } : {}) }
 }

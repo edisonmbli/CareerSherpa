@@ -51,3 +51,8 @@ next-env.d.ts
 /scripts
 
 /lib/generated/prisma
+
+/tmp
+/tmp/*
+
+/.trae/*

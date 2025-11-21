@@ -35,21 +35,25 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     const image = (formData.get('image') as string) || ''
     const tierOverride = (formData.get('tierOverride') as string) || 'auto'
 
-    await pushTask({
-      kind: 'stream',
-      serviceId,
-      taskId,
-      userId,
-      locale,
-      templateId,
-      variables: {
-        prompt: 'Hello stream from dev page',
-        ...(image ? { image } : {}),
-        ...(tierOverride === 'paid' ? { wasPaid: true, cost: 1, tierOverride: 'paid' } : {}),
-        ...(tierOverride === 'free' ? { wasPaid: false, tierOverride: 'free' } : {}),
-        ...(tierOverride === 'auto' ? { tierOverride: 'auto' } : {}),
-      },
-    })
+    const base = {
+      prompt: 'Hello stream from dev page',
+      ...(image ? { image } : {}),
+      ...(tierOverride === 'paid' ? { wasPaid: true, cost: 1, tierOverride: 'paid' } : {}),
+      ...(tierOverride === 'free' ? { wasPaid: false, tierOverride: 'free' } : {}),
+      ...(tierOverride === 'auto' ? {} : {}),
+    }
+    const variables = templateId === 'job_summary'
+      ? { ...base, jobId: 'job_dev' }
+      : templateId === 'job_match'
+      ? { ...base, jobId: 'job_dev', text: 'hello' }
+      : templateId === 'resume_summary'
+      ? { ...base, resumeId: taskId, wasPaid: true, cost: 1 }
+      : templateId === 'detailed_resume_summary'
+      ? { ...base, detailedResumeId: taskId, wasPaid: true, cost: 1 }
+      : templateId === 'interview_prep'
+      ? { ...base, interviewId: 'interview_dev', wasPaid: true, cost: 1 }
+      : base
+    await pushTask({ kind: 'stream', serviceId, taskId, userId, locale, templateId, variables: variables as any })
     // 重定向到带查询参数的同一路径，以同步 Viewer 与提交值
     redirect(`/${locale}/sse?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&templateId=${encodeURIComponent(templateId)}`)
   }

@@ -2,6 +2,7 @@
  * English (en) Prompt Templates
  */
 import type { PromptTemplateMap, JsonSchema } from './types'
+import { ENV } from '@/lib/env'
 
 // 1. i18n System Base (Translated from prototype)
 const SYSTEM_BASE = `You are a senior job assistant specializing in helping job seekers optimize resumes, analyze job matching, and prepare for interviews.
@@ -226,8 +227,175 @@ const SCHEMAS_V2 = {
       'reverse_questions',
     ],
   } as JsonSchema,
+  RESUME_SUMMARY: {
+    type: 'object',
+    properties: {
+      header: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          email: { type: 'string' },
+          phone: { type: 'string' },
+          linkedin: { type: 'string' },
+          github: { type: 'string' },
+          links: {
+            type: 'array',
+            items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } } },
+          },
+        },
+      },
+      summary: { type: 'string' },
+      experience: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            role: { type: 'string' },
+            company: { type: 'string' },
+            duration: { type: 'string' },
+            highlights: { type: 'array', items: { type: 'string' } },
+            stack: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      projects: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            link: { type: 'string' },
+            description: { type: 'string' },
+            highlights: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      education: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            degree: { type: 'string' },
+            school: { type: 'string' },
+            duration: { type: 'string' },
+            gpa: { type: 'string' },
+            courses: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      skills: {
+        anyOf: [
+          { type: 'array', items: { type: 'string' } },
+          { type: 'object', properties: { technical: { type: 'array', items: { type: 'string' } }, soft: { type: 'array', items: { type: 'string' } }, tools: { type: 'array', items: { type: 'string' } } } },
+        ],
+      },
+      certifications: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
+      languages: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, level: { type: 'string' }, proof: { type: 'string' } } } },
+      awards: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
+      openSource: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, link: { type: 'string' }, highlights: { type: 'array', items: { type: 'string' } } } } },
+      summary_points: { type: 'array', items: { type: 'string' } },
+      specialties_points: { type: 'array', items: { type: 'string' } },
+      extras: { type: 'array', items: { type: 'string' } },
+    },
+} as JsonSchema,
 }
 
+const DETAILED_RESUME_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    header: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        linkedin: { type: 'string' },
+        github: { type: 'string' },
+        links: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { label: { type: 'string' }, url: { type: 'string' } },
+          },
+        },
+      },
+    },
+    summary: { type: 'string' },
+    experiences: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          company: { type: 'string' },
+          product_or_team: { type: 'string' },
+          role: { type: 'string' },
+          duration: { type: 'string' },
+          keywords: { type: 'array', items: { type: 'string' } },
+          highlights: { type: 'array', items: { type: 'string' } },
+          projects: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                description: { type: 'string' },
+                link: { type: 'string' },
+                task: { type: 'array', items: { type: 'string' } },
+                actions: { type: 'array', items: { type: 'string' } },
+                results: { type: 'array', items: { type: 'string' } },
+                metrics: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      value: { anyOf: [{ type: 'number' }, { type: 'string' }] },
+                      unit: { type: 'string' },
+                      period: { type: 'string' },
+                    },
+                    required: ['label', 'value'],
+                  },
+                },
+              },
+            },
+          },
+          contributions: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    capabilities: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          points: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['name', 'points'],
+      },
+    },
+    education: SCHEMAS_V2.RESUME_SUMMARY.properties!['education'] as JsonSchema,
+    skills: SCHEMAS_V2.RESUME_SUMMARY.properties!['skills'] as JsonSchema,
+    certifications: SCHEMAS_V2.RESUME_SUMMARY.properties!['certifications'] as JsonSchema,
+    languages: SCHEMAS_V2.RESUME_SUMMARY.properties!['languages'] as JsonSchema,
+    awards: SCHEMAS_V2.RESUME_SUMMARY.properties!['awards'] as JsonSchema,
+    openSource: SCHEMAS_V2.RESUME_SUMMARY.properties!['openSource'] as JsonSchema,
+    extras: SCHEMAS_V2.RESUME_SUMMARY.properties!['extras'] as JsonSchema,
+    summary_points: { type: 'array', items: { type: 'string' } },
+    specialties_points: { type: 'array', items: { type: 'string' } },
+    rawSections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          points: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['title', 'points'],
+      },
+    },
+  },
+}
 // 4. Template Collection
 export const EN_TEMPLATES: PromptTemplateMap = {
   // --- Re-using Prototype (M7) ---
@@ -237,15 +405,18 @@ export const EN_TEMPLATES: PromptTemplateMap = {
     description:
       "Extract structured information from the user's raw general resume text.",
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `Please parse the following raw resume text and extract key information strictly according to the JSON Schema.
-Ensure the "highlights" field captures quantifiable and impactful achievements.
+    userPrompt: `Please **extract rather than paraphrase**. Output strictly according to the JSON Schema.
+- **Responsibilities**: copy verbatim all sentences starting with "Responsible for", "Led", "As the sole owner", etc.
+- **Highlights**: retain quantifiable, impactful results (performance improvements, user metrics, etc.).
+- **Projects & Links**: preserve project name/link/brief description.
+- **Bullet Preservation**: for summary/specialties, output bullet points by copying the original lines.
 
 Raw Resume Text:
 """
-{{resume_text}}
+{resume_text}
 """`,
     variables: ['resume_text'],
-    outputSchema: SCHEMAS_V1.RESUME_SUMMARY,
+    outputSchema: SCHEMAS_V2.RESUME_SUMMARY,
   },
   detailed_resume_summary: {
     id: 'detailed_resume_summary',
@@ -253,14 +424,45 @@ Raw Resume Text:
     description:
       "Extract all structured information from the user's detailed history.",
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `Please parse the following raw detailed resume text. This document is more detailed than a general resume. Extract as much structured information as possible, especially the highlights of project experiences.
+    userPrompt: `Please **extract rather than paraphrase**, and strictly output according to the JSON Schema.
+
+Recognition & Mapping Rules:
+1) Company Block: When you see four elements (Company/Product/Duration/Keywords), create an experiences[] item and fill company, product_or_team, role, duration, keywords[].
+2) Project Block: identify **Task / Actions / Results** and store them in projects[].task / actions / results; when numbers or percentages appear, also record them in projects[].metrics[].
+3) Capability Sections: detect sections like "Learning Capability", "Recommendation System", "Creator Growth", "Short Video Understanding", "Lean", "Collaboration", "Leadership", "Problem-Solving"; store them in capabilities[] with original bullet points.
+4) Fallback: if a section cannot be classified, store it in rawSections[] with its original title and bullet points.
+
+Minimal Examples (for company/project recognition and field mapping):
+— Company Block —
+Raw:
+Tencent — QQ Music · Senior Product Manager (2019.03–2021.08)
+Keywords: Content Ecosystem; Recommendation System; Creator Growth
+Mapping:
+company: "Tencent"
+product_or_team: "QQ Music"
+role: "Senior Product Manager"
+duration: "2019.03–2021.08"
+keywords: ["Content Ecosystem","Recommendation System","Creator Growth"]
+
+— Project Block —
+Raw:
+Project: Recommendation Re-ranking
+Task: Reduce cold-start loss
+Actions: Build user–content similarity features; Launch recall + re-ranking Multi-armed Bandit
+Results: New-user 7-day retention +3.2%; Completion rate +5.6%
+Mapping:
+projects[].name: "Recommendation Re-ranking"
+task: ["Reduce cold-start loss"]
+actions: ["Build user–content similarity features","Launch recall + re-ranking Multi-armed Bandit"]
+results: ["New-user 7-day retention +3.2%","Completion rate +5.6%"]
+metrics: (label="7-day retention", value="3.2%", period="7d"); (label="Completion rate", value="5.6%")
 
 Raw Text:
 """
-{{detailed_resume_text}}
+{detailed_resume_text}
 """`,
     variables: ['detailed_resume_text'],
-    outputSchema: SCHEMAS_V1.RESUME_SUMMARY, // Re-using schema
+    outputSchema: DETAILED_RESUME_SCHEMA,
   },
   job_summary: {
     id: 'job_summary',

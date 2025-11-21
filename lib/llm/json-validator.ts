@@ -59,6 +59,9 @@ function cleanJsonText(text: string): string {
   // Remove any leading/trailing whitespace again
   cleaned = cleaned.trim()
 
+  // Escape control characters inside JSON strings
+  cleaned = escapeControlCharsInStrings(cleaned)
+
   return cleaned
 }
 
@@ -182,6 +185,52 @@ function fixQuotesInStrings(text: string): string {
     i++
   }
 
+  return result
+}
+
+function escapeControlCharsInStrings(text: string): string {
+  let result = ''
+  let inString = false
+  let escaped = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charAt(i)
+    if (escaped) {
+      result += ch
+      escaped = false
+      continue
+    }
+    if (ch === '\\') {
+      result += ch
+      escaped = true
+      continue
+    }
+    if (ch === '"') {
+      inString = !inString
+      result += ch
+      continue
+    }
+    if (inString) {
+      const code = ch.charCodeAt(0)
+      if (code >= 0 && code < 32) {
+        if (ch === '\n') {
+          result += '\\n'
+          continue
+        }
+        if (ch === '\r') {
+          result += '\\r'
+          continue
+        }
+        if (ch === '\t') {
+          result += '\\t'
+          continue
+        }
+        const hex = code.toString(16).padStart(4, '0')
+        result += `\\u${hex}`
+        continue
+      }
+    }
+    result += ch
+  }
   return result
 }
 

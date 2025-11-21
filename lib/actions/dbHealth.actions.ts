@@ -15,7 +15,5 @@ export async function checkDbHealth(): Promise<{ ok: boolean; latencyMs: number;
       latencyMs: Date.now() - start,
       error: error instanceof Error ? error.message : 'Unknown error',
     }
-  } finally {
-    await prisma.$disconnect()
   }
 }

@@ -10,11 +10,14 @@ type TabsContextType = {
 
 const TabsContext = React.createContext<TabsContextType | null>(null)
 
-export function Tabs({ defaultValue, className, children }: { defaultValue: string; className?: string; children: React.ReactNode }) {
-  const [value, setValue] = React.useState(defaultValue)
+export function Tabs({ defaultValue, value: controlled, onValueChange, className, children }: { defaultValue: string; value?: string; onValueChange?: (v: string) => void; className?: string; children: React.ReactNode }) {
+  const [value, setValue] = React.useState(controlled ?? defaultValue)
+  React.useEffect(() => {
+    if (controlled && controlled !== value) setValue(controlled)
+  }, [controlled])
   return (
     <div className={className}>
-      <TabsContext.Provider value={{ value, setValue }}>{children}</TabsContext.Provider>
+      <TabsContext.Provider value={{ value, setValue: (v) => { setValue(v); onValueChange?.(v) } }}>{children}</TabsContext.Provider>
     </div>
   )
 }

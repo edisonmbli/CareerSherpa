@@ -17,7 +17,7 @@ export function Progress({ value = 0, max = 100, className, ...props }: Progress
       className={cn('h-2 w-full overflow-hidden rounded-full bg-muted', className)}
       {...props}
     >
-      <div className="h-full w-full origin-left scale-x-[var(--pct)] bg-primary" style={{ ['--pct' as any]: pct / 100 }} />
+      <div className={cn('h-full w-full origin-left scale-x-[var(--pct)] bg-gradient-to-r from-blue-100 to-blue-200')} style={{ ['--pct' as any]: pct / 100 }} />
     </div>
   )
 }

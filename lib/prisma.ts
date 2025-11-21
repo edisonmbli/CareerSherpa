@@ -1,3 +1,4 @@
+import '@/lib/prismaEngine'
 import { PrismaClient } from '@prisma/client'
 // Ensure .env.local is loaded before Prisma reads DATABASE_URL
 import '@/lib/env'
@@ -23,3 +24,12 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma
 }
+
+// Attempt to establish connection eagerly to avoid first-call cold engine issues
+;(async () => {
+  try {
+    if (typeof (prisma as any).$connect === 'function') {
+      await (prisma as any).$connect()
+    }
+  } catch {}
+})()

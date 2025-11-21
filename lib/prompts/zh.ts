@@ -2,6 +2,7 @@
  * 中文 (zh) Prompt 模板
  */
 import type { PromptTemplateMap, JsonSchema } from './types';
+import { ENV } from '@/lib/env';
 
 // 1. 复用 prototype 的 System Base
 const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者优化简历、分析职位匹配度和准备面试。
@@ -159,7 +160,169 @@ const SCHEMAS_V2 = {
     },
     required: ['self_introduction_script', 'potential_questions', 'reverse_questions']
   } as JsonSchema,
+  RESUME_SUMMARY: {
+    type: 'object',
+    properties: {
+      header: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          email: { type: 'string' },
+          phone: { type: 'string' },
+          linkedin: { type: 'string' },
+          github: { type: 'string' },
+          links: {
+            type: 'array',
+            items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } } },
+          },
+        },
+      },
+      summary: { type: 'string' },
+      experience: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            role: { type: 'string' },
+            company: { type: 'string' },
+            duration: { type: 'string' },
+            highlights: { type: 'array', items: { type: 'string' } },
+            stack: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      projects: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            link: { type: 'string' },
+            description: { type: 'string' },
+            highlights: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      education: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            degree: { type: 'string' },
+            school: { type: 'string' },
+            duration: { type: 'string' },
+            gpa: { type: 'string' },
+            courses: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      skills: {
+        anyOf: [
+          { type: 'array', items: { type: 'string' } },
+          { type: 'object', properties: { technical: { type: 'array', items: { type: 'string' } }, soft: { type: 'array', items: { type: 'string' } }, tools: { type: 'array', items: { type: 'string' } } } },
+        ],
+      },
+      certifications: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
+      languages: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, level: { type: 'string' }, proof: { type: 'string' } } } },
+      awards: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
+      openSource: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, link: { type: 'string' }, highlights: { type: 'array', items: { type: 'string' } } } } },
+      summary_points: { type: 'array', items: { type: 'string' } },
+      specialties_points: { type: 'array', items: { type: 'string' } },
+      extras: { type: 'array', items: { type: 'string' } },
+    },
+} as JsonSchema,
 };
+
+const DETAILED_RESUME_SCHEMA = {
+  type: 'object',
+  properties: {
+    header: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        linkedin: { type: 'string' },
+        github: { type: 'string' },
+        links: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } } } },
+      },
+    },
+    summary: { type: 'string' },
+    experiences: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          company: { type: 'string' },
+          product_or_team: { type: 'string' },
+          role: { type: 'string' },
+          duration: { type: 'string' },
+          keywords: { type: 'array', items: { type: 'string' } },
+          highlights: { type: 'array', items: { type: 'string' } },
+          projects: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                description: { type: 'string' },
+                link: { type: 'string' },
+                task: { type: 'array', items: { type: 'string' } },
+                actions: { type: 'array', items: { type: 'string' } },
+                results: { type: 'array', items: { type: 'string' } },
+                metrics: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      value: { anyOf: [{ type: 'number' }, { type: 'string' }] },
+                      unit: { type: 'string' },
+                      period: { type: 'string' },
+                    },
+                    required: ['label', 'value'],
+                  },
+                },
+              },
+            },
+          },
+          contributions: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    capabilities: {
+      type: 'array',
+      items: { type: 'object', properties: { name: { type: 'string' }, points: { type: 'array', items: { type: 'string' } } }, required: ['name', 'points'] },
+    },
+    education: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          degree: { type: 'string' },
+          school: { type: 'string' },
+          duration: { type: 'string' },
+          gpa: { type: 'string' },
+          courses: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    skills: {
+      anyOf: [
+        { type: 'array', items: { type: 'string' } },
+        { type: 'object', properties: { technical: { type: 'array', items: { type: 'string' } }, soft: { type: 'array', items: { type: 'string' } }, tools: { type: 'array', items: { type: 'string' } } } },
+      ],
+    },
+    certifications: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
+    languages: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, level: { type: 'string' }, proof: { type: 'string' } } } },
+    awards: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
+    openSource: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, link: { type: 'string' }, highlights: { type: 'array', items: { type: 'string' } } } } },
+    extras: { type: 'array', items: { type: 'string' } },
+    summary_points: { type: 'array', items: { type: 'string' } },
+    specialties_points: { type: 'array', items: { type: 'string' } },
+    rawSections: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, points: { type: 'array', items: { type: 'string' } } }, required: ['title', 'points'] } },
+  },
+} as JsonSchema;
 
 
 // 4. 模板合集
@@ -170,29 +333,63 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
     name: '通用简历提取',
     description: '从用户上传的通用简历原文中提取结构化信息。',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `请解析以下简历原文，并严格按照 JSON Schema 提取关键信息。
-确保“highlights”字段只包含可量化的、有影响力的成就。
+    userPrompt: `请“提取而非改写”以下简历原文，严格按照 JSON Schema 输出结构化结果。
+– **职责职责（responsibilities）**：原样提取所有以“负责/主导/作为唯一负责人”等开头的职责句。
+– **成果亮点（highlights）**：提取可量化的、有影响力的结果（如提效、同比提升、用户指标等）。
+– **项目与链接**：保留项目名/链接/简短描述。
+– **要点还原**：职业摘要与专业特长采用“要点列表”逐条复制原文，不做二次改写。
 
 简历原文:
 """
-{{resume_text}}
+{resume_text}
 """`,
     variables: ['resume_text'],
-    outputSchema: SCHEMAS_V1.RESUME_SUMMARY,
+    outputSchema: SCHEMAS_V2.RESUME_SUMMARY,
   },
   detailed_resume_summary: {
     id: 'detailed_resume_summary',
     name: '详细履历提取',
     description: '从用户的详细履历中提取所有结构化信息。',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `请解析以下个人详细履历原文。这份文档比通用简历更详细，请尽可能多地提取所有结构化信息，特别是项目经历（experience）的亮点（highlights）。
+    userPrompt: `请“提取而非改写”以下个人详细履历原文，严格按照给定 JSON Schema 输出。必须逐条复制原文要点，不合并、不重写，保留所有数量/百分比/时间范围。
+
+识别与映射规则：
+1) 公司段：当出现“公司/产品/在职时间/关键词”四要素时，创建 experiences[] 项，填充 company、product_or_team、role、duration、keywords[]。
+2) 项目段（项目经历）：识别“任务/行动/成果”三段，分别写入 projects[].task/actions/results；出现数字或百分比时，同时写入 projects[].metrics[]。
+3) 能力分节：识别“学习能力/推荐系统/创作者增长/短视频内容理解/精益能力/协同能力/领导能力/问题解决能力”等，写入 capabilities[]，points 为原文要点。
+4) 兜底：无法归类的分节写入 rawSections[]，title 为原文标题，points 为原文要点。
+
+极简示例（用于公司/项目识别与字段映射）：
+— 公司段示例 —
+原文：
+腾讯 - QQ音乐 · 高级产品经理（2019.03-2021.08）
+关键词：内容生态；推荐系统；创作者增长
+映射：
+company: "腾讯"
+product_or_team: "QQ音乐"
+role: "高级产品经理"
+duration: "2019.03-2021.08"
+keywords: ["内容生态","推荐系统","创作者增长"]
+
+— 项目段示例 —
+原文：
+项目：内容推荐重排
+任务：降低冷启动损耗
+行动：构建用户-内容相似度特征；上线召回+重排多臂Bandit
+成果：新用户7日留存+3.2%；播放完成率+5.6%
+映射：
+projects[].name: "内容推荐重排"
+task: ["降低冷启动损耗"]
+actions: ["构建用户-内容相似度特征","上线召回+重排多臂Bandit"]
+results: ["新用户7日留存+3.2%","播放完成率+5.6%"]
+metrics: (label="7日留存", value="3.2%", period="7d"); (label="播放完成率", value="5.6%")
 
 履历原文:
 """
-{{detailed_resume_text}}
+{detailed_resume_text}
 """`,
     variables: ['detailed_resume_text'],
-    outputSchema: SCHEMAS_V1.RESUME_SUMMARY, // 复用
+    outputSchema: DETAILED_RESUME_SCHEMA,
   },
   job_summary: {
     id: 'job_summary',
@@ -204,7 +401,7 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
 
 JD原文:
 """
-{{job_text}}
+{job_text}
 """`,
     variables: ['job_text'],
     outputSchema: SCHEMAS_V1.JOB_SUMMARY,
@@ -221,22 +418,22 @@ JD原文:
 
 【RAG 知识库 - 匹配度分析技巧】
 """
-{{rag_context}}
+{rag_context}
 """
 
 【用户简历 - 结构化摘要】
 """
-{{resume_summary_json}}
+{resume_summary_json}
 """
 
 【用户详细履历 - 结构化摘要 (可选)】
 """
-{{detailed_resume_summary_json}}
+{detailed_resume_summary_json}
 """
 
 【目标岗位 - 结构化摘要】
 """
-{{job_summary_json}}
+{job_summary_json}
 """
 
 请根据以上所有信息，严格按照 JSON Schema 输出分析报告。

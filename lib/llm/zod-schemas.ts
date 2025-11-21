@@ -1,60 +1,155 @@
 import { z } from 'zod'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 
-// V1: 复用原型的 summary 任务（resume/job/detailed_resume）
-const resumeSummarySchema = z.object({
-  header: z
-    .object({
-      name: z.string().optional(),
-      email: z.string().optional(),
-      phone: z.string().optional(),
-      linkedin: z.string().optional(),
-      github: z.string().optional(),
-    })
-    .optional(),
-  summary: z.string().optional(),
-  experience: z
-    .array(
-      z.object({
-        role: z.string().optional(),
-        company: z.string().optional(),
-        duration: z.string().optional(),
-        achievements: z.array(z.string()).optional(),
-      })
-    )
-    .optional(),
-  skills: z
-    .object({
-      technical: z.array(z.string()).optional(),
-      soft: z.array(z.string()).optional(),
-      tools: z.array(z.string()).optional(),
-    })
-    .optional(),
+const linkSchema = z.object({ label: z.string().optional(), url: z.string().optional() })
+const headerSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  linkedin: z.string().optional(),
+  github: z.string().optional(),
+  links: z.array(linkSchema).optional(),
+})
+const experienceItemSchema = z.object({
+  role: z.string().optional(),
+  company: z.string().optional(),
+  duration: z.string().optional(),
+  highlights: z.array(z.string()).optional(),
+  stack: z.array(z.string()).optional(),
+})
+const projectItemSchema = z.object({
+  name: z.string().optional(),
+  link: z.string().optional(),
+  description: z.string().optional(),
   highlights: z.array(z.string()).optional(),
 })
-
-const detailedResumeSummarySchema = z.object({
-  timeline: z
-    .array(
-      z.object({
-        time: z.string().optional(),
-        event: z.string().optional(),
-        details: z.array(z.string()).optional(),
-      })
-    )
-    .optional(),
-  projects: z
-    .array(
-      z.object({
-        name: z.string().optional(),
-        description: z.string().optional(),
-        impact: z.array(z.string()).optional(),
-      })
-    )
-    .optional(),
-  certificates: z.array(z.string()).optional(),
-  publications: z.array(z.string()).optional(),
+const educationItemSchema = z.object({
+  degree: z.string().optional(),
+  school: z.string().optional(),
+  duration: z.string().optional(),
+  gpa: z.string().optional(),
+  courses: z.array(z.string()).optional(),
 })
+const skillsUnionSchema = z.union([
+  z.array(z.string()),
+  z.object({ technical: z.array(z.string()).optional(), soft: z.array(z.string()).optional(), tools: z.array(z.string()).optional() }).partial(),
+])
+const certificationItemSchema = z.object({ name: z.string().optional(), issuer: z.string().optional(), date: z.string().optional() })
+const languageItemSchema = z.object({ name: z.string().optional(), level: z.string().optional(), proof: z.string().optional() })
+const awardItemSchema = z.object({ name: z.string().optional(), issuer: z.string().optional(), date: z.string().optional() })
+const openSourceItemSchema = z.object({ name: z.string().optional(), link: z.string().optional(), highlights: z.array(z.string()).optional() })
+const resumeSummarySchema = z
+  .object({
+    header: headerSchema.optional(),
+    summary: z.string().optional(),
+    summary_points: z.array(z.string()).optional(),
+    specialties_points: z.array(z.string()).optional(),
+    experience: z.array(experienceItemSchema).optional(),
+    projects: z.array(projectItemSchema).optional(),
+    education: z.array(educationItemSchema).optional(),
+    skills: skillsUnionSchema.optional(),
+    certifications: z.array(certificationItemSchema).optional(),
+    languages: z.array(languageItemSchema).optional(),
+    awards: z.array(awardItemSchema).optional(),
+    openSource: z.array(openSourceItemSchema).optional(),
+    extras: z.array(z.string()).optional(),
+  })
+  .refine(
+    (d) =>
+      Boolean(d.summary && String(d.summary).trim().length > 0) ||
+      (Array.isArray(d.summary_points) && d.summary_points.length > 0) ||
+      (Array.isArray(d.specialties_points) && d.specialties_points.length > 0) ||
+      (Array.isArray(d.experience) && d.experience.length > 0) ||
+      (Array.isArray(d.projects) && d.projects.length > 0) ||
+      (Array.isArray(d.education) && d.education.length > 0) ||
+      Boolean(d.skills && (Array.isArray(d.skills) ? d.skills.length > 0 : ((d.skills as any).technical?.length || (d.skills as any).soft?.length || (d.skills as any).tools?.length))),
+    { message: 'empty_resume_summary' }
+  )
+
+const detailedResumeV3Schema = z
+  .object({
+    header: headerSchema.optional(),
+    summary: z.string().optional(),
+    experiences: z
+      .array(
+        z.object({
+          company: z.string().optional(),
+          product_or_team: z.string().optional(),
+          role: z.string().optional(),
+          duration: z.string().optional(),
+          keywords: z.array(z.string()).optional(),
+          highlights: z.array(z.string()).optional(),
+          projects: z
+            .array(
+              z.object({
+                name: z.string().optional(),
+                description: z.string().optional(),
+                link: z.string().optional(),
+                task: z.array(z.string()).optional(),
+                actions: z.array(z.string()).optional(),
+                results: z.array(z.string()).optional(),
+                metrics: z
+                  .array(
+                    z.object({
+                      label: z.string(),
+                      value: z.union([z.number(), z.string()]),
+                      unit: z.string().optional(),
+                      period: z.string().optional(),
+                    })
+                  )
+                  .optional(),
+              })
+            )
+            .optional(),
+          contributions: z.array(z.string()).optional(),
+        })
+      )
+      .optional(),
+    capabilities: z
+      .array(
+        z.object({ name: z.string(), points: z.array(z.string()) })
+      )
+      .optional(),
+    education: z.array(educationItemSchema).optional(),
+    skills: skillsUnionSchema.optional(),
+    certifications: z.array(certificationItemSchema).optional(),
+    languages: z.array(languageItemSchema).optional(),
+    awards: z.array(awardItemSchema).optional(),
+    openSource: z.array(openSourceItemSchema).optional(),
+    extras: z.array(z.string()).optional(),
+    summary_points: z.array(z.string()).optional(),
+    specialties_points: z.array(z.string()).optional(),
+    rawSections: z
+      .array(
+        z.object({ title: z.string(), points: z.array(z.string()) })
+      )
+      .optional(),
+  })
+  .refine(
+    (d) =>
+      (Array.isArray(d.experiences) && d.experiences.length > 0 &&
+        d.experiences.some(
+          (e: any) =>
+            (Array.isArray(e.highlights) && e.highlights.length > 0) ||
+            (Array.isArray(e.projects) && e.projects.length > 0 &&
+              e.projects.some(
+                (p: any) =>
+                  (Array.isArray(p.task) && p.task.length > 0) ||
+                  (Array.isArray(p.actions) && p.actions.length > 0) ||
+                  (Array.isArray(p.results) && p.results.length > 0)
+              ))
+        )) ||
+      (Array.isArray(d.capabilities) && d.capabilities.length > 0 &&
+        d.capabilities.some((c: any) => Array.isArray(c.points) && c.points.length > 0)) ||
+      (Array.isArray(d.education) && d.education.length > 0) ||
+      Boolean(
+        d.skills &&
+          (Array.isArray(d.skills)
+            ? d.skills.length > 0
+            : ((d.skills as any).technical?.length || (d.skills as any).soft?.length || (d.skills as any).tools?.length))
+      ),
+    { message: 'empty_detailed_resume_summary' }
+  )
 
 const jobSummarySchema = z.object({
   company: z.string().optional(),
@@ -111,7 +206,7 @@ const ocrExtractSchema = z.object({
 // 统一映射
 const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   resume_summary: resumeSummarySchema,
-  detailed_resume_summary: detailedResumeSummarySchema,
+  detailed_resume_summary: detailedResumeV3Schema,
   job_summary: jobSummarySchema,
   job_match: jobMatchSchema,
   resume_customize: resumeCustomizeSchema,

@@ -7,7 +7,7 @@ export function AppCard(
   const { className, padded = true, ...rest } = props
   return (
     <Card
-      className={cn('border-border bg-card text-card-foreground', className)}
+      className={cn('shadow-sm dark:shadow-lg border-0 dark:border dark:border-white/10 bg-card text-card-foreground', className)}
       {...rest}
     >
       {padded ? <div className="p-6">{rest.children}</div> : rest.children}

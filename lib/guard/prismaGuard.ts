@@ -13,9 +13,6 @@ export async function prewarmPrisma(): Promise<void> {
   if (typeof (prisma as any).$queryRaw === 'function') {
     await (prisma as any).$queryRaw`SELECT 1`
   }
-  if (typeof (prisma as any).$disconnect === 'function') {
-    await (prisma as any).$disconnect()
-  }
 }
 
 export async function withPrismaGuard<T>(
@@ -42,10 +39,6 @@ export async function withPrismaGuard<T>(
       lastError = err
       const delay = Math.min(3000, baseDelayMs * Math.pow(2, i - 1))
       await new Promise((r) => setTimeout(r, delay))
-    } finally {
-      if (typeof (prisma as any).$disconnect === 'function') {
-        await (prisma as any).$disconnect()
-      }
     }
   }
   throw lastError instanceof Error ? lastError : new Error('Prisma operation failed')

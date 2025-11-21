@@ -42,16 +42,27 @@ export function requireAuthForAction(actionName: string) {
   }
 }
 
+export function withServerActionAuthWrite<TOut>(
+  actionName: string,
+  handler: (input: undefined, ctx: { userId: string; email?: string; dbUser?: any }) => Promise<TOut>
+): () => Promise<TOut>
 export function withServerActionAuthWrite<TIn, TOut>(
   actionName: string,
   handler: (input: TIn, ctx: { userId: string; email?: string; dbUser?: any }) => Promise<TOut>
+): (input: TIn) => Promise<TOut>
+export function withServerActionAuthWrite(
+  actionName: string,
+  handler: (input: any, ctx: { userId: string; email?: string; dbUser?: any }) => Promise<any>
 ) {
-  return async (input: TIn): Promise<TOut> => {
+  return async (input?: any): Promise<any> => {
     const res = await authenticateAndSyncUserWithDb(actionName)
     if (!res.user) {
       throw new Error('AuthenticationRequired')
     }
     const { id, email, primaryEmail, dbUser } = res.user
-    return await handler(input, { userId: id, email: email ?? primaryEmail, dbUser })
+    const ctx: { userId: string; email?: string; dbUser?: any } = { userId: id, dbUser }
+    const em = email ?? primaryEmail
+    if (em) ctx.email = em
+    return await handler(input, ctx)
   }
 }

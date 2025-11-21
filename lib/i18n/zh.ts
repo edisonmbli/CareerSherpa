@@ -62,18 +62,71 @@ const dict = {
     },
   },
   workbench: {
-    title: '工作台',
+    new: {
+      title: '岗位匹配度分析',
+      description: '粘贴岗位JD或上传截图，开始匹配度分析',
+      or: '或',
+      button: '开始分析',
+      placeholderText: '粘贴岗位职责文本，或上传截图，开始匹配度分析',
+      uploadCta: '上传 JD 截图',
+      selectedFile: '已选择文件：',
+      noFile: '未选择文件',
+      segmentedPaste: '粘贴文本',
+      segmentedUpload: '上传截图',
+      quickTipsLabel: '快捷引导',
+      quickTips: [
+        { title: '后端岗位分析', hint: 'API、数据库、扩展性', text: '请分析该后端岗位，重点关注 API 设计、数据库结构与扩展性要求。' },
+        { title: '前端岗位分析', hint: 'React、状态管理、性能', text: '请分析该前端岗位，重点关注 React 能力、状态管理与性能优化。' },
+        { title: '数据岗位分析', hint: 'ETL、SQL、基础 ML', text: '请分析该数据岗位，重点关注 ETL 流程、SQL 能力与基础机器学习。' },
+        { title: '基础设施岗位分析', hint: 'CI/CD、云服务、可观测', text: '请分析该基础设施岗位，重点关注 CI/CD、云服务与可观测性工具。' }
+      ],
+      emptyTitle: '从 JD 开始',
+      emptyDesc: '粘贴岗位职责或上传截图，开始匹配度分析。',
+      prerequisite: { title: '前置依赖', description: '请先前往个人主页上传通用简历并等待解析完成', button: '前往个人主页' },
+      prerequisiteError: '请先上传通用简历',
+      inputError: '请输入JD文本或上传图片',
+      freeQueueHint: '金币不足，已转入免费队列',
+      serverError: '服务创建失败',
+    },
+    tabs: {
+      match: 'Step 1: 匹配度',
+      customize: 'Step 2: 改简历',
+      interview: 'Step 3: 面试',
+    },
+    customize: {
+      start: '生成定制化简历',
+      diffTitle: '差异（原句 vs 改句）',
+      saveSuccess: '已保存',
+      saveFailed: '保存失败',
+      exportPdf: '导出 PDF',
+      saveButton: '保存修改',
+      editTab: '编辑 Markdown',
+      previewTab: '预览 PDF',
+      templateLabel: '导出模板',
+    },
+    interviewUi: {
+      start: '生成面试 Tips'
+    },
+    statusText: {
+      ocrPending: '正在识别岗位截图...',
+      summaryPending: '正在提取岗位要点...',
+      matchStreaming: '匹配度分析中...',
+      matchCompleted: '匹配度分析完成',
+      failed: '任务执行失败',
+    },
   },
   profile: {
-    title: '个人主页',
-    tabs: { assets: '求职资产', billing: '金币与账单' },
+    title: '个人经历',
+    tabs: { assets: '个人经历', billing: '账单/充值' },
     resume: {
-      title: '个人通用简历（必选）',
+      title: '通用简历',
       description: '这是 AI 分析的基础，后续所有服务均依赖此文件。',
+      note: '',
     },
     detailed: {
-      title: '个人详细履历（推荐）',
+      title: '详细履历',
       description: '提供更丰富的上下文，可显著提升 AI 输出质量。',
+      note: '',
     },
     uploader: {
       button: '上传',
@@ -86,9 +139,137 @@ const dict = {
         pollSuccess: '解析完成',
         pollFailed: '解析失败，金币已返还',
       },
+      preview: '预览',
+      reupload: '重新上传',
+      chooseFile: '选择文件',
+      noFileSelected: '未选择任何文件',
+      suggestionTextResume: '建议简历文本不超过约 8000 字，以提升解析稳定性',
+      suggestionTextDetailed: '建议详细履历文本不超过约 10000 字，以提升解析稳定性',
+      processingMarquee: '大模型解析中',
+      etaMarqueeMinTemplate: '预计还需要约 {minutes} 分钟，请稍候再来查看',
+      lastUpdatedLabel: '最近一次更新',
+      timeline: {
+        uploaded: '已上传',
+        queued: '已入队',
+        parsing: '解析中',
+        finalizing: '写入中',
+        completed: '已完成',
+        failed: '失败',
+      },
+      placeholderHintResume: '目前支持文本型 PDF；建议不超过约 8000 字；扫描件/图片暂不支持',
+      placeholderHintDetailed: '目前支持文本型 PDF；建议不超过约 10000 字；扫描件/图片暂不支持',
+    },
+    previewLabels: {
+      previewTitle: '简历结构化预览',
+      header: '个人信息',
+      summary: '摘要',
+      summaryPoints: '摘要要点',
+      specialties: '专业特长',
+      experience: '工作经历',
+      projects: '项目',
+      education: '教育经历',
+      skills: '技能',
+      certifications: '证书',
+      languages: '语言',
+      awards: '奖项',
+      openSource: '开源',
+      extras: '其他',
+      stack: '技术栈',
     },
     quota: { title: '金币', description: '金币充值功能正在开发中', coins: '枚' },
-    waitlist: { emailPlaceholder: 'you@example.com', submit: '上线后通知我' },
+    billing: {
+      cardTitle: '账单',
+      recharge: { title: '充值', desc: '功能正在开发中' },
+      waitlist: { title: '充值功能开发中', desc: '请留下邮箱，功能上线后我们会第一时间通知你' },
+      table: { type: '类型', service: '服务名称', taskId: '任务ID', status: '状态', delta: '变化', balance: '余额', time: '时间' },
+      type: {
+        SIGNUP_BONUS: '注册赠送',
+        PURCHASE: '充值',
+        SERVICE_DEBIT: '服务扣减',
+        FAILURE_REFUND: '失败返还',
+        MANUAL_ADJUST: '手动调整'
+      },
+      typeShort: {
+        SIGNUP_BONUS: '赠送',
+        PURCHASE: '充值',
+        SERVICE_DEBIT: '扣减',
+        FAILURE_REFUND: '返还',
+        MANUAL_ADJUST: '调整'
+      },
+      status: { PENDING: '待处理', SUCCESS: '成功', FAILED: '失败', REFUNDED: '已返还' },
+      templates: {
+        resume_summary: '简历解析',
+        detailed_resume_summary: '详细简历解析',
+        job_summary: '岗位解析',
+        job_match: '匹配度分析',
+        resume_customize: '简历定制',
+        interview_prep: '面试提示'
+      },
+      toast: { copied: '已复制', copyAria: '复制' },
+      empty: { title: '暂无账单记录', desc: '完成一次匹配度分析、简历定制或面试 tips 生成后，将看到账单明细', cta: '去上传简历' },
+      pagination: { prev: '上一页', next: '下一页', page: '第 {page}/{pages} 页', total: '共 {total} 条' },
+      filters: { title: '筛选', toggle: '筛选', type: '类型', status: '状态', template: '服务', date: '日期', clear: '清空', apply: '应用', today: '今天', last7: '近7天', last30: '近30天', last90: '近90天', clearDate: '清除日期' },
+      common: { cancel: '关闭' }
+    },
+    waitlist: { emailPlaceholder: 'you@example.com', submit: '通知我', invalidEmail: '邮箱格式不正确', success: '已登记', failed: '提交失败' },
+  },
+  header: {
+    brand: '求职加速器',
+    signIn: '登录',
+    myAccount: '我的账户',
+    accountSettings: '账户设置',
+    cvAssets: '简历管理',
+    coinsBilling: '金币与账单',
+  },
+  account: {
+    title: '账号设置',
+    common: { save: '保存', openBuiltIn: '打开内置设置页' },
+    profile: { title: '个人资料', displayName: '显示名称', avatarUrl: '头像 URL', setAvatar: '设置头像' },
+    email: { title: '邮箱', update: '更新邮箱', note: '更新邮箱可能需要验证。' },
+    password: { title: '密码', current: '当前密码', new: '新密码', confirm: '确认密码', update: '更新密码' },
+    shortcuts: {
+      open: '前往',
+      profileName: { title: '用户名称', desc: '修改你的显示名称' },
+      profileAvatar: { title: '上传头像', desc: '设置个人头像' },
+      email: { title: '设置邮箱', desc: '管理主邮箱与验证' },
+      password: { title: '更新密码', desc: '修改账号密码' },
+    },
+  },
+  landing: {
+    seo: {
+      title: 'AI 求职助手｜匹配度·改简历·面试要点',
+      description: '粘贴岗位JD、上传简历，三步提升面试匹配度：匹配度分析、定制化简历、面试要点。'
+    },
+    hero: {
+      title: 'AI 求职助手——三步拿到更高匹配度的面试机会',
+      subtitle: '匹配度分析 · 简历定制化 · 面试要点清单',
+      cta: '免费试用（赠 8 金币）'
+    },
+    valueProps: {
+      items: [
+        { title: '匹配度分析', description: '基于目标 JD 打分并解释匹配度，结构化输出更清晰。' },
+        { title: '简历定制化', description: '生成针对 JD 的定制化简历，可编辑与导出。' },
+        { title: '面试要点', description: '提供自我介绍与关键要点，助你高效准备。' }
+      ]
+    },
+    howItWorks: {
+      features: [
+        { title: '异步与队列', description: 'QStash + Redis 保证可靠异步处理与公平队列。' },
+        { title: 'RAG 知识库', description: '检索“求职宝典”上下文，增强提示词质量。' },
+        { title: '流式输出', description: '核心任务使用 SSE 流式返回，降低感知延迟。' }
+      ]
+    },
+    faq: {
+      items: [
+        { q: '数据如何保存？', a: '简历与产出存储在 Neon Postgres。敏感内容受保护，日志不记录原文。' },
+        { q: '是否支持移动端？', a: '响应式布局优化移动体验，异步状态清晰可见。' },
+        { q: '金币与付费？', a: '注册即赠金币。购买入口将上线；任务失败会自动返还金币。' }
+      ]
+    },
+    cta: {
+      title: '准备好开始了吗？',
+      button: '开始免费试用'
+    }
   },
 }
 export default dict

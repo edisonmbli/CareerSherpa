@@ -1,6 +1,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  engineType      = "library"
 }
 
 datasource db {
@@ -24,6 +25,7 @@ model users_sync {
   quota            Quota?
   resumes          Resume?
   services         Service[]
+  coinTransactions CoinTransaction[]
 
   @@index([deleted_at])
   @@map("users_sync")
@@ -98,6 +100,7 @@ model Service {
   user             users_sync        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "service_user_id_fkey")
   detailedResume   DetailedResume?   @relation(fields: [detailedResumeId], references: [id])
   resume           Resume            @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  coinTransactions CoinTransaction[]
 
   @@index([userId(sort: Desc), createdAt(sort: Desc)])
   @@map("services")
@@ -135,7 +138,9 @@ model Match {
 model CustomizedResume {
   id              String          @id @default(cuid())
   serviceId       String          @unique @map("service_id")
-  markdownContent String?         @map("markdown_content")
+  markdownText    String?         @map("markdown_text")
+  opsJson         Json?           @map("ops_json")
+  degradeReason   String?         @map("degrade_reason")
   status          AsyncTaskStatus @default(PENDING)
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
@@ -225,6 +230,34 @@ model LlmUsageLog {
   @@schema("public")
 }
 
+model CoinTransaction {
+  id            String      @id @default(cuid())
+  userId        String      @map("user_id")
+  type          CoinTxnType
+  status        CoinTxnStatus
+  delta         Int         @map("delta")
+  balanceAfter  Int         @map("balance_after")
+  serviceId     String?     @map("service_id")
+  taskId        String?     @map("task_id")
+  templateId    String?     @map("template_id")
+  messageId     String?     @map("message_id")
+  idemKey       String?     @map("idem_key")
+  relatedId     String?     @map("related_id")
+  metadata      Json?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  user          users_sync  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service       Service?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  related       CoinTransaction? @relation("RelatedLedger", fields: [relatedId], references: [id], onDelete: SetNull)
+  refunds       CoinTransaction[] @relation("RelatedLedger")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([taskId, createdAt(sort: Desc)])
+  @@index([serviceId, createdAt(sort: Desc)])
+  @@unique([idemKey])
+  @@map("coin_transactions")
+  @@schema("public")
+}
+
 enum AsyncTaskStatus {
   PENDING
   COMPLETED
@@ -238,6 +271,25 @@ enum ServiceStep {
   CUSTOMIZE
   INTERVIEW
   COMPLETED
+
+  @@schema("public")
+}
+
+enum CoinTxnType {
+  SIGNUP_BONUS
+  PURCHASE
+  SERVICE_DEBIT
+  FAILURE_REFUND
+  MANUAL_ADJUST
+
+  @@schema("public")
+}
+
+enum CoinTxnStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
 
   @@schema("public")
 }

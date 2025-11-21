@@ -3,6 +3,7 @@
 import type { Locale } from '@/i18n-config'
 import { processUploadedFile } from '@/lib/utils/file-processor'
 import { uploadResumeAction, uploadDetailedResumeAction } from '@/lib/actions/resume.actions'
+import { getTaskLimits } from '@/lib/llm/config'
 
 export async function uploadAssetFormDataAction({
   formData,
@@ -27,12 +28,23 @@ export async function uploadAssetFormDataAction({
       return { success: false, error: 'unsupported_scan_pdf' }
     }
 
+    const recommendLimit = getTaskLimits(taskTemplateId).maxTokens
+    if (processed.metadata.charCount > recommendLimit) {
+      return { success: false, error: 'text_too_long' }
+    }
+
     if (taskTemplateId === 'resume_summary') {
       const res = await uploadResumeAction({ locale, originalText: processed.content })
-      return { success: res.ok, error: res.error, taskId: res.taskId, isFree: res.isFree }
+      if (res.ok) return { success: true, taskId: res.taskId, isFree: res.isFree }
+      const taskId = 'taskId' in res ? res.taskId : undefined
+      const isFree = 'isFree' in res ? res.isFree : undefined
+      return { success: false, error: res.error, taskId, isFree }
     } else {
       const res = await uploadDetailedResumeAction({ locale, originalText: processed.content })
-      return { success: res.ok, error: res.error, taskId: res.taskId, isFree: res.isFree }
+      if (res.ok) return { success: true, taskId: res.taskId, isFree: res.isFree }
+      const taskId = 'taskId' in res ? res.taskId : undefined
+      const isFree = 'isFree' in res ? res.isFree : undefined
+      return { success: false, error: res.error, taskId, isFree }
     }
   } catch (e) {
     return { success: false, error: 'processing_failed' }

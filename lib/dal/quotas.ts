@@ -18,9 +18,19 @@ export async function getOrCreateQuota(userId: string) {
       if (existing) return existing
 
       try {
-        return await client.quota.create({
+        const created = await client.quota.create({
           data: { userId, balance: INITIAL_FREE_QUOTA },
         })
+        await client.coinTransaction.create({
+          data: {
+            userId,
+            type: 'SIGNUP_BONUS' as any,
+            status: 'SUCCESS' as any,
+            delta: INITIAL_FREE_QUOTA,
+            balanceAfter: created.balance,
+          },
+        })
+        return created
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&

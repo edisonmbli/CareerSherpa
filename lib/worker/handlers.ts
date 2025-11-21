@@ -8,7 +8,7 @@ import {
   publishEvent,
 } from '@/lib/worker/common'
 import { buildQueueCounterKey } from '@/lib/config/concurrency'
-import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
+import { getTaskRouting, getJobVisionTaskRouting, isServiceScoped } from '@/lib/llm/task-router'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { runStreamingLlmTask, runStructuredLlmTask } from '@/lib/llm/service'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
@@ -16,7 +16,7 @@ import { getProvider, getCost } from '@/lib/llm/utils'
 import { ENV as _ENV } from '@/lib/env'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { logEvent } from '@/lib/observability/logger'
-import { addQuota } from '@/lib/dal/quotas'
+import { recordRefund, markDebitSuccess } from '@/lib/dal/coinLedger'
 import {
   publishStart,
   guardBlocked,
@@ -34,14 +34,7 @@ import {
   updateCustomizedResumeStatus,
 } from '@/lib/dal/services'
 
-type Body = {
-  taskId: string
-  userId: string
-  serviceId: string
-  locale: any
-  templateId: TaskTemplateId
-  variables: Record<string, any>
-}
+type Body = import('@/lib/worker/types').WorkerBody
 
 export async function handleStream(
   req: Request,
@@ -54,10 +47,11 @@ export async function handleStream(
       const { service } = params
       const parsed = await parseWorkerBody(req)
       if (!parsed.ok) return parsed.response
-      const body: Body = parsed.body as Body
+      const body: Body = parsed.body
 
       const { taskId, userId, serviceId, locale, templateId, variables } = body
-      const tierOverride = (variables as any)?.tierOverride
+      const ledgerServiceId = isServiceScoped(templateId) ? serviceId : undefined
+      const tierOverride = variables.tierOverride
       const userHasQuota =
         tierOverride === 'paid'
           ? true
@@ -172,13 +166,22 @@ export async function handleStream(
             requestId,
             traceId,
           })
-          const wasPaid = !!(variables as any)?.wasPaid
-          const cost = Number((variables as any)?.cost || 0)
-          if (wasPaid && cost > 0) {
+          const wasPaid = !!variables.wasPaid
+          const cost = Number(variables.cost || 0)
+          const debitId = String((variables as any)?.debitId || '')
+          if (wasPaid && cost > 0 && debitId) {
             try {
-              await addQuota(userId, cost)
+              await recordRefund({
+                userId,
+                amount: cost,
+                relatedId: debitId,
+                ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+                templateId,
+              })
             } catch {}
+            try { await markDebitSuccess(debitId) } catch {}
           }
+          console.error('Provider not configured', { taskId, provider })
           logEvent(
             'WORKER_PROVIDER_NOT_CONFIGURED',
             { userId, serviceId, taskId },
@@ -231,6 +234,31 @@ export async function handleStream(
           requestId,
           traceId,
         })
+        try {
+          if (String(templateId) === 'job_match') {
+            const raw = String((exec.result as any)?.raw || '')
+            let parsed: any = null
+            try { parsed = JSON.parse(raw) } catch {}
+            await (await import('@/lib/prisma')).prisma.match.update({
+              where: { serviceId },
+              data: {
+                matchSummaryJson: parsed || { markdown: raw },
+                status: 'COMPLETED' as any,
+              },
+            })
+          } else if (String(templateId) === 'interview_prep') {
+            const raw = String((exec.result as any)?.raw || '')
+            let parsed: any = null
+            try { parsed = JSON.parse(raw) } catch {}
+            await (await import('@/lib/prisma')).prisma.interview.update({
+              where: { serviceId },
+              data: {
+                interviewTipsJson: parsed || { markdown: raw },
+                status: 'COMPLETED' as any,
+              },
+            })
+          }
+        } catch {}
         logEvent(
           'TASK_COMPLETED',
           { userId, serviceId, taskId },
@@ -246,6 +274,14 @@ export async function handleStream(
             isStream: true,
           }
         )
+        {
+          const wasPaid = !!(variables as any)?.wasPaid
+          const cost = Number((variables as any)?.cost || 0)
+          const debitId = String((variables as any)?.debitId || '')
+          if (wasPaid && cost > 0 && debitId) {
+            try { await markDebitSuccess(debitId, (exec.result as any)?.usageLogId) } catch {}
+          }
+        }
         return Response.json({ ok: true })
       } catch (error) {
         if (ENV.LLM_DEBUG) {
@@ -298,11 +334,18 @@ export async function handleStream(
             await updateInterviewStatus(serviceId, 'FAILED' as any)
           }
         } catch {}
-        const wasPaid = !!(variables as any)?.wasPaid
-        const cost = Number((variables as any)?.cost || 0)
-        if (wasPaid && cost > 0) {
+          const wasPaid = !!variables.wasPaid
+          const cost = Number(variables.cost || 0)
+          const debitId = String((variables as any)?.debitId || '')
+        if (wasPaid && cost > 0 && debitId) {
           try {
-            await addQuota(userId, cost)
+            await recordRefund({
+              userId,
+              amount: cost,
+              relatedId: debitId,
+              ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+              templateId: templateId as any,
+            })
           } catch {}
         }
         return new Response('internal_error', { status: 500 })
@@ -333,6 +376,7 @@ export async function handleBatch(
       const body: Body = parsed.body as Body
 
       const { taskId, userId, serviceId, locale, templateId, variables } = body
+      const ledgerServiceId = isServiceScoped(templateId) ? serviceId : undefined
       const tierOverride = (variables as any)?.tierOverride
       const userHasQuota =
         tierOverride === 'paid'
@@ -428,11 +472,35 @@ export async function handleBatch(
             queueId: String(decision.queueId || ''),
           }
         )
+        const vars: Record<string, any> = { ...variables }
+        if (String(templateId) === 'resume_summary') {
+          const resumeId = String((variables as any)?.resumeId || '')
+          if (resumeId) {
+            const rec = await (await import('@/lib/prisma')).prisma.resume.findUnique({
+              where: { id: resumeId },
+              select: { originalText: true },
+            })
+            if (rec?.originalText) {
+              vars['resume_text'] = rec.originalText
+            }
+          }
+        } else if (String(templateId) === 'detailed_resume_summary') {
+          const detailedId = String((variables as any)?.detailedResumeId || '')
+          if (detailedId) {
+            const rec = await (await import('@/lib/prisma')).prisma.detailedResume.findUnique({
+              where: { id: detailedId },
+              select: { originalText: true },
+            })
+            if (rec?.originalText) {
+              vars['detailed_resume_text'] = rec.originalText
+            }
+          }
+        }
         const exec = await executeStructured(
           decision.modelId,
           templateId,
           locale,
-          variables,
+          vars,
           { userId, serviceId }
         )
         await publishEvent(channel, {
@@ -467,24 +535,35 @@ export async function handleBatch(
                 },
               })
             }
+          } else if (String(templateId) === 'resume_customize') {
+            const dataObj = exec.result.ok ? ((exec.result as any).data || {}) : {}
+            const md = dataObj?.markdown || dataObj?.customized_resume_markdown || ''
+            const ops = dataObj?.ops || null
+            await (await import('@/lib/prisma')).prisma.customizedResume.update({
+              where: { serviceId },
+              data: {
+                markdownText: md || undefined,
+                ...(ops ? { opsJson: ops as any } : {}),
+                status: exec.result.ok ? ('COMPLETED' as any) : ('FAILED' as any),
+              },
+            })
+          } else if (String(templateId) === 'job_summary') {
+            await (await import('@/lib/prisma')).prisma.job.update({
+              where: { serviceId },
+              data: {
+                jobSummaryJson: exec.result.ok ? (exec.result as any).data : undefined,
+                status: exec.result.ok ? ('COMPLETED' as any) : ('FAILED' as any),
+              },
+            })
+            if (exec.result.ok) {
+              await (await import('@/lib/prisma')).prisma.match.update({
+                where: { serviceId },
+                data: { status: 'MATCH_PENDING' as any },
+              })
+            }
           }
         } catch {}
-        await createLlmUsageLogDetailed({
-          taskTemplateId: templateId,
-          provider: getProvider(decision.modelId),
-          modelId: decision.modelId,
-          inputTokens: exec.inputTokens,
-          outputTokens: exec.outputTokens,
-          latencyMs: exec.latencyMs,
-          cost: getCost(decision.modelId, exec.inputTokens, exec.outputTokens),
-          isStream: false,
-          isSuccess: !!exec.result.ok,
-          userId,
-          serviceId,
-          ...(exec.result.ok
-            ? {}
-            : { errorMessage: exec.result.error ?? 'unknown_error' }),
-        })
+        
         logEvent(
           exec.result.ok ? 'TASK_COMPLETED' : 'TASK_FAILED',
           { userId, serviceId, taskId },
@@ -504,6 +583,70 @@ export async function handleBatch(
                 }),
           }
         )
+        {
+          const wasPaid = !!variables.wasPaid
+          const cost = Number(variables.cost || 0)
+          const debitId = String((variables as any)?.debitId || '')
+          const data = (exec.result as any)?.data
+          const invalid =
+            String(templateId) === 'resume_summary'
+              ? !data || (
+                  (!data.summary || data.summary === '') &&
+                  (!data.experience || data.experience.length === 0) &&
+                  (!data.projects || data.projects.length === 0) &&
+                  (!data.education || data.education.length === 0) &&
+                  (!data.skills || (Array.isArray(data.skills) ? data.skills.length === 0 : (!data.skills?.technical && !data.skills?.soft && !data.skills?.tools)))
+                )
+              : String(templateId) === 'detailed_resume_summary'
+              ? !data || (
+                  (!Array.isArray(data.experiences) || data.experiences.length === 0) &&
+                  (!Array.isArray(data.capabilities) || data.capabilities.length === 0) &&
+                  (!Array.isArray(data.education) || data.education.length === 0) &&
+                  (!data.skills || (Array.isArray(data.skills) ? data.skills.length === 0 : (!data.skills?.technical && !data.skills?.soft && !data.skills?.tools)))
+                )
+              : false
+          const shouldFail = !exec.result.ok || invalid
+          const shouldRefund = shouldFail && wasPaid && cost > 0 && !!debitId
+          if (shouldFail) {
+            try {
+              if (templateId === 'resume_summary') {
+                const resumeId = variables.resumeId
+                if (resumeId) {
+                  await (await import('@/lib/prisma')).prisma.resume.update({
+                    where: { id: resumeId },
+                    data: { status: 'FAILED' as any },
+                  })
+                }
+              } else if (templateId === 'detailed_resume_summary') {
+                const detailedId = variables.detailedResumeId
+                if (detailedId) {
+                  await (await import('@/lib/prisma')).prisma.detailedResume.update({
+                    where: { id: detailedId },
+                    data: { status: 'FAILED' as any },
+                  })
+                }
+              }
+            } catch {}
+            console.error('Structured task failed or invalid output', { taskId, templateId, ok: exec.result.ok })
+          }
+          if (shouldRefund) {
+            try {
+              const usageLogId = (exec.result as any)?.usageLogId
+              await recordRefund({
+                userId,
+                amount: cost,
+                relatedId: debitId,
+                ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+                ...(usageLogId ? { taskId: usageLogId } : {}),
+                templateId,
+              })
+            } catch {}
+            try { await markDebitSuccess(debitId, (exec.result as any)?.usageLogId) } catch {}
+          }
+          if (exec.result.ok && wasPaid && cost > 0 && debitId) {
+            try { await markDebitSuccess(debitId, (exec.result as any)?.usageLogId) } catch {}
+          }
+        }
         return Response.json({ ok: exec.result.ok })
       } catch (error) {
         await publishEvent(channel, {
@@ -526,21 +669,21 @@ export async function handleBatch(
           }
         )
         try {
-          if (String(templateId) === 'job_summary') {
+          if (templateId === 'job_summary') {
             await updateJobStatus(serviceId, 'FAILED' as any)
             await updateMatchStatus(serviceId, 'FAILED' as any)
           } else if (String(templateId) === 'resume_customize') {
             await updateCustomizedResumeStatus(serviceId, 'FAILED' as any)
-          } else if (String(templateId) === 'resume_summary') {
-            const resumeId = String((variables as any)?.resumeId || '')
+          } else if (templateId === 'resume_summary') {
+            const resumeId = variables.resumeId
             if (resumeId) {
               await (await import('@/lib/prisma')).prisma.resume.update({
                 where: { id: resumeId },
                 data: { status: 'FAILED' as any },
               })
             }
-          } else if (String(templateId) === 'detailed_resume_summary') {
-            const detailedId = String((variables as any)?.detailedResumeId || '')
+          } else if (templateId === 'detailed_resume_summary') {
+            const detailedId = variables.detailedResumeId
             if (detailedId) {
               await (await import('@/lib/prisma')).prisma.detailedResume.update({
                 where: { id: detailedId },
@@ -551,11 +694,20 @@ export async function handleBatch(
         } catch {}
         const wasPaid = !!(variables as any)?.wasPaid
         const cost = Number((variables as any)?.cost || 0)
-        if (wasPaid && cost > 0) {
+        const debitId = String((variables as any)?.debitId || '')
+        if (wasPaid && cost > 0 && debitId) {
           try {
-            await addQuota(userId, cost)
+            await recordRefund({
+              userId,
+              amount: cost,
+              relatedId: debitId,
+              ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+              templateId,
+            })
           } catch {}
+          try { await markDebitSuccess(debitId) } catch {}
         }
+        console.error('Batch task failed', { taskId, error: error instanceof Error ? error.message : String(error) })
         return new Response('internal_error', { status: 500 })
       } finally {
         await cleanupFinal(

@@ -66,9 +66,10 @@ export async function middleware(request: NextRequest) {
   
   // 首页作为 landing page（唯一允许匿名访问的业务页面）
   const isLandingPage = pathname === `/${currentLocale}` || pathname === `/${currentLocale}/`;
+  const isLocalAuthSignIn = pathname === `/${currentLocale}/auth/sign-in`;
   
   // 定义白名单：不需要认证的路径
-  const isPublicPath = isPublicAsset || isStackAuthHandler || isLandingPage;
+  const isPublicPath = isPublicAsset || isStackAuthHandler || isLandingPage || isLocalAuthSignIn;
 
   // 默认保护模式：除了白名单，所有路径都需要认证
   const requiresAuth = !isPublicPath;
@@ -94,11 +95,11 @@ export async function middleware(request: NextRequest) {
         // 检查是否为页面请求（非 API 路径）
         const isPageRequest = !pathname.startsWith('/api/');
         
-        // 对于页面请求，重定向到登录页面
+        // 对于页面请求，重定向到当前 locale 的 Landing 页面
         if (isPageRequest) {
-          const signInUrl = new URL('/handler/signin', request.url);
-          signInUrl.searchParams.set('redirect', pathname);
-          return NextResponse.redirect(signInUrl);
+          const landingUrl = new URL(`/${currentLocale}`, request.url);
+          landingUrl.searchParams.set('redirect', pathname);
+          return NextResponse.redirect(landingUrl);
         }
 
         // 对于API请求，返回401错误

@@ -34,3 +34,72 @@ export type TaskTemplateId =
   | 'rag_embedding'
 
 export type PromptTemplateMap = Record<TaskTemplateId, PromptTemplate>
+
+export type PaidTierOverride = 'paid' | 'free'
+
+export type ResumeSummaryVars = {
+  resumeId: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  prompt?: string
+  resume_text?: string
+}
+
+export type DetailedResumeSummaryVars = {
+  detailedResumeId: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  prompt?: string
+  detailed_resume_text?: string
+}
+
+export type JobSummaryVars = {
+  jobId: string
+  image?: string
+  text?: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  prompt?: string
+}
+
+export type JobMatchVars = {
+  jobId?: string
+  text?: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  prompt?: string
+}
+
+export type ResumeCustomizeVars = {
+  wasPaid?: boolean
+  cost?: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  prompt?: string
+}
+
+export type InterviewPrepVars = {
+  interviewId: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  prompt?: string
+}
+
+export type VariablesFor<T extends TaskTemplateId> =
+  T extends 'resume_summary' ? ResumeSummaryVars :
+  T extends 'detailed_resume_summary' ? DetailedResumeSummaryVars :
+  T extends 'job_summary' ? JobSummaryVars :
+  T extends 'job_match' ? JobMatchVars :
+  T extends 'resume_customize' ? ResumeCustomizeVars :
+  T extends 'interview_prep' ? InterviewPrepVars :
+  never

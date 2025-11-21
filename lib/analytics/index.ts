@@ -13,6 +13,9 @@ export type AnalyticsEventName =
   | 'WORKER_PROVIDER_NOT_CONFIGURED'
   | 'RAG_QUERY_COMPLETED'
   | 'ASSET_UPLOADED'
+  | 'PAGE_VIEW_LANDING'
+  | 'TOPUP_CLICK'
+  | 'TOPUP_WAITLIST_SUBMIT'
 
 export interface TrackContext {
   userId?: string

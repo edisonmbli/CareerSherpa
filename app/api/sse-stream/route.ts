@@ -131,7 +131,11 @@ export async function GET(req: NextRequest) {
 
       const keepAlive = setInterval(() => {
         if (closed) return
-        controller.enqueue(new TextEncoder().encode(':keepalive\n\n'))
+        try {
+          controller.enqueue(new TextEncoder().encode(':keepalive\n\n'))
+        } catch (e) {
+          console.warn('sse_keepalive_error', (e as any)?.message || e)
+        }
       }, 25000)
 
       // 当连接关闭时清理资源
@@ -139,7 +143,9 @@ export async function GET(req: NextRequest) {
         closed = true
         if (timer) clearTimeout(timer)
         clearInterval(keepAlive)
-        controller.close()
+        try { controller.close() } catch (e) {
+          console.warn('sse_close_error', (e as any)?.message || e)
+        }
       })
     },
   })

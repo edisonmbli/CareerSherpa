@@ -4,12 +4,14 @@ import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getModel, type ModelId } from '@/lib/llm/providers'
 import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
 import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts'
+import { SystemMessage } from '@langchain/core/messages'
 import { getTaskSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
 import { getProvider, getCost } from '@/lib/llm/utils'
 import { glmEmbeddingProvider } from '@/lib/llm/embeddings'
 import { ENV } from '@/lib/env'
+import { getTaskLimits } from '@/lib/llm/config'
 
 export interface RunTaskOptions {
   tier?: 'free' | 'paid'
@@ -34,6 +36,7 @@ export interface RunLlmTaskResult<T extends TaskTemplateId> {
     provider?: string
   }
   error?: string
+  usageLogId?: string
 }
 
 // --- M5 prep: Unified embedding call surface ---
@@ -237,20 +240,25 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
   const start = Date.now()
   try {
     const template = getTemplate(locale, templateId)
+    const limits = getTaskLimits(String(templateId))
+    const schemaJson = JSON.stringify((template as any).outputSchema ?? {}, null, 2)
     const prompt = ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
+      new SystemMessage(
+        `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`
+      ),
       HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
     ])
-    const model = getModel(modelId, { temperature: 0.3, timeoutMs: ENV.WORKER_TIMEOUT_MS })
+    const model = getModel(modelId, { temperature: 0.3, timeoutMs: ENV.WORKER_TIMEOUT_MS, maxTokens: limits.maxTokens })
 
     const chain = prompt.pipe(model)
-    const aiMessage = await chain.invoke(variables)
+    const aiMessage: any = await chain.invoke(variables)
     const { inputTokens, outputTokens } = extractTokenUsageFromMessage(aiMessage)
 
     const content: string = (aiMessage as any)?.content ?? (aiMessage as any)?.text ?? ''
     const parsed = validateJson(content)
     if (!parsed.success || !parsed.data) {
-      await createLlmUsageLogDetailed({
+      const log = await createLlmUsageLogDetailed({
         taskTemplateId: templateId,
         provider: getProvider(modelId),
         modelId,
@@ -264,14 +272,14 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         ...(context.userId ? { userId: context.userId } : {}),
         ...(context.serviceId ? { serviceId: context.serviceId } : {}),
       })
-      return { ok: false, raw: content, error: parsed.error ?? 'json_parse_failed' }
+      return { ok: false, raw: content, error: parsed.error ?? 'json_parse_failed', usageLogId: (log as any)?.id }
     }
 
     const schema = getTaskSchema(templateId)
     const safe = schema.safeParse(parsed.data)
     const ok = safe.success
 
-    await createLlmUsageLogDetailed({
+    const log = await createLlmUsageLogDetailed({
       taskTemplateId: templateId,
       provider: getProvider(modelId),
       modelId,
@@ -306,9 +314,10 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         model: modelId,
         provider: getProvider(modelId),
       },
+      usageLogId: (log as any)?.id,
     }
   } catch (error) {
-    await createLlmUsageLogDetailed({
+    const log = await createLlmUsageLogDetailed({
       taskTemplateId: templateId,
       provider: getProvider(modelId),
       modelId,
@@ -321,9 +330,15 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
+    console.error('Structured model error', {
+      templateId,
+      modelId,
+      error: error instanceof Error ? error.message : String(error),
+    })
     return {
       ok: false,
       error: error instanceof Error ? error.message : 'unknown_error',
+      usageLogId: (log as any)?.id,
     }
   }
 }
@@ -360,7 +375,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   // token usage may be available on model after stream; best-effort
   const { inputTokens, outputTokens } = extractTokenUsageFromModel(model)
 
-  await createLlmUsageLogDetailed({
+  const log = await createLlmUsageLogDetailed({
     taskTemplateId: templateId,
     provider: getProvider(modelId),
     modelId,
@@ -385,5 +400,6 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       model: modelId,
       provider: getProvider(modelId),
     },
+    usageLogId: (log as any)?.id,
   } as RunLlmTaskResult<T>
 }

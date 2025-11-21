@@ -129,3 +129,12 @@ export const getJobVisionTaskRouting = (hasQuota: boolean): TaskRouting => {
         isStream: false,
       }
 }
+
+export const isServiceScoped = (t: TaskTemplateId): boolean => {
+  return (
+    t === 'job_summary' ||
+    t === 'job_match' ||
+    t === 'resume_customize' ||
+    t === 'interview_prep'
+  )
+}
