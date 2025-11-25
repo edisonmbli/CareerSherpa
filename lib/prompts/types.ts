@@ -60,22 +60,29 @@ export type DetailedResumeSummaryVars = {
 export type JobSummaryVars = {
   jobId: string
   image?: string
-  text?: string
+  job_text?: string
   wasPaid: boolean
   cost: number
   debitId?: string
   tierOverride?: PaidTierOverride
   prompt?: string
+  executionSessionId?: string
 }
 
 export type JobMatchVars = {
+  rag_context: string
+  resume_summary_json: string
+  detailed_resume_summary_json?: string
+  job_summary_json: string
+  resumeId?: string
+  detailedResumeId?: string
   jobId?: string
-  text?: string
   wasPaid: boolean
   cost: number
   debitId?: string
   tierOverride?: PaidTierOverride
   prompt?: string
+  executionSessionId?: string
 }
 
 export type ResumeCustomizeVars = {
@@ -95,11 +102,29 @@ export type InterviewPrepVars = {
   prompt?: string
 }
 
-export type VariablesFor<T extends TaskTemplateId> =
-  T extends 'resume_summary' ? ResumeSummaryVars :
-  T extends 'detailed_resume_summary' ? DetailedResumeSummaryVars :
-  T extends 'job_summary' ? JobSummaryVars :
-  T extends 'job_match' ? JobMatchVars :
-  T extends 'resume_customize' ? ResumeCustomizeVars :
-  T extends 'interview_prep' ? InterviewPrepVars :
-  never
+export type OcrExtractVars = {
+  jobId: string
+  image?: string
+  source_type?: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  executionSessionId?: string
+}
+
+export type VariablesFor<T extends TaskTemplateId> = T extends 'resume_summary'
+  ? ResumeSummaryVars
+  : T extends 'detailed_resume_summary'
+  ? DetailedResumeSummaryVars
+  : T extends 'job_summary'
+  ? JobSummaryVars
+  : T extends 'job_match'
+  ? JobMatchVars
+  : T extends 'resume_customize'
+  ? ResumeCustomizeVars
+  : T extends 'interview_prep'
+  ? InterviewPrepVars
+  : T extends 'ocr_extract'
+  ? OcrExtractVars
+  : never

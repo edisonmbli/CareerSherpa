@@ -1,4 +1,15 @@
-import { logInfo, logError } from '../logger'
+const logInfo = (payload: any) => {
+  try {
+    const entry = { level: 'info', ts: new Date().toISOString(), ...payload }
+    console.log(JSON.stringify(entry))
+  } catch {}
+}
+const logError = (payload: any) => {
+  try {
+    const entry = { level: 'error', ts: new Date().toISOString(), ...payload }
+    console.error(JSON.stringify(entry))
+  } catch {}
+}
 
 /**
  * Unified JSON validation and error handling for LLM responses

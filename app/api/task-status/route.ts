@@ -31,7 +31,9 @@ export async function GET(request: Request) {
           { status: 404 }
         )
       }
-      const lastUpdatedAt = rec.updatedAt ? new Date(rec.updatedAt).toISOString() : undefined
+      const lastUpdatedAt = rec.updatedAt
+        ? new Date(rec.updatedAt).toISOString()
+        : undefined
       const etag = `${rec.status}|${lastUpdatedAt || ''}`
       const inm = request.headers.get('if-none-match')
       if (inm && inm === etag) {
@@ -39,7 +41,10 @@ export async function GET(request: Request) {
         res.headers.set('etag', etag)
         return res
       }
-      return NextResponse.json({ status: rec.status, lastUpdatedAt }, { headers: { etag } })
+      return NextResponse.json(
+        { status: rec.status, lastUpdatedAt },
+        { headers: { etag } }
+      )
     }
 
     if (taskType === 'detailed_resume') {
@@ -53,7 +58,9 @@ export async function GET(request: Request) {
           { status: 404 }
         )
       }
-      const lastUpdatedAt = rec.updatedAt ? new Date(rec.updatedAt).toISOString() : undefined
+      const lastUpdatedAt = rec.updatedAt
+        ? new Date(rec.updatedAt).toISOString()
+        : undefined
       const etag = `${rec.status}|${lastUpdatedAt || ''}`
       const inm = request.headers.get('if-none-match')
       if (inm && inm === etag) {
@@ -61,15 +68,19 @@ export async function GET(request: Request) {
         res.headers.set('etag', etag)
         return res
       }
-      return NextResponse.json({ status: rec.status, lastUpdatedAt }, { headers: { etag } })
+      return NextResponse.json(
+        { status: rec.status, lastUpdatedAt },
+        { headers: { etag } }
+      )
     }
 
     if (taskType === 'service_match') {
       const service = await prisma.service.findFirst({
         where: { id: taskId, userId: user.id },
         select: {
-          job: { select: { status: true } },
-          match: { select: { status: true } },
+          currentStatus: true,
+          failureCode: true,
+          lastUpdatedAt: true,
           updatedAt: true,
         },
       })
@@ -79,8 +90,23 @@ export async function GET(request: Request) {
           { status: 404 }
         )
       }
-      const status = service.job?.status === 'PENDING' ? 'PENDING' : service.match?.status || 'PENDING'
-      const lastUpdatedAt = service.updatedAt ? new Date(service.updatedAt).toISOString() : undefined
+      const cs = String(service.currentStatus || 'IDLE').toUpperCase()
+      const status =
+        cs === 'IDLE'
+          ? 'IDLE'
+          : cs === 'SUMMARY_PENDING' ||
+            cs === 'MATCH_PENDING' ||
+            cs === 'MATCH_STREAMING'
+          ? 'PENDING'
+          : cs === 'SUMMARY_FAILED' || cs === 'MATCH_FAILED'
+          ? 'FAILED'
+          : cs === 'SUMMARY_COMPLETED' || cs === 'MATCH_COMPLETED'
+          ? 'COMPLETED'
+          : 'PENDING'
+      const lastUpdatedAt =
+        service.lastUpdatedAt || service.updatedAt
+          ? new Date(service.lastUpdatedAt || service.updatedAt!).toISOString()
+          : undefined
       const etag = `${status}|${lastUpdatedAt || ''}`
       const inm = request.headers.get('if-none-match')
       if (inm && inm === etag) {
@@ -88,7 +114,26 @@ export async function GET(request: Request) {
         res.headers.set('etag', etag)
         return res
       }
-      return NextResponse.json({ status, lastUpdatedAt }, { headers: { etag } })
+      const debug =
+        process.env.NODE_ENV !== 'production'
+          ? {
+              currentStatus: cs,
+              failureCode: (service as any)?.failureCode ?? null,
+              executionSessionId: (service as any)?.executionSessionId ?? null,
+              updatedAt: service.updatedAt
+                ? new Date(service.updatedAt).toISOString()
+                : undefined,
+            }
+          : undefined
+      return NextResponse.json(
+        {
+          status,
+          lastUpdatedAt,
+          failureCode: (service as any)?.failureCode ?? null,
+          ...(debug ? { debug } : {}),
+        },
+        { headers: { etag } }
+      )
     }
 
     if (taskType === 'customize') {
@@ -102,7 +147,9 @@ export async function GET(request: Request) {
           { status: 404 }
         )
       }
-      const lastUpdatedAt = rec.updatedAt ? new Date(rec.updatedAt).toISOString() : undefined
+      const lastUpdatedAt = rec.updatedAt
+        ? new Date(rec.updatedAt).toISOString()
+        : undefined
       const etag = `${rec.status}|${lastUpdatedAt || ''}`
       const inm = request.headers.get('if-none-match')
       if (inm && inm === etag) {
@@ -110,7 +157,10 @@ export async function GET(request: Request) {
         res.headers.set('etag', etag)
         return res
       }
-      return NextResponse.json({ status: rec.status, lastUpdatedAt }, { headers: { etag } })
+      return NextResponse.json(
+        { status: rec.status, lastUpdatedAt },
+        { headers: { etag } }
+      )
     }
 
     if (taskType === 'interview') {
@@ -124,7 +174,9 @@ export async function GET(request: Request) {
           { status: 404 }
         )
       }
-      const lastUpdatedAt = rec.updatedAt ? new Date(rec.updatedAt).toISOString() : undefined
+      const lastUpdatedAt = rec.updatedAt
+        ? new Date(rec.updatedAt).toISOString()
+        : undefined
       const etag = `${rec.status}|${lastUpdatedAt || ''}`
       const inm = request.headers.get('if-none-match')
       if (inm && inm === etag) {
@@ -132,12 +184,18 @@ export async function GET(request: Request) {
         res.headers.set('etag', etag)
         return res
       }
-      return NextResponse.json({ status: rec.status, lastUpdatedAt }, { headers: { etag } })
+      return NextResponse.json(
+        { status: rec.status, lastUpdatedAt },
+        { headers: { etag } }
+      )
     }
 
     return NextResponse.json({ error: 'Invalid taskType' }, { status: 400 })
   } catch (error) {
     console.error('TaskStatusError:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    )
   }
 }

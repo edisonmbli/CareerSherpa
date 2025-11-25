@@ -4,7 +4,7 @@ import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getModel, type ModelId } from '@/lib/llm/providers'
 import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
 import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts'
-import { SystemMessage } from '@langchain/core/messages'
+import { SystemMessage, HumanMessage } from '@langchain/core/messages'
 import { getTaskSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
@@ -252,7 +252,21 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     const model = getModel(modelId, { temperature: 0.3, timeoutMs: ENV.WORKER_TIMEOUT_MS, maxTokens: limits.maxTokens })
 
     const chain = prompt.pipe(model)
-    const aiMessage: any = await chain.invoke(variables)
+    const hasVisionImage = String(templateId) === 'ocr_extract' && typeof variables['image'] === 'string' && variables['image']
+    const aiMessage: any = hasVisionImage
+      ? await model.invoke([
+          new SystemMessage(template.systemPrompt),
+          new SystemMessage(
+            `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`
+          ),
+          new HumanMessage({
+            content: [
+              { type: 'text', text: renderVariables((template as any).userPrompt, { ...variables, image: '[attached]' }) },
+              { type: 'image_url', image_url: { url: String(variables['image']) } },
+            ],
+          }),
+        ])
+      : await chain.invoke(variables)
     const { inputTokens, outputTokens } = extractTokenUsageFromMessage(aiMessage)
 
     const content: string = (aiMessage as any)?.content ?? (aiMessage as any)?.text ?? ''
@@ -279,6 +293,37 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     const safe = schema.safeParse(parsed.data)
     const ok = safe.success
 
+    let usageLogId: any = null
+    if (!ok) {
+      const issues: any[] = ((safe as any)?.error?.issues as any[]) || []
+      const isOcr = String(templateId) === 'ocr_extract'
+      const hasEmptyExtract = isOcr && issues.some((it: any) => {
+        const p = it?.path
+        const onField = Array.isArray(p) ? p.includes('extracted_text') : String(p || '').includes('extracted_text')
+        return onField && String(it?.code || '') === 'too_small'
+      })
+      const errMsg = hasEmptyExtract
+        ? 'ocr_extracted_text_empty'
+        : (safe as any)?.error?.message ?? 'zod_validation_failed'
+      const log = await createLlmUsageLogDetailed({
+        taskTemplateId: templateId,
+        provider: getProvider(modelId),
+        modelId,
+        inputTokens,
+        outputTokens,
+        latencyMs: Date.now() - start,
+        cost: getCost(modelId, inputTokens, outputTokens),
+        isStream: false,
+        isSuccess: false,
+        errorMessage: errMsg,
+        ...(hasEmptyExtract ? { errorCode: 'ZOD_VALIDATION_FAILED' as any } : {}),
+        ...(context.userId ? { userId: context.userId } : {}),
+        ...(context.serviceId ? { serviceId: context.serviceId } : {}),
+      })
+      usageLogId = (log as any)?.id
+      return { ok: false, raw: content, error: errMsg, usageLogId }
+    }
+
     const log = await createLlmUsageLogDetailed({
       taskTemplateId: templateId,
       provider: getProvider(modelId),
@@ -289,18 +334,9 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       cost: getCost(modelId, inputTokens, outputTokens),
       isStream: false,
       isSuccess: ok,
-      ...(ok ? {} : { errorMessage: (safe as any)?.error?.message }),
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
-
-    if (!ok) {
-      return {
-        ok: false,
-        raw: content,
-        error: (safe as any)?.error?.message ?? 'zod_validation_failed',
-      }
-    }
 
     return {
       ok: true,
@@ -357,7 +393,8 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
     HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
   ])
-  const model = getModel(modelId, { temperature: 0.3, timeoutMs: ENV.WORKER_TIMEOUT_MS })
+  const limits = getTaskLimits(String(templateId))
+  const model = getModel(modelId, { temperature: 0.3, timeoutMs: ENV.WORKER_TIMEOUT_MS, maxTokens: limits.maxTokens })
   const chain = prompt.pipe(model)
 
   // Stream tokens to consumer; when finished, log usage
@@ -373,7 +410,15 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   const end = Date.now()
 
   // token usage may be available on model after stream; best-effort
-  const { inputTokens, outputTokens } = extractTokenUsageFromModel(model)
+  let { inputTokens, outputTokens } = extractTokenUsageFromModel(model)
+  if (!inputTokens && !outputTokens) {
+    try {
+      const estIn = Math.ceil(JSON.stringify(variables).length / 4)
+      const estOut = Math.ceil(fullText.length / 4)
+      inputTokens = estIn
+      outputTokens = estOut
+    } catch {}
+  }
 
   const log = await createLlmUsageLogDetailed({
     taskTemplateId: templateId,

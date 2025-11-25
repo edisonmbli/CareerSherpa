@@ -1,8 +1,8 @@
 /**
  * 中文 (zh) Prompt 模板
  */
-import type { PromptTemplateMap, JsonSchema } from './types';
-import { ENV } from '@/lib/env';
+import type { PromptTemplateMap, JsonSchema } from './types'
+import { ENV } from '@/lib/env'
 
 // 1. 复用 prototype 的 System Base
 const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者优化简历、分析职位匹配度和准备面试。
@@ -17,7 +17,7 @@ const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者�
 输出要求：
 - 必须返回有效的JSON格式
 - 内容简洁明了，避免冗余
-- 使用与用户输入一致的语言（中文/英文）`;
+- 使用与用户输入一致的语言（中文/英文）`
 
 // 2. 复用 prototype 的 Schemas (用于资产提取)
 const SCHEMAS_V1 = {
@@ -68,97 +68,157 @@ const SCHEMAS_V1 = {
     properties: {
       jobTitle: { type: 'string' },
       company: { type: 'string' },
-      mustHaves: { type: 'array', items: { type: 'string' }, description: '必须具备的技能/经验' },
-      niceToHaves: { type: 'array', items: { type: 'string' }, description: '加分项' },
+      mustHaves: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '必须具备的技能/经验',
+      },
+      niceToHaves: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '加分项',
+      },
     },
     required: ['jobTitle', 'mustHaves', 'niceToHaves'],
   } as JsonSchema,
-};
+}
 
 // 3. 新架构的 Schemas (用于核心服务)
 const SCHEMAS_V2 = {
   JOB_MATCH: {
     type: 'object',
     properties: {
-      match_score: { type: 'number', description: '综合匹配度评分 (0-100)', minimum: 0, maximum: 100 },
-      overall_assessment: { type: 'string', description: '一句话总结的核心评估，例如：高度匹配/中度匹配/存在挑战。' },
-      strengths: { 
-        type: 'array', 
-        items: { 
+      match_score: {
+        type: 'number',
+        description: '综合匹配度评分 (0-100)',
+        minimum: 0,
+        maximum: 100,
+      },
+      overall_assessment: {
+        type: 'string',
+        description: '一句话总结的核心评估，例如：高度匹配/中度匹配/存在挑战。',
+      },
+      strengths: {
+        type: 'array',
+        items: {
           type: 'object',
           properties: {
-            point: { type: 'string', description: '匹配的优势点 (例如：核心技能 React 精通)' },
-            evidence: { type: 'string', description: '简历中支持该优势的证据 (来自简历或履历)' }
+            point: {
+              type: 'string',
+              description: '匹配的优势点 (例如：核心技能 React 精通)',
+            },
+            evidence: {
+              type: 'string',
+              description: '简历中支持该优势的证据 (来自简历或履历)',
+            },
           },
-          required: ['point', 'evidence']
+          required: ['point', 'evidence'],
         },
-        description: '用户的核心优势 (用于放大)'
+        description: '用户的核心优势 (用于放大)',
       },
       weaknesses: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
-            point: { type: 'string', description: '不匹配的风险点 (例如：JD 要求 5 年经验，用户只有 2 年)' },
-            suggestion: { type: 'string', description: '建议的规避或准备策略 (来自 RAG 知识库)' }
+            point: {
+              type: 'string',
+              description:
+                '不匹配的风险点 (例如：JD 要求 5 年经验，用户只有 2 年)',
+            },
+            suggestion: {
+              type: 'string',
+              description: '建议的规避或准备策略 (来自 RAG 知识库)',
+            },
           },
-          required: ['point', 'suggestion']
+          required: ['point', 'suggestion'],
         },
-        description: '用户的核心劣势 (用于规避或准备)'
+        description: '用户的核心劣势 (用于规避或准备)',
       },
-      cover_letter_script: { 
-        type: 'string', 
-        description: '一段 150 字以内、高度定制化的“毛遂自荐”私信话术 (H-V-C 结构)'
-      }
+      cover_letter_script: {
+        type: 'string',
+        description:
+          '一段 150 字以内、高度定制化的“毛遂自荐”私信话术 (H-V-C 结构)',
+      },
     },
-    required: ['match_score', 'overall_assessment', 'strengths', 'weaknesses', 'cover_letter_script']
+    required: [
+      'match_score',
+      'overall_assessment',
+      'strengths',
+      'weaknesses',
+      'cover_letter_script',
+    ],
   } as JsonSchema,
 
   RESUME_CUSTOMIZE: {
     type: 'object',
     properties: {
-      customized_resume_markdown: { type: 'string', description: '一份完整的、可以直接渲染的 Markdown 格式定制化简历。' },
+      customized_resume_markdown: {
+        type: 'string',
+        description: '一份完整的、可以直接渲染的 Markdown 格式定制化简历。',
+      },
       customization_summary: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
-            section: { type: 'string', description: '被修改的章节 (例如：项目经历 A)' },
-            change_reason: { type: 'string', description: '为什么这样修改 (例如：为了突出 JD 要求的“性能优化”关键词)' }
+            section: {
+              type: 'string',
+              description: '被修改的章节 (例如：项目经历 A)',
+            },
+            change_reason: {
+              type: 'string',
+              description:
+                '为什么这样修改 (例如：为了突出 JD 要求的“性能优化”关键词)',
+            },
           },
-          required: ['section', 'change_reason']
+          required: ['section', 'change_reason'],
         },
-        description: '简历修改的亮点总结。'
-      }
+        description: '简历修改的亮点总结。',
+      },
     },
-    required: ['customized_resume_markdown', 'customization_summary']
+    required: ['customized_resume_markdown', 'customization_summary'],
   } as JsonSchema,
 
   INTERVIEW_PREP: {
     type: 'object',
     properties: {
-      self_introduction_script: { type: 'string', description: '一段 1 分钟的“P-P-F”结构化自我介绍脚本。' },
+      self_introduction_script: {
+        type: 'string',
+        description: '一段 1 分钟的“P-P-F”结构化自我介绍脚本。',
+      },
       potential_questions: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
-            question: { type: 'string', description: '一个基于 JD 和定制化简历的高概率面试问题。' },
-            answer_guideline: { type: 'string', description: '回答该问题的核心思路和 STAR 案例建议 (来自 RAG 知识库)。' }
+            question: {
+              type: 'string',
+              description: '一个基于 JD 和定制化简历的高概率面试问题。',
+            },
+            answer_guideline: {
+              type: 'string',
+              description:
+                '回答该问题的核心思路和 STAR 案例建议 (来自 RAG 知识库)。',
+            },
           },
-          required: ['question', 'answer_guideline']
+          required: ['question', 'answer_guideline'],
         },
-        description: '5-7 个最可能被问到的行为或情景面试问题。'
+        description: '5-7 个最可能被问到的行为或情景面试问题。',
       },
       reverse_questions: {
         type: 'array',
         items: {
           type: 'string',
-          description: '3 个建议用户反问面试官的高分问题 (来自 RAG 知识库)。'
-        }
-      }
+          description: '3 个建议用户反问面试官的高分问题 (来自 RAG 知识库)。',
+        },
+      },
     },
-    required: ['self_introduction_script', 'potential_questions', 'reverse_questions']
+    required: [
+      'self_introduction_script',
+      'potential_questions',
+      'reverse_questions',
+    ],
   } as JsonSchema,
   RESUME_SUMMARY: {
     type: 'object',
@@ -173,7 +233,13 @@ const SCHEMAS_V2 = {
           github: { type: 'string' },
           links: {
             type: 'array',
-            items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } } },
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                url: { type: 'string' },
+              },
+            },
           },
         },
       },
@@ -219,19 +285,66 @@ const SCHEMAS_V2 = {
       skills: {
         anyOf: [
           { type: 'array', items: { type: 'string' } },
-          { type: 'object', properties: { technical: { type: 'array', items: { type: 'string' } }, soft: { type: 'array', items: { type: 'string' } }, tools: { type: 'array', items: { type: 'string' } } } },
+          {
+            type: 'object',
+            properties: {
+              technical: { type: 'array', items: { type: 'string' } },
+              soft: { type: 'array', items: { type: 'string' } },
+              tools: { type: 'array', items: { type: 'string' } },
+            },
+          },
         ],
       },
-      certifications: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
-      languages: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, level: { type: 'string' }, proof: { type: 'string' } } } },
-      awards: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
-      openSource: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, link: { type: 'string' }, highlights: { type: 'array', items: { type: 'string' } } } } },
+      certifications: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            issuer: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      languages: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            level: { type: 'string' },
+            proof: { type: 'string' },
+          },
+        },
+      },
+      awards: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            issuer: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      openSource: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            link: { type: 'string' },
+            highlights: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
       summary_points: { type: 'array', items: { type: 'string' } },
       specialties_points: { type: 'array', items: { type: 'string' } },
       extras: { type: 'array', items: { type: 'string' } },
     },
-} as JsonSchema,
-};
+  } as JsonSchema,
+}
 
 const DETAILED_RESUME_SCHEMA = {
   type: 'object',
@@ -244,7 +357,13 @@ const DETAILED_RESUME_SCHEMA = {
         phone: { type: 'string' },
         linkedin: { type: 'string' },
         github: { type: 'string' },
-        links: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } } } },
+        links: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { label: { type: 'string' }, url: { type: 'string' } },
+          },
+        },
       },
     },
     summary: { type: 'string' },
@@ -276,7 +395,9 @@ const DETAILED_RESUME_SCHEMA = {
                     type: 'object',
                     properties: {
                       label: { type: 'string' },
-                      value: { anyOf: [{ type: 'number' }, { type: 'string' }] },
+                      value: {
+                        anyOf: [{ type: 'number' }, { type: 'string' }],
+                      },
                       unit: { type: 'string' },
                       period: { type: 'string' },
                     },
@@ -292,7 +413,14 @@ const DETAILED_RESUME_SCHEMA = {
     },
     capabilities: {
       type: 'array',
-      items: { type: 'object', properties: { name: { type: 'string' }, points: { type: 'array', items: { type: 'string' } } }, required: ['name', 'points'] },
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          points: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['name', 'points'],
+      },
     },
     education: {
       type: 'array',
@@ -310,25 +438,81 @@ const DETAILED_RESUME_SCHEMA = {
     skills: {
       anyOf: [
         { type: 'array', items: { type: 'string' } },
-        { type: 'object', properties: { technical: { type: 'array', items: { type: 'string' } }, soft: { type: 'array', items: { type: 'string' } }, tools: { type: 'array', items: { type: 'string' } } } },
+        {
+          type: 'object',
+          properties: {
+            technical: { type: 'array', items: { type: 'string' } },
+            soft: { type: 'array', items: { type: 'string' } },
+            tools: { type: 'array', items: { type: 'string' } },
+          },
+        },
       ],
     },
-    certifications: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
-    languages: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, level: { type: 'string' }, proof: { type: 'string' } } } },
-    awards: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
-    openSource: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, link: { type: 'string' }, highlights: { type: 'array', items: { type: 'string' } } } } },
+    certifications: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          issuer: { type: 'string' },
+          date: { type: 'string' },
+        },
+      },
+    },
+    languages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          level: { type: 'string' },
+          proof: { type: 'string' },
+        },
+      },
+    },
+    awards: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          issuer: { type: 'string' },
+          date: { type: 'string' },
+        },
+      },
+    },
+    openSource: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          link: { type: 'string' },
+          highlights: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
     extras: { type: 'array', items: { type: 'string' } },
     summary_points: { type: 'array', items: { type: 'string' } },
     specialties_points: { type: 'array', items: { type: 'string' } },
-    rawSections: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, points: { type: 'array', items: { type: 'string' } } }, required: ['title', 'points'] } },
+    rawSections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          points: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['title', 'points'],
+      },
+    },
   },
-} as JsonSchema;
-
+} as JsonSchema
 
 // 4. 模板合集
 export const ZH_TEMPLATES: PromptTemplateMap = {
   // --- 复用 Prototype (M7) ---
-  resume_summary: { 
+  resume_summary: {
     id: 'resume_summary',
     name: '通用简历提取',
     description: '从用户上传的通用简历原文中提取结构化信息。',
@@ -413,34 +597,49 @@ JD原文:
     name: '工作匹配度分析',
     description: '分析简历与 JD 的匹配度，找出优势和劣势，并生成话术。',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `请你扮演求职专家的角色，深度分析以下材料。
-你的目标是帮助用户识别“优势”（用于放大）和“劣势”（用于规避）。
+    userPrompt: `请你扮演求职专家，基于以下材料进行严格结构化的岗位匹配度分析，并生成更「像人」的简洁私信话术。
 
-【RAG 知识库 - 匹配度分析技巧】
+【RAG 知识库（精选片段，规则/范式/示例）】
 """
 {rag_context}
 """
 
-【用户简历 - 结构化摘要】
+【用户简历（结构化摘要）】
 """
 {resume_summary_json}
 """
 
-【用户详细履历 - 结构化摘要 (可选)】
+【用户详细履历（结构化摘要，可选）】
 """
 {detailed_resume_summary_json}
 """
 
-【目标岗位 - 结构化摘要】
+【目标岗位（结构化摘要）】
 """
 {job_summary_json}
 """
 
-请根据以上所有信息，严格按照 JSON Schema 输出分析报告。
-- 'strengths' 必须从简历中找到具体证据。
-- 'weaknesses' 必须结合 RAG 知识库给出规避建议。
-- 'cover_letter_script' 必须使用 H-V-C 结构，并突出 1-2 个最强的优势点。`,
-    variables: ['rag_context', 'resume_summary_json', 'detailed_resume_summary_json', 'job_summary_json'],
+输出要求（必须严格遵守）：
+- 严格按照 JSON Schema 返回；不得输出多余文字或 Markdown。
+- 'match_score' 必须提供 0-100 的数值评分。
+- 'overall_assessment' 使用简洁标签（高度匹配/中度匹配/存在挑战）。
+- 字段名必须严格使用英文键名：
+  - strengths[].point, strengths[].evidence, （可选）strengths[].section
+  - weaknesses[].point, weaknesses[].suggestion
+  - cover_letter_script 为单个字符串，不要返回对象
+- 'strengths'：逐点给出 point、来自简历的 evidence、关联板块（experience/skills/projects）。
+- 'weaknesses'：逐点给出 point、可操作的 suggestion；优先结合 RAG 规则。
+- 'cover_letter_script' 语气与风格：礼貌自信、第一人称、平台私信风格（更像真人、避免模板腔）。长度：≤120字。结构：
+  - Hook：1行，包含目标岗位与 2–4 个 JD 关键词；
+  - Value：1–2行，呈现 1–2 个与 JD 必须项对齐的量化成果；
+  - Close：1行，简洁表达兴趣；不要主动安排或请求电话/会议。
+- 禁止：问候语、姓名自我介绍、约电话/会议、冗长客套。`,
+    variables: [
+      'rag_context',
+      'resume_summary_json',
+      'detailed_resume_summary_json',
+      'job_summary_json',
+    ],
     outputSchema: SCHEMAS_V2.JOB_MATCH,
   },
   resume_customize: {
@@ -477,7 +676,12 @@ JD原文:
 3.  **关键词匹配**：确保 \`job_summary_json\` 中的“mustHaves”关键词在新简历中显眼地出现。
 4.  **规避劣势**：弱化或删除与 JD 无关、且暴露劣势（\`weaknesses\`）的条目。
 5.  **输出 Markdown**：严格按照 Schema 输出完整的 Markdown 简历和修改摘要。`,
-    variables: ['rag_context', 'resume_text', 'job_summary_json', 'match_analysis_json'],
+    variables: [
+      'rag_context',
+      'resume_text',
+      'job_summary_json',
+      'match_analysis_json',
+    ],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
   },
   interview_prep: {
@@ -514,7 +718,12 @@ JD原文:
     * **必须**包含针对 \`match_analysis_json\` 中 \`weaknesses\`（劣势） 的压力测试问题（例如：“我看到你只有 2 年经验，我们这个岗位要求 5 年，你如何胜任？”）。
     * **必须**结合 RAG 知识库，为每个问题提供“回答思路”和“STAR 案例建议”。
 3.  **反问问题**：结合 RAG 知识库，提供 3 个高质量的反问问题。`,
-    variables: ['rag_context', 'customized_resume_md', 'job_summary_json', 'match_analysis_json'],
+    variables: [
+      'rag_context',
+      'customized_resume_md',
+      'job_summary_json',
+      'match_analysis_json',
+    ],
     outputSchema: SCHEMAS_V2.INTERVIEW_PREP,
   },
   // 非生成型任务（嵌入/RAG流水线）占位模板
@@ -570,4 +779,4 @@ JD原文:
       required: ['extracted_text', 'content_type', 'language', 'structure'],
     } as JsonSchema,
   },
-};
+}

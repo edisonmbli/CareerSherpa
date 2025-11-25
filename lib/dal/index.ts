@@ -116,7 +116,15 @@ export async function getServiceById(serviceId: string): Promise<{
       if (!service) return null
 
       const job = await client.job.findFirst({ where: { serviceId: service.id } })
-      const status: 'done' | 'pending' | 'error' = 'done'
+      const match = await client.match.findFirst({ where: { serviceId: service.id } })
+      const jobStatus = String(job?.status || '').toUpperCase()
+      const matchStatus = String(match?.status || '').toUpperCase()
+      const status: 'done' | 'pending' | 'error' =
+        jobStatus === 'FAILED' || matchStatus === 'FAILED'
+          ? 'error'
+          : jobStatus === 'COMPLETED' && matchStatus === 'COMPLETED'
+          ? 'done'
+          : 'pending'
 
       return {
         id: service.id,
@@ -154,6 +162,23 @@ export async function getJobByIdForUser(jobId: string, userId: string) {
       const service = await client.service.findUnique({ where: { id: job.serviceId } })
       if (!service || service.userId !== userId) return null
       return job
+    }, { attempts: 3, prewarm: true })
+  } catch {
+    return null
+  }
+}
+
+export async function getServiceWithContextReadOnly(serviceId: string, userId?: string): Promise<any | null> {
+  if (!serviceId) return null
+  try {
+    return await withPrismaGuard(async (client) => {
+      const service = await client.service.findUnique({
+        where: { id: serviceId },
+        include: { resume: true, detailedResume: true, job: true, match: true },
+      })
+      if (!service) return null
+      if (userId && service.userId !== userId) return null
+      return service
     }, { attempts: 3, prewarm: true })
   } catch {
     return null

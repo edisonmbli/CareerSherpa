@@ -17,52 +17,87 @@ export const ENV = {
   ZHIPU_VISION_MODEL:
     process.env['ZHIPU_VISION_MODEL'] ?? 'glm-4.1v-thinking-flash',
   SUMMARY_MAX_CHARS: Number(process.env['SUMMARY_MAX_CHARS'] ?? '8000'),
-  
+
   // 配额管理配置
   FREE_QUOTA_LIMIT: Number(process.env['FREE_QUOTA_LIMIT'] ?? '3'), // 免费用户配额限制
-  QUOTA_RESET_INTERVAL_HOURS: Number(process.env['QUOTA_RESET_INTERVAL_HOURS'] ?? '24'), // 配额重置间隔（小时）
-  QUOTA_ANOMALY_THRESHOLD: Number(process.env['QUOTA_ANOMALY_THRESHOLD'] ?? '10'), // 异常使用阈值
-  
+  QUOTA_RESET_INTERVAL_HOURS: Number(
+    process.env['QUOTA_RESET_INTERVAL_HOURS'] ?? '24'
+  ), // 配额重置间隔（小时）
+  QUOTA_ANOMALY_THRESHOLD: Number(
+    process.env['QUOTA_ANOMALY_THRESHOLD'] ?? '10'
+  ), // 异常使用阈值
+
   // 并发控制配置
   DEEPSEEK_MAX_WORKERS: Number(process.env['DEEPSEEK_MAX_WORKERS'] ?? '5'), // DeepSeek最大并发数
   GLM_MAX_WORKERS: Number(process.env['GLM_MAX_WORKERS'] ?? '5'), // GLM最大并发数
   WORKER_TIMEOUT_MS: Number(process.env['WORKER_TIMEOUT_MS'] ?? '60000'), // Worker超时时间（毫秒）
   QUEUE_MAX_SIZE: Number(process.env['QUEUE_MAX_SIZE'] ?? '100'), // 队列最大长度（默认）
-  QUEUE_POSITION_UPDATE_INTERVAL_MS: Number(process.env['QUEUE_POSITION_UPDATE_INTERVAL_MS'] ?? '2000'), // 队列位置更新间隔
+  QUEUE_POSITION_UPDATE_INTERVAL_MS: Number(
+    process.env['QUEUE_POSITION_UPDATE_INTERVAL_MS'] ?? '2000'
+  ), // 队列位置更新间隔
 
   // 队列分级上限（覆盖默认）
-  QUEUE_MAX_PAID_STREAM: Number(process.env['QUEUE_MAX_PAID_STREAM'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
-  QUEUE_MAX_FREE_STREAM: Number(process.env['QUEUE_MAX_FREE_STREAM'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
-  QUEUE_MAX_PAID_BATCH: Number(process.env['QUEUE_MAX_PAID_BATCH'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
-  QUEUE_MAX_FREE_BATCH: Number(process.env['QUEUE_MAX_FREE_BATCH'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
-  QUEUE_MAX_PAID_VISION: Number(process.env['QUEUE_MAX_PAID_VISION'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
-  QUEUE_MAX_FREE_VISION: Number(process.env['QUEUE_MAX_FREE_VISION'] ?? String(process.env['QUEUE_MAX_SIZE'] ?? '100')),
+  QUEUE_MAX_PAID_STREAM: Number(
+    process.env['QUEUE_MAX_PAID_STREAM'] ??
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+  ),
+  QUEUE_MAX_FREE_STREAM: Number(
+    process.env['QUEUE_MAX_FREE_STREAM'] ??
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+  ),
+  QUEUE_MAX_PAID_BATCH: Number(
+    process.env['QUEUE_MAX_PAID_BATCH'] ??
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+  ),
+  QUEUE_MAX_FREE_BATCH: Number(
+    process.env['QUEUE_MAX_FREE_BATCH'] ??
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+  ),
+  QUEUE_MAX_PAID_VISION: Number(
+    process.env['QUEUE_MAX_PAID_VISION'] ??
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+  ),
+  QUEUE_MAX_FREE_VISION: Number(
+    process.env['QUEUE_MAX_FREE_VISION'] ??
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+  ),
 
   // 性能优化配置
   CACHE_TTL_SECONDS: Number(process.env['CACHE_TTL_SECONDS'] ?? '300'), // 缓存TTL（秒）
   BATCH_OPERATION_SIZE: Number(process.env['BATCH_OPERATION_SIZE'] ?? '10'), // 批量操作大小
-  CONCURRENCY_LOCK_TIMEOUT_MS: Number(process.env['CONCURRENCY_LOCK_TIMEOUT_MS'] ?? '30000'), // 并发锁超时时间
-  
-  // Stack Auth 配置
-  NEXT_PUBLIC_STACK_PROJECT_ID: process.env['NEXT_PUBLIC_STACK_PROJECT_ID'] ?? '',
-  NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY: process.env['NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY'] ?? '',
-  STACK_SECRET_SERVER_KEY: process.env['STACK_SECRET_SERVER_KEY'] ?? '',
-  
+  CONCURRENCY_LOCK_TIMEOUT_MS: Number(
+    process.env['CONCURRENCY_LOCK_TIMEOUT_MS'] ?? '30000'
+  ), // 并发锁超时时间
 
-  
+  // Stack Auth 配置
+  NEXT_PUBLIC_STACK_PROJECT_ID:
+    process.env['NEXT_PUBLIC_STACK_PROJECT_ID'] ?? '',
+  NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY:
+    process.env['NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY'] ?? '',
+  STACK_SECRET_SERVER_KEY: process.env['STACK_SECRET_SERVER_KEY'] ?? '',
+
   // 缓存验证密钥
-  CACHE_VALIDATION_SECRET: process.env['CACHE_VALIDATION_SECRET'] ?? 'default-secret-key',
-  
+  CACHE_VALIDATION_SECRET:
+    process.env['CACHE_VALIDATION_SECRET'] ?? 'default-secret-key',
+
   // 调试开关：启用后在关键 LLM 调用处输出详细日志（仅服务器侧）
-  LLM_DEBUG: (process.env['LLM_DEBUG'] ?? '0').toLowerCase() === '1' || (process.env['LLM_DEBUG'] ?? '').toLowerCase() === 'true',
-  LLM_STRICT_MODE: (process.env['LLM_STRICT_MODE'] ?? '1').toLowerCase() === '1' || (process.env['LLM_STRICT_MODE'] ?? '').toLowerCase() === 'true',
-  RESUME_SCHEMA_V2_ENABLED: (process.env['RESUME_SCHEMA_V2_ENABLED'] ?? '1').toLowerCase() === '1' || (process.env['RESUME_SCHEMA_V2_ENABLED'] ?? '').toLowerCase() === 'true',
+  LLM_DEBUG:
+    (process.env['LLM_DEBUG'] ?? '0').toLowerCase() === '1' ||
+    (process.env['LLM_DEBUG'] ?? '').toLowerCase() === 'true',
+  LLM_STRICT_MODE:
+    (process.env['LLM_STRICT_MODE'] ?? '1').toLowerCase() === '1' ||
+    (process.env['LLM_STRICT_MODE'] ?? '').toLowerCase() === 'true',
+  RESUME_SCHEMA_V2_ENABLED:
+    (process.env['RESUME_SCHEMA_V2_ENABLED'] ?? '1').toLowerCase() === '1' ||
+    (process.env['RESUME_SCHEMA_V2_ENABLED'] ?? '').toLowerCase() === 'true',
 
   // Redis Streams 合并写入配置
   // 时间窗口（毫秒）：在该窗口内的 token 事件被合并为一次写入
-  STREAM_FLUSH_INTERVAL_MS: Number(process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '400'),
+  STREAM_FLUSH_INTERVAL_MS: Number(
+    process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '800'
+  ),
   // 长度阈值（事件数量）：达到该数量立即触发 flush（窗口未到也立即写）
-  STREAM_FLUSH_SIZE: Number(process.env['STREAM_FLUSH_SIZE'] ?? '8'),
+  STREAM_FLUSH_SIZE: Number(process.env['STREAM_FLUSH_SIZE'] ?? '48'),
 
   // Redis Streams 后处理配置（终止事件触发）
   // TTL（秒）：在收到 done/error 终止事件后为缓冲流键设置过期时间；<=0 表示禁用
@@ -80,16 +115,28 @@ export const ENV = {
   MAX_GLM_FLASH_FREE: Number(process.env['MAX_GLM_FLASH_FREE'] ?? '2'),
   MAX_GLM_VISION_PAID: Number(process.env['MAX_GLM_VISION_PAID'] ?? '3'),
   MAX_GLM_VISION_FREE: Number(process.env['MAX_GLM_VISION_FREE'] ?? '2'),
-  MAX_TOTAL_WAIT_MS_STREAM: Number(process.env['MAX_TOTAL_WAIT_MS_STREAM'] ?? '480000'),
-  MAX_TOTAL_WAIT_MS_BATCH: Number(process.env['MAX_TOTAL_WAIT_MS_BATCH'] ?? '600000'),
+  MAX_TOTAL_WAIT_MS_STREAM: Number(
+    process.env['MAX_TOTAL_WAIT_MS_STREAM'] ?? '480000'
+  ),
+  MAX_TOTAL_WAIT_MS_BATCH: Number(
+    process.env['MAX_TOTAL_WAIT_MS_BATCH'] ?? '600000'
+  ),
 }
 
 export function isProdRedisReady() {
-  return !!ENV.UPSTASH_REDIS_REST_URL && !!ENV.UPSTASH_REDIS_REST_TOKEN && process.env.NODE_ENV !== 'test'
+  return (
+    !!ENV.UPSTASH_REDIS_REST_URL &&
+    !!ENV.UPSTASH_REDIS_REST_TOKEN &&
+    process.env.NODE_ENV !== 'test'
+  )
 }
 
 export function isQstashReady() {
-  return !!ENV.QSTASH_TOKEN && !!ENV.QSTASH_CURRENT_SIGNING_KEY && !!ENV.QSTASH_NEXT_SIGNING_KEY
+  return (
+    !!ENV.QSTASH_TOKEN &&
+    !!ENV.QSTASH_CURRENT_SIGNING_KEY &&
+    !!ENV.QSTASH_NEXT_SIGNING_KEY
+  )
 }
 
 export function assertRequiredKeysForRun() {
@@ -107,14 +154,18 @@ export function isZhipuReady() {
 }
 
 export function isStackAuthReady() {
-  return !!ENV.NEXT_PUBLIC_STACK_PROJECT_ID && !!ENV.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY && !!ENV.STACK_SECRET_SERVER_KEY
+  return (
+    !!ENV.NEXT_PUBLIC_STACK_PROJECT_ID &&
+    !!ENV.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY &&
+    !!ENV.STACK_SECRET_SERVER_KEY
+  )
 }
 
 export function getQuotaConfig() {
   return {
     freeLimit: ENV.FREE_QUOTA_LIMIT,
     resetIntervalHours: ENV.QUOTA_RESET_INTERVAL_HOURS,
-    anomalyThreshold: ENV.QUOTA_ANOMALY_THRESHOLD
+    anomalyThreshold: ENV.QUOTA_ANOMALY_THRESHOLD,
   }
 }
 
@@ -143,7 +194,7 @@ export function getConcurrencyConfig() {
       glmFlashFree: ENV.MAX_GLM_FLASH_FREE,
       glmVisionPaid: ENV.MAX_GLM_VISION_PAID,
       glmVisionFree: ENV.MAX_GLM_VISION_FREE,
-    }
+    },
   }
 }
 
@@ -155,6 +206,6 @@ export function getPerformanceConfig() {
     maxTotalWaitMs: {
       stream: ENV.MAX_TOTAL_WAIT_MS_STREAM,
       batch: ENV.MAX_TOTAL_WAIT_MS_BATCH,
-    }
+    },
   }
 }

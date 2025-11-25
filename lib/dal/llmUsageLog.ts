@@ -44,6 +44,7 @@ export interface LlmUsageLogDetailedParams {
   isStream: boolean
   isSuccess: boolean
   errorMessage?: string
+  errorCode?: import('@prisma/client').FailureCode
 }
 
 export async function createLlmUsageLogDetailed(
@@ -87,6 +88,7 @@ export async function createLlmUsageLogDetailed(
           isStream,
           isSuccess,
           errorMessage: errorMessage ?? null,
+          errorCode: (params as any)?.errorCode ?? null,
         },
       })
     }, { attempts: 3, prewarm: false })

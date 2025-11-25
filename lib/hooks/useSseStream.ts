@@ -1,34 +1,79 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useWorkbenchStore } from '@/lib/stores/workbench.store'
 
-export function useSseStream(userId: string, serviceId: string, taskId: string) {
-  const { appendStreamToken, completeStream, setError } = useWorkbenchStore()
+export function useSseStream(
+  userId: string,
+  serviceId: string,
+  taskId: string
+) {
+  const { ingestEvent } = useWorkbenchStore()
+  const esRef = useRef<EventSource | null>(null)
+  const taskRef = useRef<string>('')
   useEffect(() => {
     if (!userId || !serviceId || !taskId) return
-    const url = `/api/sse-stream?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&fromLatest=1`
+    taskRef.current = taskId
+    const url = `/api/sse-stream?userId=${encodeURIComponent(
+      userId
+    )}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(
+      taskId
+    )}&fromLatest=1`
     const es = new EventSource(url)
+    esRef.current = es
     es.onmessage = (ev) => {
       if (!ev?.data) return
       try {
         const msg = JSON.parse(ev.data)
-        if (msg?.type === 'token' || msg?.type === 'token_batch') {
-          const t = msg?.text ?? msg?.data ?? ''
-          if (t) appendStreamToken(String(t))
-        } else if (msg?.type === 'done') {
-          completeStream()
-          es.close()
-        } else if (msg?.type === 'error') {
-          setError(String(msg?.message ?? 'stream_error'))
-          es.close()
+        try {
+          if (process.env.NODE_ENV !== 'production') {
+            const len =
+              typeof (msg as any)?.text === 'string'
+                ? (msg as any).text.length
+                : typeof (msg as any)?.data === 'string'
+                ? (msg as any).data.length
+                : 0
+            console.info('sse_event', {
+              type: String((msg as any)?.type || ''),
+              status: (msg as any)?.status,
+              code: (msg as any)?.code,
+              taskId: (msg as any)?.taskId,
+              len,
+            })
+          }
+        } catch {}
+        ingestEvent(msg)
+        const status = String(msg?.status || '')
+        const code = String(msg?.code || '')
+        const nextTid = String(msg?.taskId || '')
+        const summaryDone =
+          status === 'SUMMARY_COMPLETED' || code === 'summary_completed'
+        if (summaryDone && nextTid && nextTid !== taskRef.current) {
+          try {
+            esRef.current?.close()
+          } catch {}
+          try {
+            if (process.env.NODE_ENV !== 'production') {
+              console.info('sse_switch', { from: taskRef.current, to: nextTid })
+            }
+          } catch {}
+          taskRef.current = nextTid
+          const nextUrl = `/api/sse-stream?userId=${encodeURIComponent(
+            userId
+          )}&serviceId=${encodeURIComponent(
+            serviceId
+          )}&taskId=${encodeURIComponent(nextTid)}&fromLatest=0`
+          const nextEs = new EventSource(nextUrl)
+          esRef.current = nextEs
+          nextEs.onmessage = es.onmessage
+          nextEs.onerror = es.onerror as any
         }
       } catch {}
     }
     es.onerror = () => {
-      setError('stream_connection_error')
+      ingestEvent({ type: 'error', message: 'stream_connection_error' })
       es.close()
     }
     return () => {
-      es.close()
+      esRef.current?.close()
     }
-  }, [userId, serviceId, taskId, appendStreamToken, completeStream, setError])
+  }, [userId, serviceId, taskId, ingestEvent])
 }

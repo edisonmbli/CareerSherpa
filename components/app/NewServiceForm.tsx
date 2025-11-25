@@ -42,6 +42,14 @@ export function NewServiceForm({
       toast.error(dict.inputError)
       return
     }
+    if (file && file.size > 3 * 1024 * 1024) {
+      toast.error(dict.imageTooLarge || '图片大小超过 3MB')
+      return
+    }
+    if (text && text.length > 8000) {
+      toast.error(dict.jobTextTooLong || '文本长度超过 8000 字')
+      return
+    }
     startTransition(async () => {
       let jobImage: string | undefined
       if (file) {

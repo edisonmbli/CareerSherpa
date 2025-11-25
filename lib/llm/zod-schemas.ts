@@ -1,7 +1,10 @@
 import { z } from 'zod'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 
-const linkSchema = z.object({ label: z.string().optional(), url: z.string().optional() })
+const linkSchema = z.object({
+  label: z.string().optional(),
+  url: z.string().optional(),
+})
 const headerSchema = z.object({
   name: z.string().optional(),
   email: z.string().optional(),
@@ -32,12 +35,34 @@ const educationItemSchema = z.object({
 })
 const skillsUnionSchema = z.union([
   z.array(z.string()),
-  z.object({ technical: z.array(z.string()).optional(), soft: z.array(z.string()).optional(), tools: z.array(z.string()).optional() }).partial(),
+  z
+    .object({
+      technical: z.array(z.string()).optional(),
+      soft: z.array(z.string()).optional(),
+      tools: z.array(z.string()).optional(),
+    })
+    .partial(),
 ])
-const certificationItemSchema = z.object({ name: z.string().optional(), issuer: z.string().optional(), date: z.string().optional() })
-const languageItemSchema = z.object({ name: z.string().optional(), level: z.string().optional(), proof: z.string().optional() })
-const awardItemSchema = z.object({ name: z.string().optional(), issuer: z.string().optional(), date: z.string().optional() })
-const openSourceItemSchema = z.object({ name: z.string().optional(), link: z.string().optional(), highlights: z.array(z.string()).optional() })
+const certificationItemSchema = z.object({
+  name: z.string().optional(),
+  issuer: z.string().optional(),
+  date: z.string().optional(),
+})
+const languageItemSchema = z.object({
+  name: z.string().optional(),
+  level: z.string().optional(),
+  proof: z.string().optional(),
+})
+const awardItemSchema = z.object({
+  name: z.string().optional(),
+  issuer: z.string().optional(),
+  date: z.string().optional(),
+})
+const openSourceItemSchema = z.object({
+  name: z.string().optional(),
+  link: z.string().optional(),
+  highlights: z.array(z.string()).optional(),
+})
 const resumeSummarySchema = z
   .object({
     header: headerSchema.optional(),
@@ -58,11 +83,19 @@ const resumeSummarySchema = z
     (d) =>
       Boolean(d.summary && String(d.summary).trim().length > 0) ||
       (Array.isArray(d.summary_points) && d.summary_points.length > 0) ||
-      (Array.isArray(d.specialties_points) && d.specialties_points.length > 0) ||
+      (Array.isArray(d.specialties_points) &&
+        d.specialties_points.length > 0) ||
       (Array.isArray(d.experience) && d.experience.length > 0) ||
       (Array.isArray(d.projects) && d.projects.length > 0) ||
       (Array.isArray(d.education) && d.education.length > 0) ||
-      Boolean(d.skills && (Array.isArray(d.skills) ? d.skills.length > 0 : ((d.skills as any).technical?.length || (d.skills as any).soft?.length || (d.skills as any).tools?.length))),
+      Boolean(
+        d.skills &&
+          (Array.isArray(d.skills)
+            ? d.skills.length > 0
+            : (d.skills as any).technical?.length ||
+              (d.skills as any).soft?.length ||
+              (d.skills as any).tools?.length)
+      ),
     { message: 'empty_resume_summary' }
   )
 
@@ -106,9 +139,7 @@ const detailedResumeV3Schema = z
       )
       .optional(),
     capabilities: z
-      .array(
-        z.object({ name: z.string(), points: z.array(z.string()) })
-      )
+      .array(z.object({ name: z.string(), points: z.array(z.string()) }))
       .optional(),
     education: z.array(educationItemSchema).optional(),
     skills: skillsUnionSchema.optional(),
@@ -120,18 +151,18 @@ const detailedResumeV3Schema = z
     summary_points: z.array(z.string()).optional(),
     specialties_points: z.array(z.string()).optional(),
     rawSections: z
-      .array(
-        z.object({ title: z.string(), points: z.array(z.string()) })
-      )
+      .array(z.object({ title: z.string(), points: z.array(z.string()) }))
       .optional(),
   })
   .refine(
     (d) =>
-      (Array.isArray(d.experiences) && d.experiences.length > 0 &&
+      (Array.isArray(d.experiences) &&
+        d.experiences.length > 0 &&
         d.experiences.some(
           (e: any) =>
             (Array.isArray(e.highlights) && e.highlights.length > 0) ||
-            (Array.isArray(e.projects) && e.projects.length > 0 &&
+            (Array.isArray(e.projects) &&
+              e.projects.length > 0 &&
               e.projects.some(
                 (p: any) =>
                   (Array.isArray(p.task) && p.task.length > 0) ||
@@ -139,35 +170,55 @@ const detailedResumeV3Schema = z
                   (Array.isArray(p.results) && p.results.length > 0)
               ))
         )) ||
-      (Array.isArray(d.capabilities) && d.capabilities.length > 0 &&
-        d.capabilities.some((c: any) => Array.isArray(c.points) && c.points.length > 0)) ||
+      (Array.isArray(d.capabilities) &&
+        d.capabilities.length > 0 &&
+        d.capabilities.some(
+          (c: any) => Array.isArray(c.points) && c.points.length > 0
+        )) ||
       (Array.isArray(d.education) && d.education.length > 0) ||
       Boolean(
         d.skills &&
           (Array.isArray(d.skills)
             ? d.skills.length > 0
-            : ((d.skills as any).technical?.length || (d.skills as any).soft?.length || (d.skills as any).tools?.length))
+            : (d.skills as any).technical?.length ||
+              (d.skills as any).soft?.length ||
+              (d.skills as any).tools?.length)
       ),
     { message: 'empty_detailed_resume_summary' }
   )
 
-const jobSummarySchema = z.object({
-  company: z.string().optional(),
-  title: z.string().optional(),
-  location: z.string().optional(),
-  requirements: z.array(z.string()).optional(),
-  responsibilities: z.array(z.string()).optional(),
-  benefits: z.array(z.string()).optional(),
-  company_values: z.array(z.string()).optional(),
-})
+const jobSummarySchema = z.union([
+  z.object({
+    jobTitle: z.string(),
+    company: z.string().optional(),
+    mustHaves: z.array(z.string()).min(1),
+    niceToHaves: z.array(z.string()).min(1),
+  }),
+  z.object({ markdown: z.string().min(1) }),
+])
 
 // V2：新设计任务（match/customize/interview）
 const jobMatchSchema = z.object({
   match_score: z.number().min(0).max(100),
-  reasons: z.array(z.string()).min(1),
-  gaps: z.array(z.string()).optional(),
-  fixes: z.array(z.string()).optional(),
-  risk_assessment: z.string().optional(),
+  overall_assessment: z.string().min(1),
+  strengths: z
+    .array(
+      z.object({
+        point: z.string(),
+        evidence: z.string(),
+        section: z.string().optional(),
+      })
+    )
+    .min(1),
+  weaknesses: z
+    .array(
+      z.object({
+        point: z.string(),
+        suggestion: z.string(),
+      })
+    )
+    .min(1),
+  cover_letter_script: z.string().min(1),
 })
 
 const resumeCustomizeSchema = z.object({
@@ -216,7 +267,9 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   rag_embedding: z.object({}),
 }
 
-export type TaskOutput<T extends TaskTemplateId> = z.infer<(typeof SCHEMA_MAP)[T]>
+export type TaskOutput<T extends TaskTemplateId> = z.infer<
+  (typeof SCHEMA_MAP)[T]
+>
 
 export function getTaskSchema<T extends TaskTemplateId>(taskId: T) {
   return SCHEMA_MAP[taskId]

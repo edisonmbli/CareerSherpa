@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('@/lib/dal/analyticsEvent', () => ({
   createAnalyticsEvent: vi.fn().mockResolvedValue({ id: 'evt1' }),

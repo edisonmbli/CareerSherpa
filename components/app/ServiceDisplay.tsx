@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation'
 import { MarkdownEditor } from '@/components/app/MarkdownEditor'
 import { saveCustomizedResumeAction } from '@/lib/actions/service.actions'
 import { toast } from '@/components/ui/use-toast'
+import { CopyText } from '@/components/app/CopyText'
 
 export function ServiceDisplay({
   initialService,
@@ -37,8 +38,14 @@ export function ServiceDisplay({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const { status, setStatus, startTask, streamingResponse, setError } =
-    useWorkbenchStore()
+  const {
+    status,
+    setStatus,
+    startTask,
+    streamingResponse,
+    setError,
+    errorMessage,
+  } = useWorkbenchStore()
 
   const serviceId: string = initialService.id
   const jobImage: string | null = initialService?.job?.originalImage ?? null
@@ -48,35 +55,97 @@ export function ServiceDisplay({
   const interviewStatus: string = initialService?.interview?.status ?? 'IDLE'
 
   const isImageFlow = Boolean(jobImage)
-  const matchTaskId = `match_${serviceId}`
+  const [matchTaskId, setMatchTaskId] = useState<string>(
+    initialService?.executionSessionId
+      ? `match_${serviceId}_${initialService.executionSessionId}`
+      : `match_${serviceId}`
+  )
 
   useEffect(() => {
-    if (isImageFlow) {
+    const cs = String(initialService?.currentStatus || 'IDLE').toUpperCase()
+    const noText = !initialService?.job?.originalText
+    const hasImg = !!initialService?.job?.originalImage
+    const hasSummary = !!initialService?.job?.jobSummaryJson
+    if (hasImg && noText && !hasSummary) {
       startTask(serviceId, 'OCR_PENDING')
-    } else {
-      startTask(serviceId, 'MATCH_PENDING')
+      return
     }
-  }, [isImageFlow, serviceId, startTask])
+    if (cs === 'SUMMARY_PENDING') {
+      startTask(serviceId, 'SUMMARY_PENDING')
+      return
+    }
+    if (cs === 'MATCH_PENDING') {
+      startTask(serviceId, 'MATCH_PENDING')
+      return
+    }
+    if (cs === 'MATCH_STREAMING') {
+      startTask(serviceId, 'MATCH_STREAMING')
+      return
+    }
+    if (cs === 'MATCH_COMPLETED') {
+      const hasOutput = Boolean(initialService?.match?.matchSummaryJson)
+      if (hasOutput) startTask(serviceId, 'COMPLETED')
+      else {
+        startTask(serviceId, 'FAILED')
+        setError('retry_failed')
+      }
+      return
+    }
+    if (cs === 'SUMMARY_FAILED') {
+      startTask(serviceId, 'FAILED')
+      setError('summary_failed')
+      return
+    }
+    if (cs === 'MATCH_FAILED') {
+      startTask(serviceId, 'FAILED')
+      setError('match_failed')
+      return
+    }
+    startTask(serviceId, 'IDLE')
+  }, [
+    initialService?.currentStatus,
+    initialService?.job?.originalText,
+    initialService?.job?.originalImage,
+    initialService?.job?.jobSummaryJson,
+    startTask,
+    setError,
+  ])
 
-  const shouldPollMatch = isImageFlow && (status === 'OCR_PENDING' || status === 'SUMMARY_PENDING')
-  useTaskPolling({
+  const shouldPollMatch =
+    status === 'SUMMARY_PENDING' || status === 'OCR_PENDING'
+  const { lastUpdated: lastUpdatedMatch } = useTaskPolling({
     taskId: shouldPollMatch ? serviceId : null,
     taskType: 'service_match',
     enabled: shouldPollMatch,
     onSuccess: () => setStatus('MATCH_PENDING'),
-    onError: () => setError('match_failed'),
+    onError: () => {
+      setError('summary_failed')
+    },
   })
 
-  const enableMatchStream = status === 'MATCH_PENDING' || status === 'MATCH_STREAMING'
-  useSseStream(userId, enableMatchStream ? serviceId : '', enableMatchStream ? matchTaskId : '')
+  const enableMatchStream =
+    status === 'OCR_PENDING' ||
+    status === 'SUMMARY_PENDING' ||
+    status === 'MATCH_PENDING' ||
+    status === 'MATCH_STREAMING'
+  useSseStream(
+    userId,
+    enableMatchStream ? serviceId : '',
+    enableMatchStream ? matchTaskId : ''
+  )
 
   const initialTab = (() => {
     if (String(matchStatus).toUpperCase() === 'COMPLETED') {
-      if (String(customizeStatus).toUpperCase() !== 'COMPLETED') return 'customize'
-      if (String(interviewStatus).toUpperCase() !== 'COMPLETED') return 'interview'
+      if (String(customizeStatus).toUpperCase() !== 'COMPLETED')
+        return 'customize'
+      if (String(interviewStatus).toUpperCase() !== 'COMPLETED')
+        return 'interview'
     }
     return 'match'
   })()
+  useEffect(() => {
+    // toast handled via SSE-driven UI transitions
+  }, [dict])
   const streamRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') {
@@ -98,7 +167,8 @@ export function ServiceDisplay({
     })
   }
 
-  const shouldPollCustomize = Boolean(customizeTaskId) && customizeStatus !== 'COMPLETED'
+  const shouldPollCustomize =
+    Boolean(customizeTaskId) && customizeStatus !== 'COMPLETED'
   useTaskPolling({
     taskId: shouldPollCustomize ? customizeTaskId! : null,
     taskType: 'customize',
@@ -119,68 +189,139 @@ export function ServiceDisplay({
     })
   }
 
-  const enableInterviewStream = Boolean(interviewTaskId) && interviewStatus !== 'COMPLETED'
-  useSseStream(userId, enableInterviewStream ? serviceId : '', enableInterviewStream ? interviewTaskId! : '')
+  const enableInterviewStream =
+    Boolean(interviewTaskId) && interviewStatus !== 'COMPLETED'
+  useSseStream(
+    userId,
+    enableInterviewStream ? serviceId : '',
+    enableInterviewStream ? interviewTaskId! : ''
+  )
 
   const matchJson = initialService?.match?.matchSummaryJson || null
   let matchParsed: any = null
-  try { matchParsed = matchJson ? (typeof matchJson === 'string' ? JSON.parse(matchJson) : matchJson) : null } catch {}
+  try {
+    matchParsed = matchJson
+      ? typeof matchJson === 'string'
+        ? JSON.parse(matchJson)
+        : matchJson
+      : null
+  } catch {}
+  const [matchLive, setMatchLive] = useState<any>(null)
+  useEffect(() => {
+    if (status === 'COMPLETED') {
+      try {
+        const txt = String(streamingResponse || '')
+        if (txt && txt.trim().startsWith('{')) {
+          const parsed = JSON.parse(txt)
+          if (parsed && typeof parsed === 'object') setMatchLive(parsed)
+        }
+      } catch {}
+      try {
+        router.refresh()
+      } catch {}
+    }
+  }, [status, streamingResponse])
   const interviewJson = initialService?.interview?.interviewTipsJson || null
   let interviewParsed: any = null
-  try { interviewParsed = interviewJson ? (typeof interviewJson === 'string' ? JSON.parse(interviewJson) : interviewJson) : null } catch {}
+  try {
+    interviewParsed = interviewJson
+      ? typeof interviewJson === 'string'
+        ? JSON.parse(interviewJson)
+        : interviewJson
+      : null
+  } catch {}
 
-  const tabs = (dict.workbench?.tabs || { match: 'Match', customize: 'Customize', interview: 'Interview' })
+  const tabs = dict.workbench?.tabs || {
+    match: 'Match',
+    customize: 'Customize',
+    interview: 'Interview',
+  }
   const stext = dict.workbench?.statusText || {}
 
   return (
     <Tabs defaultValue={initialTab} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">当前状态</div>
-        <div className="flex items-center gap-2">
-          {status === 'OCR_PENDING' && <StatusBadge label={stext.ocrPending || 'OCR'} variant="warning" />}
-          {status === 'SUMMARY_PENDING' && <StatusBadge label={stext.summaryPending || 'Summary'} variant="warning" />}
-          {status === 'MATCH_PENDING' && <StatusBadge label={stext.matchStreaming || 'Streaming'} variant="default" />}
-          {status === 'COMPLETED' && <StatusBadge label={stext.matchCompleted || 'Completed'} variant="success" />}
-          {status === 'FAILED' && <StatusBadge label={stext.failed || 'Failed'} variant="destructive" />}
-        </div>
-      </div>
       <TabsList>
         <TabsTrigger value="match">{tabs.match}</TabsTrigger>
-        <TabsTrigger value="customize">{tabs.customize}</TabsTrigger>
-        <TabsTrigger value="interview">{tabs.interview}</TabsTrigger>
+        <TabsTrigger value="customize">
+          {tabs.customize}
+          <span className="ml-2">
+            {String(customizeStatus).toUpperCase() === 'COMPLETED' && (
+              <StatusBadge
+                label={
+                  dict.workbench?.statusText?.matchCompleted || 'Completed'
+                }
+                variant="success"
+              />
+            )}
+          </span>
+        </TabsTrigger>
+        <TabsTrigger value="interview">
+          {tabs.interview}
+          <span className="ml-2">
+            {String(interviewStatus).toUpperCase() === 'COMPLETED' && (
+              <StatusBadge
+                label={
+                  dict.workbench?.statusText?.matchCompleted || 'Completed'
+                }
+                variant="success"
+              />
+            )}
+          </span>
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="match">
         {status === 'OCR_PENDING' && (
           <AppCard>
             <AppCardHeader>
-              <AppCardTitle>{stext.ocrPending || 'Processing OCR...'}</AppCardTitle>
+              <AppCardTitle>
+                {stext.ocrPending || 'Processing OCR...'}
+              </AppCardTitle>
               <AppCardDescription> </AppCardDescription>
             </AppCardHeader>
             <AppCardContent>
               <Progress value={33} />
+              {lastUpdatedMatch && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {dict.profile?.uploader?.lastUpdatedLabel || '最近一次更新'}：
+                  {new Date(lastUpdatedMatch).toLocaleString(locale)}
+                </div>
+              )}
             </AppCardContent>
           </AppCard>
         )}
         {status === 'SUMMARY_PENDING' && (
           <AppCard>
             <AppCardHeader>
-              <AppCardTitle>{stext.summaryPending || 'Summarizing...'}</AppCardTitle>
+              <AppCardTitle>
+                {stext.summaryPending || 'Summarizing...'}
+              </AppCardTitle>
               <AppCardDescription> </AppCardDescription>
             </AppCardHeader>
             <AppCardContent>
               <Progress value={66} />
+              {lastUpdatedMatch && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {dict.profile?.uploader?.lastUpdatedLabel || '最近一次更新'}：
+                  {new Date(lastUpdatedMatch).toLocaleString(locale)}
+                </div>
+              )}
             </AppCardContent>
           </AppCard>
         )}
-        {status === 'MATCH_PENDING' && (
+        {(status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') && (
           <AppCard>
             <AppCardHeader>
-              <AppCardTitle>{stext.matchStreaming || 'Streaming...'}</AppCardTitle>
+              <AppCardTitle>
+                {stext.matchStreaming || 'Streaming...'}
+              </AppCardTitle>
               <AppCardDescription> </AppCardDescription>
             </AppCardHeader>
             <AppCardContent>
-              <div ref={streamRef} className="prose max-h-[60vh] overflow-y-scroll whitespace-pre-wrap transition-opacity duration-300 ease-in opacity-100">
+              <div
+                ref={streamRef}
+                className="prose max-h-[60vh] overflow-y-scroll whitespace-pre-wrap transition-opacity duration-300 ease-in opacity-100"
+              >
                 {streamingResponse}
               </div>
             </AppCardContent>
@@ -192,49 +333,111 @@ export function ServiceDisplay({
               <AppCardTitle>{stext.matchCompleted || 'Completed'}</AppCardTitle>
             </AppCardHeader>
             <AppCardContent>
-              {matchParsed ? (
+              {matchLive || matchParsed ? (
                 <div className="space-y-4">
-                  {matchParsed.score !== undefined && (
-                    <div className="text-lg font-semibold">Score: {matchParsed.score}</div>
-                  )}
-                  {Array.isArray(matchParsed.highlights) && matchParsed.highlights.length > 0 && (
-                    <div>
-                      <div className="text-sm text-muted-foreground mb-2">Highlights</div>
-                      <ul className="list-disc pl-6 space-y-1">
-                        {matchParsed.highlights.map((h: any, i: number) => (
-                          <li key={i}>{String(h)}</li>
-                        ))}
-                      </ul>
+                  {((matchLive || matchParsed) as any).score !== undefined && (
+                    <div className="text-lg font-semibold">
+                      Score: {(matchLive || (matchParsed as any)).score}
                     </div>
                   )}
-                  {Array.isArray(matchParsed.gaps) && matchParsed.gaps.length > 0 && (
-                    <div>
-                      <div className="text-sm text-muted-foreground mb-2">Gaps</div>
-                      <ul className="list-disc pl-6 space-y-1">
-                        {matchParsed.gaps.map((g: any, i: number) => (
-                          <li key={i}>{String(g)}</li>
-                        ))}
-                      </ul>
+                  {Array.isArray(
+                    (matchLive || (matchParsed as any)).highlights
+                  ) &&
+                    (matchLive || (matchParsed as any)).highlights.length >
+                      0 && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-2">
+                          Highlights
+                        </div>
+                        <ul className="list-disc pl-6 space-y-1">
+                          {(matchLive || (matchParsed as any)).highlights.map(
+                            (h: any, i: number) => (
+                              <li key={i}>{String(h)}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  {Array.isArray((matchLive || (matchParsed as any)).gaps) &&
+                    (matchLive || (matchParsed as any)).gaps.length > 0 && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-2">
+                          Gaps
+                        </div>
+                        <ul className="list-disc pl-6 space-y-1">
+                          {(matchLive || (matchParsed as any)).gaps.map(
+                            (g: any, i: number) => (
+                              <li key={i}>{String(g)}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  {(matchLive || (matchParsed as any)).dm_script && (
+                    <div className="prose whitespace-pre-wrap">
+                      {String((matchLive || (matchParsed as any)).dm_script)}
                     </div>
                   )}
-                  {matchParsed.dm_script && (
-                    <div className="prose whitespace-pre-wrap">{String(matchParsed.dm_script)}</div>
-                  )}
-                  {matchParsed.markdown && (
-                    <div className="prose whitespace-pre-wrap">{String(matchParsed.markdown)}</div>
+                  {(matchLive || (matchParsed as any)).markdown && (
+                    <div className="prose whitespace-pre-wrap">
+                      {String((matchLive || (matchParsed as any)).markdown)}
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="prose whitespace-pre-wrap">{streamingResponse}</div>
+                <div className="prose whitespace-pre-wrap">
+                  {streamingResponse}
+                </div>
               )}
             </AppCardContent>
           </AppCard>
         )}
         {status === 'FAILED' && (
-          <Alert variant="destructive">
-            <AlertTitle>{stext.failed || 'Failed'}</AlertTitle>
-            <AlertDescription> </AlertDescription>
-          </Alert>
+          <div className="space-y-3">
+            <Alert variant="destructive">
+              <AlertTitle>
+                {(() => {
+                  const key = String(errorMessage || '')
+                  const mapped =
+                    (dict.workbench?.statusText?.[key] as any) || null
+                  if (mapped) return String(mapped)
+                  if (key === 'summary_failed')
+                    return String(
+                      dict.workbench?.statusText?.summaryFailedDetail ||
+                        'LLM job summary failed'
+                    )
+                  if (key === 'retry_failed')
+                    return String(
+                      dict.workbench?.statusText?.retryFailed || 'Retry failed'
+                    )
+                  return String(stext.failed || 'Failed')
+                })()}
+              </AlertTitle>
+              <AlertDescription> </AlertDescription>
+            </Alert>
+            <Button
+              onClick={() => {
+                startTransition(async () => {
+                  const res = await (
+                    await import('@/lib/actions/service.actions')
+                  ).retryMatchAction({ locale, serviceId })
+                  if (res?.ok) {
+                    if (res.executionSessionId) {
+                      setMatchTaskId(
+                        `match_${serviceId}_${String(res.executionSessionId)}`
+                      )
+                    }
+                    router.refresh()
+                  } else {
+                    setError(String(res?.error || 'retry_failed'))
+                  }
+                })
+              }}
+              disabled={isPending}
+            >
+              {dict.workbench?.statusText?.retryMatch || 'Retry Match'}
+            </Button>
+          </div>
         )}
       </TabsContent>
 
@@ -253,33 +456,45 @@ export function ServiceDisplay({
                 templateLabel: dict.workbench.customize.templateLabel,
               }}
               onSave={async (md) => {
-                const res = await saveCustomizedResumeAction({ serviceId, markdown: md })
+                const res = await saveCustomizedResumeAction({
+                  serviceId,
+                  markdown: md,
+                })
                 if (res?.ok) toast.success(dict.workbench.customize.saveSuccess)
                 else toast.error(dict.workbench.customize.saveFailed)
               }}
               onExport={async () => {}}
             />
-            {Array.isArray(initialService?.customizedResume?.opsJson) && initialService.customizedResume.opsJson.length > 0 && (
-              <AppCard>
-                <AppCardHeader>
-                  <AppCardTitle>{dict.workbench.customize.diffTitle}</AppCardTitle>
-                </AppCardHeader>
-                <AppCardContent>
-                  <ul className="space-y-3">
-                    {initialService.customizedResume.opsJson
-                      .filter((op: any) => op.type === 'rewrite-lite')
-                      .map((op: any, i: number) => (
-                        <li key={i} className="text-sm">
-                          <div className="text-muted-foreground">原句：</div>
-                          <div className="whitespace-pre-wrap">{String(op.original)}</div>
-                          <div className="text-muted-foreground mt-2">改句：</div>
-                          <div className="whitespace-pre-wrap">{String(op.revised)}</div>
-                        </li>
-                      ))}
-                  </ul>
-                </AppCardContent>
-              </AppCard>
-            )}
+            {Array.isArray(initialService?.customizedResume?.opsJson) &&
+              initialService.customizedResume.opsJson.length > 0 && (
+                <AppCard>
+                  <AppCardHeader>
+                    <AppCardTitle>
+                      {dict.workbench.customize.diffTitle}
+                    </AppCardTitle>
+                  </AppCardHeader>
+                  <AppCardContent>
+                    <ul className="space-y-3">
+                      {initialService.customizedResume.opsJson
+                        .filter((op: any) => op.type === 'rewrite-lite')
+                        .map((op: any, i: number) => (
+                          <li key={i} className="text-sm">
+                            <div className="text-muted-foreground">原句：</div>
+                            <div className="whitespace-pre-wrap">
+                              {String(op.original)}
+                            </div>
+                            <div className="text-muted-foreground mt-2">
+                              改句：
+                            </div>
+                            <div className="whitespace-pre-wrap">
+                              {String(op.revised)}
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                  </AppCardContent>
+                </AppCard>
+              )}
           </div>
         ) : (
           <Button onClick={onCustomize} disabled={isPending}>
@@ -298,30 +513,41 @@ export function ServiceDisplay({
               {interviewParsed ? (
                 <div className="space-y-4">
                   {interviewParsed.intro && (
-                    <div className="prose whitespace-pre-wrap">{String(interviewParsed.intro)}</div>
-                  )}
-                  {Array.isArray(interviewParsed.qa_items) && interviewParsed.qa_items.length > 0 && (
-                    <div>
-                      <div className="text-sm text-muted-foreground mb-2">Q&A</div>
-                      <ul className="space-y-2">
-                        {interviewParsed.qa_items.map((q: any, i: number) => (
-                          <li key={i} className="space-y-1">
-                            <div className="font-medium">{String(q.question)}</div>
-                            <div className="text-xs text-muted-foreground">{String(q.framework)}</div>
-                            {Array.isArray(q.hints) && (
-                              <ul className="list-disc pl-6 text-sm">
-                                {q.hints.map((h: any, j: number) => (
-                                  <li key={j}>{String(h)}</li>
-                                ))}
-                              </ul>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="prose whitespace-pre-wrap">
+                      {String(interviewParsed.intro)}
                     </div>
                   )}
+                  {Array.isArray(interviewParsed.qa_items) &&
+                    interviewParsed.qa_items.length > 0 && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-2">
+                          Q&A
+                        </div>
+                        <ul className="space-y-2">
+                          {interviewParsed.qa_items.map((q: any, i: number) => (
+                            <li key={i} className="space-y-1">
+                              <div className="font-medium">
+                                {String(q.question)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {String(q.framework)}
+                              </div>
+                              {Array.isArray(q.hints) && (
+                                <ul className="list-disc pl-6 text-sm">
+                                  {q.hints.map((h: any, j: number) => (
+                                    <li key={j}>{String(h)}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   {interviewParsed.markdown && (
-                    <div className="prose whitespace-pre-wrap">{String(interviewParsed.markdown)}</div>
+                    <div className="prose whitespace-pre-wrap">
+                      {String(interviewParsed.markdown)}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -339,7 +565,34 @@ export function ServiceDisplay({
   )
 }
 
-function StatusBadge({ label, variant }: { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' }) {
-  const v = variant === 'success' ? 'success' : variant === 'warning' ? 'warning' : variant === 'destructive' ? 'destructive' : 'default'
-  return <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${v === 'success' ? 'bg-green-100 text-green-700' : v === 'warning' ? 'bg-yellow-100 text-yellow-700' : v === 'destructive' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-800'}`}>{label}</span>
+function StatusBadge({
+  label,
+  variant,
+}: {
+  label: string
+  variant: 'default' | 'success' | 'warning' | 'destructive'
+}) {
+  const v =
+    variant === 'success'
+      ? 'success'
+      : variant === 'warning'
+      ? 'warning'
+      : variant === 'destructive'
+      ? 'destructive'
+      : 'default'
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${
+        v === 'success'
+          ? 'bg-green-100 text-green-700'
+          : v === 'warning'
+          ? 'bg-yellow-100 text-yellow-700'
+          : v === 'destructive'
+          ? 'bg-red-100 text-red-700'
+          : 'bg-slate-100 text-slate-800'
+      }`}
+    >
+      {label}
+    </span>
+  )
 }

@@ -5,8 +5,8 @@ export type TaskLimits = {
 export const TASK_LIMITS: Record<string, TaskLimits> = {
   resume_summary: { maxTokens: 8000 },
   detailed_resume_summary: { maxTokens: 15000 },
-  job_summary: { maxTokens: 15000 },
-  job_match: { maxTokens: 8000 },
+  job_summary: { maxTokens: 8000 },
+  job_match: { maxTokens: 15000 },
   resume_customize: { maxTokens: 8000 },
   interview_prep: { maxTokens: 8000 },
 }

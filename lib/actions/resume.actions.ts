@@ -3,7 +3,7 @@
 import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import { getOrCreateQuota } from '@/lib/dal/quotas'
 import { recordDebit } from '@/lib/dal/coinLedger'
-import { upsertResume, upsertDetailedResume } from '@/lib/dal/resume'
+import { upsertResume, upsertDetailedResume, getLatestResumeSummaryJson, getLatestDetailedSummaryJson } from '@/lib/dal/resume'
 import { pushTask } from '@/lib/queue/producer'
 import { trackEvent } from '@/lib/analytics/index'
 import type { Locale } from '@/i18n-config'
@@ -130,28 +130,18 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
 export const getLatestResumeSummaryAction = withServerActionAuthWrite(
   'getLatestResumeSummaryAction',
   async (_: undefined, ctx) => {
-    const prisma = (await import('@/lib/prisma')).prisma
     const userId = ctx.userId
-    const rec = await prisma.resume.findFirst({
-      where: { userId },
-      orderBy: { updatedAt: 'desc' },
-      select: { resumeSummaryJson: true },
-    })
-    return { ok: true, data: rec?.resumeSummaryJson || null }
+    const data = await getLatestResumeSummaryJson(userId)
+    return { ok: true, data }
   }
 )
 
 export const getLatestDetailedSummaryAction = withServerActionAuthWrite(
   'getLatestDetailedSummaryAction',
   async (_: undefined, ctx) => {
-    const prisma = (await import('@/lib/prisma')).prisma
     const userId = ctx.userId
-    const rec = await prisma.detailedResume.findFirst({
-      where: { userId },
-      orderBy: { updatedAt: 'desc' },
-      select: { detailedSummaryJson: true },
-    })
-    return { ok: true, data: rec?.detailedSummaryJson || null }
+    const data = await getLatestDetailedSummaryJson(userId)
+    return { ok: true, data }
   }
 )
 import { ensureEnqueued } from '@/lib/actions/enqueue'

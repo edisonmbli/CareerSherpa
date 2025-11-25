@@ -240,7 +240,13 @@ const SCHEMAS_V2 = {
           github: { type: 'string' },
           links: {
             type: 'array',
-            items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } } },
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                url: { type: 'string' },
+              },
+            },
           },
         },
       },
@@ -286,18 +292,65 @@ const SCHEMAS_V2 = {
       skills: {
         anyOf: [
           { type: 'array', items: { type: 'string' } },
-          { type: 'object', properties: { technical: { type: 'array', items: { type: 'string' } }, soft: { type: 'array', items: { type: 'string' } }, tools: { type: 'array', items: { type: 'string' } } } },
+          {
+            type: 'object',
+            properties: {
+              technical: { type: 'array', items: { type: 'string' } },
+              soft: { type: 'array', items: { type: 'string' } },
+              tools: { type: 'array', items: { type: 'string' } },
+            },
+          },
         ],
       },
-      certifications: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
-      languages: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, level: { type: 'string' }, proof: { type: 'string' } } } },
-      awards: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, issuer: { type: 'string' }, date: { type: 'string' } } } },
-      openSource: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, link: { type: 'string' }, highlights: { type: 'array', items: { type: 'string' } } } } },
+      certifications: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            issuer: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      languages: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            level: { type: 'string' },
+            proof: { type: 'string' },
+          },
+        },
+      },
+      awards: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            issuer: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      openSource: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            link: { type: 'string' },
+            highlights: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
       summary_points: { type: 'array', items: { type: 'string' } },
       specialties_points: { type: 'array', items: { type: 'string' } },
       extras: { type: 'array', items: { type: 'string' } },
     },
-} as JsonSchema,
+  } as JsonSchema,
 }
 
 const DETAILED_RESUME_SCHEMA: JsonSchema = {
@@ -349,7 +402,9 @@ const DETAILED_RESUME_SCHEMA: JsonSchema = {
                     type: 'object',
                     properties: {
                       label: { type: 'string' },
-                      value: { anyOf: [{ type: 'number' }, { type: 'string' }] },
+                      value: {
+                        anyOf: [{ type: 'number' }, { type: 'string' }],
+                      },
                       unit: { type: 'string' },
                       period: { type: 'string' },
                     },
@@ -376,10 +431,14 @@ const DETAILED_RESUME_SCHEMA: JsonSchema = {
     },
     education: SCHEMAS_V2.RESUME_SUMMARY.properties!['education'] as JsonSchema,
     skills: SCHEMAS_V2.RESUME_SUMMARY.properties!['skills'] as JsonSchema,
-    certifications: SCHEMAS_V2.RESUME_SUMMARY.properties!['certifications'] as JsonSchema,
+    certifications: SCHEMAS_V2.RESUME_SUMMARY.properties![
+      'certifications'
+    ] as JsonSchema,
     languages: SCHEMAS_V2.RESUME_SUMMARY.properties!['languages'] as JsonSchema,
     awards: SCHEMAS_V2.RESUME_SUMMARY.properties!['awards'] as JsonSchema,
-    openSource: SCHEMAS_V2.RESUME_SUMMARY.properties!['openSource'] as JsonSchema,
+    openSource: SCHEMAS_V2.RESUME_SUMMARY.properties![
+      'openSource'
+    ] as JsonSchema,
     extras: SCHEMAS_V2.RESUME_SUMMARY.properties!['extras'] as JsonSchema,
     summary_points: { type: 'array', items: { type: 'string' } },
     specialties_points: { type: 'array', items: { type: 'string' } },
@@ -487,33 +546,40 @@ Raw JD Text:
     description:
       'Analyzes resume/JD fit, identifies strengths/weaknesses, and generates a script.',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `Act as an expert career coach. Deeply analyze the following materials.
-Your goal is to help the user identify "Strengths" (to amplify) and "Weaknesses" (to mitigate).
+    userPrompt: `Act as an expert career coach. Produce a strictly structured job match analysis and a human, concise outreach script based on the materials below.
 
-【RAG Knowledge Base - Match Analysis Techniques】
+【RAG Knowledge Base (curated snippets: rules/frameworks/examples)】
 """
 {{rag_context}}
 """
 
-【User Resume - Structured Summary】
+【User Resume (structured summary)】
 """
 {{resume_summary_json}}
 """
 
-【User Detailed History - Structured Summary (Optional)】
+【User Detailed History (structured summary, optional)】
 """
 {{detailed_resume_summary_json}}
 """
 
-【Target Job - Structured Summary】
+【Target Job (structured summary)】
 """
 {{job_summary_json}}
 """
 
-Based on all available information, output an analysis report strictly in the required JSON Schema.
-- 'strengths' must be backed by specific evidence from the resume.
-- 'weaknesses' must include a mitigation suggestion, informed by the RAG context.
-- 'cover_letter_script' must use the H-V-C structure and highlight the 1-2 strongest matching points.`,
+Output requirements (must follow exactly):
+- Return a single JSON object following the given JSON Schema; no extra prose or Markdown.
+- 'match_score' MUST be a numeric value between 0 and 100.
+- 'overall_assessment' must be a short label: High/Moderate/Challenging Fit.
+- 'strengths': for each item, include the point, concrete evidence from the resume, and the related section (e.g., experience/skills/projects).
+- 'weaknesses': for each item, include the risk and a practical mitigation suggestion; leverage RAG rules first.
+- 'cover_letter_script' MUST be a single string (not an object). Tone: polite, confident, first-person, platform DM style (human, not robotic). Length: ≤120 words. Structure:
+  - Hook: 1 line that includes the target role and 2–4 JD keywords.
+  - Value: 1–2 lines that highlight 1–2 quantified outcomes aligned to JD must-haves.
+  - Close: 1 line with a succinct interest signal; do NOT propose/schedule calls.
+- Forbidden: greetings, self-introduction by name, calendly/meeting requests, long courtesy phrases.
+- Style: concise, professional, keyword-forward; avoid boilerplate; do not quote RAG verbatim, only distilled conclusions.`,
     variables: [
       'rag_context',
       'resume_summary_json',
@@ -622,7 +688,8 @@ Please perform the following actions:
   ocr_extract: {
     id: 'ocr_extract',
     name: 'OCR Text Extraction',
-    description: 'Extract structured text from a base64-encoded image using a vision model.',
+    description:
+      'Extract structured text from a base64-encoded image using a vision model.',
     systemPrompt: SYSTEM_BASE,
     userPrompt: `You will receive an image encoded in Base64 along with the source type.
 Your task is to perform OCR and return a strictly valid JSON object following the schema below.

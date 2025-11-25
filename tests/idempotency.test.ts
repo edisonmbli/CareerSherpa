@@ -6,7 +6,7 @@ import {
   withIdempotency,
   DEFAULT_TTL_MS
 } from '@/lib/idempotency'
-import type { IdempotencyStep } from '@prisma/client'
+import type { IdempotencyStep } from '@/lib/idempotency'
 
 // Mock the DAL functions
 vi.mock('@/lib/dal', () => ({

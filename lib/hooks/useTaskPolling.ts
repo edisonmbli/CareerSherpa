@@ -46,6 +46,7 @@ export function useTaskPolling({
           const newStatus = (data.status as AsyncStatus) || 'PENDING'
           setStatus(newStatus)
           if (data.lastUpdatedAt) setLastUpdated(String(data.lastUpdatedAt))
+          
           if (newStatus === 'COMPLETED') {
             onSuccess()
             return

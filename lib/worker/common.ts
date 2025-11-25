@@ -8,10 +8,15 @@ import { auditUserAction } from '@/lib/audit/async-audit'
 import { i18n, type Locale } from '@/i18n-config'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import { getProvider } from '@/lib/llm/utils'
-import { buildModelActiveKey, getMaxWorkersForModel } from '@/lib/config/concurrency'
+import {
+  buildModelActiveKey,
+  getMaxWorkersForModel,
+} from '@/lib/config/concurrency'
 import type { ModelId as ModelIdType } from '@/lib/llm/providers'
 import { getQStash } from '@/lib/queue/qstash'
 import { workerBodySchema, type WorkerBody } from '@/lib/worker/types'
+import { promises as fsp } from 'fs'
+import path from 'path'
 
 export type WorkerKind = 'stream' | 'batch'
 
@@ -78,7 +83,8 @@ export async function requeueWithDelay(
   const url = `${base}/api/worker/${kind}/${encodeURIComponent(service)}`
   const nextRetry = Math.max(0, Number(body.retryCount || 0) + 1)
   const payload = { ...body, retryCount: nextRetry }
-  const notBefore = Math.floor(Date.now() / 1000) + Math.max(1, Math.floor(delaySec))
+  const notBefore =
+    Math.floor(Date.now() / 1000) + Math.max(1, Math.floor(delaySec))
   await client.publishJSON({
     url,
     body: payload,
@@ -164,7 +170,10 @@ export async function enterModelConcurrency(
   return { ok: true }
 }
 
-export async function exitModelConcurrency(modelId: ModelIdType, queueId: string) {
+export async function exitModelConcurrency(
+  modelId: ModelIdType,
+  queueId: string
+) {
   const tier = getTierFromQueueId(queueId)
   const key = buildModelActiveKey(modelId, tier)
   await decPending(key)
@@ -229,6 +238,8 @@ export async function publishEvent(
     const buf = tokenBatchers.get(ch)
     if (!buf || buf.tokens.length === 0) return
     const mergedText = buf.tokens.join('')
+    const parts = ch.split(':')
+    const taskId = parts[parts.length - 1] || ''
     const payloadObj = {
       type: 'token_batch',
       stage: 'stream',
@@ -236,27 +247,49 @@ export async function publishEvent(
       count: buf.tokens.length,
       startedAt: buf.startedAt,
       endedAt: Date.now(),
+      taskId,
     }
     const payloadStr = JSON.stringify(payloadObj)
     try {
+      if (process.env.NODE_ENV !== 'production') {
+        try {
+          console.info('publish_token_batch', {
+            channel: ch,
+            count: buf.tokens.length,
+          })
+          const debugDir = path.join(process.cwd(), 'tmp', 'llm-debug')
+          await fsp.mkdir(debugDir, { recursive: true })
+          const file = path.join(debugDir, `token_batch_${taskId || 'unknown'}.log`)
+          await fsp.appendFile(
+            file,
+            JSON.stringify({ channel: ch, count: buf.tokens.length, len: mergedText.length }) + '\n'
+          )
+        } catch {}
+      }
       await redis.publish(ch, payloadStr)
     } catch {
       // swallow pubsub errors
     }
-    if (ENV.UPSTASH_REDIS_REST_URL && ENV.UPSTASH_REDIS_REST_TOKEN) {
+    try {
       const streamKey = `${ch}:stream`
-      try {
-        await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/pipeline`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify([['XADD', streamKey, '*', 'event', payloadStr]]),
-        })
-      } catch {
-        // 忽略缓冲写入错误
+      await redis.xadd(streamKey, '*', { event: payloadStr as any })
+      if (process.env.NODE_ENV !== 'production') {
+        try {
+          console.info('publish_stream_xadd', {
+            streamKey,
+            type: 'token_batch',
+          })
+          const debugDir = path.join(process.cwd(), 'tmp', 'llm-debug')
+          await fsp.mkdir(debugDir, { recursive: true })
+          const file = path.join(debugDir, `stream_xadd_${taskId || 'unknown'}.log`)
+          await fsp.appendFile(
+            file,
+            JSON.stringify({ streamKey, type: 'token_batch', id: 'auto' }) + '\n'
+          )
+        } catch {}
       }
+    } catch {
+      // 忽略缓冲写入错误
     }
     if (buf.timer) clearTimeout(buf.timer)
     tokenBatchers.delete(ch)
@@ -289,6 +322,17 @@ export async function publishEvent(
   await flush(channel)
 
   const payload = JSON.stringify(event)
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const t = String((event as any)?.type || '')
+      console.info('publish_event', {
+        channel,
+        type: t,
+        status: (event as any)?.status,
+        taskId: (event as any)?.taskId,
+      })
+    } catch {}
+  }
   await redis.publish(channel, payload)
 
   // Audit event dispatch for observability（降低频次：仅记录关键事件，跳过 token/token_batch/debug）
@@ -322,33 +366,39 @@ export async function publishEvent(
   }
 
   // 同步写入 Redis Streams 作为 SSE 的后备缓冲；终止事件时追加 TTL/修剪
-  if (ENV.UPSTASH_REDIS_REST_URL && ENV.UPSTASH_REDIS_REST_TOKEN) {
+  try {
     const streamKey = `${channel}:stream`
     const t = String((event as any)?.type || '').toLowerCase()
     const isTerminal = t === 'done' || t === 'error'
-    const commands: any[] = [['XADD', streamKey, '*', 'event', payload]]
+    await redis.xadd(streamKey, '*', { event: payload as any })
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        console.info('publish_stream_xadd', {
+          streamKey,
+          type: t,
+          terminal: isTerminal,
+        })
+      } catch {}
+    }
     if (isTerminal) {
       const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
       const maxlen = Math.max(0, Number(ENV.STREAM_TRIM_MAXLEN || 0))
       if (ttl > 0) {
-        commands.push(['EXPIRE', streamKey, ttl])
+        try {
+          await redis.expire(streamKey, ttl)
+        } catch {}
       }
       if (maxlen > 0) {
-        // 近似修剪，控制缓冲长度，降低长尾存储成本
-        commands.push(['XTRIM', streamKey, 'MAXLEN', '~', maxlen])
+        try {
+          await redis.xtrim(streamKey, {
+            strategy: 'maxlen',
+            threshold: maxlen,
+            approximate: true,
+          } as any)
+        } catch {}
       }
     }
-    try {
-      await fetch(`${ENV.UPSTASH_REDIS_REST_URL}/pipeline`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${ENV.UPSTASH_REDIS_REST_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(commands),
-      })
-    } catch (err) {
-      // 忽略缓冲写入错误，不影响主发布通道
-    }
+  } catch (err) {
+    // 忽略缓冲写入错误，不影响主发布通道
   }
 }

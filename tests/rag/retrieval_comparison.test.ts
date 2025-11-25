@@ -51,21 +51,26 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
   it('zh/customize：Top-K 集合与排序、分数统计与性能', async () => {
     const query = '如何量化我的工作成就'
     const topK = 5
-    const preferredFilters = { lang: 'zh' as const, category: 'customize', isPublic: true }
+    const preferredFilters = {
+      lang: 'zh' as const,
+      category: 'customize',
+      isPublic: true,
+    }
 
     const t0 = Date.now()
     const { vector: embeddingRes } = await runEmbedding(query)
     // 安全回退：若嵌入不存在或维度不为 2048，则使用 2048 维的常量向量
-    const embedding = Array.isArray(embeddingRes) && embeddingRes.length === 2048
-      ? embeddingRes
-      : new Array(2048).fill(0.001)
+    const embedding =
+      Array.isArray(embeddingRes) && embeddingRes.length === 2048
+        ? embeddingRes
+        : new Array(2048).fill(0.001)
     const t1 = Date.now()
     let usedCategory: string | undefined = preferredFilters.category
     let sqlRows = (await findSimilarKnowledgeEntries(
       embedding,
       preferredFilters,
       topK,
-      0,
+      0
     )) as Row[]
     const t2 = Date.now()
 
@@ -77,7 +82,7 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         query,
         preferredFilters,
         topK,
-        0,
+        0
       )) as Row[]
       t3 = Date.now()
     } catch (err) {
@@ -92,14 +97,14 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         embedding,
         { lang: 'zh', isPublic: true },
         topK,
-        0,
+        0
       )) as Row[]
       try {
         vecRows = (await findSimilarKnowledgeEntriesViaVectorStore(
           query,
           { lang: 'zh', isPublic: true },
           topK,
-          0,
+          0
         )) as Row[]
       } catch (err) {
         vecError = err instanceof Error ? err.message : String(err)
@@ -139,30 +144,41 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
     if (vecRows.length) {
       expect(inter).toBeGreaterThanOrEqual(Math.min(topK, 2))
       const vecArr = vecRows.map((r) => r.score)
-      expect(vecArr.every((v, i) => (i === 0 ? true : v <= vecArr[i - 1]))).toBe(true)
+      const nonIncreasingVec = vecArr.every((v, i, arr) =>
+        i === 0 ? true : v <= arr[i - 1]!
+      )
+      expect(nonIncreasingVec).toBe(true)
     }
     const sqlArr = sqlRows.map((r) => r.score)
-    expect(sqlArr.every((v, i) => (i === 0 ? true : v <= sqlArr[i - 1]))).toBe(true)
+    const nonIncreasingSql = sqlArr.every((v, i, arr) =>
+      i === 0 ? true : v <= arr[i - 1]!
+    )
+    expect(nonIncreasingSql).toBe(true)
   }, 60000)
 
   it('en/interview_qa：Top-K 集合与排序、分数统计与性能', async () => {
     const query = 'how to answer about my weakness'
     const topK = 5
-    const preferredFilters = { lang: 'en' as const, category: 'interview_qa', isPublic: true }
+    const preferredFilters = {
+      lang: 'en' as const,
+      category: 'interview_qa',
+      isPublic: true,
+    }
 
     const t0 = Date.now()
     const { vector: embeddingRes2 } = await runEmbedding(query)
     // 安全回退：若嵌入不存在或维度不为 2048，则使用 2048 维的常量向量
-    const embedding2 = Array.isArray(embeddingRes2) && embeddingRes2.length === 2048
-      ? embeddingRes2
-      : new Array(2048).fill(0.001)
+    const embedding2 =
+      Array.isArray(embeddingRes2) && embeddingRes2.length === 2048
+        ? embeddingRes2
+        : new Array(2048).fill(0.001)
     const t1 = Date.now()
     let usedCategory: string | undefined = preferredFilters.category
     let sqlRows = (await findSimilarKnowledgeEntries(
       embedding2,
       preferredFilters,
       topK,
-      0,
+      0
     )) as Row[]
     const t2 = Date.now()
 
@@ -174,7 +190,7 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         query,
         preferredFilters,
         topK,
-        0,
+        0
       )) as Row[]
       t3 = Date.now()
     } catch (err) {
@@ -189,14 +205,14 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         embedding2,
         { lang: 'en', isPublic: true },
         topK,
-        0,
+        0
       )) as Row[]
       try {
         vecRows2 = (await findSimilarKnowledgeEntriesViaVectorStore(
           query,
           { lang: 'en', isPublic: true },
           topK,
-          0,
+          0
         )) as Row[]
       } catch (err) {
         vecError2 = err instanceof Error ? err.message : String(err)
@@ -234,9 +250,15 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
     if (vecRows2.length) {
       expect(inter).toBeGreaterThanOrEqual(Math.min(topK, 2))
       const vecArr2 = vecRows2.map((r) => r.score)
-      expect(vecArr2.every((v, i) => (i === 0 ? true : v <= vecArr2[i - 1]))).toBe(true)
+      const nonIncreasingVec2 = vecArr2.every((v, i, arr) =>
+        i === 0 ? true : v <= arr[i - 1]!
+      )
+      expect(nonIncreasingVec2).toBe(true)
     }
     const sqlArr = sqlRows.map((r) => r.score)
-    expect(sqlArr.every((v, i) => (i === 0 ? true : v <= sqlArr[i - 1]))).toBe(true)
+    const nonIncreasingSql2 = sqlArr.every((v, i, arr) =>
+      i === 0 ? true : v <= arr[i - 1]!
+    )
+    expect(nonIncreasingSql2).toBe(true)
   }, 60000)
 })

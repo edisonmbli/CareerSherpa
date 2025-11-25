@@ -101,6 +101,18 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
   },
+  ocr_extract: {
+    paid: {
+      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      queueId: QueueId.PAID_VISION,
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      queueId: QueueId.FREE_VISION,
+      isStream: false,
+    },
+  },
 }
 
 /**
@@ -137,4 +149,15 @@ export const isServiceScoped = (t: TaskTemplateId): boolean => {
     t === 'resume_customize' ||
     t === 'interview_prep'
   )
+}
+
+export function routeTask(
+  templateId: TaskTemplateId,
+  tier: 'paid' | 'free',
+  hasImage?: boolean
+): TaskRouting {
+  const userHasQuota = tier === 'paid'
+  return hasImage && templateId === 'job_summary'
+    ? getJobVisionTaskRouting(userHasQuota)
+    : getTaskRouting(templateId, userHasQuota)
 }

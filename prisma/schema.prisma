@@ -91,6 +91,10 @@ model Service {
   resumeId         String            @map("resume_id")
   detailedResumeId String?           @map("detailed_resume_id")
   currentStep      ServiceStep       @default(MATCH) @map("current_step")
+  currentStatus    ExecutionStatus   @default(IDLE) @map("current_status")
+  failureCode      FailureCode?      @map("failure_code")
+  lastUpdatedAt    DateTime?         @map("last_updated_at")
+  executionSessionId String?         @map("execution_session_id")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at")
   customizedResume CustomizedResume?
@@ -103,6 +107,7 @@ model Service {
   coinTransactions CoinTransaction[]
 
   @@index([userId(sort: Desc), createdAt(sort: Desc)])
+  @@index([currentStatus, updatedAt(sort: Desc)])
   @@map("services")
   @@schema("public")
 }
@@ -221,11 +226,13 @@ model LlmUsageLog {
   isStream       Boolean  @default(false) @map("is_stream")
   isSuccess      Boolean  @default(true) @map("is_success")
   errorMessage   String?  @map("error_message")
+  errorCode      FailureCode? @map("error_code")
 
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([taskTemplateId, createdAt(sort: Desc)])
+  @@index([serviceId, createdAt(sort: Desc)])
   @@map("llm_usage_logs")
   @@schema("public")
 }
@@ -271,6 +278,31 @@ enum ServiceStep {
   CUSTOMIZE
   INTERVIEW
   COMPLETED
+
+  @@schema("public")
+}
+
+enum ExecutionStatus {
+  IDLE
+  SUMMARY_PENDING
+  SUMMARY_FAILED
+  SUMMARY_COMPLETED
+  MATCH_PENDING
+  MATCH_STREAMING
+  MATCH_FAILED
+  MATCH_COMPLETED
+
+  @@schema("public")
+}
+
+enum FailureCode {
+  PREVIOUS_OCR_FAILED
+  PREVIOUS_SUMMARY_FAILED
+  PREVIOUS_MODEL_LIMIT
+  JSON_PARSE_FAILED
+  ZOD_VALIDATION_FAILED
+  ENQUEUE_FAILED
+  PROVIDER_NOT_CONFIGURED
 
   @@schema("public")
 }
