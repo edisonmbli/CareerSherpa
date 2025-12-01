@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
 import { getRedis } from '@/lib/redis/client'
 
-export type IdempotencyStep = 'match' | 'customize' | 'interview'
+export type IdempotencyStep = 'match' | 'customize' | 'interview' | 'summary'
 
 export interface StoredIdempotencyKey {
   key: string

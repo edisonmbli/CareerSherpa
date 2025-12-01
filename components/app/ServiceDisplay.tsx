@@ -1,20 +1,18 @@
 'use client'
-import { useEffect, useTransition, useState, useRef } from 'react'
+import { useEffect, useTransition, useState, useRef, useMemo } from 'react'
 import type { Locale } from '@/i18n-config'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import {
   AppCard,
   AppCardContent,
   AppCardHeader,
   AppCardTitle,
-  AppCardDescription,
 } from '@/components/app/AppCard'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { useWorkbenchStore } from '@/lib/stores/workbench.store'
+import type { WorkbenchStatus } from '@/lib/stores/workbench.store'
 import { useSseStream } from '@/lib/hooks/useSseStream'
-import { useTaskPolling } from '@/lib/hooks/useTaskPolling'
 import {
   customizeResumeAction,
   generateInterviewTipsAction,
@@ -23,201 +21,218 @@ import { useRouter } from 'next/navigation'
 import { MarkdownEditor } from '@/components/app/MarkdownEditor'
 import { saveCustomizedResumeAction } from '@/lib/actions/service.actions'
 import { toast } from '@/components/ui/use-toast'
-import { CopyText } from '@/components/app/CopyText'
+import { StepperProgress } from '@/components/workbench/StepperProgress'
+import { StatusConsole } from '@/components/workbench/StatusConsole'
+import { StreamPanel } from '@/components/workbench/StreamPanel'
+import { ResultCard } from '@/components/workbench/ResultCard'
+import { Coins } from 'lucide-react'
+import { getTaskCost } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 
 export function ServiceDisplay({
   initialService,
   locale,
   dict,
   userId,
+  quotaBalance,
+  lastCost,
+  tierOverride,
 }: {
   initialService: any
   locale: Locale
   dict: any
   userId: string
+  quotaBalance?: number | null
+  lastCost?: number | null
+  tierOverride?: 'free' | 'paid'
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const {
-    status,
-    setStatus,
+    status: storeStatus,
     startTask,
     streamingResponse,
     setError,
     errorMessage,
+    statusDetail,
+    isConnected,
+    ocrResult,
+    summaryResult,
+    matchResult,
   } = useWorkbenchStore()
 
-  const serviceId: string = initialService.id
-  const jobImage: string | null = initialService?.job?.originalImage ?? null
-  const matchStatus: string = initialService?.match?.status ?? 'IDLE'
-  const customizeStatus: string =
-    initialService?.customizedResume?.status ?? 'IDLE'
-  const interviewStatus: string = initialService?.interview?.status ?? 'IDLE'
-
-  const isImageFlow = Boolean(jobImage)
-  const [matchTaskId, setMatchTaskId] = useState<string>(
-    initialService?.executionSessionId
-      ? `match_${serviceId}_${initialService.executionSessionId}`
-      : `match_${serviceId}`
-  )
-
+  // Initialize store status from server state to ensure UI consistency
   useEffect(() => {
-    const cs = String(initialService?.currentStatus || 'IDLE').toUpperCase()
-    const noText = !initialService?.job?.originalText
-    const hasImg = !!initialService?.job?.originalImage
-    const hasSummary = !!initialService?.job?.jobSummaryJson
-    if (hasImg && noText && !hasSummary) {
-      startTask(serviceId, 'OCR_PENDING')
-      return
-    }
-    if (cs === 'SUMMARY_PENDING') {
-      startTask(serviceId, 'SUMMARY_PENDING')
-      return
-    }
-    if (cs === 'MATCH_PENDING') {
-      startTask(serviceId, 'MATCH_PENDING')
-      return
-    }
-    if (cs === 'MATCH_STREAMING') {
-      startTask(serviceId, 'MATCH_STREAMING')
-      return
-    }
-    if (cs === 'MATCH_COMPLETED') {
-      const hasOutput = Boolean(initialService?.match?.matchSummaryJson)
-      if (hasOutput) startTask(serviceId, 'COMPLETED')
-      else {
-        startTask(serviceId, 'FAILED')
-        setError('retry_failed')
+    if (initialService?.currentStatus) {
+      const is = initialService.currentStatus.toUpperCase()
+      let mapped: WorkbenchStatus = 'IDLE'
+
+      if (is === 'OCR_PENDING') mapped = 'OCR_PENDING'
+      else if (is === 'OCR_COMPLETED') mapped = 'OCR_COMPLETED'
+      else if (is === 'SUMMARY_PENDING') mapped = 'SUMMARY_PENDING'
+      else if (is === 'SUMMARY_COMPLETED') mapped = 'SUMMARY_COMPLETED'
+      else if (is === 'MATCH_PENDING') mapped = 'MATCH_PENDING'
+      else if (is === 'MATCH_STREAMING') mapped = 'MATCH_STREAMING'
+      else if (is === 'MATCH_COMPLETED') mapped = 'COMPLETED'
+      else if (is === 'MATCH_FAILED') mapped = 'MATCH_FAILED'
+      else if (is === 'SUMMARY_FAILED') mapped = 'SUMMARY_FAILED'
+      else if (is === 'OCR_FAILED') mapped = 'OCR_FAILED'
+
+      // Only update if store is IDLE or service changed, to avoid overwriting active state
+      const currentStoreId = useWorkbenchStore.getState().currentServiceId
+      if (
+        currentStoreId !== initialService.id ||
+        useWorkbenchStore.getState().status === 'IDLE'
+      ) {
+        if (mapped !== 'IDLE') {
+          startTask(initialService.id, mapped)
+          // Sync error message from server state if failed
+          if (
+            mapped === 'MATCH_FAILED' ||
+            mapped === 'SUMMARY_FAILED' ||
+            mapped === 'OCR_FAILED'
+          ) {
+            let resolvedError =
+              initialService.match?.error || initialService.job?.error
+
+            // Use failureCode to derive a localized error message
+            if (initialService.failureCode) {
+              const codeKey = String(initialService.failureCode).toLowerCase()
+              const dictMsg = dict.workbench?.statusText?.[codeKey]
+              if (dictMsg) {
+                resolvedError = dictMsg
+              }
+            }
+
+            if (resolvedError) {
+              useWorkbenchStore.getState().setError(resolvedError)
+            }
+          }
+        }
       }
-      return
     }
-    if (cs === 'SUMMARY_FAILED') {
-      startTask(serviceId, 'FAILED')
-      setError('summary_failed')
-      return
-    }
-    if (cs === 'MATCH_FAILED') {
-      startTask(serviceId, 'FAILED')
-      setError('match_failed')
-      return
-    }
-    startTask(serviceId, 'IDLE')
-  }, [
-    initialService?.currentStatus,
-    initialService?.job?.originalText,
-    initialService?.job?.originalImage,
-    initialService?.job?.jobSummaryJson,
-    startTask,
-    setError,
-  ])
+  }, [initialService, startTask])
 
-  const shouldPollMatch =
-    status === 'SUMMARY_PENDING' || status === 'OCR_PENDING'
-  const { lastUpdated: lastUpdatedMatch } = useTaskPolling({
-    taskId: shouldPollMatch ? serviceId : null,
-    taskType: 'service_match',
-    enabled: shouldPollMatch,
-    onSuccess: () => setStatus('MATCH_PENDING'),
-    onError: () => {
-      setError('summary_failed')
-    },
-  })
+  // Auto-refresh when COMPLETED to sync server state
+  useEffect(() => {
+    if (storeStatus === 'COMPLETED') {
+      router.refresh()
+    }
+  }, [storeStatus, router])
 
-  const enableMatchStream =
-    status === 'OCR_PENDING' ||
-    status === 'SUMMARY_PENDING' ||
-    status === 'MATCH_PENDING' ||
-    status === 'MATCH_STREAMING'
+  // Local state
+  const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
+    'match'
+  )
+  const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
+  const streamRef = useRef<HTMLDivElement>(null)
+
+  // Derived state
+  const serviceId = initialService?.id
+  const customizeStatus = initialService?.customizedResume?.status || 'PENDING'
+  const interviewStatus = initialService?.interview?.status || 'PENDING'
+
+  // Parse match result
+  const matchJson = initialService?.match?.matchSummaryJson
+  let matchParsed = null
+  try {
+    if (matchJson && typeof matchJson === 'object') {
+      matchParsed = matchJson
+    } else if (typeof matchJson === 'string') {
+      const clean = matchJson.replace(/```json\n?|\n?```/g, '').trim()
+      matchParsed = JSON.parse(clean)
+    }
+  } catch {}
+
+  const lastUpdatedMatch = initialService?.match?.updatedAt
+
+  const status = storeStatus
+
+  // Initialize matchTaskId from initialService if available
+  useEffect(() => {
+    if (!matchTaskId && initialService?.executionSessionId) {
+      setMatchTaskId(`match_${serviceId}_${initialService.executionSessionId}`)
+    }
+  }, [initialService, matchTaskId, serviceId])
+
+  // Restore SSE
   useSseStream(
     userId,
-    enableMatchStream ? serviceId : '',
-    enableMatchStream ? matchTaskId : ''
+    serviceId,
+    matchTaskId || '',
+    status === 'COMPLETED' ||
+      status === 'FAILED' ||
+      status === 'OCR_FAILED' ||
+      status === 'SUMMARY_FAILED' ||
+      status === 'MATCH_FAILED'
   )
 
-  const initialTab = (() => {
-    if (String(matchStatus).toUpperCase() === 'COMPLETED') {
-      if (String(customizeStatus).toUpperCase() !== 'COMPLETED')
-        return 'customize'
-      if (String(interviewStatus).toUpperCase() !== 'COMPLETED')
-        return 'interview'
-    }
-    return 'match'
-  })()
-  useEffect(() => {
-    // toast handled via SSE-driven UI transitions
-  }, [dict])
-  const streamRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') {
-      streamRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [status])
-
-  const [customizeTaskId, setCustomizeTaskId] = useState<string | null>(null)
+  // Handlers
   const onCustomize = () => {
     startTransition(async () => {
-      const res = await customizeResumeAction({ locale, serviceId })
-      if (!res?.ok) {
-        setError('customize_failed')
-        return
-      }
-      setCustomizeTaskId(res.taskId ?? null)
-      if (res.isFree) {
+      const res = await customizeResumeAction({ serviceId, locale })
+      if (res?.ok) {
+        setTabValue('customize')
+        router.refresh()
+      } else {
+        toast.error(
+          dict.workbench.customize.createFailed ||
+            'Failed to start customization'
+        )
       }
     })
   }
 
-  const shouldPollCustomize =
-    Boolean(customizeTaskId) && customizeStatus !== 'COMPLETED'
-  useTaskPolling({
-    taskId: shouldPollCustomize ? customizeTaskId! : null,
-    taskType: 'customize',
-    enabled: shouldPollCustomize,
-    onSuccess: () => router.refresh(),
-    onError: () => setError('customize_failed'),
-  })
-
-  const [interviewTaskId, setInterviewTaskId] = useState<string | null>(null)
   const onInterview = () => {
     startTransition(async () => {
-      const res = await generateInterviewTipsAction({ locale, serviceId })
-      if (!res?.ok) {
-        setError('interview_failed')
-        return
+      const res = await generateInterviewTipsAction({ serviceId, locale })
+      if (res?.ok) {
+        setTabValue('interview')
+        router.refresh()
+      } else {
+        toast.error('Failed to generate interview tips')
       }
-      setInterviewTaskId(`interview_${serviceId}`)
     })
   }
 
-  const enableInterviewStream =
-    Boolean(interviewTaskId) && interviewStatus !== 'COMPLETED'
-  useSseStream(
-    userId,
-    enableInterviewStream ? serviceId : '',
-    enableInterviewStream ? interviewTaskId! : ''
-  )
+  const retryMatchAction = () => {
+    startTransition(async () => {
+      const { retryMatchAction: serverRetry } = await import(
+        '@/lib/actions/service.actions'
+      )
+      const res = await serverRetry({ locale, serviceId })
+      if (res?.ok) {
+        if (res.executionSessionId) {
+          setMatchTaskId(`match_${serviceId}_${String(res.executionSessionId)}`)
+        }
+        router.refresh()
+      } else {
+        setError(String(res?.error || 'retry_failed'))
+      }
+    })
+  }
 
-  const matchJson = initialService?.match?.matchSummaryJson || null
-  let matchParsed: any = null
-  try {
-    matchParsed = matchJson
-      ? typeof matchJson === 'string'
-        ? JSON.parse(matchJson)
-        : matchJson
-      : null
-  } catch {}
-  const [matchLive, setMatchLive] = useState<any>(null)
+  // Refresh page when status becomes COMPLETED to ensure data consistency
   useEffect(() => {
     if (status === 'COMPLETED') {
+      router.refresh()
+    }
+  }, [status, router])
+
+  // Parse streaming response into live object
+  const [matchLive, setMatchLive] = useState<any>(null)
+  useEffect(() => {
+    if (status === 'COMPLETED' || status === 'MATCH_STREAMING') {
       try {
-        const txt = String(streamingResponse || '')
-        if (txt && txt.trim().startsWith('{')) {
+        let txt = String(streamingResponse || '')
+        // Strip markdown code blocks if present
+        txt = txt.replace(/```json\n?|\n?```/g, '').trim()
+        if (txt.startsWith('{') && txt.endsWith('}')) {
           const parsed = JSON.parse(txt)
-          if (parsed && typeof parsed === 'object') setMatchLive(parsed)
+          if (parsed && typeof parsed === 'object') {
+            setMatchLive(parsed)
+          }
         }
-      } catch {}
-      try {
-        router.refresh()
       } catch {}
     }
   }, [status, streamingResponse])
@@ -231,368 +246,497 @@ export function ServiceDisplay({
       : null
   } catch {}
 
-  const tabs = dict.workbench?.tabs || {
-    match: 'Match',
-    customize: 'Customize',
-    interview: 'Interview',
-  }
   const stext = dict.workbench?.statusText || {}
 
+  const currentStep = (() => {
+    if (tabValue === 'interview') return 3
+    if (tabValue === 'customize') return 2
+    return 1
+  })()
+  const maxUnlockedStep = (() => {
+    const customizeDone = String(customizeStatus).toUpperCase() === 'COMPLETED'
+    if (customizeDone) return 3
+    return 1
+  })()
+  const statusMessage = (() => {
+    const stext = dict.workbench?.statusText || {}
+    if (statusDetail) {
+      const key = String(statusDetail)
+      const mapped = (dict.workbench?.statusText?.[key] as any) || null
+      if (mapped) return String(mapped)
+    }
+
+    // e.g. ocrPending
+    const camelKey = (status || '')
+      .toLowerCase()
+      .replace(/_([a-z])/g, (g) => (g[1] || '').toUpperCase())
+      .replace(/_/, '')
+
+    // Try to find in statusConsole first (new standard)
+    const statusConsole = dict.workbench?.statusConsole as any
+    const consoleMsg = statusConsole?.[camelKey as any]
+    if (consoleMsg) return String(consoleMsg)
+
+    // Fallback to statusText (legacy/error messages)
+    const statusText = dict.workbench?.statusText as any
+    const textMsg = statusText?.[camelKey as any]
+    if (textMsg) return String(textMsg)
+
+    if (status === 'MATCH_PENDING')
+      return (
+        dict.workbench?.statusConsole?.matchPending ||
+        'Analyzing match degree...'
+      )
+    if (status === 'MATCH_STREAMING')
+      return (
+        dict.workbench?.statusConsole?.matchStreaming ||
+        'Streaming analysis results...'
+      )
+    if (status === 'SUMMARY_PENDING')
+      return (
+        dict.workbench?.statusConsole?.summaryPending ||
+        'Extracting job details...'
+      )
+    if (status === 'SUMMARY_COMPLETED')
+      return (
+        dict.workbench?.statusConsole?.summaryCompleted ||
+        'Job Details Extracted'
+      )
+    if (status === 'OCR_PENDING')
+      return (
+        dict.workbench?.statusConsole?.ocrPending ||
+        'Extracting text from image...'
+      )
+    if (status === 'OCR_COMPLETED')
+      return (
+        dict.workbench?.statusConsole?.ocrCompleted ||
+        'OCR Extraction Completed'
+      )
+    if (status === 'COMPLETED')
+      return (
+        dict.workbench?.statusConsole?.matchCompleted ||
+        'Match Analysis Completed'
+      )
+    if (status === 'OCR_FAILED')
+      return dict.workbench?.statusConsole?.ocrFailed || 'OCR Extraction Failed'
+    if (status === 'SUMMARY_FAILED')
+      return (
+        dict.workbench?.statusConsole?.summaryFailed ||
+        'Job Summary Extraction Failed'
+      )
+    if (status === 'MATCH_FAILED')
+      return (
+        dict.workbench?.statusConsole?.matchFailed || 'Match Analysis Failed'
+      )
+    if (status === 'FAILED') return stext.failed || 'Failed'
+    return stext.idle || 'Ready'
+  })()
+  const progressValue = (() => {
+    if (status === 'OCR_PENDING') return 33
+    if (status === 'SUMMARY_PENDING') return 66
+    if (status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') return 80
+    if (status === 'COMPLETED') return 100
+    return 0
+  })()
+  const tier: 'free' | 'paid' =
+    tierOverride ?? ((quotaBalance ?? 0) <= 0 ? 'free' : 'paid')
+  const lastUpdated =
+    (lastUpdatedMatch as any) ||
+    (initialService?.match?.updatedAt as any) ||
+    (initialService?.updatedAt as any) ||
+    null
+
+  // Parse title for company/job fallback
+  const jobSummary = initialService?.job?.jobSummaryJson
+  let displayCompany =
+    matchResult?.company ||
+    matchParsed?.company ||
+    summaryResult?.company ||
+    initialService?.company ||
+    ''
+  let displayJob =
+    matchResult?.jobTitle ||
+    matchParsed?.jobTitle ||
+    summaryResult?.jobTitle ||
+    initialService?.job_title ||
+    ''
+
+  if (!displayCompany && !displayJob && jobSummary) {
+    try {
+      const obj =
+        typeof jobSummary === 'string' ? JSON.parse(jobSummary) : jobSummary
+      displayCompany = obj?.company || obj?.company_name || obj?.org || ''
+      displayJob = obj?.jobTitle || obj?.job_title || obj?.title || ''
+    } catch {}
+  }
+
+  if (!displayCompany && !displayJob && initialService?.title) {
+    const parts = initialService.title.split(' - ')
+    if (parts.length >= 2) {
+      displayCompany = parts[0]
+      displayJob = parts.slice(1).join(' - ')
+    } else {
+      displayJob = initialService.title
+    }
+  }
+
   return (
-    <Tabs defaultValue={initialTab} className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="match">{tabs.match}</TabsTrigger>
-        <TabsTrigger value="customize">
-          {tabs.customize}
-          <span className="ml-2">
-            {String(customizeStatus).toUpperCase() === 'COMPLETED' && (
-              <StatusBadge
-                label={
-                  dict.workbench?.statusText?.matchCompleted || 'Completed'
-                }
-                variant="success"
-              />
-            )}
-          </span>
-        </TabsTrigger>
-        <TabsTrigger value="interview">
-          {tabs.interview}
-          <span className="ml-2">
-            {String(interviewStatus).toUpperCase() === 'COMPLETED' && (
-              <StatusBadge
-                label={
-                  dict.workbench?.statusText?.matchCompleted || 'Completed'
-                }
-                variant="success"
-              />
-            )}
-          </span>
-        </TabsTrigger>
-      </TabsList>
+    <div className="h-full flex flex-col space-y-6">
+      <StepperProgress
+        currentStep={currentStep as any}
+        maxUnlockedStep={maxUnlockedStep as any}
+        onStepClick={(s) => {
+          if (s === 1) setTabValue('match')
+          else if (s === 2) setTabValue('customize')
+          else setTabValue('interview')
+        }}
+        labels={{
+          step1: String(dict.workbench?.tabs?.match || 'Step 1'),
+          step2: String(dict.workbench?.tabs?.customize || 'Step 2'),
+          step3: String(dict.workbench?.tabs?.interview || 'Step 3'),
+        }}
+        className="shrink-0"
+      />
 
-      <TabsContent value="match">
-        {status === 'OCR_PENDING' && (
-          <AppCard>
-            <AppCardHeader>
-              <AppCardTitle>
-                {stext.ocrPending || 'Processing OCR...'}
-              </AppCardTitle>
-              <AppCardDescription> </AppCardDescription>
-            </AppCardHeader>
-            <AppCardContent>
-              <Progress value={33} />
-              {lastUpdatedMatch && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {dict.profile?.uploader?.lastUpdatedLabel || '最近一次更新'}：
-                  {new Date(lastUpdatedMatch).toLocaleString(locale)}
-                </div>
-              )}
-            </AppCardContent>
-          </AppCard>
-        )}
-        {status === 'SUMMARY_PENDING' && (
-          <AppCard>
-            <AppCardHeader>
-              <AppCardTitle>
-                {stext.summaryPending || 'Summarizing...'}
-              </AppCardTitle>
-              <AppCardDescription> </AppCardDescription>
-            </AppCardHeader>
-            <AppCardContent>
-              <Progress value={66} />
-              {lastUpdatedMatch && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {dict.profile?.uploader?.lastUpdatedLabel || '最近一次更新'}：
-                  {new Date(lastUpdatedMatch).toLocaleString(locale)}
-                </div>
-              )}
-            </AppCardContent>
-          </AppCard>
-        )}
-        {(status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') && (
-          <AppCard>
-            <AppCardHeader>
-              <AppCardTitle>
-                {stext.matchStreaming || 'Streaming...'}
-              </AppCardTitle>
-              <AppCardDescription> </AppCardDescription>
-            </AppCardHeader>
-            <AppCardContent>
-              <div
-                ref={streamRef}
-                className="prose max-h-[60vh] overflow-y-scroll whitespace-pre-wrap transition-opacity duration-300 ease-in opacity-100"
-              >
-                {streamingResponse}
+      <StatusConsole
+        status={
+          status === 'FAILED' ||
+          status === 'OCR_FAILED' ||
+          status === 'SUMMARY_FAILED' ||
+          status === 'MATCH_FAILED'
+            ? 'error'
+            : status === 'COMPLETED'
+            ? 'completed'
+            : status === 'MATCH_PENDING' ||
+              status === 'MATCH_STREAMING' ||
+              status === 'OCR_PENDING' ||
+              status === 'SUMMARY_PENDING'
+            ? 'streaming'
+            : 'idle'
+        }
+        statusMessage={statusMessage}
+        progress={progressValue}
+        isConnected={isConnected}
+        lastUpdated={lastUpdated ? new Date(lastUpdated) : null}
+        tier={tier}
+        cost={lastCost || 0}
+        errorMessage={errorMessage || undefined}
+      />
+
+      <Tabs
+        value={tabValue}
+        defaultValue="match"
+        onValueChange={(v) =>
+          setTabValue(v as 'match' | 'customize' | 'interview')
+        }
+        className="flex-1 flex flex-col min-h-0 space-y-6"
+      >
+        <TabsContent value="match" className="flex-1 flex flex-col min-h-0">
+          {(status === 'OCR_PENDING' ||
+            status === 'OCR_COMPLETED' ||
+            status === 'SUMMARY_PENDING' ||
+            status === 'SUMMARY_COMPLETED' ||
+            status === 'MATCH_PENDING' ||
+            status === 'MATCH_STREAMING') && (
+            <div ref={streamRef}>
+              <StreamPanel
+                mode={
+                  status === 'OCR_PENDING' ||
+                  status === 'OCR_COMPLETED' ||
+                  status === 'SUMMARY_PENDING'
+                    ? 'ocr'
+                    : status === 'SUMMARY_COMPLETED'
+                    ? 'summary'
+                    : status === 'MATCH_PENDING'
+                    ? 'summary'
+                    : 'match'
+                }
+                ocrText={ocrResult || initialService?.job?.originalText}
+                summaryJson={
+                  summaryResult ||
+                  (initialService?.job?.jobSummaryJson
+                    ? typeof initialService.job.jobSummaryJson === 'string'
+                      ? JSON.parse(initialService.job.jobSummaryJson)
+                      : initialService.job.jobSummaryJson
+                    : null)
+                }
+                content={String(streamingResponse || '')}
+                timestamp={lastUpdatedMatch ? new Date(lastUpdatedMatch) : null}
+                dict={dict}
+                {...(errorMessage
+                  ? { errorMessage: String(errorMessage) }
+                  : {})}
+                onRetry={retryMatchAction}
+              />
+            </div>
+          )}
+          {(status === 'COMPLETED' || matchResult || matchParsed) &&
+            !(
+              status === 'MATCH_PENDING' ||
+              status === 'MATCH_STREAMING' ||
+              status === 'OCR_PENDING' ||
+              status === 'SUMMARY_PENDING'
+            ) && (
+              <ResultCard
+                data={matchResult || matchParsed}
+                company={displayCompany}
+                jobTitle={displayJob}
+                labels={{
+                  title: dict.workbench?.resultCard?.title,
+                  loading: dict.workbench?.resultCard?.loading,
+                  empty: dict.workbench?.resultCard?.empty,
+                  matchScore: dict.workbench?.resultCard?.matchScore,
+                  overallAssessment:
+                    dict.workbench?.resultCard?.overallAssessment,
+                  highlights: dict.workbench?.resultCard?.highlights,
+                  gapsAndSuggestions:
+                    dict.workbench?.resultCard?.gapsAndSuggestions,
+                  smartPitch: dict.workbench?.resultCard?.smartPitch,
+                  copyTooltip: dict.workbench?.resultCard?.copyTooltip,
+                  copy: dict.workbench?.resultCard?.copy,
+                  copied: dict.workbench?.resultCard?.copied,
+                  copySuccess: dict.workbench?.resultCard?.copySuccess,
+                  highlyMatched: dict.workbench?.resultCard?.highlyMatched,
+                  goodFit: dict.workbench?.resultCard?.goodFit,
+                  lowMatch: dict.workbench?.resultCard?.lowMatch,
+                  targetCompany: dict.workbench?.resultCard?.targetCompany,
+                  targetPosition: dict.workbench?.resultCard?.targetPosition,
+                  noHighlights: dict.workbench?.resultCard?.noHighlights,
+                  noGaps: dict.workbench?.resultCard?.noGaps,
+                  tip: dict.workbench?.resultCard?.tip,
+                }}
+              />
+            )}
+          {(status === 'FAILED' ||
+            status === 'OCR_FAILED' ||
+            status === 'SUMMARY_FAILED' ||
+            status === 'MATCH_FAILED') && (
+            <div className="space-y-3">
+              <StreamPanel
+                mode="error"
+                content={
+                  errorMessage ||
+                  dict?.workbench?.streamPanel?.error ||
+                  'Task execution failed, please retry.'
+                }
+                locale={locale}
+              />
+              <div className="flex justify-start">
+                <Button
+                  onClick={() => {
+                    startTransition(async () => {
+                      const res = await (
+                        await import('@/lib/actions/service.actions')
+                      ).retryMatchAction({ locale, serviceId })
+                      if (res?.ok) {
+                        if (res.executionSessionId) {
+                          setMatchTaskId(
+                            `match_${serviceId}_${String(
+                              res.executionSessionId
+                            )}`
+                          )
+                        }
+                        // Immediately update local status to hide retry button and show progress
+                        const nextStatus =
+                          res.step === 'summary'
+                            ? 'SUMMARY_PENDING'
+                            : 'MATCH_PENDING'
+                        useWorkbenchStore.getState().setStatus(nextStatus)
+
+                        router.refresh()
+                      } else {
+                        setError(String(res?.error || 'retry_failed'))
+                      }
+                    })
+                  }}
+                  disabled={isPending}
+                >
+                  {isPending
+                    ? dict.workbench?.statusText?.retryMatch || 'Retrying...'
+                    : dict.workbench?.statusText?.retryMatch || 'Retry Match'}
+                </Button>
               </div>
-            </AppCardContent>
-          </AppCard>
-        )}
-        {status === 'COMPLETED' && (
-          <AppCard>
-            <AppCardHeader>
-              <AppCardTitle>{stext.matchCompleted || 'Completed'}</AppCardTitle>
-            </AppCardHeader>
-            <AppCardContent>
-              {matchLive || matchParsed ? (
-                <div className="space-y-4">
-                  {((matchLive || matchParsed) as any).score !== undefined && (
-                    <div className="text-lg font-semibold">
-                      Score: {(matchLive || (matchParsed as any)).score}
-                    </div>
-                  )}
-                  {Array.isArray(
-                    (matchLive || (matchParsed as any)).highlights
-                  ) &&
-                    (matchLive || (matchParsed as any)).highlights.length >
-                      0 && (
-                      <div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Highlights
-                        </div>
-                        <ul className="list-disc pl-6 space-y-1">
-                          {(matchLive || (matchParsed as any)).highlights.map(
-                            (h: any, i: number) => (
-                              <li key={i}>{String(h)}</li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  {Array.isArray((matchLive || (matchParsed as any)).gaps) &&
-                    (matchLive || (matchParsed as any)).gaps.length > 0 && (
-                      <div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Gaps
-                        </div>
-                        <ul className="list-disc pl-6 space-y-1">
-                          {(matchLive || (matchParsed as any)).gaps.map(
-                            (g: any, i: number) => (
-                              <li key={i}>{String(g)}</li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  {(matchLive || (matchParsed as any)).dm_script && (
-                    <div className="prose whitespace-pre-wrap">
-                      {String((matchLive || (matchParsed as any)).dm_script)}
-                    </div>
-                  )}
-                  {(matchLive || (matchParsed as any)).markdown && (
-                    <div className="prose whitespace-pre-wrap">
-                      {String((matchLive || (matchParsed as any)).markdown)}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="prose whitespace-pre-wrap">
-                  {streamingResponse}
-                </div>
-              )}
-            </AppCardContent>
-          </AppCard>
-        )}
-        {status === 'FAILED' && (
-          <div className="space-y-3">
-            <Alert variant="destructive">
-              <AlertTitle>
-                {(() => {
-                  const key = String(errorMessage || '')
-                  const mapped =
-                    (dict.workbench?.statusText?.[key] as any) || null
-                  if (mapped) return String(mapped)
-                  if (key === 'summary_failed')
-                    return String(
-                      dict.workbench?.statusText?.summaryFailedDetail ||
-                        'LLM job summary failed'
-                    )
-                  if (key === 'retry_failed')
-                    return String(
-                      dict.workbench?.statusText?.retryFailed || 'Retry failed'
-                    )
-                  return String(stext.failed || 'Failed')
-                })()}
-              </AlertTitle>
-              <AlertDescription> </AlertDescription>
-            </Alert>
-            <Button
-              onClick={() => {
-                startTransition(async () => {
-                  const res = await (
-                    await import('@/lib/actions/service.actions')
-                  ).retryMatchAction({ locale, serviceId })
-                  if (res?.ok) {
-                    if (res.executionSessionId) {
-                      setMatchTaskId(
-                        `match_${serviceId}_${String(res.executionSessionId)}`
-                      )
-                    }
-                    router.refresh()
-                  } else {
-                    setError(String(res?.error || 'retry_failed'))
-                  }
-                })
-              }}
-              disabled={isPending}
-            >
-              {dict.workbench?.statusText?.retryMatch || 'Retry Match'}
-            </Button>
-          </div>
-        )}
-      </TabsContent>
+            </div>
+          )}
+        </TabsContent>
 
-      <TabsContent value="customize">
-        {customizeStatus === 'COMPLETED' ? (
-          <div className="space-y-6">
-            <MarkdownEditor
-              initialContent={
-                initialService?.customizedResume?.markdownText || ''
-              }
-              labels={{
-                save: dict.workbench.customize.saveButton,
-                export: dict.workbench.customize.exportPdf,
-                editTab: dict.workbench.customize.editTab,
-                previewTab: dict.workbench.customize.previewTab,
-                templateLabel: dict.workbench.customize.templateLabel,
-              }}
-              onSave={async (md) => {
-                const res = await saveCustomizedResumeAction({
-                  serviceId,
-                  markdown: md,
-                })
-                if (res?.ok) toast.success(dict.workbench.customize.saveSuccess)
-                else toast.error(dict.workbench.customize.saveFailed)
-              }}
-              onExport={async () => {}}
-            />
-            {Array.isArray(initialService?.customizedResume?.opsJson) &&
-              initialService.customizedResume.opsJson.length > 0 && (
-                <AppCard>
-                  <AppCardHeader>
-                    <AppCardTitle>
-                      {dict.workbench.customize.diffTitle}
-                    </AppCardTitle>
-                  </AppCardHeader>
-                  <AppCardContent>
-                    <ul className="space-y-3">
-                      {initialService.customizedResume.opsJson
-                        .filter((op: any) => op.type === 'rewrite-lite')
-                        .map((op: any, i: number) => (
-                          <li key={i} className="text-sm">
-                            <div className="text-muted-foreground">原句：</div>
-                            <div className="whitespace-pre-wrap">
-                              {String(op.original)}
-                            </div>
-                            <div className="text-muted-foreground mt-2">
-                              改句：
-                            </div>
-                            <div className="whitespace-pre-wrap">
-                              {String(op.revised)}
-                            </div>
-                          </li>
-                        ))}
-                    </ul>
-                  </AppCardContent>
-                </AppCard>
-              )}
-          </div>
-        ) : (
-          <Button onClick={onCustomize} disabled={isPending}>
-            生成定制化简历
-          </Button>
-        )}
-      </TabsContent>
-
-      <TabsContent value="interview">
-        {interviewStatus === 'COMPLETED' ? (
-          <AppCard>
-            <AppCardHeader>
-              <AppCardTitle>Interview Tips</AppCardTitle>
-            </AppCardHeader>
-            <AppCardContent>
-              {interviewParsed ? (
-                <div className="space-y-4">
-                  {interviewParsed.intro && (
-                    <div className="prose whitespace-pre-wrap">
-                      {String(interviewParsed.intro)}
-                    </div>
-                  )}
-                  {Array.isArray(interviewParsed.qa_items) &&
-                    interviewParsed.qa_items.length > 0 && (
-                      <div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Q&A
-                        </div>
-                        <ul className="space-y-2">
-                          {interviewParsed.qa_items.map((q: any, i: number) => (
-                            <li key={i} className="space-y-1">
-                              <div className="font-medium">
-                                {String(q.question)}
+        <TabsContent value="customize">
+          {customizeStatus === 'COMPLETED' ? (
+            <div className="space-y-6">
+              <MarkdownEditor
+                initialContent={
+                  initialService?.customizedResume?.markdownText || ''
+                }
+                labels={{
+                  save: dict.workbench.customize.saveButton,
+                  export: dict.workbench.customize.exportPdf,
+                  editTab: dict.workbench.customize.editTab,
+                  previewTab: dict.workbench.customize.previewTab,
+                  templateLabel: dict.workbench.customize.templateLabel,
+                }}
+                onSave={async (md) => {
+                  const res = await saveCustomizedResumeAction({
+                    serviceId,
+                    markdown: md,
+                  })
+                  if (res?.ok)
+                    toast.success(dict.workbench.customize.saveSuccess)
+                  else toast.error(dict.workbench.customize.saveFailed)
+                }}
+                onExport={async () => {}}
+              />
+              {Array.isArray(initialService?.customizedResume?.opsJson) &&
+                initialService.customizedResume.opsJson.length > 0 && (
+                  <AppCard>
+                    <AppCardHeader>
+                      <AppCardTitle>
+                        {dict.workbench.customize.diffTitle}
+                      </AppCardTitle>
+                    </AppCardHeader>
+                    <AppCardContent>
+                      <ul className="space-y-3">
+                        {initialService.customizedResume.opsJson
+                          .filter((op: any) => op.type === 'rewrite-lite')
+                          .map((op: any, i: number) => (
+                            <li key={i} className="text-sm">
+                              <div className="text-muted-foreground">
+                                原句：
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {String(q.framework)}
+                              <div className="whitespace-pre-wrap">
+                                {String(op.original)}
                               </div>
-                              {Array.isArray(q.hints) && (
-                                <ul className="list-disc pl-6 text-sm">
-                                  {q.hints.map((h: any, j: number) => (
-                                    <li key={j}>{String(h)}</li>
-                                  ))}
-                                </ul>
-                              )}
+                              <div className="text-muted-foreground mt-2">
+                                改句：
+                              </div>
+                              <div className="whitespace-pre-wrap">
+                                {String(op.revised)}
+                              </div>
                             </li>
                           ))}
-                        </ul>
+                      </ul>
+                    </AppCardContent>
+                  </AppCard>
+                )}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              {dict.workbench.toast.lockedTitle}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="interview">
+          {interviewStatus === 'COMPLETED' ? (
+            <AppCard>
+              <AppCardHeader>
+                <AppCardTitle>Interview Tips</AppCardTitle>
+              </AppCardHeader>
+              <AppCardContent>
+                {interviewParsed ? (
+                  <div className="space-y-4">
+                    {interviewParsed.intro && (
+                      <div className="prose whitespace-pre-wrap">
+                        {String(interviewParsed.intro)}
                       </div>
                     )}
-                  {interviewParsed.markdown && (
-                    <div className="prose whitespace-pre-wrap">
-                      {String(interviewParsed.markdown)}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="prose whitespace-pre-wrap"> </div>
-              )}
-            </AppCardContent>
-          </AppCard>
-        ) : (
-          <Button onClick={onInterview} disabled={isPending}>
-            生成面试 Tips
-          </Button>
-        )}
-      </TabsContent>
-    </Tabs>
-  )
-}
+                    {Array.isArray(interviewParsed.qa_items) &&
+                      interviewParsed.qa_items.length > 0 && (
+                        <div>
+                          <div className="text-sm text-muted-foreground mb-2">
+                            Q&A
+                          </div>
+                          <ul className="space-y-2">
+                            {interviewParsed.qa_items.map(
+                              (q: any, i: number) => (
+                                <li key={i} className="space-y-1">
+                                  <div className="font-medium">
+                                    {String(q.question)}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {String(q.framework)}
+                                  </div>
+                                  {Array.isArray(q.hints) && (
+                                    <ul className="list-disc pl-6 text-sm">
+                                      {q.hints.map((h: any, j: number) => (
+                                        <li key={j}>{String(h)}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    {interviewParsed.markdown && (
+                      <div className="prose whitespace-pre-wrap">
+                        {String(interviewParsed.markdown)}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="prose whitespace-pre-wrap"> </div>
+                )}
+              </AppCardContent>
+            </AppCard>
+          ) : (
+            <Button onClick={onInterview} disabled={isPending}>
+              {dict.workbench?.interviewUi?.start}
+            </Button>
+          )}
+        </TabsContent>
+      </Tabs>
 
-function StatusBadge({
-  label,
-  variant,
-}: {
-  label: string
-  variant: 'default' | 'success' | 'warning' | 'destructive'
-}) {
-  const v =
-    variant === 'success'
-      ? 'success'
-      : variant === 'warning'
-      ? 'warning'
-      : variant === 'destructive'
-      ? 'destructive'
-      : 'default'
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${
-        v === 'success'
-          ? 'bg-green-100 text-green-700'
-          : v === 'warning'
-          ? 'bg-yellow-100 text-yellow-700'
-          : v === 'destructive'
-          ? 'bg-red-100 text-red-700'
-          : 'bg-slate-100 text-slate-800'
-      }`}
-    >
-      {label}
-    </span>
+      <div
+        className={cn(
+          // Mobile: Fixed bottom, blurred background, border top
+          'fixed bottom-0 left-0 right-0 z-50 p-4 flex items-center justify-center gap-4',
+          'bg-background/20 backdrop-blur-md border-t border-border/20',
+          // Desktop: Static, transparent background, no border, aligned left
+          'md:static md:transform-none md:w-full md:max-w-none md:rounded-none md:bg-transparent md:backdrop-blur-none md:shadow-none md:p-4 md:border-t-0 md:justify-start md:pb-4 shrink-0'
+        )}
+      >
+        <div className="flex items-center gap-3 relative z-50">
+          {(tabValue === 'match' || tabValue === 'customize') &&
+            String(customizeStatus).toUpperCase() !== 'COMPLETED' && (
+              <Button
+                onClick={onCustomize}
+                disabled={isPending || status !== 'COMPLETED'}
+                aria-label={dict.workbench?.customize?.start}
+              >
+                {dict.workbench?.customize?.start}
+              </Button>
+            )}
+          {tabValue === 'interview' &&
+            String(interviewStatus).toUpperCase() !== 'COMPLETED' && (
+              <Button
+                onClick={onInterview}
+                disabled={isPending}
+                aria-label={dict.workbench?.interviewUi?.start}
+              >
+                {dict.workbench?.interviewUi?.start}
+              </Button>
+            )}
+          <span
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground"
+            title={(dict.workbench?.costTooltip || '').replace(
+              '{cost}',
+              String(
+                getTaskCost(
+                  tabValue === 'interview'
+                    ? 'interview_prep'
+                    : 'resume_customize'
+                )
+              )
+            )}
+          >
+            <Coins className="w-3 h-3 text-yellow-500" />
+            {getTaskCost(
+              tabValue === 'interview' ? 'interview_prep' : 'resume_customize'
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
   )
 }

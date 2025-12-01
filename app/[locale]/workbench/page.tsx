@@ -19,7 +19,12 @@ export default async function WorkbenchPage({ params }: { params: Promise<{ loca
   const w = dict.workbench
   return (
     <div className="space-y-6">
-      <NewServiceForm locale={locale} dict={w.new} hasResume={hasResume} />
+      <NewServiceForm
+        locale={locale}
+        dict={w.new}
+        tabsDict={w.tabs}
+        hasResume={hasResume}
+      />
     </div>
   )
 }

@@ -3,17 +3,15 @@ import { stackServerApp } from '@/stack/server'
 import { prisma as db } from '@/lib/prisma'
 import Link from 'next/link'
 import { SidebarClient } from '@/components/app/SidebarClient'
-import {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetTitle,
-} from '@/components/ui/sheet'
+import { MobileDrawer } from '@/components/workbench/MobileDrawer'
 import { WorkbenchColumns } from '@/components/workbench/WorkbenchColumns'
+
+import { getDictionary } from '@/lib/i18n/dictionaries'
 
 export default async function WorkbenchLayout(props: any) {
   const { children, params } = props
   const { locale } = await params
+  const dict = await getDictionary(locale)
   const user = await stackServerApp.getUser()
   const userId = user?.id || null
   let quotaBalance: number | null = null
@@ -116,21 +114,17 @@ export default async function WorkbenchLayout(props: any) {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="lg:hidden mb-4">
-        <Sheet>
-          <SheetTrigger className="inline-flex items-center rounded-md border px-3 py-2 text-sm">
-            菜单
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[85vw] sm:w-[360px] p-0">
-            <SheetTitle className="sr-only">菜单</SheetTitle>
-            <div className="p-4">
-              <SidebarClient
-                locale={locale}
-                quotaBalance={quotaBalance}
-                services={services}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
+        <MobileDrawer
+          locale={locale}
+          quotaBalance={quotaBalance}
+          services={services.map((s) => ({
+            id: s.id,
+            title: s.title,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+          }))}
+          dict={dict}
+        />
       </div>
       <div className="bg-muted/60 dark:bg-muted/50 rounded-xl p-6 min-h-[calc(100vh-6rem)]">
         <WorkbenchColumns
@@ -139,6 +133,7 @@ export default async function WorkbenchLayout(props: any) {
               locale={locale}
               quotaBalance={quotaBalance}
               services={services}
+              dict={dict}
             />
           }
         >

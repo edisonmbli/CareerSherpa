@@ -12,9 +12,15 @@ import {
   type IdempotencyStep,
 } from '@/lib/idempotency'
 import { logAudit, logEvent } from '@/lib/observability/logger'
-import { getTaskRouting, getJobVisionTaskRouting, isServiceScoped } from '@/lib/llm/task-router'
+import { markTimeline } from '@/lib/observability/timeline'
+import {
+  getTaskRouting,
+  getJobVisionTaskRouting,
+  isServiceScoped,
+} from '@/lib/llm/task-router'
 import { getConcurrencyConfig } from '@/lib/env'
 import { bumpPending } from '@/lib/redis/counter'
+import { logError } from '@/lib/logger'
 
 export interface PushTaskParams<T extends TaskTemplateId> {
   kind: 'stream' | 'batch'
@@ -30,7 +36,9 @@ export interface PushTaskParams<T extends TaskTemplateId> {
  * Push task with producer-side safeguards: rate limit + idempotency.
  * Returns messageId when published; on replay or rate limit, returns metadata without publishing.
  */
-export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<T>): Promise<{
+export async function pushTask<T extends TaskTemplateId>(
+  params: PushTaskParams<T>
+): Promise<{
   messageId?: string
   url: string
   replay?: boolean
@@ -53,9 +61,12 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
       : typeof (params.variables as any)?.wasPaid === 'boolean'
       ? Boolean((params.variables as any)?.wasPaid)
       : !quotaInfo.shouldUseFreeQueue
-  const decision = (params.templateId === 'job_summary' && 'image' in params.variables && !!params.variables.image)
-    ? getJobVisionTaskRouting(hasQuota)
-    : getTaskRouting(params.templateId, hasQuota)
+  const decision =
+    params.templateId === 'job_summary' &&
+    'image' in params.variables &&
+    !!params.variables.image
+      ? getJobVisionTaskRouting(hasQuota)
+      : getTaskRouting(params.templateId, hasQuota)
   let kindSegment = params.kind
   const qid = String(decision.queueId).toLowerCase()
   if (qid.includes('vision')) {
@@ -67,6 +78,7 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
 
   // Check quota to decide trial/bound rate limits
   const { shouldUseFreeQueue } = quotaInfo
+
   const rate = await checkRateLimit(
     'pushTask',
     params.userId,
@@ -98,7 +110,9 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
     const cost = Number(params.variables.cost || 0)
     const debitId = String((params.variables as any)?.debitId || '')
     if (wasPaid && cost > 0 && debitId) {
-      const ledgerServiceId = isServiceScoped(params.templateId) ? params.serviceId : undefined
+      const ledgerServiceId = isServiceScoped(params.templateId)
+        ? params.serviceId
+        : undefined
       try {
         await recordRefund({
           userId: params.userId,
@@ -107,9 +121,28 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
           ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
           templateId: params.templateId,
         })
-      } catch {}
+      } catch (err) {
+        logError({
+          reqId: params.taskId,
+          route: 'pushTask',
+          error: String(err),
+          phase: 'refund_rate_limit',
+        })
+      }
     }
-    return { url, rateLimited: true, refunded: wasPaid && cost > 0, ...(typeof rate.retryAfter === 'number' ? { retryAfter: rate.retryAfter } : {}), error: 'rate_limited' }
+    await markTimeline(params.serviceId, 'producer_rate_limited', {
+      taskId: params.taskId,
+      retryAfter: rate.retryAfter,
+    })
+    return {
+      url,
+      rateLimited: true,
+      refunded: wasPaid && cost > 0,
+      ...(typeof rate.retryAfter === 'number'
+        ? { retryAfter: rate.retryAfter }
+        : {}),
+      error: 'rate_limited',
+    }
   }
 
   // Map template to idempotency step when applicable
@@ -117,6 +150,7 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
     job_match: 'match',
     resume_customize: 'customize',
     interview_prep: 'interview',
+    job_summary: 'summary',
   }
   const step = TEMPLATE_TO_STEP[params.templateId]
   let idemKey: string | undefined
@@ -200,9 +234,29 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
     const wasPaid = !!params.variables.wasPaid
     const cost = Number(params.variables.cost || 0)
     if (wasPaid && cost > 0) {
-      try { await addQuota(params.userId, cost) } catch {}
+      try {
+        await addQuota(params.userId, cost)
+      } catch (err) {
+        logError({
+          reqId: params.taskId,
+          route: 'pushTask',
+          error: String(err),
+          phase: 'refund_backpressure',
+        })
+      }
     }
-    return { url, backpressured: true, refunded: wasPaid && cost > 0, ...(bp.retryAfter ? { retryAfter: bp.retryAfter } : {}), error: 'backpressured' }
+    await markTimeline(params.serviceId, 'producer_backpressured', {
+      taskId: params.taskId,
+      queueId: String(decision.queueId || ''),
+      retryAfter: bp.retryAfter,
+    })
+    return {
+      url,
+      backpressured: true,
+      refunded: wasPaid && cost > 0,
+      ...(bp.retryAfter ? { retryAfter: bp.retryAfter } : {}),
+      error: 'backpressured',
+    }
   }
 
   let res: any
@@ -227,9 +281,30 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
     const wasPaid = !!(params.variables as any)?.wasPaid
     const cost = Number((params.variables as any)?.cost || 0)
     if (wasPaid && cost > 0) {
-      try { await addQuota(params.userId, cost) } catch {}
+      try {
+        await addQuota(params.userId, cost)
+      } catch (err) {
+        logError({
+          reqId: params.taskId,
+          route: 'pushTask',
+          error: String(err),
+          phase: 'refund_enqueue_fail',
+        })
+      }
     }
-    logEvent('TASK_FAILED', { userId: params.userId, serviceId: params.serviceId, taskId: params.taskId }, { templateId: params.templateId, kind: params.kind, error: error instanceof Error ? error.message : String(error) })
+    logEvent(
+      'TASK_FAILED',
+      {
+        userId: params.userId,
+        serviceId: params.serviceId,
+        taskId: params.taskId,
+      },
+      {
+        templateId: params.templateId,
+        kind: params.kind,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    )
     return { url, refunded: wasPaid && cost > 0, error: 'enqueue_failed' }
   }
 
@@ -260,5 +335,10 @@ export async function pushTask<T extends TaskTemplateId>(params: PushTaskParams<
     }
   )
 
+  await markTimeline(params.serviceId, 'producer_enqueued', {
+    taskId: params.taskId,
+    queueId: String(decision.queueId || ''),
+    messageId: res.messageId,
+  })
   return { messageId: res.messageId, url, ...(idemKey ? { idemKey } : {}) }
 }

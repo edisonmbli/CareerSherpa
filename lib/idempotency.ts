@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { createIdempotencyKey, getIdempotencyKey } from '@/lib/dal'
 // Local type to avoid relying on Prisma enums here
-export type IdempotencyStep = 'match' | 'customize' | 'interview'
+export type IdempotencyStep = 'match' | 'customize' | 'interview' | 'summary'
 
 export interface IdempotencyConfig {
   step: IdempotencyStep
@@ -89,6 +89,7 @@ export const DEFAULT_TTL_MS: Record<IdempotencyStep, number> = {
   match: 15 * 60 * 1000,      // 15 minutes
   customize: 30 * 60 * 1000,  // 30 minutes
   interview: 30 * 60 * 1000,  // 30 minutes
+  summary: 10 * 60 * 1000,    // 10 minutes
 }
 
 /**

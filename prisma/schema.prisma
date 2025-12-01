@@ -284,6 +284,9 @@ enum ServiceStep {
 
 enum ExecutionStatus {
   IDLE
+  OCR_PENDING
+  OCR_FAILED
+  OCR_COMPLETED
   SUMMARY_PENDING
   SUMMARY_FAILED
   SUMMARY_COMPLETED
@@ -303,6 +306,7 @@ enum FailureCode {
   ZOD_VALIDATION_FAILED
   ENQUEUE_FAILED
   PROVIDER_NOT_CONFIGURED
+  MODEL_TOO_BUSY
 
   @@schema("public")
 }

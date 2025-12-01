@@ -134,9 +134,17 @@ export async function GET(req: NextRequest) {
                 }
                 // 附带流条目ID用于前端去重
                 const enriched = { ...(data as any), _sid: entry.id }
-                controller.enqueue(
-                  new TextEncoder().encode(toSseEvent(enriched))
-                )
+                try {
+                  controller.enqueue(
+                    new TextEncoder().encode(toSseEvent(enriched))
+                  )
+                } catch (e) {
+                  // If enqueue fails, the stream is likely closed by the client
+                  console.warn('sse_enqueue_error', (e as any)?.message || e)
+                  closed = true
+                  if (timer) clearTimeout(timer)
+                  return
+                }
                 try {
                   if (process.env.NODE_ENV !== 'production') {
                     const len =

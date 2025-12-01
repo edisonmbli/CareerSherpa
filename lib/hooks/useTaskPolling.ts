@@ -46,12 +46,38 @@ export function useTaskPolling({
           const newStatus = (data.status as AsyncStatus) || 'PENDING'
           setStatus(newStatus)
           if (data.lastUpdatedAt) setLastUpdated(String(data.lastUpdatedAt))
+          try {
+            if (newStatus === 'PENDING') {
+              fetch('/api/timeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ serviceId: String(taskId), phase: 'poll_pending', meta: { taskType } }),
+                keepalive: true,
+              })
+            }
+          } catch {}
           
           if (newStatus === 'COMPLETED') {
+            try {
+              fetch('/api/timeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ serviceId: String(taskId), phase: 'poll_completed', meta: { taskType } }),
+                keepalive: true,
+              })
+            } catch {}
             onSuccess()
             return
           }
           if (newStatus === 'FAILED') {
+            try {
+              fetch('/api/timeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ serviceId: String(taskId), phase: 'poll_failed', meta: { taskType } }),
+                keepalive: true,
+              })
+            } catch {}
             onError()
             return
           }

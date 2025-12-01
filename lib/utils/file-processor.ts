@@ -1,4 +1,4 @@
-import { pdf } from 'pdf-parse'
+import 'server-only'
 import crypto from 'crypto'
 
 /**
@@ -55,18 +55,24 @@ const FILE_CONFIGS: Record<SupportedFileType, FileProcessConfig> = {
   resume: {
     pdfTextThreshold: 300,
     maxFileSize: 10 * 1024 * 1024, // 10MB
-    supportedMimeTypes: ['application/pdf', 'text/plain']
+    supportedMimeTypes: ['application/pdf', 'text/plain'],
   },
   'detailed-resume': {
     pdfTextThreshold: 300,
     maxFileSize: 10 * 1024 * 1024, // 10MB
-    supportedMimeTypes: ['application/pdf', 'text/plain']
+    supportedMimeTypes: ['application/pdf', 'text/plain'],
   },
   jd: {
     pdfTextThreshold: 300,
     maxFileSize: 10 * 1024 * 1024, // 10MB
-    supportedMimeTypes: ['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp']
-  }
+    supportedMimeTypes: [
+      'application/pdf',
+      'text/plain',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    ],
+  },
 }
 
 /**
@@ -74,12 +80,12 @@ const FILE_CONFIGS: Record<SupportedFileType, FileProcessConfig> = {
  */
 function validateFile(file: File, fileType: SupportedFileType): void {
   const config = FILE_CONFIGS[fileType]
-  
+
   // 检查文件大小
   if (file.size > config.maxFileSize) {
     throw new Error('file_too_large')
   }
-  
+
   // 检查MIME类型
   const mimeType = file.type || 'application/octet-stream'
   if (!config.supportedMimeTypes.includes(mimeType)) {
@@ -90,16 +96,22 @@ function validateFile(file: File, fileType: SupportedFileType): void {
 /**
  * 处理PDF文件
  */
-async function processPdfFile(buffer: Buffer, mimeType: string, config: FileProcessConfig): Promise<{
+async function processPdfFile(
+  buffer: Buffer,
+  mimeType: string,
+  config: FileProcessConfig
+): Promise<{
   content: string
   metadata: Omit<FileMetadata, 'fileSize' | 'fileName'>
   mediaBase64?: string
-}> {
+}>
+{
   try {
+    const pdf = (await import('pdf-parse')).default as (buf: Buffer) => Promise<{ text?: string }>
     const parsed = await pdf(buffer)
     const text = (parsed?.text || '').trim()
     const charCount = text.length
-    
+
     // 根据文本长度决定处理方式
     if (charCount > config.pdfTextThreshold) {
       // 文本足够多，直接使用提取的文本
@@ -108,8 +120,8 @@ async function processPdfFile(buffer: Buffer, mimeType: string, config: FileProc
         metadata: {
           sourceType: 'pdf_text',
           mimeType,
-          charCount
-        }
+          charCount,
+        },
       }
     } else {
       // 文本太少，可能是扫描件，保存为base64
@@ -119,9 +131,9 @@ async function processPdfFile(buffer: Buffer, mimeType: string, config: FileProc
         metadata: {
           sourceType: 'pdf_scan',
           mimeType,
-          charCount
+          charCount,
         },
-        mediaBase64
+        mediaBase64,
       }
     }
   } catch {
@@ -132,9 +144,9 @@ async function processPdfFile(buffer: Buffer, mimeType: string, config: FileProc
       metadata: {
         sourceType: 'pdf_scan',
         mimeType,
-        charCount: 0
+        charCount: 0,
       },
-      mediaBase64
+      mediaBase64,
     }
   }
 }
@@ -142,41 +154,47 @@ async function processPdfFile(buffer: Buffer, mimeType: string, config: FileProc
 /**
  * 处理图片文件
  */
-async function processImageFile(buffer: Buffer, mimeType: string): Promise<{
+async function processImageFile(
+  buffer: Buffer,
+  mimeType: string
+): Promise<{
   content: string
   metadata: Omit<FileMetadata, 'fileSize' | 'fileName'>
   mediaBase64: string
 }> {
   const mediaBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`
-  
+
   return {
     content: '', // 图片内容需要后续通过视觉模型提取
     metadata: {
       sourceType: 'image',
       mimeType,
-      charCount: 0
+      charCount: 0,
     },
-    mediaBase64
+    mediaBase64,
   }
 }
 
 /**
  * 处理文本文件
  */
-async function processTextFile(buffer: Buffer, mimeType: string): Promise<{
+async function processTextFile(
+  buffer: Buffer,
+  mimeType: string
+): Promise<{
   content: string
   metadata: Omit<FileMetadata, 'fileSize' | 'fileName'>
 }> {
   const text = buffer.toString('utf-8')
   const charCount = text.length
-  
+
   return {
     content: text,
     metadata: {
       sourceType: 'text',
       mimeType,
-      charCount
-    }
+      charCount,
+    },
   }
 }
 
@@ -192,20 +210,20 @@ export async function processUploadedFile(
 ): Promise<FileProcessResult> {
   // 验证文件
   validateFile(file, fileType)
-  
+
   const config = FILE_CONFIGS[fileType]
   const mimeType = file.type || 'application/octet-stream'
   const buffer = Buffer.from(await file.arrayBuffer())
-  
+
   // 生成文件内容哈希
   const hash = crypto.createHash('sha256').update(buffer).digest('hex')
-  
+
   let result: {
     content: string
     metadata: Omit<FileMetadata, 'fileSize' | 'fileName'>
     mediaBase64?: string
   }
-  
+
   // 根据MIME类型处理文件
   if (mimeType === 'application/pdf') {
     result = await processPdfFile(buffer, mimeType, config)
@@ -216,21 +234,21 @@ export async function processUploadedFile(
   } else {
     throw new Error('unsupported_file_type')
   }
-  
+
   const processResult = {
     content: result.content,
     metadata: {
       ...result.metadata,
       fileSize: file.size,
-      fileName: file.name
+      fileName: file.name,
     },
-    hash
+    hash,
   } as FileProcessResult
-  
+
   if ('mediaBase64' in result && result.mediaBase64 !== undefined) {
     processResult.mediaBase64 = result.mediaBase64
   }
-  
+
   return processResult
 }
 
@@ -240,23 +258,26 @@ export async function processUploadedFile(
  * @param lang 语言
  * @returns 文件处理结果
  */
-export async function processTextInput(text: string, lang: string): Promise<FileProcessResult> {
+export async function processTextInput(
+  text: string,
+  lang: string
+): Promise<FileProcessResult> {
   if (!text || !lang) {
     throw new Error('missing_fields')
   }
-  
+
   const charCount = text.length
   const hash = crypto.createHash('sha256').update(text, 'utf-8').digest('hex')
-  
+
   return {
     content: text,
     metadata: {
       sourceType: 'text',
       mimeType: 'application/json',
       charCount,
-      fileSize: Buffer.byteLength(text, 'utf-8')
+      fileSize: Buffer.byteLength(text, 'utf-8'),
     },
-    hash
+    hash,
   }
 }
 
@@ -265,14 +286,17 @@ export async function processTextInput(text: string, lang: string): Promise<File
  * @param formData FormData对象
  * @returns 提取的文件和语言
  */
-export function extractFileFromFormData(formData: FormData): { file: File; lang: string } {
+export function extractFileFromFormData(formData: FormData): {
+  file: File
+  lang: string
+} {
   const file = formData.get('file') as File | null
   const lang = (formData.get('lang') as string) || ''
-  
+
   if (!file || !lang) {
     throw new Error('missing_fields')
   }
-  
+
   return { file, lang }
 }
 
@@ -283,12 +307,17 @@ export const FILE_PROCESS_ERRORS = {
   MISSING_FIELDS: 'missing_fields',
   FILE_TOO_LARGE: 'file_too_large',
   UNSUPPORTED_FILE_TYPE: 'unsupported_file_type',
-  PROCESSING_FAILED: 'processing_failed'
+  PROCESSING_FAILED: 'processing_failed',
 } as const
 
 /**
  * 检查错误是否为文件处理错误
  */
 export function isFileProcessError(error: unknown): error is Error {
-  return error instanceof Error && Object.values(FILE_PROCESS_ERRORS).includes(error.message as typeof FILE_PROCESS_ERRORS[keyof typeof FILE_PROCESS_ERRORS])
+  return (
+    error instanceof Error &&
+    Object.values(FILE_PROCESS_ERRORS).includes(
+      error.message as (typeof FILE_PROCESS_ERRORS)[keyof typeof FILE_PROCESS_ERRORS]
+    )
+  )
 }

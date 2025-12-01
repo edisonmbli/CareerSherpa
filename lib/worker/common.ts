@@ -65,6 +65,10 @@ export function getChannel(
   return buildEventChannel(userId, serviceId, taskId)
 }
 
+export function buildMatchTaskId(serviceId: string, sessionId?: string) {
+  return sessionId ? `match_${serviceId}_${sessionId}` : `match_${serviceId}`
+}
+
 export function getMaxTotalWaitMs(kind: WorkerKind): number {
   const perf = getPerformanceConfig()
   return kind === 'stream'
@@ -124,11 +128,12 @@ export async function enterGuards(
     const bp = await bumpPending(counterKey, ttlSec, maxSize)
     if (!bp.ok) {
       await releaseLock(userId, kind)
+      const retry = Math.min(5, Number(bp.retryAfter || ttlSec))
       return {
         ok: false,
         response: new Response('backpressure', {
           status: 429,
-          headers: { 'Retry-After': String(bp.retryAfter || ttlSec) },
+          headers: { 'Retry-After': String(retry) },
         }),
       }
     }
@@ -157,16 +162,6 @@ export async function enterModelConcurrency(
   const tier = getTierFromQueueId(queueId)
   const key = buildModelActiveKey(modelId, tier)
   const maxWorkers = getMaxWorkersForModel(modelId, tier)
-  const act = await bumpPending(key, ttlSec, Math.max(1, maxWorkers))
-  if (!act.ok) {
-    return {
-      ok: false,
-      response: new Response('model_concurrency', {
-        status: 429,
-        headers: { 'Retry-After': String(act.retryAfter || ttlSec) },
-      }),
-    }
-  }
   return { ok: true }
 }
 
@@ -188,16 +183,6 @@ export async function enterUserConcurrency(
   const maxActive =
     kind === 'stream' ? cfg.userMaxActive.stream : cfg.userMaxActive.batch
   const key = buildUserActiveKey(userId, kind)
-  const act = await bumpPending(key, ttlSec, Math.max(1, maxActive))
-  if (!act.ok) {
-    return {
-      ok: false,
-      response: new Response('user_concurrency', {
-        status: 429,
-        headers: { 'Retry-After': String(act.retryAfter || ttlSec) },
-      }),
-    }
-  }
   return { ok: true }
 }
 
@@ -257,13 +242,8 @@ export async function publishEvent(
             channel: ch,
             count: buf.tokens.length,
           })
-          const debugDir = path.join(process.cwd(), 'tmp', 'llm-debug')
-          await fsp.mkdir(debugDir, { recursive: true })
-          const file = path.join(debugDir, `token_batch_${taskId || 'unknown'}.log`)
-          await fsp.appendFile(
-            file,
-            JSON.stringify({ channel: ch, count: buf.tokens.length, len: mergedText.length }) + '\n'
-          )
+          // dev-only log
+          // channel: ch, count: buf.tokens.length
         } catch {}
       }
       await redis.publish(ch, payloadStr)
@@ -279,13 +259,7 @@ export async function publishEvent(
             streamKey,
             type: 'token_batch',
           })
-          const debugDir = path.join(process.cwd(), 'tmp', 'llm-debug')
-          await fsp.mkdir(debugDir, { recursive: true })
-          const file = path.join(debugDir, `stream_xadd_${taskId || 'unknown'}.log`)
-          await fsp.appendFile(
-            file,
-            JSON.stringify({ streamKey, type: 'token_batch', id: 'auto' }) + '\n'
-          )
+          // dev-only log
         } catch {}
       }
     } catch {
@@ -306,12 +280,12 @@ export async function publishEvent(
       // 定时器：时间窗口先到即 flush（互补策略）
       buf.timer = setTimeout(
         () => flush(channel),
-        Math.max(ENV.STREAM_FLUSH_INTERVAL_MS, 50)
+        Math.max(ENV.STREAM_FLUSH_INTERVAL_MS || 20, 20)
       )
     }
     buf.tokens.push(text)
     // 长度阈值先到即立即 flush（互补策略）
-    if (buf.tokens.length >= Math.max(1, ENV.STREAM_FLUSH_SIZE)) {
+    if (buf.tokens.length >= Math.max(1, ENV.STREAM_FLUSH_SIZE || 5)) {
       await flush(channel)
     }
     // token 事件在合并后统一写入，因此此处直接返回

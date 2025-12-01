@@ -450,3 +450,16 @@ To ensure long-term maintainability, readability, and testability, all code cont
 - **Prefer Immutability**: Avoid mutating data and objects directly. Use non-mutating array/object methods (e.g., `map`, `filter`, spread syntax `...`) to create new state, reducing side effects and improving predictability.
 - **Graceful Error Handling**: All data fetching, mutations, and external API calls **must** be wrapped in `try...catch` blocks.
 - **Structured Error Returns**: Server Actions, especially those used with `useFormState`, **must** return a structured response (e.g., `{ success: true, data: ... }` or `{ success: false, error: 'User-friendly message' }`). This ensures the UI can easily display feedback without relying on parsing thrown error messages.
+
+## 10.6. Backend Worker Patterns
+
+- **Strategy Pattern**: Use the **Strategy Pattern** for handling distinct task types (e.g., `OCR`, `Summary`, `Match`).
+  - Define a common interface (e.g., `WorkerStrategy`) with standard methods like `prepareVars`, `execute` (optional override), and `writeResults`.
+  - Isolate logic for each task type into its own file (e.g., `strategies/ocr.ts`, `strategies/match.ts`).
+  - Avoid giant `switch` or `if/else` blocks in the main handler.
+- **Guard Clauses**: Prefer **Guard Clauses** (Early Returns) over nested `if/else` blocks.
+  - **Bad**: `if (ok) { ...long logic... } else { error }`
+  - **Good**: `if (!ok) return error; ...long logic...`
+- **DAL Abstraction**: Even in background workers, **ALWAYS** use the DAL (Data Access Layer) for database interactions. Do not use raw `prisma` calls in strategies.
+- **Logic Abstraction**: Extract complex, reusable logic (like RAG retrieval, external API calls) into dedicated service modules (e.g., `lib/rag/retriever.ts`) rather than inlining them in the strategy.
+- **No Empty Catches**: Never use empty `try { ... } catch {}` blocks. At a minimum, log the error using a structured logger. If an error is non-fatal, explicitly comment `// non-fatal` to indicate intent.

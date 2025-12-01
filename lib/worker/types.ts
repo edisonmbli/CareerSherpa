@@ -12,7 +12,7 @@ const common = {
 
 const paidTier = z.enum(['paid', 'free']).optional()
 
-const resumeSummaryVars = z.object({
+export const resumeSummaryVars = z.object({
   resumeId: z.string().min(1),
   wasPaid: z.boolean(),
   cost: z.number(),
@@ -21,7 +21,7 @@ const resumeSummaryVars = z.object({
   prompt: z.string().optional(),
 })
 
-const detailedResumeSummaryVars = z.object({
+export const detailedResumeSummaryVars = z.object({
   detailedResumeId: z.string().min(1),
   wasPaid: z.boolean(),
   cost: z.number(),
@@ -30,7 +30,7 @@ const detailedResumeSummaryVars = z.object({
   prompt: z.string().optional(),
 })
 
-const jobSummaryVars = z.object({
+export const jobSummaryVars = z.object({
   jobId: z.string().min(1),
   image: z.string().optional(),
   job_text: z.string().optional(),
@@ -42,7 +42,7 @@ const jobSummaryVars = z.object({
   executionSessionId: z.string().optional(),
 })
 
-const ocrExtractVars = z.object({
+export const ocrExtractVars = z.object({
   jobId: z.string().min(1),
   image: z.string().optional(),
   source_type: z.string().optional(),
@@ -53,7 +53,7 @@ const ocrExtractVars = z.object({
   executionSessionId: z.string().optional(),
 })
 
-const jobMatchVarsJson = z.object({
+export const jobMatchVarsJson = z.object({
   rag_context: z.string(),
   resume_summary_json: z.string(),
   detailed_resume_summary_json: z.string().optional(),
@@ -66,7 +66,7 @@ const jobMatchVarsJson = z.object({
   executionSessionId: z.string().optional(),
 })
 
-const jobMatchVarsIds = z.object({
+export const jobMatchVarsIds = z.object({
   rag_context: z.string(),
   resumeId: z.string().min(1),
   detailedResumeId: z.string().min(1).optional(),
@@ -79,7 +79,7 @@ const jobMatchVarsIds = z.object({
   executionSessionId: z.string().optional(),
 })
 
-const interviewPrepVars = z.object({
+export const interviewPrepVars = z.object({
   interviewId: z.string().min(1),
   wasPaid: z.boolean(),
   cost: z.number(),
@@ -129,3 +129,8 @@ export const workerBodySchema = z.discriminatedUnion('templateId', [
 ])
 
 export type WorkerBody = z.infer<typeof workerBodySchema>
+export type ResumeSummaryVars = z.infer<typeof resumeSummaryVars>
+export type JobSummaryVars = z.infer<typeof jobSummaryVars>
+export type OcrExtractVars = z.infer<typeof ocrExtractVars>
+export type JobMatchVars = z.infer<typeof jobMatchVarsJson> | z.infer<typeof jobMatchVarsIds>
+export type InterviewPrepVars = z.infer<typeof interviewPrepVars>

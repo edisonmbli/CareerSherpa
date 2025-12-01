@@ -12,6 +12,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Info } from 'lucide-react'
 import FeedbackDemo from '@/components/dev/FeedbackDemo'
 import PrimaryDemo from '@/components/dev/PrimaryDemo'
+import { StatusConsole } from '@/components/workbench/StatusConsole'
+import { StepperProgress } from '@/components/workbench/StepperProgress'
+import { StreamPanel } from '@/components/workbench/StreamPanel'
+import { ResultCard } from '@/components/workbench/ResultCard'
 
 export default async function DesignSystemPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -176,6 +180,20 @@ export default async function DesignSystemPage({ params }: { params: Promise<{ l
         </AppCardHeader>
         <AppCardContent>
           <FeedbackDemo labels={dict.designSystem.samples.feedback} />
+        </AppCardContent>
+      </AppCard>
+
+      <AppCard>
+        <AppCardHeader>
+          <AppCardTitle>{'Workbench UI Components'}</AppCardTitle>
+        </AppCardHeader>
+        <AppCardContent className="space-y-6">
+          <div className="space-y-3">
+            <StepperProgress currentStep={2 as any} maxUnlockedStep={3 as any} onStepClick={() => {}} labels={{ step1: '匹配', step2: '定制', step3: '面试' }} />
+            <StatusConsole status={'streaming'} progress={72} statusMessage={locale === 'zh' ? '流式生成中…' : 'Streaming…'} tier={'paid'} cost={2} />
+          </div>
+          <StreamPanel content={'{"score":0.82,"highlights":["TypeScript","RAG"],"gaps":["Vision model"],"dm_script":"Hi, I\'m..."}'} />
+          <ResultCard data={{ score: 0.82, highlights: ['TS', 'RAG'], gaps: ['Vision'], dm_script: 'Hi, I am...', markdown: '# Resume' }} labels={{ title: locale === 'zh' ? '完成' : 'Completed', copy: locale === 'zh' ? '复制' : 'Copy' }} />
         </AppCardContent>
       </AppCard>
 

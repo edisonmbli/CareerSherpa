@@ -18,10 +18,13 @@ import {
 } from '@/lib/dal/services'
 import { pushTask } from '@/lib/queue/producer'
 import { ensureEnqueued } from '@/lib/actions/enqueue'
+import { acquireLock } from '@/lib/redis/lock'
+import { ENV } from '@/lib/env'
 import { trackEvent } from '@/lib/analytics/index'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
+import { markTimeline } from '@/lib/observability/timeline'
 
 export type CustomizeResumeActionResult =
   | { ok: true; taskId: string; taskType: 'customize'; isFree: boolean }
@@ -85,6 +88,8 @@ export const createServiceAction = withServerActionAuthWrite(
 
     // 5. 创建服务记录
     const svc = await createService(userId, resume.id, detailed?.id)
+    await markTimeline(svc.id, 'create_service_start', { userId })
+
     const executionSessionId =
       typeof crypto?.randomUUID === 'function'
         ? crypto.randomUUID()
@@ -95,8 +100,10 @@ export const createServiceAction = withServerActionAuthWrite(
       params.jobText,
       params.jobImage
     )
+    await markTimeline(svc.id, 'create_service_job_created')
     // 7. 确保匹配记录存在
     await ensureMatchRecord(svc.id)
+    await markTimeline(svc.id, 'create_service_match_ensured')
 
     // 8. 判断输入是否为图片
     const isImage = !!params.jobImage
@@ -108,10 +115,12 @@ export const createServiceAction = withServerActionAuthWrite(
       serviceId: svc.id,
       templateId: 'job_summary',
     })
+    await markTimeline(svc.id, 'create_service_debit_recorded', { cost })
     const hasQuota = debit.ok // 检查是否成功扣费（即用户是否有配额）
 
     // 10. 根据输入类型（图片或文本）执行不同的任务入队逻辑
     if (isImage) {
+      const tEnq = Date.now()
       const e1 = await ensureEnqueued({
         kind: 'batch',
         serviceId: svc.id,
@@ -127,10 +136,13 @@ export const createServiceAction = withServerActionAuthWrite(
           executionSessionId,
         } as any,
       })
+      await markTimeline(svc.id, 'create_service_ocr_enqueued', {
+        latencyMs: Date.now() - tEnq,
+      })
       if (!e1.ok) return { ok: false, error: e1.error }
 
-      // 立即把 execution_session_id 写入 Service，便于前端在 OCR 阶段就订阅包含会话 ID 的规范化通道
-      await updateServiceExecutionStatus(svc.id, ExecutionStatus.IDLE, {
+      // 将执行会话写入并设置为 OCR_PENDING，便于前端在 OCR 阶段就订阅通道
+      await updateServiceExecutionStatus(svc.id, ExecutionStatus.OCR_PENDING, {
         executionSessionId,
       })
 
@@ -144,6 +156,7 @@ export const createServiceAction = withServerActionAuthWrite(
         isFree: !hasQuota,
         stream: false,
         status: 'PENDING_OCR',
+        executionSessionId,
         hint: {
           dependency: 'ocr_extract',
           next: ['SUMMARY_COMPLETED', 'MATCH_STREAMING'],
@@ -152,6 +165,7 @@ export const createServiceAction = withServerActionAuthWrite(
     }
 
     // 10.3 如果是文本 JD，先入队文本提炼（job_summary），由后台在提炼成功后串行触发匹配
+    const tEnq = Date.now()
     const eText = await ensureEnqueued({
       kind: 'batch',
       serviceId: svc.id,
@@ -166,6 +180,9 @@ export const createServiceAction = withServerActionAuthWrite(
         ...(hasQuota ? { debitId: debit.id } : {}),
         executionSessionId,
       },
+    })
+    await markTimeline(svc.id, 'create_service_summary_enqueued', {
+      latencyMs: Date.now() - tEnq,
     })
     if (!eText.ok) return { ok: false, error: eText.error }
     await updateServiceExecutionStatus(
@@ -186,6 +203,7 @@ export const createServiceAction = withServerActionAuthWrite(
       isFree: !hasQuota,
       stream: false,
       status: 'PENDING_SUMMARY',
+      executionSessionId,
       hint: {
         dependency: 'job_summary',
         next: ['SUMMARY_COMPLETED', 'MATCH_STREAMING'],
@@ -373,6 +391,14 @@ export const retryMatchAction = withServerActionAuthWrite<
       })
       const hasQuota = debit.ok
       const needOcr = !svc.job.originalText && !!svc.job.originalImage
+      const ttlSec = Math.max(
+        1,
+        Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000)
+      )
+      const locked = await acquireLock(params.serviceId, 'summary', ttlSec)
+      if (!locked) {
+        return { ok: false, error: 'enqueue_failed' }
+      }
       const enqSummary = await ensureEnqueued({
         kind: 'batch',
         serviceId: params.serviceId,

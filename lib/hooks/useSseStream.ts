@@ -4,14 +4,27 @@ import { useWorkbenchStore } from '@/lib/stores/workbench.store'
 export function useSseStream(
   userId: string,
   serviceId: string,
-  taskId: string
+  taskId: string,
+  skip?: boolean
 ) {
   const { ingestEvent } = useWorkbenchStore()
   const esRef = useRef<EventSource | null>(null)
   const taskRef = useRef<string>('')
   useEffect(() => {
-    if (!userId || !serviceId || !taskId) return
+    if (skip || !userId || !serviceId || !taskId) return
     taskRef.current = taskId
+    try {
+      fetch('/api/timeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId,
+          phase: 'sse_connected',
+          meta: { taskId, fromLatest: 1 },
+        }),
+        keepalive: true,
+      })
+    } catch {}
     const url = `/api/sse-stream?userId=${encodeURIComponent(
       userId
     )}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(
@@ -55,6 +68,18 @@ export function useSseStream(
               console.info('sse_switch', { from: taskRef.current, to: nextTid })
             }
           } catch {}
+          try {
+            fetch('/api/timeline', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                serviceId,
+                phase: 'sse_switch',
+                meta: { from: taskRef.current, to: nextTid },
+              }),
+              keepalive: true,
+            })
+          } catch {}
           taskRef.current = nextTid
           const nextUrl = `/api/sse-stream?userId=${encodeURIComponent(
             userId
@@ -75,5 +100,5 @@ export function useSseStream(
     return () => {
       esRef.current?.close()
     }
-  }, [userId, serviceId, taskId, ingestEvent])
+  }, [userId, serviceId, taskId, ingestEvent, skip])
 }

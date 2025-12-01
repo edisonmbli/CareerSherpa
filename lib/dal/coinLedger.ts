@@ -211,3 +211,15 @@ export async function listLedgerByUser(
     return { items, total }
   }, { attempts: 3, prewarm: false })
 }
+
+export async function getLedgerSummaryByService(userId: string, serviceId: string): Promise<{ hasAny: boolean; totalDelta: number }> {
+  if (!userId || !serviceId) return { hasAny: false, totalDelta: 0 }
+  const res = await withPrismaGuard(async (client) => {
+    const [sum, count] = await Promise.all([
+      client.coinTransaction.aggregate({ _sum: { delta: true }, where: { userId, serviceId } }),
+      client.coinTransaction.count({ where: { userId, serviceId } }),
+    ])
+    return { hasAny: count > 0, totalDelta: Number(sum._sum.delta ?? 0) }
+  }, { attempts: 3, prewarm: false })
+  return res ?? { hasAny: false, totalDelta: 0 }
+}

@@ -3,11 +3,21 @@ import { getRedis } from '@/lib/redis/client'
 
 type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
 
-const windowSec = 300
+const windowSec = 90
 const trialLimit = 3
 const boundLimit = 15
+const UPSTASH_TIMEOUT_MS = 3000 // 3s timeout for Redis operations
 
 const mem = new Map<string, { count: number; resetAt: number }>()
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Upstash timeout')), ms)
+    ),
+  ])
+}
 
 // 统一 Upstash 访问方式：改用 getRedis 客户端
 async function upstashRate(key: string, limit: number): Promise<RateResult> {
@@ -25,6 +35,12 @@ async function upstashRate(key: string, limit: number): Promise<RateResult> {
     } catch {
       // 忽略过期设置失败，限流按窗口秒回退
     }
+  } else {
+    // Ensure TTL exists to prevent infinite keys
+    try {
+      const ttl = await redis.ttl(key)
+      if (ttl === -1) await redis.expire(key, windowSec)
+    } catch {}
   }
 
   // 仅超限时读取 TTL，以估算精确的 retryAfter
@@ -66,12 +82,24 @@ export async function checkRateLimit(
 ): Promise<RateResult> {
   const limit = isTrial ? trialLimit : boundLimit
   const key = `rate:${identity}:${route}`
+
   if (isProdRedisReady()) {
     try {
-      return await upstashRate(key, limit)
-    } catch {
+      // Wrap Upstash call with timeout to prevent blocking
+      const result = await withTimeout(
+        upstashRate(key, limit),
+        UPSTASH_TIMEOUT_MS
+      )
+      return result
+    } catch (e) {
+      console.error(
+        `[RateLimit] Upstash failed/timed out for ${key}, falling back to memory`,
+        e
+      )
       return memoryRate(key, limit)
     }
   }
-  return memoryRate(key, limit)
+
+  const result = memoryRate(key, limit)
+  return result
 }

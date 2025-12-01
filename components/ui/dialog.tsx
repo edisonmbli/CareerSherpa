@@ -50,6 +50,14 @@ export function DialogTitle({ className, children, ...props }: React.ComponentPr
   )
 }
 
+export function DialogDescription({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  return (
+    <DialogPrimitive.Description className={cn("text-sm text-muted-foreground", className)} {...props}>
+      {children}
+    </DialogPrimitive.Description>
+  )
+}
+
 export function DialogFooter({ className, children }: { className?: string; children: React.ReactNode }) {
   return <div className={cn("flex items-center justify-end gap-2", className)}>{children}</div>
 }

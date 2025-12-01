@@ -66,7 +66,7 @@ export const ENV = {
   CACHE_TTL_SECONDS: Number(process.env['CACHE_TTL_SECONDS'] ?? '300'), // 缓存TTL（秒）
   BATCH_OPERATION_SIZE: Number(process.env['BATCH_OPERATION_SIZE'] ?? '10'), // 批量操作大小
   CONCURRENCY_LOCK_TIMEOUT_MS: Number(
-    process.env['CONCURRENCY_LOCK_TIMEOUT_MS'] ?? '30000'
+    process.env['CONCURRENCY_LOCK_TIMEOUT_MS'] ?? '10000'
   ), // 并发锁超时时间
 
   // Stack Auth 配置
@@ -94,10 +94,10 @@ export const ENV = {
   // Redis Streams 合并写入配置
   // 时间窗口（毫秒）：在该窗口内的 token 事件被合并为一次写入
   STREAM_FLUSH_INTERVAL_MS: Number(
-    process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '800'
+    process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '20'
   ),
   // 长度阈值（事件数量）：达到该数量立即触发 flush（窗口未到也立即写）
-  STREAM_FLUSH_SIZE: Number(process.env['STREAM_FLUSH_SIZE'] ?? '48'),
+  STREAM_FLUSH_SIZE: Number(process.env['STREAM_FLUSH_SIZE'] ?? '5'),
 
   // Redis Streams 后处理配置（终止事件触发）
   // TTL（秒）：在收到 done/error 终止事件后为缓冲流键设置过期时间；<=0 表示禁用

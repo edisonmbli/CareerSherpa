@@ -21,6 +21,27 @@ export async function createService(
   })
 }
 
+export async function getServiceStatus(serviceId: string) {
+  return prisma.service.findUnique({
+    where: { id: serviceId },
+    select: { currentStatus: true },
+  })
+}
+
+export async function getServiceIdsForMatch(serviceId: string) {
+  if (!serviceId) return null
+  return prisma.service.findUnique({
+    where: { id: serviceId },
+    select: {
+      id: true,
+      userId: true,
+      resumeId: true,
+      detailedResumeId: true,
+      job: { select: { id: true } },
+    },
+  })
+}
+
 export async function createJobForService(
   serviceId: string,
   originalText?: string,
@@ -34,6 +55,23 @@ export async function createJobForService(
       status: 'PENDING' as AsyncTaskStatus,
     },
   })
+}
+
+export async function getServiceSummariesReadOnly(
+  serviceId: string,
+  userId?: string
+) {
+  const svc = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: {
+      resume: { select: { resumeSummaryJson: true } },
+      detailedResume: { select: { detailedSummaryJson: true } },
+      job: { select: { jobSummaryJson: true } },
+      userId: true,
+    },
+  })
+  if (userId && svc?.userId !== userId) return null
+  return svc
 }
 
 export async function ensureMatchRecord(serviceId: string) {
@@ -59,6 +97,18 @@ export async function ensureInterviewRecord(serviceId: string) {
   if (exists) return exists
   return prisma.interview.create({
     data: { serviceId, status: 'PENDING' as AsyncTaskStatus },
+  })
+}
+
+export async function getServiceForUser(serviceId: string, userId: string) {
+  return prisma.service.findFirst({
+    where: { id: serviceId, userId },
+    include: {
+      job: true,
+      match: true,
+      customizedResume: true,
+      interview: true,
+    },
   })
 }
 
@@ -317,11 +367,17 @@ export async function txMarkMatchStreaming(serviceId: string) {
   })
 }
 
-export async function txMarkMatchCompleted(serviceId: string) {
+export async function txMarkMatchCompleted(
+  serviceId: string,
+  matchSummaryJson?: any
+) {
   return prisma.$transaction([
     prisma.match.update({
       where: { serviceId },
-      data: { status: 'COMPLETED' as any },
+      data: {
+        status: 'COMPLETED' as any,
+        ...(matchSummaryJson ? { matchSummaryJson } : {}),
+      },
     }),
     prisma.service.update({
       where: { id: serviceId },
