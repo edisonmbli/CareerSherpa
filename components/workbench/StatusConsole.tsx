@@ -62,11 +62,11 @@ export function StatusConsole({
 
   // Trigger blink effect when lastUpdated changes (indicating new SSE activity)
   useEffect(() => {
-    if (lastUpdated) {
-      setIsBlinking(true)
-      const timer = setTimeout(() => setIsBlinking(false), 300) // Short blink
-      return () => clearTimeout(timer)
-    }
+    if (!lastUpdated) return
+
+    setIsBlinking(true)
+    const timer = setTimeout(() => setIsBlinking(false), 300) // Short blink
+    return () => clearTimeout(timer)
   }, [lastUpdated])
 
   const statusConfig = {
@@ -102,17 +102,7 @@ export function StatusConsole({
     return new Date(d).toLocaleString()
   }
 
-  const progressValue = (() => {
-    // Prevent progress from jumping back to 0 when transitioning from stream to complete
-    if (status === 'COMPLETED') return 100
-    if (status === 'MATCH_STREAMING' || status === 'MATCH_PENDING') return 80
-    if (status === 'SUMMARY_PENDING') return 66
-    if (status === 'OCR_PENDING') return 33
-    // Return a non-zero fallback for other active states to reduce flicker
-    if (status === 'SUMMARY_COMPLETED') return 66
-    if (status === 'OCR_COMPLETED') return 33
-    return 0
-  })()
+  const progressValue = progress
 
   return (
     <div

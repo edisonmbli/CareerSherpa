@@ -53,7 +53,7 @@ export function StreamPanel({
     if (externalDisplayedMatchContent !== undefined) return
     if (mode !== 'match') return
     const target = content || ''
-    let current = internalDisplayedMatchContent
+    const current = internalDisplayedMatchContent
 
     if (current === target) return
 

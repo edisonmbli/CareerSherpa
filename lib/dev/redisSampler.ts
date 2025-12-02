@@ -72,7 +72,7 @@ export function getSamplingSummary() {
 }
 
 let periodicTimer: ReturnType<typeof setInterval> | null = null
-let lastSignature: string | null = null
+// let lastSignature: string | null = null
 
 export function enablePeriodicConsoleLogging(intervalMs = 30000, minTotal = 20) {
   if (!enabled) return

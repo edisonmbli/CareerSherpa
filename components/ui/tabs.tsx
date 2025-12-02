@@ -14,7 +14,7 @@ export function Tabs({ defaultValue, value: controlled, onValueChange, className
   const [value, setValue] = React.useState(controlled ?? defaultValue)
   React.useEffect(() => {
     if (controlled && controlled !== value) setValue(controlled)
-  }, [controlled])
+  }, [controlled, value])
   return (
     <div className={className}>
       <TabsContext.Provider value={{ value, setValue: (v) => { setValue(v); onValueChange?.(v) } }}>{children}</TabsContext.Provider>

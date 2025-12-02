@@ -107,7 +107,7 @@ async function processPdfFile(
 }>
 {
   try {
-    const pdf = (await import('pdf-parse')).default as (buf: Buffer) => Promise<{ text?: string }>
+    const { pdf } = await import('pdf-parse')
     const parsed = await pdf(buffer)
     const text = (parsed?.text || '').trim()
     const charCount = text.length

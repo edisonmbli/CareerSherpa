@@ -6,7 +6,7 @@ export async function uploadFile(file: File, filename: string): Promise<string> 
   // Determine environment
   // VERCEL_ENV is set by Vercel platform (production, preview, development)
   // NODE_ENV is standard
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+  const isProduction = process.env.NODE_ENV === 'production' || !!process.env['VERCEL_ENV']
 
   if (isProduction) {
     // === Production: Upload to Vercel Blob ===

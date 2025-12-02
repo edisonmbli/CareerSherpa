@@ -367,7 +367,7 @@ const dict = {
     },
   },
   header: {
-    brand: '求职加速器',
+    brand: 'AI求职助手',
     signIn: '登录',
     myAccount: '我的账户',
     accountSettings: '账户设置',

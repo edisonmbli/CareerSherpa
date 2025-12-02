@@ -337,7 +337,7 @@ export function ResultCard({
                   {labels?.expertVerdict || 'Expert Verdict'}
                 </div>
                 <div className="text-sm leading-relaxed text-foreground/90 font-medium font-serif italic">
-                  "{expertVerdict}"
+                  &quot;{expertVerdict}&quot;
                 </div>
               </div>
             </div>

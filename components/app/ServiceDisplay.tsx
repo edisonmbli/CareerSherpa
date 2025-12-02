@@ -111,7 +111,7 @@ export function ServiceDisplay({
         }
       }
     }
-  }, [initialService, startTask])
+  }, [initialService, startTask, dict?.workbench?.statusText])
 
   // Auto-refresh when COMPLETED to sync server state
   useEffect(() => {
@@ -333,7 +333,9 @@ export function ServiceDisplay({
   })()
   const progressValue = (() => {
     if (status === 'OCR_PENDING') return 33
+    if (status === 'OCR_COMPLETED') return 33
     if (status === 'SUMMARY_PENDING') return 66
+    if (status === 'SUMMARY_COMPLETED') return 66
     if (status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') return 80
     if (status === 'COMPLETED') return 100
     return 0

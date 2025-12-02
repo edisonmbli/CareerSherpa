@@ -14,13 +14,18 @@ export default async function SiteHeaderServer() {
     quotaBalance = quota?.balance ?? null
   }
   const headerDict = (await getDictionary(locale as any)).header ?? {
-    brand: locale === 'zh' ? '求职加速器' : 'CareerShaper',
+    brand: locale === 'zh' ? 'AI求职助手' : 'CareerShaper',
     signIn: locale === 'zh' ? '登录' : 'Sign in',
     coins: locale === 'zh' ? '金币' : 'Coins',
     assets: locale === 'zh' ? '资产管理' : 'Assets',
     billing: locale === 'zh' ? '金币与账单' : 'Coins & Billing',
   }
   return (
-    <SiteHeaderClient locale={locale} isAuthenticated={Boolean(user)} quotaBalance={quotaBalance} dict={headerDict} />
+    <SiteHeaderClient
+      locale={locale}
+      isAuthenticated={Boolean(user)}
+      quotaBalance={quotaBalance}
+      dict={headerDict}
+    />
   )
 }

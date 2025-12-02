@@ -121,7 +121,7 @@ export default async function WorkbenchLayout(props: any) {
             id: s.id,
             title: s.title,
             createdAt: s.createdAt,
-            updatedAt: s.updatedAt,
+            ...(s.updatedAt ? { updatedAt: s.updatedAt } : {}),
           }))}
           dict={dict}
         />

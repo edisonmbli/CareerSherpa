@@ -7,10 +7,27 @@ import { ThemeToggle } from '@/components/app/ThemeToggle'
 import { I18nToggleCompact } from '@/components/app/I18nToggleCompact'
 import { UserMenu } from '@/components/app/UserMenu'
 
-export function SiteHeaderClient({ locale, isAuthenticated, quotaBalance, dict }: { locale: string; isAuthenticated: boolean; quotaBalance: number | null; dict: { brand: string; signIn: string; myAccount?: string; accountSettings?: string; cvAssets?: string; coinsBilling?: string } }) {
+export function SiteHeaderClient({
+  locale,
+  isAuthenticated,
+  quotaBalance,
+  dict,
+}: {
+  locale: string
+  isAuthenticated: boolean
+  quotaBalance: number | null
+  dict: {
+    brand: string
+    signIn: string
+    myAccount?: string
+    accountSettings?: string
+    cvAssets?: string
+    coinsBilling?: string
+  }
+}) {
   const pathname = usePathname()
   const isZh = /^\/zh(\/|$)/.test(pathname || '')
-  const brand = isZh ? '求职加速器' : 'CareerShaper'
+  const brand = isZh ? 'AI求职助手' : 'CareerShaper'
   const brandHref = isAuthenticated ? `/${locale}/workbench` : `/${locale}`
 
   return (
@@ -23,13 +40,26 @@ export function SiteHeaderClient({ locale, isAuthenticated, quotaBalance, dict }
           <I18nToggleCompact />
           <ThemeToggle />
           {isAuthenticated ? (
-            <UserMenu locale={locale} dict={{ assets: dict.cvAssets || 'CV Assets', billing: dict.coinsBilling || 'Coins & Billing' }} />
+            <UserMenu
+              locale={locale}
+              dict={{
+                assets: dict.cvAssets || 'CV Assets',
+                billing: dict.coinsBilling || 'Coins & Billing',
+              }}
+            />
           ) : (
             <Button asChild size="sm" variant="outline">
-              <Link href={`/${locale}/auth/sign-in?redirect=${encodeURIComponent(pathname || '/')}`}>{dict.signIn}</Link>
+              <Link
+                href={`/${locale}/auth/sign-in?redirect=${encodeURIComponent(
+                  pathname || '/'
+                )}`}
+              >
+                {dict.signIn}
+              </Link>
             </Button>
           )}
         </div>
       </div>
     </header>
-  )}
+  )
+}
