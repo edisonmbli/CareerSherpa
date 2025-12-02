@@ -58,7 +58,9 @@ export function useSseStream(
         const code = String(msg?.code || '')
         const nextTid = String(msg?.taskId || '')
         const summaryDone =
-          status === 'SUMMARY_COMPLETED' || code === 'summary_completed'
+          status === 'SUMMARY_COMPLETED' ||
+          status === 'summary_completed' ||
+          code === 'summary_completed'
         if (summaryDone && nextTid && nextTid !== taskRef.current) {
           try {
             esRef.current?.close()

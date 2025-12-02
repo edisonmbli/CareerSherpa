@@ -162,50 +162,80 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     })
 
     if (execResult.ok) {
-      await txMarkSummaryCompleted(serviceId)
-
-      // Notify Match Channel
+      // Parallelize Finalization: DB Update, Redis Publish, QStash Enqueue
+      // Note: QStash enqueue depends on successful completion conceptually, but technically can be initiated
+      // if we assume success. However, for strict correctness, we usually wait for DB update.
+      // But we can parallelize DB and Redis.
+      // And we can also parallelize QStash if we are confident, but let's stick to:
+      // 1. Parallel(DB Update, Redis Publish Success)
+      // 2. Then Enqueue Match
+      
       const sessionId = String(variables.executionSessionId || '')
       const matchTaskId = buildMatchTaskId(serviceId, sessionId)
       const matchChannel = getChannel(userId, serviceId, matchTaskId)
 
-      try {
-        await publishEvent(matchChannel, {
-          type: 'summary_result',
-          taskId: matchTaskId,
-          json: execResult.data,
-          stage: 'summary_done',
-          requestId,
-          traceId,
-        })
-        await publishEvent(matchChannel, {
-          type: 'status',
-          taskId: matchTaskId,
-          code: 'summary_completed',
-          status: 'SUMMARY_COMPLETED',
-          lastUpdatedAt: new Date().toISOString(),
-          stage: 'finalize',
-          requestId,
-          traceId,
-        })
-      } catch (err) {
-        logError({
+      const dbUpdatePromise = txMarkSummaryCompleted(serviceId)
+        .catch(err => logError({
           reqId: requestId,
           route: 'worker/summary',
           error: String(err),
-          phase: 'publish_summary_success',
+          phase: 'mark_summary_completed',
           serviceId,
-        })
-      }
+        }))
 
-      // Enqueue Match Task
+      const publishPromise = (async () => {
+          try {
+            await publishEvent(matchChannel, {
+                type: 'summary_result',
+                taskId: matchTaskId,
+                json: execResult.data,
+                stage: 'summary_done',
+                requestId,
+                traceId,
+            })
+            await publishEvent(matchChannel, {
+                type: 'status',
+                taskId: matchTaskId,
+                code: 'summary_completed',
+                status: 'SUMMARY_COMPLETED',
+                lastUpdatedAt: new Date().toISOString(),
+                stage: 'finalize',
+                requestId,
+                traceId,
+            })
+          } catch (err) {
+             logError({
+                reqId: requestId,
+                route: 'worker/summary',
+                error: String(err),
+                phase: 'publish_summary_success',
+                serviceId,
+             })
+          }
+      })()
+
+      // Run DB and Redis in parallel
+      await Promise.all([dbUpdatePromise, publishPromise])
+
+      // Enqueue Match Task (Dependent on Summary Completion logic)
+      // We can start this as soon as DB mark is done.
       await this.enqueueMatchTask(variables, ctx, matchTaskId)
     } else {
       // Failed
       let failureCode: any = 'llm_error'
+      const errLower = execResult.error?.toLowerCase() || ''
+
       // Simplified failure code mapping
-      if (execResult.error?.toLowerCase().includes('json'))
+      if (errLower.includes('json')) {
         failureCode = 'JSON_PARSE_FAILED'
+      } else if (
+        errLower.includes('rate limit') ||
+        errLower.includes('too many requests') ||
+        errLower.includes('busy') ||
+        errLower.includes('请求过多')
+      ) {
+        failureCode = 'MODEL_TOO_BUSY'
+      }
 
       await txMarkSummaryFailed(serviceId, failureCode)
 

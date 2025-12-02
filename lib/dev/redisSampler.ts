@@ -85,11 +85,11 @@ export function enablePeriodicConsoleLogging(intervalMs = 30000, minTotal = 20) 
       .sort((a, b) => b.total - a.total)
       .slice(0, 10)
     // 仅在计数变化时输出，避免“连接关闭后仍持续打印”的误解
-    const signature = rows.length > 0 ? JSON.stringify(rows) : ''
-    if (rows.length > 0 && signature !== lastSignature) {
-      lastSignature = signature
-      console.info('[dev:redis-sampling] Top routes by total commands:', rows)
-    }
+    // const signature = rows.length > 0 ? JSON.stringify(rows) : ''
+    // if (rows.length > 0 && signature !== lastSignature) {
+    //   lastSignature = signature
+    //   console.info('[dev:redis-sampling] Top routes by total commands:', rows)
+    // }
   }, intervalMs)
 }
 

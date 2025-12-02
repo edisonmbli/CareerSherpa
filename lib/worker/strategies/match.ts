@@ -42,41 +42,66 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     if (typeof vars['detailed_resume_summary_json'] !== 'string')
       vars['detailed_resume_summary_json'] = ''
 
-    await markTimeline(serviceId, 'worker_stream_vars_fetch_context_start', {
-      taskId,
-    })
+    // Notify Frontend: MATCH_PENDING (Analyzing...)
+    // This ensures the user sees "Analyzing match degree..." during the RAG phase
+    // We can do this in parallel with context fetching/RAG to save time, but context fetch is needed for RAG.
+    // Let's fire this off early.
+    const notifyPendingPromise = (async () => {
+      try {
+        const channel = getChannel(userId, serviceId, taskId)
+        await publishEvent(channel, {
+          type: 'status',
+          taskId,
+          code: 'match_pending',
+          status: 'MATCH_PENDING',
+          lastUpdatedAt: new Date().toISOString(),
+          stage: 'rag_start',
+          requestId,
+        })
+      } catch (e) {
+        /* non-fatal */
+      }
+    })()
+
+    // Optimization: Fetch summaries and Perform RAG in parallel if possible?
+    // RAG needs summaries (skills, job title). So RAG depends on Context.
+    // BUT, we can parallelize "Fetch Context" and "Notify Pending".
+    // And if context is already present in variables (e.g. passed from previous step? usually not full json), we could skip.
+    // Current flow: Fetch Context -> RAG.
 
     let contextSvc: any = null
-    // Optimization: If summaries are missing, fetch them.
-    // Ideally this fetch should happen in parallel with RAG if possible, but we need summaries to construct RAG queries.
-    // So fetch -> then RAG is logical dependency.
-    if (
-      !vars['resume_summary_json'] ||
-      !vars['detailed_resume_summary_json'] ||
-      !vars['job_summary_json']
-    ) {
-      try {
-        const tCtx0 = Date.now()
-        contextSvc = await getServiceSummariesReadOnly(serviceId, userId)
-        const tCtx1 = Date.now()
-        await markTimeline(
-          serviceId,
-          'worker_stream_vars_fetch_context_db_latency',
-          {
-            taskId,
-            latencyMs: tCtx1 - tCtx0,
-          }
-        )
-      } catch (err) {
-        logError({
-          reqId: requestId,
-          route: 'worker/match',
-          error: String(err),
-          phase: 'fetch_context',
-          serviceId,
-        })
+
+    const fetchContextPromise = (async () => {
+      if (
+        !vars['resume_summary_json'] ||
+        !vars['detailed_resume_summary_json'] ||
+        !vars['job_summary_json']
+      ) {
+        try {
+          const tCtx0 = Date.now()
+          contextSvc = await getServiceSummariesReadOnly(serviceId, userId)
+          const tCtx1 = Date.now()
+          await markTimeline(
+            serviceId,
+            'worker_stream_vars_fetch_context_db_latency',
+            {
+              taskId,
+              latencyMs: tCtx1 - tCtx0,
+            }
+          )
+        } catch (err) {
+          logError({
+            reqId: requestId,
+            route: 'worker/match',
+            error: String(err),
+            phase: 'fetch_context',
+            serviceId,
+          })
+        }
       }
-    }
+    })()
+
+    await Promise.all([notifyPendingPromise, fetchContextPromise])
 
     if (!vars['resume_summary_json']) {
       try {
@@ -101,23 +126,6 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       } catch (e) {
         /* non-fatal */
       }
-    }
-
-    // Notify Frontend: MATCH_PENDING (Analyzing...)
-    // This ensures the user sees "Analyzing match degree..." during the RAG phase
-    try {
-      const channel = getChannel(userId, serviceId, taskId)
-      await publishEvent(channel, {
-        type: 'status',
-        taskId,
-        code: 'match_pending',
-        status: 'MATCH_PENDING',
-        lastUpdatedAt: new Date().toISOString(),
-        stage: 'rag_start',
-        requestId,
-      })
-    } catch (e) {
-      /* non-fatal */
     }
 
     await markTimeline(serviceId, 'worker_stream_vars_fetch_context_end', {
@@ -200,26 +208,106 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       } catch (e) {
         /* best effort */
       }
-      await txMarkMatchFailed(serviceId, 'llm_error' as any) // simplified code
+      await txMarkMatchFailed(serviceId, 'JSON_PARSE_FAILED' as any) // simplified code
       await handleRefunds(execResult, variables, serviceId, userId)
       return
     }
 
     // Parse JSON result if available (from raw stream or structured data)
+    // Note: We defer strict JSON parsing to this 'Match_Completed' phase to allow
+    // the frontend to receive raw streaming tokens immediately during the generation phase.
     let matchJson: any = null
     if (execResult.data && typeof execResult.data === 'object') {
       matchJson = execResult.data
     } else if (execResult.raw) {
       try {
         // Attempt to extract JSON from raw string (which might be markdown wrapped)
-        const clean = execResult.raw.replace(/```json\n?|\n?```/g, '').trim()
+        // Improved regex to capture content between first { and last }
+        const jsonMatch = execResult.raw.match(/(\{[\s\S]*\})/)
+        let clean = jsonMatch ? jsonMatch[0] : execResult.raw
+
+        // Fallback: remove markdown code blocks if regex didn't catch them (though regex above should be robust)
+        clean = clean.replace(/```json\n?|```/g, '').trim()
+
         // Support JSON starting with { or [
         if (clean.startsWith('{') || clean.startsWith('[')) {
           matchJson = JSON.parse(clean)
         }
-      } catch (e) {
+      } catch (e: any) {
         /* best effort parse */
       }
+    }
+
+    // Sanity Check: Detect logic failure (garbage output or placeholder complaint)
+    let logicFailed = false
+    let logicFailureReason = ''
+
+    if (!matchJson) {
+      logicFailed = true
+      logicFailureReason = 'json_parse_failed'
+    } else {
+      // Check for failure indicators in content
+      // 1. Score is 0 and assessment contains failure keywords
+      const score = Number(matchJson.match_score ?? matchJson.score ?? 0)
+      const assessment = String(
+        matchJson.overall_assessment ?? ''
+      ).toLowerCase()
+      const strengths = Array.isArray(matchJson.strengths)
+        ? matchJson.strengths
+        : []
+
+      const failureKeywords = [
+        'placeholder',
+        'missing input',
+        '无法完成',
+        '占位符',
+        'input data',
+        'invalid',
+      ]
+      const hasFailureKeyword = failureKeywords.some((k) =>
+        assessment.includes(k)
+      )
+
+      // 2. Empty content (ghost response)
+      const isEmpty = strengths.length === 0 && assessment.length < 5
+
+      if (hasFailureKeyword || (score === 0 && isEmpty)) {
+        logicFailed = true
+        logicFailureReason = 'llm_logic_refusal'
+      }
+
+      // 3. Check for unreplaced variables in output (leakage)
+      const rawStr = JSON.stringify(matchJson)
+      if (rawStr.includes('{{') && rawStr.includes('}}')) {
+        logicFailed = true
+        logicFailureReason = 'template_leakage'
+      }
+    }
+
+    if (logicFailed) {
+      // Mark as failed to trigger refund
+      execResult.ok = false
+      execResult.error = logicFailureReason
+
+      try {
+        await publishEvent(channel, {
+          type: 'status',
+          taskId,
+          code: 'match_failed',
+          status: 'MATCH_FAILED',
+          errorMessage: 'Analysis failed: ' + logicFailureReason,
+          lastUpdatedAt: new Date().toISOString(),
+          stage: 'finalize',
+          requestId,
+          traceId,
+        })
+      } catch (e) {
+        /* best effort */
+      }
+
+      await txMarkMatchFailed(serviceId, 'JSON_PARSE_FAILED' as any)
+      await handleRefunds(execResult, variables, serviceId, userId)
+      return
     }
 
     // Success (even partial stream is considered success for match)
@@ -251,59 +339,64 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       /* best effort */
     }
 
-    // Confirm payment
-    const wasPaid = !!variables.wasPaid
-    const cost = Number(variables.cost || 0)
-    const debitId = String(variables.debitId || '')
-    if (wasPaid && cost > 0 && debitId) {
-      try {
-        await markDebitSuccess(debitId, execResult.usageLogId)
-      } catch (e) {
-        /* best effort */
-      }
+    if (!execResult.ok && execResult.data?.raw) {
+      // It was a partial success or parsing error but we have raw data
+      // We considered it completed above, but log it
+      logError({
+        reqId: requestId,
+        route: 'worker/match',
+        error: execResult.error || 'Partial success',
+        phase: 'match_partial',
+        serviceId,
+      })
     }
+
+    await handleRefunds(execResult, variables, serviceId, userId)
   }
 }
 
-function safeParse(jsonStr: any): any {
+function safeParse(jsonStr: any) {
+  if (typeof jsonStr !== 'string') return null
   try {
-    return JSON.parse(String(jsonStr || ''))
+    return JSON.parse(jsonStr)
   } catch {
-    return {}
+    return null
   }
 }
 
-function asStringArray(val: any): string[] {
-  if (Array.isArray(val)) return val.map(String)
+function asStringArray(arr: any): string[] {
+  if (Array.isArray(arr)) return arr.map(String)
   return []
 }
 
 async function handleRefunds(
   execResult: ExecutionResult,
-  variables: any,
+  variables: JobMatchVars,
   serviceId: string,
   userId: string
 ) {
-  const wasPaid = !!variables?.wasPaid
-  const cost = Number(variables?.cost || 0)
-  const debitId = String(variables?.debitId || '')
-
-  if (wasPaid && cost > 0 && debitId) {
+  if (
+    !execResult.ok &&
+    variables.wasPaid &&
+    variables.cost &&
+    variables.debitId
+  ) {
     try {
       await recordRefund({
         userId,
-        amount: cost,
-        relatedId: debitId,
         serviceId,
-        templateId: 'job_match',
+        amount: Number(variables.cost),
+        metadata: { reason: 'match_failed' },
+        relatedId: String(variables.debitId),
       })
     } catch (e) {
-      /* log? */
-    }
-    try {
-      await markDebitSuccess(debitId, execResult.usageLogId)
-    } catch (e) {
-      /* best effort */
+      logError({
+        reqId: 'refund_error',
+        route: 'worker/match',
+        error: String(e),
+        phase: 'refund',
+        serviceId,
+      })
     }
   }
 }

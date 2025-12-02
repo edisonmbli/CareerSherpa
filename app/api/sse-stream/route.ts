@@ -56,9 +56,9 @@ export async function GET(req: NextRequest) {
           new TextEncoder().encode(toSseEvent({ type: 'connected', channel }))
         )
         try {
-          if (process.env.NODE_ENV !== 'production') {
-            console.info('sse_start', { channel, streamKey })
-          }
+          // if (process.env.NODE_ENV !== 'production') {
+          //   console.info('sse_start', { channel, streamKey })
+          // }
         } catch {}
 
         let lastId: string | null = null
@@ -101,13 +101,13 @@ export async function GET(req: NextRequest) {
           try {
             const entries = await readStreamRange(streamKey, lastId)
             try {
-              if (process.env.NODE_ENV !== 'production') {
-                console.info('sse_tick', {
-                  streamKey,
-                  lastId,
-                  entries: entries.length,
-                })
-              }
+              // if (process.env.NODE_ENV !== 'production') {
+              //   console.info('sse_tick', {
+              //     streamKey,
+              //     lastId,
+              //     entries: entries.length,
+              //   })
+              // }
             } catch {}
             if (entries.length === 0) {
               consecutiveIdle = Math.min(consecutiveIdle + 1, 5)
@@ -146,44 +146,44 @@ export async function GET(req: NextRequest) {
                   return
                 }
                 try {
-                  if (process.env.NODE_ENV !== 'production') {
-                    const len =
-                      typeof (data as any)?.text === 'string'
-                        ? (data as any).text.length
-                        : typeof (data as any)?.data === 'string'
-                        ? (data as any).data.length
-                        : 0
-                    console.info('sse_event', {
-                      type: String((data as any)?.type || ''),
-                      status: (data as any)?.status,
-                      code: (data as any)?.code,
-                      taskId: (data as any)?.taskId,
-                      id: entry.id,
-                      len,
-                    })
-                    try {
-                      const debugDir = path.join(
-                        process.cwd(),
-                        'tmp',
-                        'llm-debug'
-                      )
-                      await fsp.mkdir(debugDir, { recursive: true })
-                      const file = path.join(
-                        debugDir,
-                        `sse_event_${taskId || 'unknown'}.log`
-                      )
-                      await fsp.appendFile(
-                        file,
-                        JSON.stringify({
-                          id: entry.id,
-                          type: String((data as any)?.type || ''),
-                          status: (data as any)?.status,
-                          code: (data as any)?.code,
-                          len,
-                        }) + '\n'
-                      )
-                    } catch {}
-                  }
+                  // if (process.env.NODE_ENV !== 'production') {
+                  //   const len =
+                  //     typeof (data as any)?.text === 'string'
+                  //       ? (data as any).text.length
+                  //       : typeof (data as any)?.data === 'string'
+                  //       ? (data as any).data.length
+                  //       : 0
+                  //   console.info('sse_event', {
+                  //     type: String((data as any)?.type || ''),
+                  //     status: (data as any)?.status,
+                  //     code: (data as any)?.code,
+                  //     taskId: (data as any)?.taskId,
+                  //     id: entry.id,
+                  //     len,
+                  //   })
+                  //   try {
+                  //     const debugDir = path.join(
+                  //       process.cwd(),
+                  //       'tmp',
+                  //       'llm-debug'
+                  //     )
+                  //     await fsp.mkdir(debugDir, { recursive: true })
+                  //     const file = path.join(
+                  //       debugDir,
+                  //       `sse_event_${taskId || 'unknown'}.log`
+                  //     )
+                  //     await fsp.appendFile(
+                  //       file,
+                  //       JSON.stringify({
+                  //         id: entry.id,
+                  //         type: String((data as any)?.type || ''),
+                  //         status: (data as any)?.status,
+                  //         code: (data as any)?.code,
+                  //         len,
+                  //       }) + '\n'
+                  //     )
+                  //   } catch {}
+                  // }
                 } catch {}
 
                 // 若收到终止事件或终止状态，主动关闭连接，减少后续读取

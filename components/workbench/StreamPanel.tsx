@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useEffect, useRef, useState } from 'react'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/i18n-config'
+import { Rocket } from 'lucide-react'
 
 interface StreamPanelProps {
   content?: string
@@ -122,7 +123,13 @@ export function StreamPanel({
             'Waiting for Job Summary...'
 
     if (mode === 'error')
-      return errorMessage || content || 'Task execution failed'
+      // Hide technical details for users, show friendly message
+      return (
+        dict?.workbench?.streamPanel?.errorFriendly ||
+        errorMessage ||
+        content ||
+        'Task execution failed'
+      )
 
     // Match mode uses the animated state
     if (!content)
@@ -145,14 +152,8 @@ export function StreamPanel({
     >
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          {mode === 'ocr' && (
-            <span className="animate-pulse text-blue-500">●</span>
-          )}
-          {mode === 'summary' && (
-            <span className="animate-pulse text-blue-500">●</span>
-          )}
-          {mode === 'match' && (
-            <span className="animate-pulse text-blue-500">●</span>
+          {(mode === 'ocr' || mode === 'summary' || mode === 'match') && (
+            <Rocket className="w-3.5 h-3.5 text-muted-foreground/70" />
           )}
           {mode === 'error' && <span className="text-red-500">●</span>}
           {mode === 'ocr'

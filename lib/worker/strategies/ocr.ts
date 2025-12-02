@@ -37,16 +37,45 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         })
       }
       const t0 = Date.now()
-      const image = await getJobOriginalImageById(jobId)
+      // Fetch URL or originalImage (for legacy)
+      // Note: If it's a URL, we might need to fetch the content if the LLM provider expects base64.
+      // However, many vision models (like GPT-4o, GLM-4v) accept URLs directly.
+      // Let's assume for now we pass the URL or base64 content.
+      // But wait, variables['image'] is used in prepareVars.
+      // If we return a URL string here, does the LLM executor know how to handle it?
+      // We need to check execute.ts or similar.
+      // Currently, let's just fetch the value.
+      let imageOrUrl = await getJobOriginalImageById(jobId)
+
+      // Local Development Fix:
+      // If imageOrUrl is a local path (starts with /uploads/), the LLM service (external) cannot access it.
+      // We must convert it to a Base64 Data URL.
+      if (imageOrUrl && imageOrUrl.startsWith('/uploads/')) {
+        try {
+          const fs = await import('fs/promises')
+          const path = await import('path')
+          const filePath = path.join(process.cwd(), 'public', imageOrUrl)
+          const buffer = await fs.readFile(filePath)
+          const base64 = buffer.toString('base64')
+          // Guess mime type based on extension
+          const ext = path.extname(filePath).slice(1) || 'png'
+          const mimeType = ext === 'jpg' ? 'jpeg' : ext
+          imageOrUrl = `data:image/${mimeType};base64,${base64}`
+        } catch (e) {
+          console.error('Failed to read local image for OCR', e)
+          // Fallback to original URL, which will likely fail in LLM but better than crashing here
+        }
+      }
+
       const t1 = Date.now()
       if (serviceId) {
         await markTimeline(serviceId, 'worker_batch_vars_fetch_image_end', {
           taskId,
           latencyMs: t1 - t0,
-          meta: image ? `len=${image.length}` : 'null',
+          meta: imageOrUrl ? `len=${imageOrUrl.length}` : 'null',
         })
       }
-      if (image) vars['image'] = image
+      if (imageOrUrl) vars['image'] = imageOrUrl
     }
     return vars
   }
@@ -127,49 +156,64 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
       return
     }
 
-    // Handle Success
+    // Handle Success: Parallelize DB update and Event Publishing
     try {
       await markTimeline(serviceId, 'worker_batch_write_ocr_db_start', {
         taskId,
       })
-      await updateJobOriginalText(serviceId, text)
-      await markTimeline(serviceId, 'worker_batch_write_ocr_db_end', {
-        taskId,
-      })
-    } catch (err) {
-      logError({
-        reqId: requestId,
-        route: 'worker/ocr',
-        error: String(err),
-        phase: 'write_ocr_db',
-        serviceId,
-      })
-    }
 
-    const sessionId = String(variables.executionSessionId || '')
-    const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-    const matchChannel = getChannel(userId, serviceId, matchTaskId)
+      // Define promises for parallel execution
+      const dbUpdatePromise = updateJobOriginalText(serviceId, text)
+        .then(() =>
+          markTimeline(serviceId, 'worker_batch_write_ocr_db_end', { taskId })
+        )
+        .catch((err) =>
+          logError({
+            reqId: requestId,
+            route: 'worker/ocr',
+            error: String(err),
+            phase: 'write_ocr_db',
+            serviceId,
+          })
+        )
 
-    try {
-      await publishEvent(matchChannel, {
+      const sessionId = String(variables.executionSessionId || '')
+      const matchTaskId = buildMatchTaskId(serviceId, sessionId)
+      const matchChannel = getChannel(userId, serviceId, matchTaskId)
+
+      const publishPromise = publishEvent(matchChannel, {
         type: 'ocr_result',
         taskId: matchTaskId,
         text,
         stage: 'ocr_done',
         requestId,
         traceId,
-      })
+      }).catch((err) =>
+        logError({
+          reqId: requestId,
+          route: 'worker/ocr',
+          error: String(err),
+          phase: 'publish_ocr_result',
+          serviceId,
+        })
+      )
+
+      // Run them in parallel
+      await Promise.all([dbUpdatePromise, publishPromise])
     } catch (err) {
+      // This catch might catch synchronous errors if any
       logError({
         reqId: requestId,
         route: 'worker/ocr',
         error: String(err),
-        phase: 'publish_ocr_result',
+        phase: 'write_ocr_parallel',
         serviceId,
       })
     }
 
+    const sessionId = String(variables.executionSessionId || '')
     const wasPaid = !!variables.wasPaid
+    // ... lock and enqueue logic ...
     const cost = Number(variables.cost || 0)
     const debitId = String(variables.debitId || '')
 
@@ -266,6 +310,8 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
     }
 
     try {
+      const matchTaskId = buildMatchTaskId(serviceId, sessionId)
+      const matchChannel = getChannel(userId, serviceId, matchTaskId)
       await publishEvent(matchChannel, {
         type: 'status',
         taskId: matchTaskId,

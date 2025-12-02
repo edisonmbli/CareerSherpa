@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Zap,
   CircleDot,
+  Activity,
 } from 'lucide-react'
 import type { Locale } from '@/i18n-config'
 import { Progress } from '@/components/ui/progress'
@@ -47,6 +48,7 @@ export function StatusConsole({
   className,
 }: StatusConsoleProps) {
   const [dict, setDict] = useState<any>(null)
+  const [isBlinking, setIsBlinking] = useState(false)
 
   useEffect(() => {
     const loadDict = async () => {
@@ -57,6 +59,15 @@ export function StatusConsole({
     }
     loadDict()
   }, [locale])
+
+  // Trigger blink effect when lastUpdated changes (indicating new SSE activity)
+  useEffect(() => {
+    if (lastUpdated) {
+      setIsBlinking(true)
+      const timer = setTimeout(() => setIsBlinking(false), 300) // Short blink
+      return () => clearTimeout(timer)
+    }
+  }, [lastUpdated])
 
   const statusConfig = {
     idle: { color: 'text-muted-foreground', icon: CircleDot, pulse: false },
@@ -91,6 +102,18 @@ export function StatusConsole({
     return new Date(d).toLocaleString()
   }
 
+  const progressValue = (() => {
+    // Prevent progress from jumping back to 0 when transitioning from stream to complete
+    if (status === 'COMPLETED') return 100
+    if (status === 'MATCH_STREAMING' || status === 'MATCH_PENDING') return 80
+    if (status === 'SUMMARY_PENDING') return 66
+    if (status === 'OCR_PENDING') return 33
+    // Return a non-zero fallback for other active states to reduce flicker
+    if (status === 'SUMMARY_COMPLETED') return 66
+    if (status === 'OCR_COMPLETED') return 33
+    return 0
+  })()
+
   return (
     <div
       className={cn(
@@ -115,12 +138,6 @@ export function StatusConsole({
                 status === 'streaming' && 'animate-spin'
               )}
             />
-            {currentConfig.pulse && (
-              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-              </span>
-            )}
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-foreground">
@@ -151,14 +168,45 @@ export function StatusConsole({
               <span>-{cost}</span>
             </Badge>
           )}
+
+          {/* SSE Activity Indicator */}
+          {status !== 'completed' && status !== 'error' && (
+            <div
+              className={cn(
+                'flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
+                isBlinking ? 'bg-blue-500/20' : 'bg-transparent'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-2 h-2 rounded-full transition-all duration-200',
+                  isConnected
+                    ? isBlinking
+                      ? 'bg-blue-500/50 scale-105 shadow-[0_0_6px_rgba(59,130,246,0.4)]'
+                      : 'bg-blue-500/30'
+                    : 'bg-gray-300/30'
+                )}
+              />
+            </div>
+          )}
         </div>
       </div>
       {status !== 'error' && status !== 'completed' && (
         <div className="space-y-2">
           <div className="relative flex items-center gap-3">
-            <Progress value={progress} className="h-2 flex-1 transition-all" />
+            <Progress
+              value={progress > 0 ? progress : progressValue}
+              className="h-2 flex-1 transition-all"
+            />
             <span className="text-xs font-mono text-muted-foreground w-[4ch] text-right">
-              {Math.max(0, Math.min(100, Math.round(progress)))}%
+              {Math.max(
+                0,
+                Math.min(
+                  100,
+                  Math.round(progress > 0 ? progress : progressValue)
+                )
+              )}
+              %
             </span>
           </div>
         </div>

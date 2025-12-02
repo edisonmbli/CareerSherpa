@@ -274,6 +274,8 @@ export async function runEmbeddingBatch(
   }
 }
 
+import { logDebugData } from '@/lib/llm/debug'
+
 export async function runStructuredLlmTask<T extends TaskTemplateId>(
   modelId: ModelId,
   templateId: T,
@@ -290,6 +292,17 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       null,
       2
     )
+
+    // Debug Log: Input
+    logDebugData(`${String(templateId)}_input`, {
+      input: JSON.stringify({
+        system: template.systemPrompt,
+        user: template.userPrompt,
+        variables,
+      }),
+      meta: { modelId, limits },
+    })
+
     const prompt = ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
       new SystemMessage(
@@ -336,6 +349,14 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 
     const content: string =
       (aiMessage as any)?.content ?? (aiMessage as any)?.text ?? ''
+
+    // Debug Log: Output
+    logDebugData(`${String(templateId)}_output`, {
+      output: content,
+      latencyMs: Date.now() - start,
+      meta: { inputTokens, outputTokens },
+    })
+
     const parsed = validateJson(content)
     if (!parsed.success || !parsed.data) {
       const log = await createLlmUsageLogDetailed({
@@ -471,6 +492,17 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
 ) {
   const start = Date.now()
   const template = getTemplate(locale, templateId)
+
+  // Debug Log: Input (Streaming)
+  logDebugData(`${String(templateId)}_stream_input`, {
+    input: JSON.stringify({
+      system: template.systemPrompt,
+      user: template.userPrompt,
+      variables,
+    }),
+    meta: { modelId },
+  })
+
   const prompt = ChatPromptTemplate.fromMessages([
     SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
     HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
@@ -494,6 +526,13 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     }
   }
   const end = Date.now()
+
+  // Debug Log: Output (Streaming)
+  logDebugData(`${String(templateId)}_stream_output`, {
+    output: fullText,
+    latencyMs: end - start,
+    meta: { len: fullText.length },
+  })
 
   // token usage may be available on model after stream; best-effort
   let { inputTokens, outputTokens } = extractTokenUsageFromModel(model)

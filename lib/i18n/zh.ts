@@ -158,7 +158,7 @@ const dict = {
       gapsAndSuggestions: '差距与建议',
       smartPitch: '沟通话术',
       copyTooltip:
-        'Hook（吸引点）、 Value（价值点） 、 Call to Action（行动点）；建议按自己说话风格微调后，再发出',
+        '话术按Hook(吸引点)、Value(价值点)、Call to Action(行动点)组织，可按自己表达风格作二次编辑',
       copy: '复制',
       copied: '已复制',
       copySuccess: '话术已复制（已自动移除标签）',
@@ -170,6 +170,7 @@ const dict = {
       noHighlights: '未发现明显亮点',
       noGaps: '未发现明显差距',
       tip: '建议',
+      expertVerdict: '专家点评',
     },
     interviewUi: {
       start: '生成面试 Tips',

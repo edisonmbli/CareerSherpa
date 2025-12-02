@@ -190,8 +190,14 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         // Map server statuses to UI statuses
         let nextStatus: WorkbenchStatus | null = null
         if (s === 'MATCH_STREAMING') nextStatus = 'MATCH_STREAMING'
-        else if (s === 'MATCH_COMPLETED') nextStatus = 'COMPLETED'
-        else if (s === 'MATCH_FAILED') nextStatus = 'MATCH_FAILED'
+        else if (
+          s === 'MATCH_COMPLETED' ||
+          s === 'match_completed' ||
+          s === 'COMPLETED'
+        )
+          nextStatus = 'COMPLETED'
+        else if (s === 'MATCH_FAILED' || s === 'match_failed')
+          nextStatus = 'MATCH_FAILED'
         else if (s === 'SUMMARY_FAILED') nextStatus = 'SUMMARY_FAILED'
         else if (s === 'OCR_FAILED') nextStatus = 'OCR_FAILED'
         else if (s === 'SUMMARY_COMPLETED') nextStatus = 'SUMMARY_COMPLETED'
@@ -276,6 +282,15 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
           }, 30) // Reduced from 120ms to 30ms
         }
       }
+      return
+    }
+    if (e.type === 'done') {
+      set((s) => {
+        if (s.status === 'MATCH_STREAMING') {
+          return { status: 'COMPLETED', isConnected: false }
+        }
+        return { isConnected: false }
+      })
       return
     }
     const r = resolveUiFromEvent(e)

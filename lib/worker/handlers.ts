@@ -39,21 +39,6 @@ export async function onToken(
     requestId,
     traceId,
   })
-  // Debug logging for dev env
-  if (process.env.NODE_ENV !== 'production') {
-    try {
-      const { promises: fsp } = await import('fs')
-      const path = await import('path')
-      const debugDir = path.join(process.cwd(), 'tmp', 'llm-debug')
-      await fsp.mkdir(debugDir, { recursive: true })
-      const file = path.join(debugDir, `token_${taskId || 'unknown'}.log`)
-      const snippet = typeof text === 'string' ? text.slice(0, 120) : ''
-      await fsp.appendFile(
-        file,
-        JSON.stringify({ channel, len: text.length, snippet }) + '\n'
-      )
-    } catch {}
-  }
 }
 
 export async function handleStream(
@@ -90,11 +75,14 @@ export async function handleStream(
       })
 
       const tierOverride = (variables as any)?.tierOverride
+      const wasPaid = (variables as any)?.wasPaid === true
       const userHasQuota =
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
           ? false
+          : wasPaid
+          ? true
           : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
@@ -304,11 +292,14 @@ export async function handleBatch(
       })
 
       const tierOverride = (variables as any)?.tierOverride
+      const wasPaid = (variables as any)?.wasPaid === true
       const userHasQuota =
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
           ? false
+          : wasPaid
+          ? true
           : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 

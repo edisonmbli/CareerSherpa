@@ -6,6 +6,9 @@ export async function markTimeline(
   phase: string,
   meta?: Record<string, any>
 ) {
+  // In production, we skip file writing to avoid performance impact and disk usage
+  if (process.env.NODE_ENV === 'production') return
+
   const dir = path.join(process.cwd(), 'tmp', 'perf-timeline')
   const file = path.join(dir, `${serviceId}.md`)
   const ts = new Date().toISOString()

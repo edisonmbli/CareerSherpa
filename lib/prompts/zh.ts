@@ -136,7 +136,22 @@ const SCHEMAS_V2 = {
         description: '用户的核心劣势 (用于规避或准备)',
       },
       cover_letter_script: {
-        type: 'string',
+        type: 'object',
+        properties: {
+          h: {
+            type: 'string',
+            description: 'Hook (钩子): 吸引 HR 注意的开场白',
+          },
+          v: {
+            type: 'string',
+            description: 'Value (价值): 针对 JD 痛点的核心成就',
+          },
+          c: {
+            type: 'string',
+            description: 'Call to Action (行动): 引导下一步交流',
+          },
+        },
+        required: ['h', 'v', 'c'],
         description:
           '一段 150 字以内、高度定制化的“毛遂自荐”私信话术 (H-V-C 结构)',
       },
@@ -591,56 +606,125 @@ JD原文:
     outputSchema: SCHEMAS_V1.JOB_SUMMARY,
   },
 
-  // --- 新架构核心服务 (M8, M9) ---
+  // --- 核心业务：岗位匹配度分析 (M9) ---
   job_match: {
     id: 'job_match',
-    name: '工作匹配度分析',
-    description: '分析简历与 JD 的匹配度，找出优势和劣势，并生成话术。',
-    systemPrompt: SYSTEM_BASE,
-    userPrompt: `请你扮演求职专家，基于以下材料进行严格结构化的岗位匹配度分析，并生成更「像人」的简洁私信话术。
+    name: '岗位匹配度深度分析',
+    description:
+      '模拟资深猎头视角，分析简历与JD的深层匹配度，并生成高转化话术。',
+    systemPrompt: `你是一位拥有20年经验的**资深招聘专家和职业策略顾问**。你深知企业招聘的“潜规则”，能看透 JD 背后真实的业务痛点。
+你的目标不是简单的关键词匹配，而是作为用户的**私人求职教练**，为他/她提供从战略到战术的全面指导，帮助其拿下 Offer。
 
-【RAG 知识库（精选片段，规则/范式/示例）】
-"""
-{rag_context}
-"""
+核心分析逻辑：
+1.  **JD 解码（去伪存真）**：
+    - 识别 JD 中的“硬指标”（学历、核心技能、行业年限）——这是红线，不达标则分数大幅降低。
+    - 识别 JD 中的“核心痛点”（这个岗位招进来究竟是为了解决什么问题？）。
+    - 忽略 HR 复制粘贴的“正确的废话”（如笼统的沟通能力强、抗压能力强），除非有具体场景佐证。
 
-【用户简历（结构化摘要）】
-"""
-{resume_summary_json}
-"""
+2.  **匹配度评分机制**：
+    - **高度匹配 (85-100)**：核心硬指标达标 + 解决了核心业务痛点 + 这种人才是市面上稀缺的。
+    - **中度匹配 (60-84)**：核心技能达标，但缺乏特定行业经验或软技能证据；或者存在“过度胜任（Over-qualified）”的稳定性风险。
+    - **存在挑战 (<60)**：硬指标（如学历、必须的硬技能）缺失，即使其他方面很优秀。
 
-【用户详细履历（结构化摘要，可选）】
-"""
-{detailed_resume_summary_json}
-"""
+3.  **话术生成策略（拒绝机械化）**：
+    - **场景**：这是发送给 HR/猎头的**第一条私信** (Cold DM)。
+    - **原则**：HR 每天看几百条私信，必须在前 20 个字抓住眼球。
+    - **禁忌**：严禁使用“您好，我对贵司很感兴趣”、“希望能给我一个机会”等卑微或废话开场。
+    - **公式**：**钩子(Hook)** + **价值闭环(Value Loop)**。
+    - **写法**：直接点出你能解决什么问题。例如：“我在类似场景下用 [方案 X] 提升了 30% 效率，这似乎正是您 JD 中提到的痛点...”`,
 
-【目标岗位（结构化摘要）】
+    userPrompt: `请基于以下材料进行专家级匹配度分析：
+
+【岗位 JD (结构化)】
 """
 {job_summary_json}
 """
 
-输出要求（必须严格遵守）：
-- 严格按照 JSON Schema 返回；不得输出多余文字或 Markdown。
-- 'match_score' 必须提供 0-100 的数值评分。
-- 'overall_assessment' 使用简洁标签（高度匹配/中度匹配/存在挑战）。
-- 字段名必须严格使用英文键名：
-  - strengths[].point, strengths[].evidence, （可选）strengths[].section
-  - weaknesses[].point, weaknesses[].suggestion
-  - cover_letter_script 为单个字符串，不要返回对象
-- 'strengths'：逐点给出 point、来自简历的 evidence、关联板块（experience/skills/projects）。
-- 'weaknesses'：逐点给出 point、可操作的 suggestion；优先结合 RAG 规则。
-- 'cover_letter_script' 语气与风格：礼貌自信、第一人称、平台私信风格（更像真人、避免模板腔）。长度：≤120字。结构：
-  - Hook：1行，包含目标岗位与 2–4 个 JD 关键词；
-  - Value：1–2行，呈现 1–2 个与 JD 必须项对齐的量化成果；
-  - Close：1行，简洁表达兴趣；不要主动安排或请求电话/会议。
-- 禁止：问候语、姓名自我介绍、约电话/会议、冗长客套。`,
+【候选人简历 (结构化)】
+"""
+{resume_summary_json}
+"""
+
+【候选人详细履历 (可选参考)】
+"""
+{detailed_resume_summary_json}
+"""
+
+【RAG 知识库 (规则/范式)】
+"""
+{rag_context}
+"""
+
+请执行以下步骤并返回 JSON：
+
+1.  **match_score (0-100)**: 基于上述“专家逻辑”打分。如果存在硬性红线（如学历、核心硬技能）不符，分数不得超过 60。
+2.  **overall_assessment**: 用简练、犀利的**私人教练口吻**评价（使用第二人称“你”）。不要只说好话，要指出风险（如：跳槽频繁、过度胜任、行业跨度大）。例如：“你的技术底子很扎实，但行业跨度较大，HR可能会担心...”
+3.  **strengths / weaknesses**:
+    - **Point**: 必须具体。
+    - **Evidence**: 必须引用简历中的具体数据或项目（不要只说“经验丰富”，要说“在xx项目处理过千万级并发”）。
+    - **Tip** (仅 Weakness): 针对该短板给出的一句话改进建议（如：如何在面试中化解此劣势，或简历如何微调）。
+    - *注意*：如果是“过度胜任”，请将其列为 weakness 的潜在风险（HR 会担心留不住人）。
+4.  **cover_letter_script (私信话术)**:
+    - 长度：100-150 字以内。
+    - 风格：专业、自信、平视（Partner 姿态，而非 Beggar 姿态）。
+    - 内容：不要覆盖所有技能。**只挑选 1-2 个最能击中该 JD 痛点的“杀手锏”进行展示。**
+    - **隐私保护**：严禁在话术中包含候选人的真实姓名、手机号等敏感信息。
+    - 格式：请分别输出三个字段：hook (H), value (V), call_to_action (C)。
+
+严格遵循 Output Schema 输出 JSON。`,
     variables: [
-      'rag_context',
+      'job_summary_json',
       'resume_summary_json',
       'detailed_resume_summary_json',
-      'job_summary_json',
+      'rag_context',
     ],
-    outputSchema: SCHEMAS_V2.JOB_MATCH,
+    outputSchema: {
+      type: 'object',
+      properties: {
+        match_score: { type: 'number', description: '0-100的匹配分数' },
+        overall_assessment: {
+          type: 'string',
+          description: '简短犀利的综合评价',
+        },
+        strengths: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              point: { type: 'string' },
+              evidence: { type: 'string' },
+              section: { type: 'string' },
+            },
+            required: ['point', 'evidence'],
+          },
+        },
+        weaknesses: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              point: { type: 'string' },
+              evidence: { type: 'string' },
+              tip: { type: 'string' },
+              section: { type: 'string' },
+            },
+            required: ['point', 'evidence', 'tip'],
+          },
+        },
+        cover_letter_script: {
+          type: 'string',
+          description: '高转化率的私信/招呼语（非传统求职信）',
+        },
+        recommendations: { type: 'array', items: { type: 'string' } },
+      },
+      required: [
+        'match_score',
+        'overall_assessment',
+        'strengths',
+        'weaknesses',
+        'cover_letter_script',
+      ],
+    } as JsonSchema,
   },
   resume_customize: {
     id: 'resume_customize',

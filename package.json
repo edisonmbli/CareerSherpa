@@ -47,6 +47,7 @@
     "@upstash/qstash-cli": "^2.30.4",
     "@upstash/redis": "^1.34.3",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/blob": "^2.0.0",
     "ai": "^5.0.92",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -9,6 +9,7 @@ import {
   Check,
   Quote,
   ChevronDown,
+  LampDesk,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -43,6 +44,7 @@ interface ResultCardProps {
     noHighlights?: string
     noGaps?: string
     tip?: string
+    expertVerdict?: string
   }
   className?: string
 }
@@ -61,52 +63,104 @@ export function ResultCard({
       ? Number(data?.match_score)
       : 0
 
-  const assessment =
-    data?.overall_assessment ||
-    (score >= 80
-      ? labels?.highlyMatched || 'Highly Matched'
+  // New Logic: assessment label is strictly based on score or fallback labels
+  const assessmentLabel =
+    score >= 80
+      ? labels?.highlyMatched || 'High Match'
       : score >= 60
-      ? labels?.goodFit || 'Good Fit'
-      : labels?.lowMatch || 'Low Match')
+      ? labels?.goodFit || 'Medium Match'
+      : labels?.lowMatch || 'Challenging'
+
+  // Expert verdict is the long sentence
+  const expertVerdict = data?.overall_assessment
 
   // Parse strengths with evidence
   const strengths = (
     Array.isArray(data?.highlights)
       ? data.highlights.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.strengths)
-      ? data.strengths.map((s: any) => ({
-          point: String(s?.point ?? s),
-          evidence: s?.evidence ? String(s.evidence) : '',
-          section: s?.section,
-        }))
+      ? data.strengths.map((s: any) => {
+          if (typeof s === 'string') return { point: s, evidence: '' }
+          // Fix: Handle both PascalCase (LLM sometimes returns this) and camelCase
+          const point = s?.Point ?? s?.point ?? ''
+          const evidence = s?.Evidence ?? s?.evidence ?? ''
+          const section = s?.Section ?? s?.section
+
+          return {
+            point: String(point),
+            evidence: evidence ? String(evidence) : '',
+            section,
+          }
+        })
       : []
   ).slice(0, 6)
 
-  // Parse weaknesses with suggestions
+  // Parse weaknesses with evidence (previously suggestion)
   const weaknesses = (
     Array.isArray(data?.gaps)
-      ? data.gaps.map((s: any) => ({ point: String(s), suggestion: '' }))
+      ? data.gaps.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.weaknesses)
-      ? data.weaknesses.map((w: any) => ({
-          point: String(w?.point ?? w),
-          suggestion: w?.suggestion ? String(w.suggestion) : '',
-        }))
+      ? data.weaknesses.map((w: any) => {
+          if (typeof w === 'string') return { point: w, evidence: '', tip: '' }
+          // Fix: Handle PascalCase/camelCase
+          const point = w?.Point ?? w?.point ?? ''
+          const evidence = w?.Evidence ?? w?.evidence ?? w?.suggestion ?? ''
+          const tip = w?.Tip ?? w?.tip ?? ''
+
+          return {
+            point: String(point),
+            evidence: evidence ? String(evidence) : '',
+            tip: tip ? String(tip) : '',
+          }
+        })
       : []
   ).slice(0, 6)
+
+  const recommendations = Array.isArray(data?.recommendations)
+    ? data.recommendations
+    : []
 
   const dmScript =
     typeof data?.dm_script === 'string'
       ? data.dm_script
       : typeof data?.cover_letter_script === 'string'
       ? data.cover_letter_script
+      : typeof data?.cover_letter_script === 'object' &&
+        data?.cover_letter_script !== null
+      ? // Fix: Check for nested .script property (used in some LLM responses)
+        typeof data.cover_letter_script.script === 'string'
+        ? data.cover_letter_script.script
+        : typeof data.cover_letter_script.h === 'string'
+        ? `【H】${data.cover_letter_script.h || ''}\n\n【V】${
+            data.cover_letter_script.v || ''
+          }\n\n【C】${data.cover_letter_script.c || ''}`
+        : // Handle new schema with full names
+        typeof data.cover_letter_script.hook === 'string'
+        ? `【H】${data.cover_letter_script.hook || ''}\n\n【V】${
+            data.cover_letter_script.value || ''
+          }\n\n【C】${data.cover_letter_script.call_to_action || ''}`
+        : null
       : null
 
   const markdown = typeof data?.markdown === 'string' ? data.markdown : null
 
   // Smart Pitch Highlighting
   const renderPitch = (text: string) => {
+    // Debug: Log raw text to see newline chars
+    if (process.env.NODE_ENV !== 'production' && false) {
+      console.log('[ResultCard] Raw Smart Pitch:', JSON.stringify(text))
+    }
+
+    // Clean up extra newlines: Remove all newlines to prevent forced line breaks
+    // Replace newlines and multiple spaces with a single space
+    const cleanText = text
+      .replace(/\\n/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
     // Regex to match tags like 【H】, [H], 【V】, [V], 【C】, [C]
-    const parts = text.split(/([【\[][HVC][】\]])/g)
+    const parts = cleanText.split(/([【\[][HVC][】\]])/g)
     return (
       <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
         {parts.map((part, i) => {
@@ -114,7 +168,7 @@ export function ResultCard({
             return (
               <span
                 key={i}
-                className="text-blue-600 dark:text-blue-400 font-bold mx-0.5"
+                className="text-blue-600/50 dark:text-blue-400/50 font-bold mx-0.5"
               >
                 {part}
               </span>
@@ -124,7 +178,7 @@ export function ResultCard({
             return (
               <span
                 key={i}
-                className="text-emerald-600 dark:text-emerald-400 font-bold mx-0.5"
+                className="text-blue-600/50 dark:text-blue-400/50 font-bold mx-0.5"
               >
                 {part}
               </span>
@@ -134,12 +188,14 @@ export function ResultCard({
             return (
               <span
                 key={i}
-                className="text-amber-600 dark:text-amber-400 font-bold mx-0.5"
+                className="text-blue-600/50 dark:text-blue-400/50 font-bold mx-0.5"
               >
                 {part}
               </span>
             )
           }
+          // Fix: Ensure regular text is rendered if it's not empty
+          if (!part) return null
           return (
             <span key={i} className="text-muted-foreground/90">
               {part}
@@ -154,8 +210,13 @@ export function ResultCard({
 
   const handleCopy = () => {
     if (!dmScript) return
-    // Remove tags for clipboard
-    const clean = dmScript.replace(/[【\[][HVC][】\]]/g, '')
+    // Remove tags AND newlines for clipboard to ensure single paragraph
+    const clean = dmScript
+      .replace(/\\n/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/[【\[][HVC][】\]]/g, '')
+      .trim()
     navigator.clipboard.writeText(clean)
     setIsCopied(true)
     setTimeout(() => setIsCopied(false), 2000)
@@ -223,48 +284,28 @@ export function ResultCard({
 
         {/* Right: Score & Assessment */}
         <div className="flex items-center gap-4 shrink-0">
-          <div className="flex flex-col items-end md:items-start gap-1">
-            <div className="hidden md:block text-sm font-bold text-muted-foreground uppercase tracking-wider font-mono">
-              {labels?.overallAssessment || 'Overall Assessment'}
-            </div>
+          <div className="flex flex-col items-center justify-center gap-0.5 min-h-[3.5rem]">
+            {/* Redesigned Header: Vertical Center Alignment */}
             <Badge
-              variant={score >= 80 ? 'default' : 'secondary'}
+              variant="outline"
               className={cn(
-                'text-base px-3 py-1',
+                'text-[10px] px-1.5 py-0.5 font-semibold border-0 uppercase tracking-wider',
                 score >= 80
-                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 border-emerald-500/20'
-                  : ''
+                  ? 'text-emerald-600/90 bg-emerald-50/80 dark:text-emerald-400 dark:bg-emerald-900/20'
+                  : score >= 60
+                  ? 'text-amber-600/90 bg-amber-50/80 dark:text-amber-400 dark:bg-amber-900/20'
+                  : 'text-red-600/90 bg-red-50/80 dark:text-red-400 dark:bg-red-900/20'
               )}
             >
-              {assessment}
+              {assessmentLabel}
             </Badge>
-          </div>
-
-          <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
-            <svg
-              className="w-full h-full transform -rotate-90"
-              viewBox="0 0 36 36"
+            <div
+              className={cn(
+                'text-3xl font-bold tracking-tight leading-none',
+                scoreColor
+              )}
             >
-              <path
-                className="text-muted/20"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-              />
-              <path
-                className={scoreColor}
-                strokeDasharray={`${score}, 100`}
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className={cn('text-lg font-bold', scoreColor)}>
-                {score}
-              </span>
+              {score}
             </div>
           </div>
         </div>
@@ -275,6 +316,34 @@ export function ResultCard({
         ref={scrollRef}
         className="flex-1 md:overflow-y-auto overflow-visible px-6 pb-20 md:pb-6 space-y-8 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent relative"
       >
+        {/* Expert Verdict Section - Enhanced UI */}
+        {expertVerdict && (
+          <div className="relative overflow-hidden bg-gradient-to-br from-muted/40 to-muted/10 rounded-xl p-5 border border-border/50 shadow-sm">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary/60 to-primary/20" />
+
+            {/* LampDesk Icon with lighting effect */}
+            <div className="absolute top-4 right-4 opacity-40 pointer-events-none select-none">
+              {/* Light cone effect - gradient simulating light beam */}
+              <div className="absolute top-[75px] right-[5px] w-32 h-64 bg-gradient-to-br from-yellow-500/30 via-yellow-500/15 to-transparent rounded-full blur-xl rotate-45 transform-gpu origin-top-right" />
+
+              {/* The Lamp Icon - Flipped horizontally to face left */}
+              <LampDesk className="w-12 h-12 text-primary/20 -scale-x-100" />
+            </div>
+
+            <div className="relative z-10 flex gap-3">
+              <Quote className="w-5 h-5 text-primary/70 shrink-0 mt-0.5 fill-primary/5" />
+              <div className="space-y-1.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-primary/80">
+                  {labels?.expertVerdict || 'Expert Verdict'}
+                </div>
+                <div className="text-sm leading-relaxed text-foreground/90 font-medium font-serif italic">
+                  "{expertVerdict}"
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Block A: Strengths (Highlights) */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -305,29 +374,54 @@ export function ResultCard({
           </div>
         </div>
 
-        {/* Block B: Weaknesses (Gaps) - Vertical Stack below Highlights */}
+        {/* Block B: Weaknesses (Gaps) - Enhanced Vertical Layout */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
             <Target className="w-4 h-4 text-amber-500" />
-            {labels?.gapsAndSuggestions || 'Gaps & Suggestions'}
+            {labels?.gapsAndSuggestions || 'Risks & Challenges'}
           </div>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {weaknesses.map((item: any, i: number) => (
               <div
                 key={i}
                 className="group relative pl-4 border-l-2 border-amber-500/20 hover:border-amber-500/50 transition-colors"
               >
-                <div className="font-medium text-sm text-foreground">
+                <div className="font-medium text-sm text-foreground mb-3">
                   {item.point}
                 </div>
-                {item.suggestion && (
-                  <div className="mt-2 flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">
-                    <span className="text-amber-500 font-bold text-[10px] border border-amber-500/30 px-1 rounded uppercase shrink-0 mt-0.5">
-                      {labels?.tip || 'Tip'}
-                    </span>
-                    {item.suggestion}
-                  </div>
-                )}
+
+                {/* Vertical Layout always, but rows inside for Desktop */}
+                <div className="space-y-3">
+                  {/* Evidence Block */}
+                  {item.evidence && (
+                    <div className="flex flex-col md:flex-row md:items-start md:gap-3 gap-1">
+                      <div className="shrink-0 flex items-center gap-1.5 md:mt-0.5 min-w-[4.5rem]">
+                        <div className="w-1 h-1 rounded-full bg-amber-500/50" />
+                        <span className="text-[10px] font-bold uppercase text-amber-600/80 tracking-wider">
+                          Evidence
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {item.evidence}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tip Block */}
+                  {item.tip && (
+                    <div className="flex flex-col md:flex-row md:items-start md:gap-3 gap-1">
+                      <div className="shrink-0 flex items-center gap-1.5 md:mt-0.5 min-w-[4.5rem]">
+                        <div className="w-1 h-1 rounded-full bg-emerald-500/50" />
+                        <span className="text-[10px] font-bold uppercase text-emerald-600/80 tracking-wider">
+                          Pro Tip
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {item.tip}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
             {weaknesses.length === 0 && (
@@ -337,6 +431,21 @@ export function ResultCard({
             )}
           </div>
         </div>
+
+        {/* Block C: Recommendations (New) */}
+        {recommendations.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              <Target className="w-4 h-4 text-blue-500" />
+              Recommendations
+            </div>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+              {recommendations.map((rec: string, i: number) => (
+                <li key={i}>{rec}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Smart Pitch Section */}
         {dmScript && (

@@ -139,7 +139,22 @@ const SCHEMAS_V2 = {
         description: "User's core weaknesses (to mitigate or prepare for)",
       },
       cover_letter_script: {
-        type: 'string',
+        type: 'object',
+        properties: {
+          h: {
+            type: 'string',
+            description: 'Hook: Opening to grab HR attention',
+          },
+          v: {
+            type: 'string',
+            description: 'Value: Core achievements addressing JD pain points',
+          },
+          c: {
+            type: 'string',
+            description: 'Call to Action: Guiding next steps',
+          },
+        },
+        required: ['h', 'v', 'c'],
         description:
           'A highly tailored 150-word cover letter script (H-V-C structure)',
       },
@@ -540,53 +555,125 @@ Raw JD Text:
   },
 
   // --- New Core Service Tasks (M8, M9) ---
+  // --- Core Business: Job Match Analysis (M9) ---
   job_match: {
     id: 'job_match',
-    name: 'Job Match Analysis',
+    name: 'Deep Job Match Analysis',
     description:
-      'Analyzes resume/JD fit, identifies strengths/weaknesses, and generates a script.',
-    systemPrompt: SYSTEM_BASE,
-    userPrompt: `Act as an expert career coach. Produce a strictly structured job match analysis and a human, concise outreach script based on the materials below.
+      'Simulates a senior recruiter perspective to analyze fit and generate high-conversion outreach scripts.',
+    systemPrompt: `You are an **Ex-Fortune 500 Recruiter and Career Strategist** with 20 years of experience. You understand the "unspoken rules" of hiring and can decode the true business pain points behind a JD.
+Your goal is not simple keyword matching, but serving as the user's **Personal Career Coach**, providing strategic guidance to help them win the offer.
 
-【RAG Knowledge Base (curated snippets: rules/frameworks/examples)】
+Core Analysis Logic:
+1.  **JD Decoding (Cut through the noise)**:
+    - Identify "Deal Breakers" (Education, Specific Hard Skills, YOE in specific industries). If these are missing, the score must drop significantly.
+    - Identify the "Core Pain Point" (Why is this role open? What problem needs solving?).
+    - Ignore generic fluff (e.g., "Good communication skills") unless backed by specific scenario requirements.
+
+2.  **Scoring Mechanism**:
+    - **High Match (85-100)**: Deal breakers met + Solves Core Pain Point + Scarce talent profile.
+    - **Medium Match (60-84)**: Hard skills met, but lacks specific industry context or soft skill evidence; OR indicates "Over-qualified" risk (flight risk).
+    - **Challenging (<60)**: Missing hard requirements (Education, Essential Tech Stack), even if the candidate is otherwise excellent.
+
+3.  **Outreach Script Strategy (No Robots)**:
+    - **Scenario**: This is a **Cold DM / Direct Message** to a recruiter/hiring manager.
+    - **Principle**: Recruiters skim messages. You must grab attention in the first sentence.
+    - **Forbidden**: Do NOT use "I hope this email finds you well," "I am interested in your company," or generic pleasantries.
+    - **Formula**: **The Hook** (Relevance) + **The Value Prop** (Evidence) + **Call to Action**.
+    - **Tone**: Professional, Confident, Peer-to-Peer (Not subordinate).`,
+
+    userPrompt: `Please perform an expert-level match analysis based on the following:
+
+【Job Description (Structured)】
 """
-{{rag_context}}
+{job_summary_json}
 """
 
-【User Resume (structured summary)】
+【Candidate Resume (Structured)】
 """
-{{resume_summary_json}}
-"""
-
-【User Detailed History (structured summary, optional)】
-"""
-{{detailed_resume_summary_json}}
+{resume_summary_json}
 """
 
-【Target Job (structured summary)】
+【Candidate Detailed History (Optional)】
 """
-{{job_summary_json}}
+{detailed_resume_summary_json}
 """
 
-Output requirements (must follow exactly):
-- Return a single JSON object following the given JSON Schema; no extra prose or Markdown.
-- 'match_score' MUST be a numeric value between 0 and 100.
-- 'overall_assessment' must be a short label: High/Moderate/Challenging Fit.
-- 'strengths': for each item, include the point, concrete evidence from the resume, and the related section (e.g., experience/skills/projects).
-- 'weaknesses': for each item, include the risk and a practical mitigation suggestion; leverage RAG rules first.
-- 'cover_letter_script' MUST be a single string (not an object). Tone: polite, confident, first-person, platform DM style (human, not robotic). Length: ≤120 words. Structure:
-  - Hook: 1 line that includes the target role and 2–4 JD keywords.
-  - Value: 1–2 lines that highlight 1–2 quantified outcomes aligned to JD must-haves.
-  - Close: 1 line with a succinct interest signal; do NOT propose/schedule calls.
-- Forbidden: greetings, self-introduction by name, calendly/meeting requests, long courtesy phrases.
-- Style: concise, professional, keyword-forward; avoid boilerplate; do not quote RAG verbatim, only distilled conclusions.`,
+【RAG Context (Rules/Examples)】
+"""
+{rag_context}
+"""
+
+Execute the following steps and return strictly JSON:
+
+1.  **match_score (0-100)**: Score based on the "Recruiter Logic" above. Penalize heavily for missing "Deal Breakers".
+2.  **overall_assessment**: Short, sharp, **Personal Coach tone** (use "You"). Don't just be nice; point out risks (e.g., "Job hopping history," "Over-qualified," "Industry mismatch"). Example: "Your technical skills are solid, but your frequent job changes might concern HR..."
+3.  **strengths / weaknesses**:
+    - **Point**: Be specific.
+    - **Evidence**: Quote specific metrics or projects from the resume (e.g., "Handled 1M+ concurrency" instead of "Good backend skills").
+    - **Tip** (Weakness only): One sentence actionable advice on how to address this gap in interview or resume.
+    - *Note*: If "Over-qualified", list this as a potential weakness (risk of retention).
+4.  **cover_letter_script**:
+    - Length: Under 150 words.
+    - Style: A high-conversion **Cold DM / Elevator Pitch**.
+    - Content: Do not list all skills. **Pick the top 1-2 "Killer Features" that solve the JD's specific pain point.**
+    - **Privacy**: Do NOT include candidate's real name or phone number in the script.
+    - Format: Clean paragraph(s), easy to read on mobile. Must use 【H】, 【V】, 【C】 tags.
+
+Strictly follow the Output Schema.`,
     variables: [
-      'rag_context',
+      'job_summary_json',
       'resume_summary_json',
       'detailed_resume_summary_json',
-      'job_summary_json',
+      'rag_context',
     ],
-    outputSchema: SCHEMAS_V2.JOB_MATCH,
+    outputSchema: {
+      type: 'object',
+      properties: {
+        match_score: { type: 'number', description: '0-100 Score' },
+        overall_assessment: {
+          type: 'string',
+          description: 'Concise, sharp expert assessment',
+        },
+        strengths: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              point: { type: 'string' },
+              evidence: { type: 'string' },
+              section: { type: 'string' },
+            },
+            required: ['point', 'evidence'],
+          },
+        },
+        weaknesses: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              point: { type: 'string' },
+              evidence: { type: 'string' },
+              tip: { type: 'string' },
+              section: { type: 'string' },
+            },
+            required: ['point', 'evidence', 'tip'],
+          },
+        },
+        cover_letter_script: {
+          type: 'string',
+          description: 'High-conversion Cold DM/Outreach script',
+        },
+        recommendations: { type: 'array', items: { type: 'string' } },
+      },
+      required: [
+        'match_score',
+        'overall_assessment',
+        'strengths',
+        'weaknesses',
+        'cover_letter_script',
+      ],
+    } as JsonSchema,
   },
   resume_customize: {
     id: 'resume_customize',

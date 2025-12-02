@@ -116,7 +116,10 @@ model Job {
   id             String          @id @default(cuid())
   serviceId      String          @unique @map("service_id")
   originalText   String?         @map("original_text")
+  // Deprecated: originalImage stored base64 string, causing performance issues.
+  // Use imageUrl instead.
   originalImage  String?         @map("original_image")
+  imageUrl       String?         @map("image_url")
   jobSummaryJson Json?           @map("job_summary_json")
   status         AsyncTaskStatus @default(PENDING)
   createdAt      DateTime        @default(now()) @map("created_at")

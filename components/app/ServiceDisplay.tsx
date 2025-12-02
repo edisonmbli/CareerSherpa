@@ -504,6 +504,7 @@ export function ServiceDisplay({
                   noHighlights: dict.workbench?.resultCard?.noHighlights,
                   noGaps: dict.workbench?.resultCard?.noGaps,
                   tip: dict.workbench?.resultCard?.tip,
+                  expertVerdict: dict.workbench?.resultCard?.expertVerdict,
                 }}
               />
             )}

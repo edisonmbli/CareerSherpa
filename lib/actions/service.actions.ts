@@ -42,8 +42,10 @@ export type GenerateInterviewTipsActionResult =
 
 export type SaveCustomizedResumeActionResult = { ok: true }
 
+import { uploadFile } from '@/lib/storage/upload'
+
 /**
- * 创建服务记录
+ * 创建服务（Service）并初始化相关任务（Job, Match等）
  * @param params - 包含 locale, jobText, jobImage 的参数对象
  * @param ctx - 包含 userId 的上下文对象
  * @returns 包含 ok, taskId, taskType, isFree 的结果对象
@@ -60,19 +62,50 @@ export const createServiceAction = withServerActionAuthWrite(
     if (params.jobText && params.jobText.length > MAX_TEXT_CHARS) {
       return { ok: false, error: 'job_text_too_long' }
     }
+
+    let imageUrl: string | undefined
+    // If jobImage provided (base64), upload it
     if (params.jobImage) {
       try {
         const dataUrl = String(params.jobImage)
         const comma = dataUrl.indexOf(',')
         const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl
-        const sizeBytes = Buffer.from(base64, 'base64').length
+        const buffer = Buffer.from(base64, 'base64')
+        const sizeBytes = buffer.length
         if (sizeBytes > MAX_IMAGE_BYTES) {
           return { ok: false, error: 'image_too_large' }
         }
-      } catch {
-        return { ok: false, error: 'image_too_large' }
+
+        // Create a File-like object or just pass buffer if uploadFile supports it?
+        // uploadFile expects File. In Node environment (Server Action), File might not be available or polyfilled.
+        // Let's check uploadFile implementation. It uses file.arrayBuffer().
+        // We can create a simple object that mimics File interface for uploadFile.
+        const filename = `job_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2)}.png` // Assume png or detect?
+        // Basic detection from header if present
+        const mimeMatch = dataUrl.match(/^data:(image\/[a-z]+);base64,/)
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/png'
+        const ext = mimeType ? mimeType.split('/')[1] : 'png'
+        const finalFilename = `job_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2)}.${ext}`
+
+        const fileMock = {
+          name: finalFilename,
+          type: mimeType,
+          size: sizeBytes,
+          arrayBuffer: async () => {
+            return new Uint8Array(buffer).buffer
+          },
+        } as unknown as File
+
+        imageUrl = await uploadFile(fileMock, finalFilename)
+      } catch (e) {
+        return { ok: false, error: 'image_upload_failed' }
       }
     }
+
     // 1. 获取最新简历
     const resume = await getLatestResume(userId)
     // 1.1 检查简历是否存在且已完成
@@ -94,11 +127,13 @@ export const createServiceAction = withServerActionAuthWrite(
       typeof crypto?.randomUUID === 'function'
         ? crypto.randomUUID()
         : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    // 6. 为服务创建工作（Job）记录，包含岗位文本或图片
+    // 6. 为服务创建工作（Job）记录，包含岗位文本或图片URL
+    // Pass imageUrl instead of originalImage (base64)
     const job = await createJobForService(
       svc.id,
       params.jobText,
-      params.jobImage
+      undefined, // originalImage deprecated
+      imageUrl
     )
     await markTimeline(svc.id, 'create_service_job_created')
     // 7. 确保匹配记录存在

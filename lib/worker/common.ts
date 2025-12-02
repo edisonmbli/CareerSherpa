@@ -236,16 +236,6 @@ export async function publishEvent(
     }
     const payloadStr = JSON.stringify(payloadObj)
     try {
-      if (process.env.NODE_ENV !== 'production') {
-        try {
-          console.info('publish_token_batch', {
-            channel: ch,
-            count: buf.tokens.length,
-          })
-          // dev-only log
-          // channel: ch, count: buf.tokens.length
-        } catch {}
-      }
       await redis.publish(ch, payloadStr)
     } catch {
       // swallow pubsub errors
@@ -253,15 +243,6 @@ export async function publishEvent(
     try {
       const streamKey = `${ch}:stream`
       await redis.xadd(streamKey, '*', { event: payloadStr as any })
-      if (process.env.NODE_ENV !== 'production') {
-        try {
-          console.info('publish_stream_xadd', {
-            streamKey,
-            type: 'token_batch',
-          })
-          // dev-only log
-        } catch {}
-      }
     } catch {
       // 忽略缓冲写入错误
     }
@@ -296,17 +277,6 @@ export async function publishEvent(
   await flush(channel)
 
   const payload = JSON.stringify(event)
-  if (process.env.NODE_ENV !== 'production') {
-    try {
-      const t = String((event as any)?.type || '')
-      console.info('publish_event', {
-        channel,
-        type: t,
-        status: (event as any)?.status,
-        taskId: (event as any)?.taskId,
-      })
-    } catch {}
-  }
   await redis.publish(channel, payload)
 
   // Audit event dispatch for observability（降低频次：仅记录关键事件，跳过 token/token_batch/debug）
@@ -345,15 +315,6 @@ export async function publishEvent(
     const t = String((event as any)?.type || '').toLowerCase()
     const isTerminal = t === 'done' || t === 'error'
     await redis.xadd(streamKey, '*', { event: payload as any })
-    if (process.env.NODE_ENV !== 'production') {
-      try {
-        console.info('publish_stream_xadd', {
-          streamKey,
-          type: t,
-          terminal: isTerminal,
-        })
-      } catch {}
-    }
     if (isTerminal) {
       const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
       const maxlen = Math.max(0, Number(ENV.STREAM_TRIM_MAXLEN || 0))

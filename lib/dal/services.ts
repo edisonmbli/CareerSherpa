@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import type {
+import {
   ServiceStep,
   AsyncTaskStatus,
   ExecutionStatus,
@@ -45,13 +45,15 @@ export async function getServiceIdsForMatch(serviceId: string) {
 export async function createJobForService(
   serviceId: string,
   originalText?: string,
-  originalImage?: string
+  originalImage?: string,
+  imageUrl?: string
 ) {
   return prisma.job.create({
     data: {
       serviceId,
       ...(originalText ? { originalText } : {}),
       ...(originalImage ? { originalImage } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
       status: 'PENDING' as AsyncTaskStatus,
     },
   })
@@ -268,12 +270,12 @@ export async function updateJobOriginalText(
   return prisma.job.update({ where: { serviceId }, data: { originalText } })
 }
 
-export async function getJobOriginalImageById(jobId: string) {
+export async function getJobOriginalImageById(id: string) {
   const job = await prisma.job.findUnique({
-    where: { id: jobId },
-    select: { originalImage: true },
+    where: { id },
+    select: { originalImage: true, imageUrl: true },
   })
-  return job?.originalImage ?? null
+  return job?.imageUrl || job?.originalImage
 }
 
 export async function updateServiceExecutionStatus(
@@ -324,6 +326,14 @@ export async function txMarkSummaryFailed(
   serviceId: string,
   failureCode?: FailureCode | null
 ) {
+  // Safe handling of failure code to ensure it's a valid enum or null
+  const validFailureCode =
+    failureCode && Object.values(FailureCode).includes(failureCode)
+      ? failureCode
+      : failureCode === ('llm_error' as any)
+      ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
+      : null
+
   return prisma.$transaction([
     prisma.job.update({
       where: { serviceId },
@@ -334,7 +344,7 @@ export async function txMarkSummaryFailed(
       data: {
         currentStatus: 'SUMMARY_FAILED' as any,
         lastUpdatedAt: new Date(),
-        failureCode: failureCode ?? null,
+        failureCode: validFailureCode,
       },
     }),
   ])
@@ -394,17 +404,25 @@ export async function txMarkMatchFailed(
   serviceId: string,
   failureCode?: FailureCode | null
 ) {
+  // Safe handling of failure code to ensure it's a valid enum or null
+  const validFailureCode =
+    failureCode && Object.values(FailureCode).includes(failureCode)
+      ? failureCode
+      : failureCode === ('llm_error' as any)
+      ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
+      : null
+
   return prisma.$transaction([
     prisma.match.update({
       where: { serviceId },
-      data: { status: 'FAILED' as any },
+      data: { status: AsyncTaskStatus.FAILED },
     }),
     prisma.service.update({
       where: { id: serviceId },
       data: {
-        currentStatus: 'MATCH_FAILED' as any,
+        currentStatus: ExecutionStatus.MATCH_FAILED,
         lastUpdatedAt: new Date(),
-        failureCode: failureCode ?? null,
+        failureCode: validFailureCode,
       },
     }),
   ])

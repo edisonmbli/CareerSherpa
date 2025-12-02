@@ -214,11 +214,14 @@ const jobMatchSchema = z.object({
     .array(
       z.object({
         point: z.string(),
-        suggestion: z.string(),
+        evidence: z.string(),
+        tip: z.string(), // actionable advice
+        section: z.string().optional(),
       })
     )
     .min(1),
   cover_letter_script: z.string().min(1),
+  recommendations: z.array(z.string()).optional(),
 })
 
 const resumeCustomizeSchema = z.object({
