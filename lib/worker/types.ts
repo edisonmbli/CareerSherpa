@@ -79,6 +79,16 @@ export const jobMatchVarsIds = z.object({
   executionSessionId: z.string().optional(),
 })
 
+export const resumeCustomizeVars = z.object({
+  serviceId: z.string().min(1),
+  wasPaid: z.boolean(),
+  cost: z.number(),
+  debitId: z.string().optional(),
+  tierOverride: paidTier,
+  prompt: z.string().optional(),
+  executionSessionId: z.string().optional(),
+})
+
 export const interviewPrepVars = z.object({
   interviewId: z.string().min(1),
   wasPaid: z.boolean(),
@@ -118,6 +128,11 @@ const w5 = z.object({
   templateId: z.literal('interview_prep'),
   variables: interviewPrepVars,
 })
+const w7 = z.object({
+  ...common,
+  templateId: z.literal('resume_customize'),
+  variables: resumeCustomizeVars,
+})
 
 export const workerBodySchema = z.discriminatedUnion('templateId', [
   w1,
@@ -126,11 +141,15 @@ export const workerBodySchema = z.discriminatedUnion('templateId', [
   w4,
   w5,
   w6,
+  w7,
 ])
 
 export type WorkerBody = z.infer<typeof workerBodySchema>
 export type ResumeSummaryVars = z.infer<typeof resumeSummaryVars>
 export type JobSummaryVars = z.infer<typeof jobSummaryVars>
 export type OcrExtractVars = z.infer<typeof ocrExtractVars>
-export type JobMatchVars = z.infer<typeof jobMatchVarsJson> | z.infer<typeof jobMatchVarsIds>
+export type JobMatchVars =
+  | z.infer<typeof jobMatchVarsJson>
+  | z.infer<typeof jobMatchVarsIds>
+export type ResumeCustomizeVars = z.infer<typeof resumeCustomizeVars>
 export type InterviewPrepVars = z.infer<typeof interviewPrepVars>

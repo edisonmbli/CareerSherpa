@@ -1,57 +1,12 @@
 import { WorkerStrategy, StrategyContext, ExecutionResult } from './interface'
-import {
-  setCustomizedResumeResult,
-  setInterviewTipsJson,
-} from '@/lib/dal/services'
-import { markTimeline } from '@/lib/observability/timeline'
+import { setInterviewTipsJson } from '@/lib/dal/services'
 import { AsyncTaskStatus } from '@prisma/client'
-import { recordRefund, markDebitSuccess } from '@/lib/dal/coinLedger'
+import {
+  recordRefund,
+  markDebitSuccess,
+  markDebitFailed,
+} from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
-
-export class CustomizeStrategy implements WorkerStrategy<any> {
-  templateId = 'resume_customize' as const
-
-  async prepareVars(variables: any, ctx: StrategyContext) {
-    // Currently no special fetching logic required, passed through
-    return variables
-  }
-
-  async writeResults(
-    execResult: ExecutionResult,
-    variables: any,
-    ctx: StrategyContext
-  ) {
-    const { serviceId, userId, requestId } = ctx
-    const dataObj = execResult.ok ? execResult.data || {} : {}
-    const md = dataObj?.markdown || dataObj?.customized_resume_markdown || ''
-    const ops = dataObj?.ops || null
-
-    try {
-      await setCustomizedResumeResult(
-        serviceId,
-        md || undefined,
-        ops || undefined,
-        execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
-      )
-    } catch (err) {
-      logError({
-        reqId: requestId,
-        route: 'worker/customize',
-        error: String(err),
-        phase: 'write_result',
-        serviceId,
-      })
-    }
-
-    await handleRefunds(
-      execResult,
-      variables,
-      serviceId,
-      userId,
-      'resume_customize'
-    )
-  }
-}
 
 export class InterviewStrategy implements WorkerStrategy<any> {
   templateId = 'interview_prep' as const
@@ -126,7 +81,7 @@ async function handleRefunds(
       /* best effort */
     }
     try {
-      await markDebitSuccess(debitId, execResult.usageLogId)
+      await markDebitFailed(debitId)
     } catch (e) {
       /* best effort */
     }

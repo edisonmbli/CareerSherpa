@@ -25,9 +25,13 @@ import { StepperProgress } from '@/components/workbench/StepperProgress'
 import { StatusConsole } from '@/components/workbench/StatusConsole'
 import { StreamPanel } from '@/components/workbench/StreamPanel'
 import { ResultCard } from '@/components/workbench/ResultCard'
-import { Coins } from 'lucide-react'
+import { Coins, Loader2 } from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { Progress } from '@/components/ui/progress'
+
+import { StepCustomize } from '@/components/workbench/StepCustomize'
+import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
 
 export function ServiceDisplay({
   initialService,
@@ -61,6 +65,13 @@ export function ServiceDisplay({
     matchResult,
   } = useWorkbenchStore()
 
+  // Auto-refresh when COMPLETED to sync server state
+  useEffect(() => {
+    if (storeStatus === 'COMPLETED' || storeStatus === 'MATCH_COMPLETED') {
+      router.refresh()
+    }
+  }, [storeStatus, router])
+
   // Initialize store status from server state to ensure UI consistency
   useEffect(() => {
     if (initialService?.currentStatus) {
@@ -73,10 +84,16 @@ export function ServiceDisplay({
       else if (is === 'SUMMARY_COMPLETED') mapped = 'SUMMARY_COMPLETED'
       else if (is === 'MATCH_PENDING') mapped = 'MATCH_PENDING'
       else if (is === 'MATCH_STREAMING') mapped = 'MATCH_STREAMING'
-      else if (is === 'MATCH_COMPLETED') mapped = 'COMPLETED'
+      else if (is === 'MATCH_COMPLETED') mapped = 'MATCH_COMPLETED'
       else if (is === 'MATCH_FAILED') mapped = 'MATCH_FAILED'
       else if (is === 'SUMMARY_FAILED') mapped = 'SUMMARY_FAILED'
       else if (is === 'OCR_FAILED') mapped = 'OCR_FAILED'
+      else if (is === 'CUSTOMIZE_PENDING') mapped = 'CUSTOMIZE_PENDING'
+      else if (is === 'CUSTOMIZE_FAILED') mapped = 'CUSTOMIZE_FAILED'
+      else if (is === 'CUSTOMIZE_COMPLETED') mapped = 'CUSTOMIZE_COMPLETED'
+      else if (is === 'INTERVIEW_PENDING') mapped = 'INTERVIEW_PENDING'
+      else if (is === 'INTERVIEW_FAILED') mapped = 'INTERVIEW_FAILED'
+      else if (is === 'INTERVIEW_COMPLETED') mapped = 'INTERVIEW_COMPLETED'
 
       // Only update if store is IDLE or service changed, to avoid overwriting active state
       const currentStoreId = useWorkbenchStore.getState().currentServiceId
@@ -113,24 +130,42 @@ export function ServiceDisplay({
     }
   }, [initialService, startTask, dict?.workbench?.statusText])
 
-  // Auto-refresh when COMPLETED to sync server state
-  useEffect(() => {
-    if (storeStatus === 'COMPLETED') {
-      router.refresh()
-    }
-  }, [storeStatus, router])
-
   // Local state
   const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
     'match'
   )
   const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
+  const [isStarting, setIsStarting] = useState(false)
   const streamRef = useRef<HTMLDivElement>(null)
 
   // Derived state
   const serviceId = initialService?.id
-  const customizeStatus = initialService?.customizedResume?.status || 'PENDING'
+
+  // Use store status or isStarting to prevent flashing "Ready" state
+  const customizeStatus =
+    storeStatus === 'CUSTOMIZE_PENDING' || isStarting
+      ? 'PENDING'
+      : initialService?.customizedResume?.status || 'IDLE'
+
   const interviewStatus = initialService?.interview?.status || 'PENDING'
+
+  // Polling for customize status - REMOVED per user request
+  // useEffect(() => {
+  //   let interval: NodeJS.Timeout
+  //   if (customizeStatus === 'PENDING' || isStarting) {
+  //     interval = setInterval(() => {
+  //       router.refresh()
+  //     }, 3000)
+  //   }
+  //   return () => clearInterval(interval)
+  // }, [customizeStatus, isStarting, router])
+
+  // Reset isStarting when confirmed pending
+  useEffect(() => {
+    if (customizeStatus === 'PENDING') {
+      setIsStarting(false)
+    }
+  }, [customizeStatus])
 
   // Parse match result
   const matchJson = initialService?.match?.matchSummaryJson
@@ -156,25 +191,45 @@ export function ServiceDisplay({
   }, [initialService, matchTaskId, serviceId])
 
   // Restore SSE
+  // Use current taskId if available, else matchTaskId
+  const currentTaskId = initialService?.taskId || matchTaskId
+
   useSseStream(
     userId,
     serviceId,
-    matchTaskId || '',
+    currentTaskId || '',
     status === 'COMPLETED' ||
+      status === 'MATCH_COMPLETED' ||
+      status === 'CUSTOMIZE_COMPLETED' ||
+      status === 'INTERVIEW_COMPLETED' ||
       status === 'FAILED' ||
       status === 'OCR_FAILED' ||
       status === 'SUMMARY_FAILED' ||
-      status === 'MATCH_FAILED'
+      status === 'MATCH_FAILED' ||
+      status === 'CUSTOMIZE_FAILED' ||
+      status === 'INTERVIEW_FAILED'
   )
 
   // Handlers
   const onCustomize = () => {
+    setIsStarting(true)
     startTransition(async () => {
       const res = await customizeResumeAction({ serviceId, locale })
+      console.log('[Frontend] customizeResumeAction result:', res)
       if (res?.ok) {
+        if (res.executionSessionId) {
+          const newTaskId = `match_${serviceId}_${String(
+            res.executionSessionId
+          )}`
+          console.log('[Frontend] Setting matchTaskId to:', newTaskId)
+          setMatchTaskId(newTaskId)
+        }
         setTabValue('customize')
+        // Optimistically set status to CUSTOMIZE_PENDING
+        useWorkbenchStore.getState().setStatus('CUSTOMIZE_PENDING')
         router.refresh()
       } else {
+        setIsStarting(false)
         toast.error(
           dict.workbench.customize.createFailed ||
             'Failed to start customization'
@@ -212,9 +267,20 @@ export function ServiceDisplay({
     })
   }
 
-  // Refresh page when status becomes COMPLETED to ensure data consistency
+  // Refresh page when status becomes COMPLETED or FAILED to ensure data consistency
   useEffect(() => {
-    if (status === 'COMPLETED') {
+    if (
+      status === 'COMPLETED' ||
+      status === 'MATCH_COMPLETED' ||
+      status === 'CUSTOMIZE_COMPLETED' ||
+      status === 'INTERVIEW_COMPLETED' ||
+      status === 'FAILED' ||
+      status === 'MATCH_FAILED' ||
+      status === 'SUMMARY_FAILED' ||
+      status === 'OCR_FAILED' ||
+      status === 'CUSTOMIZE_FAILED' ||
+      status === 'INTERVIEW_FAILED'
+    ) {
       router.refresh()
     }
   }, [status, router])
@@ -222,7 +288,11 @@ export function ServiceDisplay({
   // Parse streaming response into live object
   const [matchLive, setMatchLive] = useState<any>(null)
   useEffect(() => {
-    if (status === 'COMPLETED' || status === 'MATCH_STREAMING') {
+    if (
+      status === 'COMPLETED' ||
+      status === 'MATCH_COMPLETED' ||
+      status === 'MATCH_STREAMING'
+    ) {
       try {
         let txt = String(streamingResponse || '')
         // Strip markdown code blocks if present
@@ -256,9 +326,36 @@ export function ServiceDisplay({
   const maxUnlockedStep = (() => {
     const customizeDone = String(customizeStatus).toUpperCase() === 'COMPLETED'
     if (customizeDone) return 3
+    if (status === 'COMPLETED' || status === 'MATCH_COMPLETED') return 2
     return 1
   })()
   const statusMessage = (() => {
+    if (tabValue === 'customize') {
+      if (customizeStatus === 'PENDING') {
+        return (
+          dict.workbench?.statusConsole?.customizing || 'AI is customizing...'
+        )
+      }
+      if (customizeStatus === 'FAILED') {
+        return (
+          dict.workbench?.statusConsole?.customizeFailed ||
+          dict.workbench?.statusText?.failed ||
+          'Customization Failed'
+        )
+      }
+      if (customizeStatus === 'COMPLETED') {
+        return (
+          dict.workbench?.statusConsole?.customizeCompleted ||
+          dict.workbench?.statusText?.success ||
+          'Customization Completed'
+        )
+      }
+    }
+    if (tabValue === 'interview') {
+      if (interviewStatus === 'PENDING') return 'Generating Interview Tips...'
+      if (interviewStatus === 'COMPLETED') return 'Interview Tips Generated'
+    }
+
     const stext = dict.workbench?.statusText || {}
     if (statusDetail) {
       const key = String(statusDetail)
@@ -312,7 +409,7 @@ export function ServiceDisplay({
         dict.workbench?.statusConsole?.ocrCompleted ||
         'OCR Extraction Completed'
       )
-    if (status === 'COMPLETED')
+    if (status === 'COMPLETED' || status === 'MATCH_COMPLETED')
       return (
         dict.workbench?.statusConsole?.matchCompleted ||
         'Match Analysis Completed'
@@ -332,14 +429,31 @@ export function ServiceDisplay({
     return stext.idle || 'Ready'
   })()
   const progressValue = (() => {
+    if (tabValue === 'customize') {
+      if (customizeStatus === 'PENDING') return 66
+      if (customizeStatus === 'COMPLETED') return 100
+      return 0
+    }
+    if (tabValue === 'interview') {
+      if (interviewStatus === 'PENDING') return 66
+      if (interviewStatus === 'COMPLETED') return 100
+      return 0
+    }
+
     if (status === 'OCR_PENDING') return 33
     if (status === 'OCR_COMPLETED') return 33
     if (status === 'SUMMARY_PENDING') return 66
     if (status === 'SUMMARY_COMPLETED') return 66
     if (status === 'MATCH_PENDING' || status === 'MATCH_STREAMING') return 80
-    if (status === 'COMPLETED') return 100
+    if (status === 'COMPLETED' || status === 'MATCH_COMPLETED') return 100
     return 0
   })()
+  const displayCost = (() => {
+    if (tabValue === 'customize') return getTaskCost('resume_customize')
+    if (tabValue === 'interview') return getTaskCost('interview_prep')
+    return getTaskCost('job_match')
+  })()
+
   const tier: 'free' | 'paid' =
     tierOverride ?? ((quotaBalance ?? 0) <= 0 ? 'free' : 'paid')
   const lastUpdated =
@@ -405,14 +519,17 @@ export function ServiceDisplay({
           status === 'FAILED' ||
           status === 'OCR_FAILED' ||
           status === 'SUMMARY_FAILED' ||
-          status === 'MATCH_FAILED'
+          status === 'MATCH_FAILED' ||
+          (tabValue === 'customize' && customizeStatus === 'FAILED')
             ? 'error'
-            : status === 'COMPLETED'
+            : (status === 'COMPLETED' || status === 'MATCH_COMPLETED') &&
+              (tabValue !== 'customize' || customizeStatus === 'COMPLETED')
             ? 'completed'
             : status === 'MATCH_PENDING' ||
               status === 'MATCH_STREAMING' ||
               status === 'OCR_PENDING' ||
-              status === 'SUMMARY_PENDING'
+              status === 'SUMMARY_PENDING' ||
+              customizeStatus === 'PENDING'
             ? 'streaming'
             : 'idle'
         }
@@ -421,7 +538,7 @@ export function ServiceDisplay({
         isConnected={isConnected}
         lastUpdated={lastUpdated ? new Date(lastUpdated) : null}
         tier={tier}
-        cost={lastCost || 0}
+        cost={displayCost}
         errorMessage={errorMessage || undefined}
       />
 
@@ -472,7 +589,10 @@ export function ServiceDisplay({
               />
             </div>
           )}
-          {(status === 'COMPLETED' || matchResult || matchParsed) &&
+          {(status === 'COMPLETED' ||
+            status === 'MATCH_COMPLETED' ||
+            matchResult ||
+            matchParsed) &&
             !(
               status === 'MATCH_PENDING' ||
               status === 'MATCH_STREAMING' ||
@@ -563,68 +683,52 @@ export function ServiceDisplay({
           )}
         </TabsContent>
 
-        <TabsContent value="customize">
-          {customizeStatus === 'COMPLETED' ? (
-            <div className="space-y-6">
-              <MarkdownEditor
-                initialContent={
-                  initialService?.customizedResume?.markdownText || ''
-                }
-                labels={{
-                  save: dict.workbench.customize.saveButton,
-                  export: dict.workbench.customize.exportPdf,
-                  editTab: dict.workbench.customize.editTab,
-                  previewTab: dict.workbench.customize.previewTab,
-                  templateLabel: dict.workbench.customize.templateLabel,
-                }}
-                onSave={async (md) => {
-                  const res = await saveCustomizedResumeAction({
-                    serviceId,
-                    markdown: md,
-                  })
-                  if (res?.ok)
-                    toast.success(dict.workbench.customize.saveSuccess)
-                  else toast.error(dict.workbench.customize.saveFailed)
-                }}
-                onExport={async () => {}}
-              />
-              {Array.isArray(initialService?.customizedResume?.opsJson) &&
-                initialService.customizedResume.opsJson.length > 0 && (
-                  <AppCard>
-                    <AppCardHeader>
-                      <AppCardTitle>
-                        {dict.workbench.customize.diffTitle}
-                      </AppCardTitle>
-                    </AppCardHeader>
-                    <AppCardContent>
-                      <ul className="space-y-3">
-                        {initialService.customizedResume.opsJson
-                          .filter((op: any) => op.type === 'rewrite-lite')
-                          .map((op: any, i: number) => (
-                            <li key={i} className="text-sm">
-                              <div className="text-muted-foreground">
-                                原句：
-                              </div>
-                              <div className="whitespace-pre-wrap">
-                                {String(op.original)}
-                              </div>
-                              <div className="text-muted-foreground mt-2">
-                                改句：
-                              </div>
-                              <div className="whitespace-pre-wrap">
-                                {String(op.revised)}
-                              </div>
-                            </li>
-                          ))}
-                      </ul>
-                    </AppCardContent>
-                  </AppCard>
-                )}
-            </div>
+        <TabsContent value="customize" className="flex-1 flex flex-col min-h-0">
+          {customizeStatus === 'COMPLETED' &&
+          initialService?.customizedResume?.customizedResumeJson ? (
+            <StepCustomize
+              serviceId={initialService.id}
+              initialData={
+                initialService.customizedResume.editedResumeJson ||
+                initialService.customizedResume.customizedResumeJson
+              }
+              initialConfig={
+                initialService.customizedResume.sectionConfig || undefined
+              }
+              originalData={
+                initialService.customizedResume.customizedResumeJson ||
+                undefined
+              }
+            />
           ) : (
-            <div className="text-sm text-muted-foreground">
-              {dict.workbench.toast.lockedTitle}
-            </div>
+            <>
+              {customizeStatus === 'PENDING' || isStarting ? (
+                <BatchProgressPanel
+                  title={
+                    dict.workbench?.statusText?.analyzing ||
+                    'AI is analyzing...'
+                  }
+                  description={
+                    dict.workbench?.statusText?.analyzingDesc ||
+                    'Analyzing your profile against the JD and applying professional resume writing strategies. This usually takes 30-60 seconds.'
+                  }
+                  progress={66}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-lg font-semibold">
+                      {dict.workbench?.statusText?.readyToCustomize ||
+                        'Ready to Customize'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                      {dict.workbench?.statusText?.readyToCustomizeDesc ||
+                        'Click "Start Customization" below to generate a tailored resume based on the job description.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -700,16 +804,20 @@ export function ServiceDisplay({
         )}
       >
         <div className="flex items-center gap-3 relative z-50">
-          {(tabValue === 'match' || tabValue === 'customize') &&
-            String(customizeStatus).toUpperCase() !== 'COMPLETED' && (
-              <Button
-                onClick={onCustomize}
-                disabled={isPending || status !== 'COMPLETED'}
-                aria-label={dict.workbench?.customize?.start}
-              >
-                {dict.workbench?.customize?.start}
-              </Button>
-            )}
+          {(tabValue === 'match' || tabValue === 'customize') && (
+            <Button
+              onClick={onCustomize}
+              disabled={
+                isPending ||
+                (status !== 'COMPLETED' && status !== 'MATCH_COMPLETED') ||
+                customizeStatus === 'PENDING' ||
+                customizeStatus === 'COMPLETED'
+              }
+              aria-label={dict.workbench?.customize?.start}
+            >
+              {dict.workbench?.customize?.start}
+            </Button>
+          )}
           {tabValue === 'interview' &&
             String(interviewStatus).toUpperCase() !== 'COMPLETED' && (
               <Button

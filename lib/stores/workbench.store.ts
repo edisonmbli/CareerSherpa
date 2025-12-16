@@ -13,8 +13,15 @@ export type WorkbenchStatus =
   | 'MATCH_PENDING'
   | 'MATCH_STREAMING'
   | 'MATCH_FAILED'
+  | 'MATCH_COMPLETED'
   | 'COMPLETED'
   | 'FAILED'
+  | 'CUSTOMIZE_PENDING'
+  | 'CUSTOMIZE_FAILED'
+  | 'CUSTOMIZE_COMPLETED'
+  | 'INTERVIEW_PENDING'
+  | 'INTERVIEW_FAILED'
+  | 'INTERVIEW_COMPLETED'
 
 const sseEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('token'), text: z.string().optional() }),
@@ -40,6 +47,9 @@ const sseEventSchema = z.discriminatedUnion('type', [
         'MATCH_FAILED',
         'SUMMARY_COMPLETED',
         'SUMMARY_FAILED',
+        'CUSTOMIZE_PENDING',
+        'CUSTOMIZE_COMPLETED',
+        'CUSTOMIZE_FAILED',
       ])
       .optional(),
     code: z
@@ -50,6 +60,9 @@ const sseEventSchema = z.discriminatedUnion('type', [
         'match_completed',
         'match_failed',
         'summary_failed',
+        'customize_pending',
+        'customize_completed',
+        'customize_failed',
       ])
       .optional(),
     failureCode: z.string().optional(),
@@ -205,6 +218,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         else if (s === 'OCR_PENDING') nextStatus = 'OCR_PENDING'
         else if (s === 'OCR_COMPLETED') nextStatus = 'OCR_COMPLETED'
         else if (s === 'MATCH_PENDING') nextStatus = 'MATCH_PENDING'
+        else if (s === 'CUSTOMIZE_PENDING') nextStatus = 'CUSTOMIZE_PENDING'
+        else if (s === 'CUSTOMIZE_COMPLETED') nextStatus = 'CUSTOMIZE_COMPLETED'
+        else if (s === 'CUSTOMIZE_FAILED') nextStatus = 'CUSTOMIZE_FAILED'
 
         if (nextStatus) {
           set({ status: nextStatus, statusDetail: e.code })

@@ -152,7 +152,7 @@ export function StatusConsole({
                 : dict?.workbench?.statusConsole?.free || 'FREE'}
             </Badge>
           )}
-          {cost > 0 && (
+          {cost > 0 && status !== 'error' && (
             <Badge variant="secondary" className="gap-1.5 font-mono text-xs">
               <Coins className="w-3 h-3 text-yellow-500" />
               <span>-{cost}</span>

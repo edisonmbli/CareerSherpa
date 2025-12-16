@@ -69,7 +69,11 @@ export function LedgerGroupList({
   for (const it of items) {
     if (it.type === 'SERVICE_DEBIT') {
       const children = refundsByRelated[it.id] || []
-      groups.push({ parent: it, children })
+      // Deduplicate children by ID to avoid double display if API returns duplicates
+      const uniqueChildren = Array.from(
+        new Map(children.map((c) => [c.id, c])).values()
+      )
+      groups.push({ parent: it, children: uniqueChildren })
     } else if (!(it.type === 'FAILURE_REFUND' && matchedRefundIds.has(it.id))) {
       groups.push({ parent: it, children: [] })
     }
@@ -87,8 +91,8 @@ export function LedgerGroupList({
   })
 
   function statusView(it: LedgerItem) {
-    const success = it.usageSuccess === true
-    const failed = it.usageSuccess === false
+    const failed = it.status === 'FAILED' || it.usageSuccess === false
+    const success = !failed && (it.status === 'SUCCESS' || it.usageSuccess === true)
     const label = success
       ? dict.status.SUCCESS
       : failed
@@ -117,12 +121,23 @@ export function LedgerGroupList({
 
   function serviceLabel(it: LedgerItem) {
     const rawKey = String(it.templateId || '')
-    const key = rawKey === 'job_summary' ? 'job_match' : rawKey
+    const key =
+      rawKey === 'job_summary' || rawKey === 'ocr_extract'
+        ? 'job_match'
+        : rawKey
     const labelLong = dict.templates[key] || rawKey || '-'
     const labelShort = dict.templatesShort?.[key] || labelLong
-    return it.serviceId ? (
+
+    // For refund items, try to find the original serviceId from related debit if current serviceId is missing
+    const targetServiceId =
+      it.serviceId ||
+      (it.type === 'FAILURE_REFUND' && it.relatedId
+        ? items.find((i) => i.id === it.relatedId)?.serviceId
+        : null)
+
+    return targetServiceId ? (
       <Link
-        href={`/${locale}/workbench/${it.serviceId}`}
+        href={`/${locale}/workbench/${targetServiceId}`}
         className="underline underline-offset-2 text-muted-foreground"
       >
         <span className="sm:hidden truncate">{labelShort}</span>

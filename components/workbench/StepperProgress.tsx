@@ -51,8 +51,8 @@ export function StepperProgress({
               >
                 <span className="flex items-center">
                   {isCompleted ? (
-                    <div className="h-6 w-6 rounded-full bg-primary/15 border-2 border-primary flex items-center justify-center">
-                      <span className="text-[10px] font-mono text-primary-foreground">
+                    <div className="h-6 w-6 rounded-full bg-background border-2 border-muted flex items-center justify-center group-hover:border-primary transition-colors">
+                      <span className="text-[10px] font-mono text-muted-foreground group-hover:text-primary transition-colors">
                         {step.id}
                       </span>
                     </div>

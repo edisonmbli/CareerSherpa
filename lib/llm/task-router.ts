@@ -91,7 +91,7 @@ const ROUTING_TABLE: Partial<
   // --- M9 服务流 (Batch) ---
   resume_customize: {
     paid: {
-      modelId: MODEL.DEEPSEEK_CHAT,
+      modelId: MODEL.DEEPSEEK_REASONER,
       queueId: QueueId.PAID_BATCH,
       isStream: false,
     },
@@ -147,7 +147,8 @@ export const isServiceScoped = (t: TaskTemplateId): boolean => {
     t === 'job_summary' ||
     t === 'job_match' ||
     t === 'resume_customize' ||
-    t === 'interview_prep'
+    t === 'interview_prep' ||
+    t === 'ocr_extract'
   )
 }
 

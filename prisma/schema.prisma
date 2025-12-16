@@ -11,21 +11,20 @@ datasource db {
 }
 
 model users_sync {
-  id               String           @id @db.Text
-  name             String?          @db.Text
-  email            String?          @db.Text
-  created_at       DateTime?        @db.Timestamptz(6)
-  updated_at       DateTime?        @db.Timestamptz(6)
-  deleted_at       DateTime?        @db.Timestamptz(6)
-
-  // 关系字段（从其他模型指向此表的外键）
+  raw_json         Json
+  id               String            @id @default(dbgenerated("(raw_json ->> 'id'::text)"))
+  name             String?           @default(dbgenerated("(raw_json ->> 'display_name'::text)"))
+  email            String?           @default(dbgenerated("(raw_json ->> 'primary_email'::text)"))
+  created_at       DateTime?         @default(dbgenerated("to_timestamp((trunc((((raw_json ->> 'signed_up_at_millis'::text))::bigint)::double precision) / (1000)::double precision))")) @db.Timestamptz(6)
+  updated_at       DateTime?         @db.Timestamptz(6)
+  deleted_at       DateTime?         @db.Timestamptz(6)
   analyticsEvents  AnalyticsEvent[]
+  coinTransactions CoinTransaction[]
   detailedResumes  DetailedResume?
   paymentWaitlists PaymentWaitlist?
   quota            Quota?
   resumes          Resume?
   services         Service[]
-  coinTransactions CoinTransaction[]
 
   @@index([deleted_at])
   @@map("users_sync")
@@ -86,25 +85,25 @@ model DetailedResume {
 }
 
 model Service {
-  id               String            @id @default(cuid())
-  userId           String            @map("user_id")
-  resumeId         String            @map("resume_id")
-  detailedResumeId String?           @map("detailed_resume_id")
-  currentStep      ServiceStep       @default(MATCH) @map("current_step")
-  currentStatus    ExecutionStatus   @default(IDLE) @map("current_status")
-  failureCode      FailureCode?      @map("failure_code")
-  lastUpdatedAt    DateTime?         @map("last_updated_at")
-  executionSessionId String?         @map("execution_session_id")
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at")
-  customizedResume CustomizedResume?
-  interview        Interview?
-  job              Job?
-  match            Match?
-  user             users_sync        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "service_user_id_fkey")
-  detailedResume   DetailedResume?   @relation(fields: [detailedResumeId], references: [id])
-  resume           Resume            @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-  coinTransactions CoinTransaction[]
+  id                 String            @id @default(cuid())
+  userId             String            @map("user_id")
+  resumeId           String            @map("resume_id")
+  detailedResumeId   String?           @map("detailed_resume_id")
+  currentStep        ServiceStep       @default(MATCH) @map("current_step")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at")
+  currentStatus      ExecutionStatus   @default(IDLE) @map("current_status")
+  executionSessionId String?           @map("execution_session_id")
+  failureCode        FailureCode?      @map("failure_code")
+  lastUpdatedAt      DateTime?         @map("last_updated_at")
+  coinTransactions   CoinTransaction[]
+  customizedResume   CustomizedResume?
+  interview          Interview?
+  job                Job?
+  match              Match?
+  user               users_sync        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "service_user_id_fkey")
+  detailedResume     DetailedResume?   @relation(fields: [detailedResumeId], references: [id])
+  resume             Resume            @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
   @@index([userId(sort: Desc), createdAt(sort: Desc)])
   @@index([currentStatus, updatedAt(sort: Desc)])
@@ -116,14 +115,12 @@ model Job {
   id             String          @id @default(cuid())
   serviceId      String          @unique @map("service_id")
   originalText   String?         @map("original_text")
-  // Deprecated: originalImage stored base64 string, causing performance issues.
-  // Use imageUrl instead.
   originalImage  String?         @map("original_image")
-  imageUrl       String?         @map("image_url")
   jobSummaryJson Json?           @map("job_summary_json")
   status         AsyncTaskStatus @default(PENDING)
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+  imageUrl       String?         @map("image_url")
   service        Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("jobs")
@@ -144,15 +141,19 @@ model Match {
 }
 
 model CustomizedResume {
-  id              String          @id @default(cuid())
-  serviceId       String          @unique @map("service_id")
-  markdownText    String?         @map("markdown_text")
-  opsJson         Json?           @map("ops_json")
-  degradeReason   String?         @map("degrade_reason")
-  status          AsyncTaskStatus @default(PENDING)
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
-  service         Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  id                   String          @id @default(cuid())
+  serviceId            String          @unique @map("service_id")
+  status               AsyncTaskStatus @default(PENDING)
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @default(now()) @updatedAt @map("updated_at")
+  degradeReason        String?         @map("degrade_reason")
+  markdown_text        String?
+  ops_json             Json?
+  optimizeSuggestion   String?         @map("optimize_suggestion")
+  customizedResumeJson Json?           @map("customized_resume_json")
+  editedResumeJson     Json?           @map("edited_resume_json")
+  sectionConfig        Json?           @map("section_config")
+  service              Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("customized_resumes")
   @@schema("public")
@@ -173,18 +174,15 @@ model Interview {
 
 model KnowledgeEntry {
   id        String                 @id @default(cuid())
-  title     String?                // H3 标题
-  content   String                 // 分块后的文本
-
-  // 根据 Zhipu 官方文档，默认维度为 2048
-  embedding Unsupported("vector(2048)")?
-
-  lang      String                 // "zh" or "en"
-  source    String?                // e.g., "求职干货宝典_rag_zh.md"
-  category  String?                // "cv_customize", "job_match", "interview_strategies" etc.
+  content   String
+  embedding Unsupported("vector")?
+  lang      String
+  source    String?
+  category  String?
   isPublic  Boolean                @default(true) @map("is_public")
   createdAt DateTime               @default(now()) @map("created_at")
   updatedAt DateTime               @updatedAt @map("updated_at")
+  title     String?
 
   @@index([lang, category, isPublic])
   @@map("knowledge_entries")
@@ -206,32 +204,23 @@ model AnalyticsEvent {
 }
 
 model LlmUsageLog {
-  id             String   @id @default(cuid())
-
-  // Associations
-  userId         String?  @map("user_id")
-  serviceId      String?  @map("service_id")
-  taskTemplateId String   @map("task_template_id")
-
-  // Provider & Model
+  id             String       @id @default(cuid())
+  modelName      String?      @map("model_name")
+  inputTokens    Int          @default(0) @map("input_tokens")
+  outputTokens   Int          @default(0) @map("output_tokens")
+  cost           Float?       @default(0)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  errorMessage   String?      @map("error_message")
+  isStream       Boolean      @default(false) @map("is_stream")
+  isSuccess      Boolean      @default(true) @map("is_success")
+  latencyMs      Int          @map("latency_ms")
+  modelId        String       @map("model_id")
   provider       String
-  modelId        String   @map("model_id")
-  modelName      String?  @map("model_name")
-
-  // Performance & Cost
-  inputTokens    Int      @default(0) @map("input_tokens")
-  outputTokens   Int      @default(0) @map("output_tokens")
-  totalTokens    Int      @default(0) @map("total_tokens")
-  latencyMs      Int      @map("latency_ms")
-  cost           Float?   @default(0)
-
-  // Status
-  isStream       Boolean  @default(false) @map("is_stream")
-  isSuccess      Boolean  @default(true) @map("is_success")
-  errorMessage   String?  @map("error_message")
+  serviceId      String?      @map("service_id")
+  taskTemplateId String       @map("task_template_id")
+  totalTokens    Int          @default(0) @map("total_tokens")
+  userId         String?      @map("user_id")
   errorCode      FailureCode? @map("error_code")
-
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([taskTemplateId, createdAt(sort: Desc)])
@@ -241,29 +230,28 @@ model LlmUsageLog {
 }
 
 model CoinTransaction {
-  id            String      @id @default(cuid())
-  userId        String      @map("user_id")
-  type          CoinTxnType
-  status        CoinTxnStatus
-  delta         Int         @map("delta")
-  balanceAfter  Int         @map("balance_after")
-  serviceId     String?     @map("service_id")
-  taskId        String?     @map("task_id")
-  templateId    String?     @map("template_id")
-  messageId     String?     @map("message_id")
-  idemKey       String?     @map("idem_key")
-  relatedId     String?     @map("related_id")
-  metadata      Json?
-  createdAt     DateTime    @default(now()) @map("created_at")
-  user          users_sync  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  service       Service?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  related       CoinTransaction? @relation("RelatedLedger", fields: [relatedId], references: [id], onDelete: SetNull)
-  refunds       CoinTransaction[] @relation("RelatedLedger")
+  id           String            @id @default(cuid())
+  userId       String            @map("user_id")
+  type         CoinTxnType
+  status       CoinTxnStatus
+  delta        Int               @map("delta")
+  balanceAfter Int               @map("balance_after")
+  serviceId    String?           @map("service_id")
+  taskId       String?           @map("task_id")
+  templateId   String?           @map("template_id")
+  messageId    String?           @map("message_id")
+  idemKey      String?           @unique @map("idem_key")
+  relatedId    String?           @map("related_id")
+  metadata     Json?
+  createdAt    DateTime          @default(now()) @map("created_at")
+  related      CoinTransaction?  @relation("RelatedLedger", fields: [relatedId], references: [id])
+  refunds      CoinTransaction[] @relation("RelatedLedger")
+  service      Service?          @relation(fields: [serviceId], references: [id])
+  user         users_sync        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([taskId, createdAt(sort: Desc)])
   @@index([serviceId, createdAt(sort: Desc)])
-  @@unique([idemKey])
   @@map("coin_transactions")
   @@schema("public")
 }
@@ -287,9 +275,6 @@ enum ServiceStep {
 
 enum ExecutionStatus {
   IDLE
-  OCR_PENDING
-  OCR_FAILED
-  OCR_COMPLETED
   SUMMARY_PENDING
   SUMMARY_FAILED
   SUMMARY_COMPLETED
@@ -297,6 +282,15 @@ enum ExecutionStatus {
   MATCH_STREAMING
   MATCH_FAILED
   MATCH_COMPLETED
+  OCR_PENDING
+  OCR_FAILED
+  OCR_COMPLETED
+  CUSTOMIZE_PENDING
+  CUSTOMIZE_FAILED
+  CUSTOMIZE_COMPLETED
+  INTERVIEW_PENDING
+  INTERVIEW_FAILED
+  INTERVIEW_COMPLETED
 
   @@schema("public")
 }

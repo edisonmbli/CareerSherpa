@@ -215,16 +215,21 @@ export async function setDetailedResumeSummaryJson(
 
 export async function setCustomizedResumeResult(
   serviceId: string,
-  markdownText: string | undefined,
-  opsJson: any | undefined,
+  optimizeSuggestion: string | undefined,
+  customizedResumeJson: any | undefined,
   status: AsyncTaskStatus
 ) {
   const data: any = { status }
-  if (typeof markdownText !== 'undefined') {
-    data.markdownText = markdownText
+  if (typeof optimizeSuggestion !== 'undefined') {
+    data.optimizeSuggestion = optimizeSuggestion
   }
-  if (typeof opsJson !== 'undefined' && opsJson !== null) {
-    data.opsJson = opsJson
+  if (
+    typeof customizedResumeJson !== 'undefined' &&
+    customizedResumeJson !== null
+  ) {
+    data.customizedResumeJson = customizedResumeJson
+    // Also initialize editedResumeJson
+    data.editedResumeJson = customizedResumeJson
   }
   return prisma.customizedResume.update({
     where: { serviceId },
@@ -243,13 +248,17 @@ export async function setInterviewTipsJson(
   })
 }
 
-export async function updateCustomizedResumeMarkdown(
+export async function updateCustomizedResumeEditedData(
   serviceId: string,
-  markdownText: string
+  editedResumeJson: any,
+  sectionConfig?: any
 ) {
   return prisma.customizedResume.update({
     where: { serviceId },
-    data: { markdownText },
+    data: {
+      editedResumeJson,
+      ...(sectionConfig ? { sectionConfig } : {}),
+    },
   })
 }
 

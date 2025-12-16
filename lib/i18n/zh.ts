@@ -9,6 +9,14 @@ const dict = {
   submit_jd: '上传 JD',
   create_service: '创建服务',
   // 命名空间结构（保持兼容）
+  rag: {
+    match_job_analysis:
+      '{{title}} 岗位匹配度分析方法 优势识别 劣势规避 专业评估框架 {{skills}}',
+    match_resume_fit:
+      '{{title}} HR私聊话术 模板 简洁 有力 精准 高匹配 DM script 开场与收尾 {{skills}}',
+    customize_general: '优秀简历写作指南 STAR法则 简历优化原则 动作动词列表',
+    customize_role: '{{title}} 核心技能关键词 岗位量化指标 简历描述范例',
+  },
   designSystem: {
     title: '设计系统',
     sections: {
@@ -176,6 +184,9 @@ const dict = {
       start: '生成面试 Tips',
     },
     statusText: {
+      analyzing: 'AI 正在分析...',
+      analyzingDesc:
+        '正在比对您的履历与岗位要求，并应用专业的简历写作策略。此过程通常需要 30-60 秒。',
       failed: '任务执行失败',
       retryMatch: '重试匹配',
       summaryCompletedToast: '岗位要点提炼完成',
@@ -187,6 +198,9 @@ const dict = {
       model_too_busy: '当前模型繁忙，请稍后重试',
       job_summary_missing: '缺少岗位要点，无法进行匹配',
       enqueue_failed: '任务入队失败，请稍后重试',
+      readyToCustomize: '准备定制简历',
+      readyToCustomizeDesc:
+        '点击下方“开始定制”按钮，根据岗位要求生成个性化简历。',
     },
     streamPanel: {
       ocr: '图片文本提取',
@@ -213,6 +227,10 @@ const dict = {
       ocrFailed: '识别岗位截图失败',
       summaryFailed: '提取岗位要点失败',
       matchFailed: '匹配度分析失败',
+      customizePending: '正在定制简历...',
+      customizing: '正在定制简历...',
+      customizeCompleted: '简历定制完成',
+      customizeFailed: '简历定制失败',
     },
     costTooltip: '使用该服务，将扣减 {cost} 金币',
   },

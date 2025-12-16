@@ -385,12 +385,17 @@ export async function handleBatch(
       try {
         // 4. Execute
         await markTimeline(serviceId, 'worker_batch_llm_start', { taskId })
+        const options: any = {}
+        if (templateId === 'resume_customize') {
+          options.temperature = 0.1
+        }
         const execResult = await executeStructured(
           decision.modelId,
           templateId,
           locale,
           preparedVars,
-          { userId, serviceId }
+          { userId, serviceId },
+          options
         )
         await markTimeline(serviceId, 'worker_batch_done', {
           taskId,

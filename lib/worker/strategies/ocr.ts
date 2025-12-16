@@ -11,6 +11,7 @@ import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
 import { acquireLock } from '@/lib/redis/lock'
 import { pushTask } from '@/lib/queue/producer'
+import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
 import { ExecutionStatus, AsyncTaskStatus } from '@prisma/client'
 import { ENV } from '@/lib/env'
 import { logError } from '@/lib/logger'
@@ -153,6 +154,33 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           serviceId,
         })
       }
+
+      // Refund if OCR fails
+      const wasPaid = !!variables.wasPaid
+      const cost = Number(variables.cost || 0)
+      const debitId = String(variables.debitId || '')
+      if (wasPaid && cost > 0 && debitId) {
+        try {
+          await recordRefund({
+            userId,
+            serviceId,
+            amount: cost,
+            relatedId: debitId,
+            templateId: 'ocr_extract',
+            metadata: { reason: 'ocr_failed' },
+          })
+          await markDebitFailed(debitId)
+        } catch (e) {
+          logError({
+            reqId: requestId,
+            route: 'worker/ocr',
+            error: String(e),
+            phase: 'refund',
+            serviceId,
+          })
+        }
+      }
+
       return
     }
 
@@ -294,7 +322,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
     try {
       await updateServiceExecutionStatus(
         serviceId,
-        ExecutionStatus.SUMMARY_PENDING,
+        ExecutionStatus.OCR_PENDING,
         {
           executionSessionId: sessionId,
         }

@@ -62,7 +62,7 @@ function renderVariables(template: string, variables: Record<string, string>) {
   let rendered = template
   for (const [key, val] of Object.entries(variables)) {
     // 支持 {{var}} 与 {{ var }} 两种写法
-    const pattern = new RegExp(`{{\s*${key}\s*}}`, 'g')
+    const pattern = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
     rendered = rendered.replace(pattern, val ?? '')
   }
   return rendered
@@ -91,7 +91,14 @@ export async function runLlmTask<T extends TaskTemplateId>(
       {}
     ) as Promise<RunLlmTaskResult<T>>
   }
-  return runStructuredLlmTask(decision.modelId, taskId, locale, variables, {})
+  return runStructuredLlmTask(
+    decision.modelId,
+    taskId,
+    locale,
+    variables,
+    {},
+    options
+  )
 }
 
 // --- M4 additions: structured & streaming entry points ---
@@ -281,7 +288,8 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
   templateId: T,
   locale: Locale,
   variables: Record<string, any>,
-  context: TaskContext = {}
+  context: TaskContext = {},
+  options: RunTaskOptions = {}
 ): Promise<RunLlmTaskResult<T>> {
   const start = Date.now()
   try {
@@ -311,9 +319,9 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
     ])
     const model = getModel(modelId, {
-      temperature: 0.3,
-      timeoutMs: ENV.WORKER_TIMEOUT_MS,
-      maxTokens: limits.maxTokens,
+      temperature: options.temperature ?? 0.3,
+      timeoutMs: options.timeoutMs ?? ENV.WORKER_TIMEOUT_MS,
+      maxTokens: options.maxTokens ?? limits.maxTokens,
     })
 
     const chain = prompt.pipe(model)

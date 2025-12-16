@@ -16,7 +16,11 @@ import {
 import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
 import { pushTask } from '@/lib/queue/producer'
-import { recordRefund, markDebitSuccess } from '@/lib/dal/coinLedger'
+import {
+  recordRefund,
+  markDebitSuccess,
+  markDebitFailed,
+} from '@/lib/dal/coinLedger'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import { logError } from '@/lib/logger'
 
@@ -169,49 +173,50 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       // And we can also parallelize QStash if we are confident, but let's stick to:
       // 1. Parallel(DB Update, Redis Publish Success)
       // 2. Then Enqueue Match
-      
+
       const sessionId = String(variables.executionSessionId || '')
       const matchTaskId = buildMatchTaskId(serviceId, sessionId)
       const matchChannel = getChannel(userId, serviceId, matchTaskId)
 
-      const dbUpdatePromise = txMarkSummaryCompleted(serviceId)
-        .catch(err => logError({
+      const dbUpdatePromise = txMarkSummaryCompleted(serviceId).catch((err) =>
+        logError({
           reqId: requestId,
           route: 'worker/summary',
           error: String(err),
           phase: 'mark_summary_completed',
           serviceId,
-        }))
+        })
+      )
 
       const publishPromise = (async () => {
-          try {
-            await publishEvent(matchChannel, {
-                type: 'summary_result',
-                taskId: matchTaskId,
-                json: execResult.data,
-                stage: 'summary_done',
-                requestId,
-                traceId,
-            })
-            await publishEvent(matchChannel, {
-                type: 'status',
-                taskId: matchTaskId,
-                code: 'summary_completed',
-                status: 'SUMMARY_COMPLETED',
-                lastUpdatedAt: new Date().toISOString(),
-                stage: 'finalize',
-                requestId,
-                traceId,
-            })
-          } catch (err) {
-             logError({
-                reqId: requestId,
-                route: 'worker/summary',
-                error: String(err),
-                phase: 'publish_summary_success',
-                serviceId,
-             })
-          }
+        try {
+          await publishEvent(matchChannel, {
+            type: 'summary_result',
+            taskId: matchTaskId,
+            json: execResult.data,
+            stage: 'summary_done',
+            requestId,
+            traceId,
+          })
+          await publishEvent(matchChannel, {
+            type: 'status',
+            taskId: matchTaskId,
+            code: 'summary_completed',
+            status: 'SUMMARY_COMPLETED',
+            lastUpdatedAt: new Date().toISOString(),
+            stage: 'finalize',
+            requestId,
+            traceId,
+          })
+        } catch (err) {
+          logError({
+            reqId: requestId,
+            route: 'worker/summary',
+            error: String(err),
+            phase: 'publish_summary_success',
+            serviceId,
+          })
+        }
       })()
 
       // Run DB and Redis in parallel
@@ -369,7 +374,8 @@ export class SummaryStrategy implements WorkerStrategy<any> {
         })
       }
       try {
-        await markDebitSuccess(debitId, execResult.usageLogId)
+        // Fix: Mark debit as FAILED when refunding
+        await markDebitFailed(debitId)
       } catch (e) {
         /* best effort */
       }

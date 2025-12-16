@@ -1,5 +1,7 @@
 import { getVectorStore } from '@/lib/rag/vectorStore'
 import { markTimeline } from '@/lib/observability/timeline'
+import { getDictionary } from '@/lib/i18n/dictionaries'
+import { i18n, Locale } from '@/i18n-config'
 
 export interface MatchRagInput {
   jobTitle: string
@@ -9,70 +11,108 @@ export interface MatchRagInput {
   topStrengths: string[]
 }
 
+/**
+ * Helper to replace variables in query template
+ */
+function formatQuery(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] || '')
+}
+
+/**
+ * Retrieve RAG context for Job Match Analysis.
+ * Queries both "Job Analysis" and "Resume Fit" topics concurrently.
+ */
 export async function retrieveMatchContext(
   input: MatchRagInput,
-  serviceId: string,
+  locale: string,
   taskId: string
 ): Promise<string> {
-  await markTimeline(serviceId, 'worker_stream_vars_rag_start', { taskId })
-  
-  const { jobTitle, mustHaves, niceToHaves, resumeSkills, topStrengths } = input
+  const { jobTitle, mustHaves } = input
+  const safeLocale = (
+    i18n.locales.includes(locale as Locale) ? locale : i18n.defaultLocale
+  ) as Locale
+  const dict = await getDictionary(safeLocale)
 
-  const queryA = [
-    '岗位匹配度分析方法',
-    jobTitle ? `岗位 ${jobTitle}` : '',
-    mustHaves.length ? `必须技能 ${mustHaves.join(', ')}` : '',
-    niceToHaves.length ? `加分项 ${niceToHaves.join(', ')}` : '',
-    resumeSkills.length ? `简历技能 ${resumeSkills.join(', ')}` : '',
-    '优势识别 劣势规避 简历定制 面试准备 专业评估框架',
-  ]
-    .filter(Boolean)
-    .join('；')
+  const skillsStr = mustHaves.slice(0, 3).join(' ')
+  const vars = { title: jobTitle, skills: skillsStr }
 
-  const queryB = [
-    'HR私聊话术 模板',
-    jobTitle ? `岗位 ${jobTitle}` : '',
-    topStrengths.length ? `亮点 ${topStrengths.join(', ')}` : '',
-    '简洁 有力 精准 高匹配 DM script 开场与收尾',
-  ]
-    .filter(Boolean)
-    .join('；')
+  const queryA = formatQuery(dict.rag.match_job_analysis, vars)
+  const queryB = formatQuery(dict.rag.match_resume_fit, vars)
 
-  const tRag0 = Date.now()
-  const store = getVectorStore()
-  const tRagInit = Date.now()
-  
-  // Parallel retrieval
-  const [resA, resB] = await Promise.all([
-    store.retrieve({ query: queryA, similarityTopK: 6 }),
-    store.retrieve({ query: queryB, similarityTopK: 4 }),
+  const [resultsA, resultsB] = await Promise.all([
+    queryRag(queryA, locale, 'job_match'),
+    queryRag(queryB, locale, 'express_job_intent'),
   ])
-  
-  const tRag1 = Date.now()
 
-  const texts = [...resA, ...resB]
-    .map((r: any) =>
+  // Merge and deduplicate results
+  const combined = [...resultsA, ...resultsB]
+  const uniqueContent = Array.from(new Set(combined.map((r) => r.content)))
+
+  return uniqueContent.join('\n\n---\n\n')
+}
+
+/**
+ * Retrieve RAG context for Resume Customization.
+ * Queries both "General Writing Tips" and "Role-Specific Optimization".
+ */
+export async function retrieveCustomizeContext(
+  jobTitle: string,
+  locale: string
+): Promise<string> {
+  const safeLocale = (
+    i18n.locales.includes(locale as Locale) ? locale : i18n.defaultLocale
+  ) as Locale
+  const dict = await getDictionary(safeLocale)
+
+  const vars = { title: jobTitle }
+
+  const queryA = formatQuery(dict.rag.customize_general, vars)
+  const queryB = formatQuery(dict.rag.customize_role, vars)
+
+  const [resultsA, resultsB] = await Promise.all([
+    queryRag(queryA, locale, 'cv_customize'),
+    queryRag(queryB, locale, 'cv_customize'),
+  ])
+
+  const combined = [...resultsA, ...resultsB]
+  const uniqueContent = Array.from(new Set(combined.map((r) => r.content)))
+
+  return uniqueContent.join('\n\n---\n\n')
+}
+
+/**
+ * Base RAG Query Function
+ */
+export async function queryRag(
+  queryText: string,
+  locale: string,
+  category?: string
+) {
+  const store = getVectorStore()
+  const filters: any[] = []
+
+  if (locale) {
+    // Only filter by lang if it's explicitly supported in DB (which it is)
+    // Map locale 'zh-CN' -> 'zh' if needed, but usually we use 'zh' or 'en'
+    const lang = locale.startsWith('zh') ? 'zh' : 'en'
+    filters.push({ key: 'lang', value: lang, operator: '==' })
+  }
+
+  if (category) {
+    filters.push({ key: 'category', value: category, operator: '==' })
+  }
+
+  const results = await store.retrieve({
+    query: queryText,
+    similarityTopK: 3,
+    filters: { filters, condition: 'and' },
+  })
+
+  return results.map((r: any) => ({
+    content:
       typeof r?.node?.getContent === 'function'
         ? r.node.getContent()
-        : String(r?.node?.text || '')
-    )
-    .filter((t) => t.length > 0)
-
-  const rag = texts
-    .map((t) => t.slice(0, 1000))
-    .join('\n\n')
-    .slice(0, 4000)
-
-  await markTimeline(serviceId, 'worker_stream_vars_rag_end', {
-    taskId,
-    latencyMs: tRag1 - tRag0,
-    meta: JSON.stringify({
-      initMs: tRagInit - tRag0,
-      retrieveMs: tRag1 - tRagInit,
-      count: texts.length,
-      totalLen: rag.length,
-    }),
-  })
-    
-  return rag
+        : String(r?.node?.text || ''),
+    score: r.score,
+  }))
 }

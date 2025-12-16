@@ -27,15 +27,25 @@ export async function parseWorkerBody(
 ): Promise<{ ok: true; body: WorkerBody } | { ok: false; response: Response }> {
   try {
     const json = await req.json()
+    // Debug logging for parsing
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('Worker Request Body:', JSON.stringify(json, null, 2))
+    // }
     const parsed = workerBodySchema.safeParse(json)
     if (!parsed.success) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Worker Validation Error:', parsed.error)
+      }
       return {
         ok: false,
         response: new Response('bad_request', { status: 400 }),
       }
     }
     return { ok: true, body: parsed.data }
-  } catch {
+  } catch (e) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Worker JSON Parse Error:', e)
+    }
     return { ok: false, response: new Response('bad_request', { status: 400 }) }
   }
 }
@@ -275,6 +285,10 @@ export async function publishEvent(
 
   // 对非 token 事件：写入前先冲洗 token 合并缓存，保证顺序
   await flush(channel)
+
+  // if (process.env.NODE_ENV !== 'production') {
+  //   console.log(`[PubSub] Publishing to ${channel}:`, JSON.stringify(event).slice(0, 200))
+  // }
 
   const payload = JSON.stringify(event)
   await redis.publish(channel, payload)

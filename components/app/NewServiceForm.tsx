@@ -92,6 +92,8 @@ export function NewServiceForm({
         showError('服务创建失败', '')
         return
       }
+      
+      // Handle success
       if ((res as any).ok) {
         if ((res as any).isFree)
           showError(
@@ -102,6 +104,13 @@ export function NewServiceForm({
         if ((res as any).serviceId)
           router.push(`/${locale}/workbench/${(res as any).serviceId}`)
       } else {
+        // Handle failure
+        // If we have a serviceId even on failure, we should redirect to it so user sees the "FAILED" state
+        if ((res as any).serviceId) {
+          router.push(`/${locale}/workbench/${(res as any).serviceId}`)
+          return
+        }
+
         const error = (res as any).error
         if (error === 'rate_limited') {
           showError(

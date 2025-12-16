@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TaskTemplateId } from '@/lib/prompts/types'
+import { llmResumeResponseSchema } from '@/lib/types/resume-schema'
 
 const linkSchema = z.object({
   label: z.string().optional(),
@@ -220,13 +221,16 @@ const jobMatchSchema = z.object({
       })
     )
     .min(1),
-  cover_letter_script: z.string().min(1),
+  cover_letter_script: z.object({
+    H: z.string(),
+    V: z.string(),
+    C: z.string(),
+  }),
   recommendations: z.array(z.string()).optional(),
 })
 
-const resumeCustomizeSchema = z.object({
-  markdown: z.string().min(1),
-})
+// Resume customize now uses the structured schema from '@/lib/types/resume-schema'
+const resumeCustomizeSchema = llmResumeResponseSchema
 
 const interviewPrepSchema = z.object({
   self_introduction_script: z.string().min(1),

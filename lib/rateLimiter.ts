@@ -6,7 +6,7 @@ type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
 const windowSec = 90
 const trialLimit = 3
 const boundLimit = 15
-const UPSTASH_TIMEOUT_MS = 3000 // 3s timeout for Redis operations
+const UPSTASH_TIMEOUT_MS = 5000 // 5s timeout for Redis operations to handle network latency
 
 const mem = new Map<string, { count: number; resetAt: number }>()
 
@@ -92,9 +92,8 @@ export async function checkRateLimit(
       )
       return result
     } catch (e) {
-      console.error(
-        `[RateLimit] Upstash failed/timed out for ${key}, falling back to memory`,
-        e
+      console.warn(
+        `[RateLimit] Upstash latency high (${key}), failing over to local memory strategy.`
       )
       return memoryRate(key, limit)
     }

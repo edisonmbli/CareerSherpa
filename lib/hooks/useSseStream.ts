@@ -13,6 +13,11 @@ export function useSseStream(
   useEffect(() => {
     if (skip || !userId || !serviceId || !taskId) return
     taskRef.current = taskId
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[SSE] Connecting to stream:', { userId, serviceId, taskId })
+    }
+
     try {
       fetch('/api/timeline', {
         method: 'POST',
@@ -36,6 +41,9 @@ export function useSseStream(
       if (!ev?.data) return
       try {
         const msg = JSON.parse(ev.data)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[SSE] Received message:', msg)
+        }
         try {
           if (process.env.NODE_ENV !== 'production') {
             const len =

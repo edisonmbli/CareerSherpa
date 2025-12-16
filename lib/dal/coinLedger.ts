@@ -100,6 +100,22 @@ export async function markDebitSuccess(
   return true
 }
 
+export async function markDebitFailed(
+  debitId: string,
+  tx: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  if (!debitId) return false
+  const data: any = { status: 'FAILED' as CoinTxnStatus }
+  if (tx !== prisma) {
+    await tx.coinTransaction.update({ where: { id: debitId }, data })
+    return true
+  }
+  await withPrismaGuard(async (client) => {
+    await client.coinTransaction.update({ where: { id: debitId }, data })
+  }, { attempts: 3, prewarm: false })
+  return true
+}
+
 export interface RecordRefundParams {
   userId: string
   amount: number

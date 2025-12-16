@@ -50,6 +50,12 @@ export function resolveUiFromEvent(msg: any): {
       return { status: 'MATCH_PENDING' }
     if (s === 'OCR_COMPLETED' || c === 'ocr_completed')
       return { status: 'SUMMARY_PENDING' }
+    if (s === 'CUSTOMIZE_PENDING' || c === 'customize_pending')
+      return { status: 'CUSTOMIZE_PENDING' }
+    if (s === 'CUSTOMIZE_COMPLETED' || c === 'customize_completed')
+      return { status: 'CUSTOMIZE_COMPLETED' }
+    if (s === 'CUSTOMIZE_FAILED' || c === 'customize_failed')
+      return { status: 'CUSTOMIZE_FAILED', errorKey: 'customize_failed', errorMessage: em }
   }
   if (t === 'info') {
     if (c === 'stream_idle') return { status: 'MATCH_STREAMING' }

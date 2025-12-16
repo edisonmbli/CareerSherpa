@@ -17,7 +17,8 @@ Core Principles:
 Output Requirements:
 - Must return valid JSON format.
 - Content must be concise and avoid redundancy.
-- Use the same language as the user's input (Chinese/English).`
+- Use the same language as the user's input (Chinese/English).
+- **STRICTLY FORBIDDEN**: Do NOT use smart quotes (“ or ”) as delimiters for JSON keys or values. You MUST use standard double quotes (").`
 
 // 2. Prototype Schemas (for Asset Extraction)
 const SCHEMAS_V1 = {
@@ -141,20 +142,20 @@ const SCHEMAS_V2 = {
       cover_letter_script: {
         type: 'object',
         properties: {
-          h: {
+          H: {
             type: 'string',
-            description: 'Hook: Opening to grab HR attention',
+            description: 'Hook: Engaging opening to grab HR attention',
           },
-          v: {
+          V: {
             type: 'string',
             description: 'Value: Core achievements addressing JD pain points',
           },
-          c: {
+          C: {
             type: 'string',
             description: 'Call to Action: Guiding next steps',
           },
         },
-        required: ['h', 'v', 'c'],
+        required: ['H', 'V', 'C'],
         description:
           'A highly tailored 150-word cover letter script (H-V-C structure)',
       },
@@ -171,32 +172,95 @@ const SCHEMAS_V2 = {
   RESUME_CUSTOMIZE: {
     type: 'object',
     properties: {
-      customized_resume_markdown: {
+      optimizeSuggestion: {
         type: 'string',
         description:
-          'A complete, render-ready Markdown version of the customized resume.',
+          'A Markdown summary of key changes made and why (3-5 bullet points).',
       },
-      customization_summary: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            section: {
-              type: 'string',
-              description: 'The section that was changed (e.g., "Project A")',
+      resumeData: {
+        type: 'object',
+        description: 'The structured resume content.',
+        properties: {
+          basics: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              mobile: { type: 'string' },
+              email: { type: 'string' },
+              wechat: { type: 'string' },
+              qq: { type: 'string' },
+              photoUrl: { type: 'string' },
+              summary: { type: 'string' },
             },
-            change_reason: {
-              type: 'string',
-              description:
-                'Why this change was made (e.g., "To highlight the "Performance Optimization" keyword from the JD")',
+            required: ['name'],
+          },
+          educations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                school: { type: 'string' },
+                major: { type: 'string' },
+                degree: { type: 'string' },
+                startDate: { type: 'string' },
+                endDate: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'school'],
             },
           },
-          required: ['section', 'change_reason'],
+          workExperiences: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                company: { type: 'string' },
+                position: { type: 'string' },
+                industry: { type: 'string' },
+                startDate: { type: 'string' },
+                endDate: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'company', 'position', 'description'],
+            },
+          },
+          projectExperiences: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                projectName: { type: 'string' },
+                role: { type: 'string' },
+                startDate: { type: 'string' },
+                endDate: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'projectName', 'description'],
+            },
+          },
+          skills: { type: 'string' },
+          certificates: { type: 'string' },
+          hobbies: { type: 'string' },
+          customSections: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'title', 'description'],
+            },
+          },
         },
-        description: 'A summary of the most important changes.',
+        required: ['basics', 'educations', 'workExperiences'],
       },
     },
-    required: ['customized_resume_markdown', 'customization_summary'],
+    required: ['optimizeSuggestion', 'resumeData'],
   } as JsonSchema,
 
   INTERVIEW_PREP: {
@@ -548,7 +612,7 @@ Focus on distinguishing "Must-haves" from "Nice-to-haves".
 
 Raw JD Text:
 """
-{{job_text}}
+{job_text}
 """`,
     variables: ['job_text'],
     outputSchema: SCHEMAS_V1.JOB_SUMMARY,
@@ -627,92 +691,105 @@ Strictly follow the Output Schema.`,
       'detailed_resume_summary_json',
       'rag_context',
     ],
-    outputSchema: {
-      type: 'object',
-      properties: {
-        match_score: { type: 'number', description: '0-100 Score' },
-        overall_assessment: {
-          type: 'string',
-          description: 'Concise, sharp expert assessment',
-        },
-        strengths: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              point: { type: 'string' },
-              evidence: { type: 'string' },
-              section: { type: 'string' },
-            },
-            required: ['point', 'evidence'],
-          },
-        },
-        weaknesses: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              point: { type: 'string' },
-              evidence: { type: 'string' },
-              tip: { type: 'string' },
-              section: { type: 'string' },
-            },
-            required: ['point', 'evidence', 'tip'],
-          },
-        },
-        cover_letter_script: {
-          type: 'string',
-          description: 'High-conversion Cold DM/Outreach script',
-        },
-        recommendations: { type: 'array', items: { type: 'string' } },
-      },
-      required: [
-        'match_score',
-        'overall_assessment',
-        'strengths',
-        'weaknesses',
-        'cover_letter_script',
-      ],
-    } as JsonSchema,
+    outputSchema: SCHEMAS_V2.JOB_MATCH,
   },
   resume_customize: {
     id: 'resume_customize',
     name: 'Resume Customization',
     description:
-      'Rewrites a general resume into a targeted Markdown resume based on match analysis.',
-    systemPrompt: SYSTEM_BASE,
-    userPrompt: `Act as an expert resume editor.
-Your task is to rewrite a new, highly-customized resume (in Markdown format) based on the "General Resume" and the "Match Analysis Report".
+      'Rewrites a general resume into a targeted Structured JSON resume based on match analysis.',
+    systemPrompt: `You are an expert Career Coach and Senior Recruiter with 15 years of experience. Your goal is to tailor a candidate's resume for a specific job description (JD) to maximize their chances of passing ATS filters and landing an interview.
 
-【RAG Knowledge Base - Resume Writing Techniques (XYZ, Action Verbs)】
+### CORE INSTRUCTIONS
+1. **Analyze First**: Deeply understand the Candidate Profile and the target Job Description.
+2. **Strategy**:
+   - Identify keywords and core skills from the JD and naturally weave them into the resume.
+   - **Rewrite** experiences (Work/Projects) to highlight achievements relevant to the JD.
+   - **DO NOT Fabricate**: Never invent false experiences. Only optimize, polish, or pivot existing facts. If the candidate's resume is missing certain sections (e.g., work experience, projects), **DO NOT** fabricate them. Leave them empty or use only existing information.
+   - **Basics**: Name, contact info, etc. MUST match the [Candidate Resume Summary] exactly. **DO NOT** change them or use example names from RAG.
+   - For weak matches, emphasize transferable skills.
+3. **Tone**: Professional, action-oriented, and concise. Use strong action verbs.
+
+### OUTPUT FORMAT
+You MUST output a valid JSON object strictly adhering to the provided Schema.
+**DO NOT** include markdown code block tags (like \`\`\`json). Output **ONLY** the raw JSON string.
+
+### FIELD GUIDANCE
+- **optimizeSuggestion**: (Markdown) A summary of the key changes you made and why (3-5 bullet points). Help the user understand your reasoning.
+- **resumeData**: The structured resume content.
+    - **description** fields: Use strictly plain text with '\\n' for new lines/bullet points. No HTML.
+    - **skills/certificates**: Aggregate items into a clean string (e.g., "React, Node.js, TypeScript").
+    - **id** fields: Generate unique string IDs for all array items.`,
+    userPrompt: `Your task is to customize the candidate's resume for the specific Job Description (JD).
+
+### Core Principles (Grounding Rules)
+1. **Truthfulness**:
+   - **Sole Sources of Truth**: [Candidate Resume Summary] and [Candidate Detailed History].
+   - **Strictly Forbidden**: Fabricating non-existent experiences, companies, or education.
+   - **Name & Contact**: MUST be copied verbatim from [Candidate Resume Summary]. DO NOT MODIFY.
+2. **Role of RAG Knowledge**:
+   - RAG provides only "Writing Tips", "Industry Keywords", and "Examples of Good Phrasing".
+   - **Strictly Forbidden**: Mixing in example personas (e.g., "John Doe", "Jane Smith") or their experiences into the candidate's resume.
+
+### Input Context
+
+【Candidate Resume Summary (Source of Truth - Core)】
 """
-{{rag_context}}
+{resume_summary_json}
 """
 
-【User's General Resume (Raw Text)】
+【Target Job Summary (Customization Target)】
 """
-{{resume_text}}
-"""
-
-【Target Job - Structured Summary】
-"""
-{{job_summary_json}}
+{job_summary_json}
 """
 
-【Previous Step: Match Analysis Report】
+【Match Analysis Report (Strategy)】
 """
-{{match_analysis_json}}
+{match_analysis_json}
 """
 
-Please perform the following actions:
-1.  **Amplify Strengths**: Emphasize all \`strengths\` mentioned in the \`match_analysis_json\`.
-2.  **Quantify Achievements**: Use the "XYZ Formula" and "Action Verbs" from the RAG context to rewrite project descriptions.
-3.  **Keyword Matching**: Ensure "mustHaves" keywords from \`job_summary_json\` appear prominently.
-4.  **Mitigate Weaknesses**: De-emphasize or remove items that are irrelevant to the JD or expose \`weaknesses\`.
-5.  **Output Markdown**: Strictly follow the Schema to output the full Markdown resume and the change summary.`,
+【Candidate Detailed History (Source of Truth - Supplementary)】
+"""
+{detailed_resume_summary_json}
+"""
+
+【RAG Knowledge Base (Style & Tips Reference Only)】
+"""
+{rag_context}
+"""
+
+### Instructions (Chain of Thought):
+
+1. **Fact Extraction & Verification**:
+   - **Step 1**: Extract the Name from [Candidate Resume Summary]. If not empty, you **MUST** use this name.
+   - **Step 2**: Confirm the most recent role from [Candidate Resume Summary].
+   - **Step 3**: Explicitly state in your thought process: "I have confirmed the candidate's name is [Name], from [Company]." (Do NOT use RAG example names).
+
+2. **Strategy Formulation**:
+   - Review the JD and Match Report to identify 3-5 "Core Selling Points" to highlight.
+   - Consult RAG Knowledge Base for "High-frequency Keywords" and "Best Expression" for this role.
+
+3. **Content Restructuring**:
+   - **Summary**: Rewrite the professional summary to address JD pain points concisely.
+   - **Experience**:
+     - Filter for experiences most relevant to the JD.
+     - Apply **STAR Method (Situation-Task-Action-Result)** to optimize descriptions.
+     - Enhance verbs using RAG tips (e.g., "Led", "Architected", "Boosted").
+     - **Data Enhancement**: Transform flat descriptions into quantified results (based on existing data, DO NOT invent).
+
+4. **Final Check**:
+   - Check: Do Name, Email, Phone match [Candidate Resume Summary] exactly?
+   - Check: Do all Company Names, Roles, and Dates exist in the candidate's history?
+   - Check: Have any RAG example details been mixed in?
+
+5. **Formatted Output**:
+   - Generate the final result conforming to the JSON Schema.
+
+Strictly follow the Output Schema.`,
     variables: [
       'rag_context',
-      'resume_text',
+      'resume_summary_json',
+      'detailed_resume_summary_json',
       'job_summary_json',
       'match_analysis_json',
     ],
@@ -729,22 +806,22 @@ Based on this "Customized Resume" and "Match Report," prepare a complete intervi
 
 【RAG Knowledge Base - Interview Skills (STAR, P-P-F, Common Qs)】
 """
-{{rag_context}}
+{rag_context}
 """
 
 【User's Customized Resume (Markdown)】
 """
-{{customized_resume_md}}
+{customized_resume_md}
 """
 
 【Target Job - Structured Summary】
 """
-{{job_summary_json}}
+{job_summary_json}
 """
 
 【Match Analysis Report】
 """
-{{match_analysis_json}}
+{match_analysis_json}
 """
 
 Please perform the following actions:
@@ -788,10 +865,10 @@ Instructions:
 - ALWAYS respond with a valid JSON object, no prose.
 
 Inputs:
-- source_type: {{source_type}}
+- source_type: {source_type}
 - image_base64:
 """
-{{image}}
+{image}
 """
 
 Output JSON Schema fields:

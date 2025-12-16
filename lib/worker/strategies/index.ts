@@ -1,7 +1,8 @@
 import { MatchStrategy } from './match'
 import { SummaryStrategy } from './summary'
 import { OcrExtractStrategy } from './ocr'
-import { CustomizeStrategy, InterviewStrategy } from './common_tasks'
+import { customizeStrategy } from './customize'
+import { InterviewStrategy } from './common_tasks'
 import { WorkerStrategy } from './interface'
 
 const strategies: Record<string, WorkerStrategy> = {
@@ -10,7 +11,7 @@ const strategies: Record<string, WorkerStrategy> = {
     resume_summary: new SummaryStrategy('resume_summary'),
     detailed_resume_summary: new SummaryStrategy('detailed_resume_summary'),
     ocr_extract: new OcrExtractStrategy(),
-    resume_customize: new CustomizeStrategy(),
+    resume_customize: customizeStrategy,
     interview_prep: new InterviewStrategy(),
 }
 

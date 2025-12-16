@@ -233,9 +233,24 @@ export async function pushTask<T extends TaskTemplateId>(
     )
     const wasPaid = !!params.variables.wasPaid
     const cost = Number(params.variables.cost || 0)
+    const debitId = String((params.variables as any)?.debitId || '')
     if (wasPaid && cost > 0) {
       try {
-        await addQuota(params.userId, cost)
+        if (debitId) {
+          const ledgerServiceId = isServiceScoped(params.templateId)
+            ? params.serviceId
+            : undefined
+          await recordRefund({
+            userId: params.userId,
+            amount: cost,
+            relatedId: debitId,
+            ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+            templateId: params.templateId,
+            metadata: { reason: 'backpressure' },
+          })
+        } else {
+          await addQuota(params.userId, cost)
+        }
       } catch (err) {
         logError({
           reqId: params.taskId,
@@ -280,9 +295,24 @@ export async function pushTask<T extends TaskTemplateId>(
   } catch (error) {
     const wasPaid = !!(params.variables as any)?.wasPaid
     const cost = Number((params.variables as any)?.cost || 0)
+    const debitId = String((params.variables as any)?.debitId || '')
     if (wasPaid && cost > 0) {
       try {
-        await addQuota(params.userId, cost)
+        if (debitId) {
+          const ledgerServiceId = isServiceScoped(params.templateId)
+            ? params.serviceId
+            : undefined
+          await recordRefund({
+            userId: params.userId,
+            amount: cost,
+            relatedId: debitId,
+            ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
+            templateId: params.templateId,
+            metadata: { reason: 'enqueue_error', error: String(error) },
+          })
+        } else {
+          await addQuota(params.userId, cost)
+        }
       } catch (err) {
         logError({
           reqId: params.taskId,

@@ -17,7 +17,8 @@ const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者�
 输出要求：
 - 必须返回有效的JSON格式
 - 内容简洁明了，避免冗余
-- 使用与用户输入一致的语言（中文/英文）`
+- 使用与用户输入一致的语言（中文/英文）
+- 请确保输出标准的 JSON 格式。如果字符串内部包含引号，请务必使用反斜杠转义（\"）。`
 
 // 2. 复用 prototype 的 Schemas (用于资产提取)
 const SCHEMAS_V1 = {
@@ -138,20 +139,20 @@ const SCHEMAS_V2 = {
       cover_letter_script: {
         type: 'object',
         properties: {
-          h: {
+          H: {
             type: 'string',
             description: 'Hook (钩子): 吸引 HR 注意的开场白',
           },
-          v: {
+          V: {
             type: 'string',
             description: 'Value (价值): 针对 JD 痛点的核心成就',
           },
-          c: {
+          C: {
             type: 'string',
             description: 'Call to Action (行动): 引导下一步交流',
           },
         },
-        required: ['h', 'v', 'c'],
+        required: ['H', 'V', 'C'],
         description:
           '一段 150 字以内、高度定制化的“毛遂自荐”私信话术 (H-V-C 结构)',
       },
@@ -168,31 +169,114 @@ const SCHEMAS_V2 = {
   RESUME_CUSTOMIZE: {
     type: 'object',
     properties: {
-      customized_resume_markdown: {
-        type: 'string',
-        description: '一份完整的、可以直接渲染的 Markdown 格式定制化简历。',
+      fact_check: {
+        type: 'object',
+        properties: {
+          extracted_name: {
+            type: 'string',
+            description: '从简历摘要中提取的姓名',
+          },
+          extracted_company: {
+            type: 'string',
+            description: '从简历摘要中提取的最近公司',
+          },
+          verification_status: { type: 'string', enum: ['PASS', 'FAIL'] },
+        },
+        required: [
+          'extracted_name',
+          'extracted_company',
+          'verification_status',
+        ],
       },
-      customization_summary: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            section: {
-              type: 'string',
-              description: '被修改的章节 (例如：项目经历 A)',
+      optimizeSuggestion: {
+        type: 'string',
+        description:
+          '一份 Markdown 格式的修改摘要，说明做了哪些关键调整及原因 (3-5点)。',
+      },
+      resumeData: {
+        type: 'object',
+        description: '结构化的完整简历内容。',
+        properties: {
+          basics: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              mobile: { type: 'string' },
+              email: { type: 'string' },
+              wechat: { type: 'string' },
+              qq: { type: 'string' },
+              photoUrl: { type: 'string' },
+              summary: { type: 'string' },
             },
-            change_reason: {
-              type: 'string',
-              description:
-                '为什么这样修改 (例如：为了突出 JD 要求的“性能优化”关键词)',
+            required: ['name'],
+          },
+          educations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                school: { type: 'string' },
+                major: { type: 'string' },
+                degree: { type: 'string' },
+                startDate: { type: 'string' },
+                endDate: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'school'],
             },
           },
-          required: ['section', 'change_reason'],
+          workExperiences: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                company: { type: 'string' },
+                position: { type: 'string' },
+                industry: { type: 'string' },
+                startDate: { type: 'string' },
+                endDate: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'company', 'position', 'description'],
+            },
+          },
+          projectExperiences: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                projectName: { type: 'string' },
+                role: { type: 'string' },
+                startDate: { type: 'string' },
+                endDate: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'projectName', 'description'],
+            },
+          },
+          skills: { type: 'string' },
+          certificates: { type: 'string' },
+          hobbies: { type: 'string' },
+          customSections: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+              },
+              required: ['id', 'title', 'description'],
+            },
+          },
         },
-        description: '简历修改的亮点总结。',
+        required: ['basics', 'educations', 'workExperiences'],
       },
     },
-    required: ['customized_resume_markdown', 'customization_summary'],
+    required: ['fact_check', 'optimizeSuggestion', 'resumeData'],
   } as JsonSchema,
 
   INTERVIEW_PREP: {
@@ -678,91 +762,104 @@ JD原文:
       'detailed_resume_summary_json',
       'rag_context',
     ],
-    outputSchema: {
-      type: 'object',
-      properties: {
-        match_score: { type: 'number', description: '0-100的匹配分数' },
-        overall_assessment: {
-          type: 'string',
-          description: '简短犀利的综合评价',
-        },
-        strengths: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              point: { type: 'string' },
-              evidence: { type: 'string' },
-              section: { type: 'string' },
-            },
-            required: ['point', 'evidence'],
-          },
-        },
-        weaknesses: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              point: { type: 'string' },
-              evidence: { type: 'string' },
-              tip: { type: 'string' },
-              section: { type: 'string' },
-            },
-            required: ['point', 'evidence', 'tip'],
-          },
-        },
-        cover_letter_script: {
-          type: 'string',
-          description: '高转化率的私信/招呼语（非传统求职信）',
-        },
-        recommendations: { type: 'array', items: { type: 'string' } },
-      },
-      required: [
-        'match_score',
-        'overall_assessment',
-        'strengths',
-        'weaknesses',
-        'cover_letter_script',
-      ],
-    } as JsonSchema,
+    outputSchema: SCHEMAS_V2.JOB_MATCH,
   },
   resume_customize: {
     id: 'resume_customize',
     name: '简历定制化',
     description: '基于匹配度分析，重写一份 Markdown 简历。',
-    systemPrompt: SYSTEM_BASE,
-    userPrompt: `请你扮演简历优化专家的角色。
-你的任务是基于“通用简历”和“匹配度分析报告”，重写一份高度定制化的新简历（Markdown 格式）。
+    systemPrompt: `你是一位拥有 15 年以上经验的资深职业教练和高级招聘专家。你的专长是将通用简历转化为能通过 ATS（招聘管理系统）筛选并打动招聘经理的高影响力定制简历。
 
-【RAG 知识库 - 简历撰写技巧 (XYZ 法则, 动作动词)】
+### 核心指令
+1. **深度分析**：在下笔前，深入理解候选人画像和目标 JD。
+2. **策略制定**：
+   - 识别 JD 中的关键词和核心技能，自然地植入简历。
+   - **重写**经历（工作/项目），突出与 JD 相关的成就。
+   - **严禁造假**：绝不编造虚假经历。只在既有事实基础上进行优化、润色或侧重。若候选人简历中缺少某些板块（如工作经历、项目经历），**严禁**凭空捏造。请保留为空或仅使用现有信息。
+   - **基本信息**：姓名、联系方式等必须与【候选人简历摘要】完全一致，**严禁**修改或使用 RAG 中的示例名字。
+   - 对于弱匹配项，强调可迁移技能。
+3. **语气风格**：专业、结果导向、简洁。使用强有力的“动作动词”。
+
+### 输出格式
+你必须输出一个严格遵循 Schema 的有效 JSON 对象。
+**不要**包含 Markdown 代码块标记（如 \`\`\`json）。仅输出原始 JSON 字符串。
+
+### 字段指南
+- **optimizeSuggestion**: (Markdown) 关键修改点及其理由的摘要（3-5点）。帮助用户理解你的优化思路。
+- **resumeData**: 结构化的简历内容。
+    - **description** 字段：严格使用纯文本，用 '\\n' 表示换行/要点。不要使用 HTML。
+    - **skills/certificates**：将多项内容聚合为简洁的字符串（例如：“React, Node.js, TypeScript”）。
+    - **id** 字段：为所有数组项生成唯一的字符串 ID。`,
+    userPrompt: `你的任务是作为一位专家级简历顾问，基于真实候选人信息，针对目标岗位（JD）深度定制简历。
+
+### 核心原则 (Grounding Rules)
+1. **事实真实性 (Truthfulness)**：
+   - **唯一事实来源**：【候选人简历摘要】和【候选人详细履历】。
+   - **绝对禁止**：编造不存在的经历、公司或学历。
+   - **姓名与联系方式**：必须直接复制【候选人简历摘要】中的信息，不得修改。
+2. **RAG 知识库的用途**：
+   - RAG 提供的仅是“写作技巧”、“行业关键词”和“优秀表达范例”。
+   - **严禁**将 RAG 中的案例人物（如“张三”、“李四”）或其经历混入候选人简历。
+
+### 输入上下文
+
+【候选人简历摘要 (事实来源 - 核心)】
 """
-{{rag_context}}
+{resume_summary_json}
 """
 
-【用户的通用简历原文】
+【目标岗位摘要 (定制目标)】
 """
-{{resume_text}}
-"""
-
-【目标岗位 - 结构化摘要】
-"""
-{{job_summary_json}}
+{job_summary_json}
 """
 
-【上一步的匹配度分析报告】
+【匹配度分析报告 (定制策略)】
 """
-{{match_analysis_json}}
+{match_analysis_json}
 """
 
-请执行以下操作：
-1.  **突出优势**：放大 \`match_analysis_json\` 中提到的所有 \`strengths\`。
-2.  **量化成就**：使用 RAG 知识库中的“XYZ 法则” 和“动作动词” 重写项目描述。
-3.  **关键词匹配**：确保 \`job_summary_json\` 中的“mustHaves”关键词在新简历中显眼地出现。
-4.  **规避劣势**：弱化或删除与 JD 无关、且暴露劣势（\`weaknesses\`）的条目。
-5.  **输出 Markdown**：严格按照 Schema 输出完整的 Markdown 简历和修改摘要。`,
+【候选人详细履历 (事实来源 - 补充)】
+"""
+{detailed_resume_summary_json}
+"""
+
+【RAG 知识库 (仅作参考写作风格与技巧)】
+"""
+{rag_context}
+"""
+
+### 执行指令（思维链）：
+
+1. **事实提取与核验 (Fact Extraction & Verification)**：
+   - **Step 1**: 从【候选人简历摘要】中提取姓名。如果不为空，**必须**使用该姓名。
+   - **Step 2**: 确认【候选人简历摘要】中的最近一段工作经历。
+   - **Step 3**: 在思维链中显式声明：“我已确认候选人姓名为 [Name]，来自 [Company]。”（严禁使用 RAG 中的张三/李四/王明等示例名）。
+
+2. **策略制定 (Strategy)**：
+   - 阅读 JD 与 匹配报告，明确 3-5 个需要重点突出的“核心卖点”。
+   - 查阅 RAG 知识库，获取该岗位的“高频关键词”和“最佳表达方式”。
+
+3. **内容重构 (Restructuring)**：
+   - **Summary**: 结合 JD 痛点，用简练语言重写个人优势总结。
+   - **Experience**:
+     - 筛选与 JD 最相关的经历。
+     - 运用 **STAR 法则 (Situation-Task-Action-Result)** 优化描述。
+     - 参照 RAG 中的技巧，增强动词力度（如“主导”、“重构”、“提升”）。
+     - **数据增强**: 将原本平淡的描述转化为量化成果（基于原有数据，不可无中生有）。
+
+4. **最终复核 (Final Check)**：
+   - 检查：姓名、电话、邮箱是否与【候选人简历摘要】完全一致？
+   - 检查：所有公司名、职位、时间段是否真实存在于候选人履历中？
+   - 检查：是否混入了 RAG 案例中的虚假信息？
+
+5. **格式化输出**:
+   - 生成符合 JSON Schema 的最终结果。
+
+严格遵循 Output Schema。`,
     variables: [
       'rag_context',
-      'resume_text',
+      'resume_summary_json',
+      'detailed_resume_summary_json',
       'job_summary_json',
       'match_analysis_json',
     ],
@@ -778,22 +875,22 @@ JD原文:
 
 【RAG 知识库 - 面试技巧 (STAR, P-P-F, 常见问题)】
 """
-{{rag_context}}
+{rag_context}
 """
 
 【用户的定制化简历 (Markdown)】
 """
-{{customized_resume_md}}
+{customized_resume_md}
 """
 
 【目标岗位 - 结构化摘要】
 """
-{{job_summary_json}}
+{job_summary_json}
 """
 
 【匹配度分析报告】
 """
-{{match_analysis_json}}
+{match_analysis_json}
 """
 
 请执行以下操作：
@@ -836,10 +933,10 @@ JD原文:
 - 必须以 JSON 对象形式输出，不要包含多余说明文字。
 
 输入：
-- source_type: {{source_type}}
+- source_type: {source_type}
 - image_base64:
 """
-{{image}}
+{image}
 """`,
     variables: ['image', 'source_type'],
     outputSchema: {

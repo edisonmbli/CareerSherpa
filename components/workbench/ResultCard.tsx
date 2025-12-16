@@ -130,11 +130,15 @@ export function ResultCard({
       ? // Fix: Check for nested .script property (used in some LLM responses)
         typeof data.cover_letter_script.script === 'string'
         ? data.cover_letter_script.script
-        : typeof data.cover_letter_script.h === 'string'
+        : typeof data.cover_letter_script.H === 'string' // New standard (H/V/C)
+        ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${
+            data.cover_letter_script.V || ''
+          }\n\n【C】${data.cover_letter_script.C || ''}`
+        : typeof data.cover_letter_script.h === 'string' // Legacy lowercase
         ? `【H】${data.cover_letter_script.h || ''}\n\n【V】${
             data.cover_letter_script.v || ''
           }\n\n【C】${data.cover_letter_script.c || ''}`
-        : // Handle new schema with full names
+        : // Legacy long names
         typeof data.cover_letter_script.hook === 'string'
         ? `【H】${data.cover_letter_script.hook || ''}\n\n【V】${
             data.cover_letter_script.value || ''

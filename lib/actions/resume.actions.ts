@@ -3,12 +3,24 @@
 import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import { getOrCreateQuota } from '@/lib/dal/quotas'
 import { recordDebit } from '@/lib/dal/coinLedger'
-import { upsertResume, upsertDetailedResume, getLatestResumeSummaryJson, getLatestDetailedSummaryJson } from '@/lib/dal/resume'
+import {
+  upsertResume,
+  upsertDetailedResume,
+  getLatestResumeSummaryJson,
+  getLatestDetailedSummaryJson,
+} from '@/lib/dal/resume'
 import { pushTask } from '@/lib/queue/producer'
 import { trackEvent } from '@/lib/analytics/index'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getTaskLimits } from '@/lib/llm/config'
+import { ensureEnqueued } from '@/lib/actions/enqueue'
+import { updateCustomizedResumeEditedData } from '@/lib/dal/services'
+import {
+  resumeDataSchema,
+  sectionConfigSchema,
+} from '@/lib/types/resume-schema'
+import { revalidatePath } from 'next/cache'
 
 export type UploadResumeActionResult =
   | { ok: true; taskId: string; isFree: boolean; taskType: 'resume' }
@@ -144,4 +156,33 @@ export const getLatestDetailedSummaryAction = withServerActionAuthWrite(
     return { ok: true, data }
   }
 )
-import { ensureEnqueued } from '@/lib/actions/enqueue'
+
+// --- New Actions for Resume Customization (M10) ---
+
+export async function updateCustomizedResumeAction(params: {
+  serviceId: string
+  resumeData: any
+  sectionConfig?: any
+}) {
+  const { serviceId, resumeData, sectionConfig } = params
+
+  try {
+    // Validate data before saving
+    const validatedData = resumeDataSchema.parse(resumeData)
+    const validatedConfig = sectionConfig
+      ? sectionConfigSchema.parse(sectionConfig)
+      : undefined
+
+    await updateCustomizedResumeEditedData(
+      serviceId,
+      validatedData,
+      validatedConfig
+    )
+
+    revalidatePath(`/workbench/${serviceId}`)
+    return { ok: true }
+  } catch (error) {
+    console.error('Failed to update resume data:', error)
+    return { ok: false, error: 'Failed to save changes' }
+  }
+}

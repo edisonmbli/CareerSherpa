@@ -9,6 +9,14 @@ const dict = {
   submit_jd: 'Upload JD',
   create_service: 'Create Service',
   // Namespaced additions (backward compatible)
+  rag: {
+    match_job_analysis:
+      '{{title}} Job Match Analysis Methods Strengths Identification Weaknesses Mitigation Professional Assessment Framework {{skills}}',
+    match_resume_fit:
+      '{{title}} HR DM Scripts Templates Concise Impactful Precise High Match DM script Opening and Closing {{skills}}',
+    customize_general: 'resume writing best practices STAR method action verbs',
+    customize_role: '{{title}} core skills keywords quantifiable metrics resume examples',
+  },
   designSystem: {
     title: 'Design System',
     sections: {
@@ -182,6 +190,9 @@ const dict = {
       start: 'Generate Interview Tips',
     },
     statusText: {
+      analyzing: 'AI is analyzing...',
+      analyzingDesc:
+        'Analyzing your profile against the JD and applying professional resume writing strategies. This usually takes 30-60 seconds.',
       failed: 'Task failed',
       retryMatch: 'Retry Match',
       summaryCompletedToast: 'Job summary completed',
@@ -193,6 +204,9 @@ const dict = {
       model_too_busy: 'Model too busy, please try again later',
       job_summary_missing: 'Missing job summary, cannot match',
       enqueue_failed: 'Failed to enqueue task, try later',
+      readyToCustomize: 'Ready to Customize',
+      readyToCustomizeDesc:
+        'Click "Start Customization" below to generate a tailored resume based on the job description.',
     },
     streamPanel: {
       ocr: 'OCR Extraction',
@@ -219,6 +233,9 @@ const dict = {
       ocrFailed: 'OCR Extraction Failed',
       summaryFailed: 'Job Summary Extraction Failed',
       matchFailed: 'Match Analysis Failed',
+      customizing: 'Customizing resume...',
+      customizeCompleted: 'Customization Completed',
+      customizeFailed: 'Customization Failed',
     },
     costTooltip: 'Using this service costs {cost} coins',
   },

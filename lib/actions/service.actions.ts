@@ -2,8 +2,14 @@
 
 import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import { getOrCreateQuota } from '@/lib/dal/quotas'
-import { recordDebit, markDebitSuccess } from '@/lib/dal/coinLedger'
+import {
+  recordDebit,
+  markDebitSuccess,
+  markDebitFailed,
+  recordRefund,
+} from '@/lib/dal/coinLedger'
 import { getLatestResume, getLatestDetailedResume } from '@/lib/dal/resume'
+import { getTaskCost } from '@/lib/constants'
 import {
   createService,
   createJobForService,
@@ -13,7 +19,7 @@ import {
   setCustomizedResumeResult,
   getServiceWithContext,
   updateMatchStatus,
-  updateCustomizedResumeMarkdown,
+  updateCustomizedResumeEditedData,
   updateServiceExecutionStatus,
 } from '@/lib/dal/services'
 import { pushTask } from '@/lib/queue/producer'
@@ -25,9 +31,16 @@ import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import { markTimeline } from '@/lib/observability/timeline'
+import { nanoid } from 'nanoid'
 
 export type CustomizeResumeActionResult =
-  | { ok: true; taskId: string; taskType: 'customize'; isFree: boolean }
+  | {
+      ok: true
+      taskId: string
+      taskType: 'customize'
+      isFree: boolean
+      executionSessionId: string
+    }
   | { ok: false; error: string }
 
 export type GenerateInterviewTipsActionResult =
@@ -148,7 +161,7 @@ export const createServiceAction = withServerActionAuthWrite(
       userId,
       amount: cost,
       serviceId: svc.id,
-      templateId: 'job_summary',
+      templateId: 'job_match',
     })
     await markTimeline(svc.id, 'create_service_debit_recorded', { cost })
     const hasQuota = debit.ok // 检查是否成功扣费（即用户是否有配额）
@@ -174,7 +187,20 @@ export const createServiceAction = withServerActionAuthWrite(
       await markTimeline(svc.id, 'create_service_ocr_enqueued', {
         latencyMs: Date.now() - tEnq,
       })
-      if (!e1.ok) return { ok: false, error: e1.error }
+      if (!e1.ok) {
+        if (hasQuota) {
+          // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
+          // already handles the refund logic when enqueue fails.
+          // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
+          await markDebitFailed(debit.id)
+        }
+        await updateServiceExecutionStatus(
+          svc.id,
+          ExecutionStatus.MATCH_FAILED,
+          { failureCode: 'ENQUEUE_FAILED' }
+        )
+        return { ok: false, error: e1.error, serviceId: svc.id }
+      }
 
       // 将执行会话写入并设置为 OCR_PENDING，便于前端在 OCR 阶段就订阅通道
       await updateServiceExecutionStatus(svc.id, ExecutionStatus.OCR_PENDING, {
@@ -219,7 +245,18 @@ export const createServiceAction = withServerActionAuthWrite(
     await markTimeline(svc.id, 'create_service_summary_enqueued', {
       latencyMs: Date.now() - tEnq,
     })
-    if (!eText.ok) return { ok: false, error: eText.error }
+    if (!eText.ok) {
+      if (hasQuota) {
+        // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
+        // already handles the refund logic when enqueue fails.
+        // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
+        await markDebitFailed(debit.id)
+      }
+      await updateServiceExecutionStatus(svc.id, ExecutionStatus.MATCH_FAILED, {
+        failureCode: 'ENQUEUE_FAILED',
+      })
+      return { ok: false, error: eText.error, serviceId: svc.id }
+    }
     await updateServiceExecutionStatus(
       svc.id,
       ExecutionStatus.SUMMARY_PENDING,
@@ -255,12 +292,16 @@ export const customizeResumeAction = withServerActionAuthWrite<
   async (params: { locale: Locale; serviceId: string }, ctx) => {
     const userId = ctx.userId
     await getOrCreateQuota(userId)
-    const cost = 2
+    const cost = getTaskCost('resume_customize')
 
     const service = await getServiceWithContext(params.serviceId)
     if (!service?.resume || !service?.job) {
       return { ok: false, error: 'service_context_missing' }
     }
+
+    // Ensure customized resume record exists
+    const rec = await ensureCustomizedResumeRecord(params.serviceId)
+
     const debit2 = await recordDebit({
       userId,
       amount: cost,
@@ -269,38 +310,37 @@ export const customizeResumeAction = withServerActionAuthWrite<
     })
     const hasQuota = debit2.ok
 
-    const resumeSummary = service.resume.resumeSummaryJson as any
-    const jobSummary = service.job.jobSummaryJson as any
-    const originalText = service.resume.originalText || ''
-    const { generateOps } = await import('@/lib/customize/ops')
-    const { toMarkdown } = await import('@/lib/customize/markdown')
-    const ops = generateOps({ resume: resumeSummary, jobSummary })
-    const md = toMarkdown({ raw: originalText, ops })
-
-    const rec = await ensureCustomizedResumeRecord(params.serviceId)
-    await setCustomizedResumeResult(
-      params.serviceId,
-      md.markdown,
-      ops as any,
-      'COMPLETED' as any
-    )
-    if (debit2.ok) {
-      await markDebitSuccess(debit2.id)
-    }
-
-    trackEvent('TASK_COMPLETED', {
+    // Push to QStash (New Async Logic)
+    const executionSessionId = nanoid()
+    const enq = await ensureEnqueued({
+      kind: 'batch',
+      serviceId: params.serviceId,
+      taskId: `customize_${params.serviceId}_${Date.now()}`,
       userId,
-      payload: {
-        task: 'customize',
-        opsCount: ops.length,
-        markdownLength: md.markdown.length,
-      },
+      locale: params.locale,
+      templateId: 'resume_customize',
+      variables: {
+        serviceId: params.serviceId,
+        wasPaid: hasQuota,
+        cost,
+        executionSessionId,
+        ...(hasQuota ? { debitId: debit2.id } : {}),
+      } as any,
     })
+
+    if (!enq.ok) return { ok: false, error: enq.error }
+
+    trackEvent('TASK_ENQUEUED', {
+      userId,
+      payload: { task: 'customize', isFree: !hasQuota },
+    })
+
     return {
       ok: true,
       taskId: rec.id,
       taskType: 'customize',
       isFree: !hasQuota,
+      executionSessionId,
     }
   }
 )
@@ -328,7 +368,7 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
   async (params: { locale: Locale; serviceId: string }, ctx) => {
     const userId = ctx.userId
     await getOrCreateQuota(userId)
-    const cost = 2
+    const cost = getTaskCost('interview_prep')
 
     const rec = await ensureInterviewRecord(params.serviceId)
     const debit3 = await recordDebit({
@@ -370,13 +410,13 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
 )
 
 export const saveCustomizedResumeAction = withServerActionAuthWrite<
-  { serviceId: string; markdown: string },
+  { serviceId: string; resumeJson: any },
   SaveCustomizedResumeActionResult
 >(
   'saveCustomizedResumeAction',
-  async (params: { serviceId: string; markdown: string }, ctx) => {
+  async (params: { serviceId: string; resumeJson: any }, ctx) => {
     const userId = ctx.userId
-    await updateCustomizedResumeMarkdown(params.serviceId, params.markdown)
+    await updateCustomizedResumeEditedData(params.serviceId, params.resumeJson)
     trackEvent('TASK_COMPLETED', {
       userId,
       payload: { task: 'customize_save', serviceId: params.serviceId },
@@ -408,7 +448,7 @@ export const retryMatchAction = withServerActionAuthWrite<
   async (params: { locale: Locale; serviceId: string }, ctx) => {
     const userId = ctx.userId
     await getOrCreateQuota(userId)
-    const cost = 2
+    const cost = getTaskCost('job_match')
     const svc = await getServiceWithContext(params.serviceId)
     if (!svc?.resume || !svc?.job) {
       return { ok: false, error: 'job_summary_missing' }
@@ -422,10 +462,12 @@ export const retryMatchAction = withServerActionAuthWrite<
         userId,
         amount: cost,
         serviceId: params.serviceId,
-        templateId: 'job_summary',
+        templateId: 'job_match',
       })
       const hasQuota = debit.ok
-      const needOcr = !svc.job.originalText && !!svc.job.originalImage
+      // Fix: Check imageUrl as well, since originalImage is deprecated
+      const needOcr =
+        !svc.job.originalText && (!!svc.job.originalImage || !!svc.job.imageUrl)
       const ttlSec = Math.max(
         1,
         Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000)
@@ -450,6 +492,17 @@ export const retryMatchAction = withServerActionAuthWrite<
         },
       })
       if (!enqSummary.ok) {
+        if (hasQuota) {
+          // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
+          // already handles the refund logic when enqueue fails.
+          // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
+          await markDebitFailed(debit.id)
+        }
+        await updateServiceExecutionStatus(
+          params.serviceId,
+          ExecutionStatus.MATCH_FAILED,
+          { failureCode: 'ENQUEUE_FAILED' }
+        )
         return { ok: false, error: 'enqueue_failed' }
       }
       trackEvent('TASK_ENQUEUED', {
@@ -500,7 +553,20 @@ export const retryMatchAction = withServerActionAuthWrite<
         executionSessionId,
       },
     })
-    if (!enq.ok) return { ok: false, error: 'enqueue_failed' }
+    if (!enq.ok) {
+      if (hasQuota) {
+        // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
+        // already handles the refund logic when enqueue fails.
+        // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
+        await markDebitFailed(debit.id)
+      }
+      await updateServiceExecutionStatus(
+        params.serviceId,
+        ExecutionStatus.MATCH_FAILED,
+        { failureCode: 'ENQUEUE_FAILED' }
+      )
+      return { ok: false, error: 'enqueue_failed' }
+    }
     trackEvent('TASK_ENQUEUED', {
       userId,
       payload: { task: 'retry_match', isFree: !hasQuota },

@@ -55,12 +55,6 @@ function cleanJsonText(text: string): string {
   // Remove invisible characters and BOM
   cleaned = cleaned.replace(/^\uFEFF/, '').replace(/[\u200B-\u200D\uFEFF]/g, '')
 
-  // Normalize quotes (smart quotes to regular quotes)
-  // 注意：不要将字符串内的单引号替换为双引号，这会破坏JSON结构
-  cleaned = cleaned.replace(/[""]/g, '"')
-  // 只替换可能作为字符串边界的智能单引号，保留字符串内容中的普通单引号
-  cleaned = cleaned.replace(/^'|'$/g, '"').replace(/'(\s*:\s*)/g, '"$1').replace(/(\s*,\s*)'/g, '$1"')
-
   // Replace full-width spaces with regular spaces
   cleaned = cleaned.replace(/\u3000/g, ' ')
 
@@ -69,6 +63,10 @@ function cleanJsonText(text: string): string {
 
   // Remove any leading/trailing whitespace again
   cleaned = cleaned.trim()
+
+  // Normalize quotes to standard quotes before escaping control characters
+  // This prevents smart quotes from confusing the string tracking logic
+  cleaned = fixQuotesInStrings(cleaned)
 
   // Escape control characters inside JSON strings
   cleaned = escapeControlCharsInStrings(cleaned)
@@ -143,7 +141,9 @@ function extractJsonFromText(text: string): string {
 }
 
 /**
- * Fix quotes within JSON strings to prevent parsing errors
+ * Normalize quotes and repair unescaped quotes within strings
+ * Replaces smart quotes/single quotes with double quotes for structure
+ * Escapes quotes that appear to be content
  */
 function fixQuotesInStrings(text: string): string {
   let result = ''
@@ -153,7 +153,6 @@ function fixQuotesInStrings(text: string): string {
 
   while (i < text.length) {
     const char = text[i]
-    const nextChar = text[i + 1]
 
     if (escaped) {
       result += char
@@ -169,30 +168,41 @@ function fixQuotesInStrings(text: string): string {
       continue
     }
 
-    if (char === '"') {
+    // Check for any quote-like character
+    if (
+      char === '"' ||
+      char === "'" ||
+      char === '\u201C' ||
+      char === '\u201D'
+    ) {
       if (!inString) {
-        // 开始字符串
+        // Start of string - always normalize to double quote
         inString = true
-        result += char
+        result += '"'
       } else {
-        // 可能结束字符串，检查后面是否是JSON结构字符
-        const afterQuote = text.slice(i + 1).match(/^\s*[,\]\}:]/);
-        if (afterQuote) {
-          // 确实是字符串结束
+        // Inside string - check if this is a closing quote
+        // Look ahead for structural delimiters
+        const suffix = text.slice(i + 1)
+        const isDelimiter = /^\s*[,\]\}:，：]/.test(suffix)
+
+        if (isDelimiter) {
+          // It's a closing quote
           inString = false
-          result += char
+          result += '"'
         } else {
-          // 字符串内的引号，需要转义
-          result += '\\"'
+          // It's a quote inside the string (content)
+          if (char === '"') {
+            // Double quotes must be escaped
+            result += '\\"'
+          } else {
+            // Other quotes (single/smart) can stay as is
+            result += char
+          }
         }
       }
-    } else if (inString && char === "'") {
-      // 字符串内的单引号，保持原样（JSON标准允许）
-      result += char
     } else {
       result += char
     }
-
     i++
   }
 
@@ -248,13 +258,17 @@ function escapeControlCharsInStrings(text: string): string {
 function fixJsonSyntax(text: string): string {
   let fixed = text
 
+  // Normalize Chinese punctuation to standard punctuation
+  fixed = fixed.replace(/，/g, ',')
+  fixed = fixed.replace(/：/g, ':')
+
   // 首先处理字符串中的引号问题
   fixed = fixQuotesInStrings(fixed)
 
   // 多次迭代修复，处理复杂的嵌套情况
   for (let i = 0; i < 3; i++) {
     const before = fixed
-    
+
     // 1. 修复对象属性之间缺少逗号（字符串值）
     // "key": "value" \n "nextKey": -> "key": "value", "nextKey":
     fixed = fixed.replace(/("\s*:\s*"[^"]*")\s*\n\s*(")/g, '$1,\n  $2')
@@ -272,8 +286,14 @@ function fixJsonSyntax(text: string): string {
 
     // 4. 修复对象属性之间缺少逗号（基本类型值）
     // "key": value \n "nextKey": -> "key": value, "nextKey":
-    fixed = fixed.replace(/("\s*:\s*(?:true|false|null|\d+(?:\.\d+)?))\s*\n\s*(")/g, '$1,\n  $2')
-    fixed = fixed.replace(/("\s*:\s*(?:true|false|null|\d+(?:\.\d+)?))\s+(")/g, '$1, $2')
+    fixed = fixed.replace(
+      /("\s*:\s*(?:true|false|null|\d+(?:\.\d+)?))\s*\n\s*(")/g,
+      '$1,\n  $2'
+    )
+    fixed = fixed.replace(
+      /("\s*:\s*(?:true|false|null|\d+(?:\.\d+)?))\s+(")/g,
+      '$1, $2'
+    )
 
     // 5. 修复数组中字符串元素之间缺少逗号
     // "item1" \n "item2" -> "item1", "item2"
@@ -293,9 +313,15 @@ function fixJsonSyntax(text: string): string {
     fixed = fixed.replace(/(true|false|null)\s+("[^"]*")/g, '$1, $2')
 
     // 8. 修复数组中数字和布尔值之间缺少逗号
-    fixed = fixed.replace(/(\d+(?:\.\d+)?)\s*\n\s*(true|false|null)/g, '$1,\n  $2')
+    fixed = fixed.replace(
+      /(\d+(?:\.\d+)?)\s*\n\s*(true|false|null)/g,
+      '$1,\n  $2'
+    )
     fixed = fixed.replace(/(\d+(?:\.\d+)?)\s+(true|false|null)/g, '$1, $2')
-    fixed = fixed.replace(/(true|false|null)\s*\n\s*(\d+(?:\.\d+)?)/g, '$1,\n  $2')
+    fixed = fixed.replace(
+      /(true|false|null)\s*\n\s*(\d+(?:\.\d+)?)/g,
+      '$1,\n  $2'
+    )
     fixed = fixed.replace(/(true|false|null)\s+(\d+(?:\.\d+)?)/g, '$1, $2')
 
     // 9. 修复数组中对象之间缺少逗号
@@ -400,8 +426,9 @@ export function validateJson<T = any>(
 
       return result
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
       if (debug) {
         logInfo({
           reqId: debug.reqId ?? 'unknown',
@@ -442,7 +469,7 @@ export function validateJson<T = any>(
     parseAttempts++
     try {
       const cleaned = cleanJsonText(content)
-      
+
       if (debug) {
         logInfo({
           reqId: debug.reqId ?? 'unknown',
@@ -455,7 +482,7 @@ export function validateJson<T = any>(
           cleanedPreview: cleaned.slice(0, 300),
         })
       }
-      
+
       const parsed = JSON.parse(cleaned)
 
       if (debug) {
@@ -481,8 +508,9 @@ export function validateJson<T = any>(
 
       return result
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
       if (debug) {
         logInfo({
           reqId: debug.reqId ?? 'unknown',
@@ -495,7 +523,7 @@ export function validateJson<T = any>(
           errorPosition: errorMessage.match(/position (\d+)/)?.[1],
         })
       }
-      
+
       warnings.push(`Cleaned parse failed: ${errorMessage}`)
     }
   }
@@ -547,8 +575,9 @@ export function validateJson<T = any>(
         return result
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
       if (debug) {
         logInfo({
           reqId: debug.reqId ?? 'unknown',
@@ -557,11 +586,13 @@ export function validateJson<T = any>(
           phase: 'extracted_parse_failed',
           error: errorMessage,
           parseAttempts,
-          extractedContent: extractJsonFromText(cleanJsonText(content))?.slice(0, 500) || 'null',
+          extractedContent:
+            extractJsonFromText(cleanJsonText(content))?.slice(0, 500) ||
+            'null',
           errorPosition: errorMessage.match(/position (\d+)/)?.[1],
         })
       }
-      
+
       warnings.push(`Extracted parse failed: ${errorMessage}`)
     }
   }
@@ -573,7 +604,7 @@ export function validateJson<T = any>(
       const cleaned = cleanJsonText(content)
       const extracted = extractJsonFromText(cleaned) || cleaned
       const fixed = fixJsonSyntax(extracted)
-      
+
       if (debug) {
         logInfo({
           reqId: debug.reqId ?? 'unknown',
@@ -588,7 +619,7 @@ export function validateJson<T = any>(
           fixedContent: fixed.slice(0, 500), // 记录修复后的内容
         })
       }
-      
+
       const parsed = JSON.parse(fixed)
 
       if (debug) {
@@ -615,8 +646,9 @@ export function validateJson<T = any>(
 
       return result
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
       if (debug) {
         logInfo({
           reqId: debug.reqId ?? 'unknown',
@@ -625,11 +657,14 @@ export function validateJson<T = any>(
           phase: 'fixed_parse_failed',
           error: errorMessage,
           parseAttempts,
-          fixedContent: fixJsonSyntax(extractJsonFromText(cleanJsonText(content)) || cleanJsonText(content)).slice(0, 500),
+          fixedContent: fixJsonSyntax(
+            extractJsonFromText(cleanJsonText(content)) ||
+              cleanJsonText(content)
+          ).slice(0, 500),
           errorPosition: errorMessage.match(/position (\d+)/)?.[1],
         })
       }
-      
+
       warnings.push(`Fixed parse failed: ${errorMessage}`)
     }
   }
@@ -655,8 +690,11 @@ export function validateJson<T = any>(
       // 添加所有处理步骤的内容样本
       processedSamples: {
         cleaned: cleanJsonText(content).slice(0, 300),
-        extracted: extractJsonFromText(cleanJsonText(content))?.slice(0, 300) || 'null',
-        fixed: fixJsonSyntax(extractJsonFromText(cleanJsonText(content)) || cleanJsonText(content)).slice(0, 300),
+        extracted:
+          extractJsonFromText(cleanJsonText(content))?.slice(0, 300) || 'null',
+        fixed: fixJsonSyntax(
+          extractJsonFromText(cleanJsonText(content)) || cleanJsonText(content)
+        ).slice(0, 300),
       },
     })
   }

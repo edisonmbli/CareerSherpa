@@ -7,9 +7,15 @@ import {
 } from '@/lib/dal/services'
 import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent } from '@/lib/worker/common'
-import { recordRefund, markDebitSuccess } from '@/lib/dal/coinLedger'
+import {
+  recordRefund,
+  markDebitSuccess,
+  markDebitFailed,
+} from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
+
 import { retrieveMatchContext } from '@/lib/rag/retriever'
+import { validateJson } from '@/lib/llm/json-validator'
 
 export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
   templateId = 'job_match' as const
@@ -163,8 +169,8 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
           resumeSkills: resumeSkillsArr,
           topStrengths,
         },
-        serviceId,
-        taskId
+        ctx.locale || 'en',
+        'job_match'
       )
 
       vars['rag_context'] = rag
@@ -213,29 +219,20 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       return
     }
 
-    // Parse JSON result if available (from raw stream or structured data)
-    // Note: We defer strict JSON parsing to this 'Match_Completed' phase to allow
-    // the frontend to receive raw streaming tokens immediately during the generation phase.
+    // 1. Parse result
     let matchJson: any = null
-    if (execResult.data && typeof execResult.data === 'object') {
+
+    // Use the robust validator which handles markdown, full-width quotes, and repairs syntax
+    const validation = validateJson(execResult.raw || '', {
+      enableFallback: true, // Allow extract/repair strategies
+      strictMode: false,
+    })
+
+    if (validation.success && validation.data) {
+      matchJson = validation.data
+    } else if (execResult.data && typeof execResult.data === 'object') {
+      // Fallback to structured output if available and validation failed (unlikely if raw exists)
       matchJson = execResult.data
-    } else if (execResult.raw) {
-      try {
-        // Attempt to extract JSON from raw string (which might be markdown wrapped)
-        // Improved regex to capture content between first { and last }
-        const jsonMatch = execResult.raw.match(/(\{[\s\S]*\})/)
-        let clean = jsonMatch ? jsonMatch[0] : execResult.raw
-
-        // Fallback: remove markdown code blocks if regex didn't catch them (though regex above should be robust)
-        clean = clean.replace(/```json\n?|```/g, '').trim()
-
-        // Support JSON starting with { or [
-        if (clean.startsWith('{') || clean.startsWith('[')) {
-          matchJson = JSON.parse(clean)
-        }
-      } catch (e: any) {
-        /* best effort parse */
-      }
     }
 
     // Sanity Check: Detect logic failure (garbage output or placeholder complaint)
@@ -397,6 +394,12 @@ async function handleRefunds(
         phase: 'refund',
         serviceId,
       })
+    }
+    // Fix: Mark debit as FAILED when refunding
+    try {
+      await markDebitFailed(String(variables.debitId))
+    } catch (e) {
+      /* best effort */
     }
   }
 }
