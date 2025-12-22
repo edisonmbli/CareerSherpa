@@ -7,7 +7,11 @@ import {
   resumeDataSchema,
   sectionConfigSchema,
 } from '@/lib/types/resume-schema'
-import { updateCustomizedResumeAction } from '@/lib/actions/resume.actions'
+import { TemplateId } from '@/components/resume/constants'
+import {
+  updateCustomizedResumeAction,
+  resetCustomizedResumeAction,
+} from '@/lib/actions/resume.actions'
 import debounce from 'lodash/debounce'
 
 // Default Section Config
@@ -31,20 +35,38 @@ interface ResumeState {
   serviceId: string | null
   resumeData: ResumeData | null
   originalData: ResumeData | null
+  optimizeSuggestion: string | null
   sectionConfig: SectionConfig
+  currentTemplate: TemplateId
 
   // UI State
-  activeSectionId: string | null
+  activeSectionKey: string | null // e.g., 'workExperiences'
+  activeItemId: string | null // e.g., 'work-1'
   isSidebarOpen: boolean
+  isStructureOpen: boolean
+  isAIPanelOpen: boolean
   isSaving: boolean
   lastSavedAt: Date | null
+
+  // Style Config
+  styleConfig: {
+    themeColor: string
+    fontFamily: string
+    fontSize: number
+    lineHeight: number
+    pageMargin: number
+    sectionSpacing: number
+    itemSpacing: number
+  }
 
   // Actions
   initStore: (
     serviceId: string,
     data: ResumeData,
     originalData: ResumeData | null,
-    config?: SectionConfig
+    config?: SectionConfig,
+    optimizeSuggestion?: string | null,
+    opsJson?: any
   ) => void
 
   updateBasics: (data: Partial<ResumeData['basics']>) => void
@@ -82,11 +104,17 @@ interface ResumeState {
   reorderSection: (newOrder: string[]) => void
   toggleSectionVisibility: (sectionKey: string) => void
 
-  setActiveSection: (id: string | null) => void
+  setActive: (key: string | null, itemId?: string | null) => void
   setSidebarOpen: (isOpen: boolean) => void
+  setStructureOpen: (isOpen: boolean) => void
+  setAIPanelOpen: (isOpen: boolean) => void
+
+  updateStyleConfig: (config: Partial<ResumeState['styleConfig']>) => void
+  setTemplate: (id: TemplateId) => void
 
   // Auto-save trigger
   save: () => Promise<void>
+  resetToOriginal: () => Promise<void>
 }
 
 // Debounced save function
@@ -95,6 +123,7 @@ const debouncedSave = debounce(
     serviceId: string,
     data: ResumeData,
     config: SectionConfig,
+    opsJson: any,
     set: any
   ) => {
     if (!serviceId) return
@@ -108,6 +137,7 @@ const debouncedSave = debounce(
         serviceId,
         resumeData: data,
         sectionConfig: config,
+        opsJson,
       })
 
       if (res.ok) {
@@ -149,19 +179,67 @@ const createResumeSlice = (
   serviceId: null,
   resumeData: null,
   originalData: null,
+  optimizeSuggestion: null,
   sectionConfig: DEFAULT_SECTION_CONFIG,
+  currentTemplate: 'standard',
 
-  activeSectionId: null,
+  activeSectionKey: null,
+  activeItemId: null,
   isSidebarOpen: true,
+  isStructureOpen: true,
+  isAIPanelOpen: true,
   isSaving: false,
   lastSavedAt: null,
 
-  initStore: (serviceId, data, originalData, config) => {
+  styleConfig: {
+    themeColor: '#0284c7', // Sky 600
+    fontFamily: 'jetbrains-mono',
+    fontSize: 1,
+    lineHeight: 1.5,
+    pageMargin: 16, // 16mm
+    sectionSpacing: 24,
+    itemSpacing: 12,
+  },
+
+  initStore: (
+    serviceId,
+    data,
+    originalData,
+    config,
+    optimizeSuggestion,
+    opsJson
+  ) => {
     set((state) => {
       state.serviceId = serviceId
       state.resumeData = data
+
+      // MVP: Check localStorage for avatar if missing in data
+      // This runs on client side only
+      if (
+        typeof window !== 'undefined' &&
+        data?.basics &&
+        !data.basics.photoUrl
+      ) {
+        try {
+          const cachedAvatar = localStorage.getItem('user_avatar')
+          if (cachedAvatar) {
+            state.resumeData!.basics.photoUrl = cachedAvatar
+          }
+        } catch {}
+      }
+
       state.originalData = originalData || data // Fallback to current if original missing
       state.sectionConfig = config || DEFAULT_SECTION_CONFIG
+      state.optimizeSuggestion = optimizeSuggestion || null
+
+      if (opsJson) {
+        if (opsJson.styleConfig) {
+          state.styleConfig = { ...state.styleConfig, ...opsJson.styleConfig }
+        }
+        if (opsJson.currentTemplate) {
+          state.currentTemplate = opsJson.currentTemplate
+        }
+      }
     })
   },
 
@@ -196,7 +274,7 @@ const createResumeSlice = (
         arr.push({ id, description: '' })
       }
     })
-    get().setActiveSection(id)
+    get().setActive(sectionKey, id)
     get().save()
   },
 
@@ -241,10 +319,15 @@ const createResumeSlice = (
     get().save()
   },
 
-  setActiveSection: (id) => {
+  setActive: (key, itemId) => {
     set((state) => {
-      state.activeSectionId = id
-      if (id) state.isSidebarOpen = true
+      state.activeSectionKey = key
+      state.activeItemId = itemId || null
+      // Auto-open sidebars when activating a section
+      if (key) {
+        // state.isSidebarOpen = true // Left (Structure) - Do not force open left sidebar
+        state.isAIPanelOpen = true // Right (Property) - MUST open to show form
+      }
     })
   },
 
@@ -254,10 +337,67 @@ const createResumeSlice = (
     })
   },
 
+  setStructureOpen: (isOpen) => {
+    set((state) => {
+      state.isStructureOpen = isOpen
+    })
+  },
+
+  setAIPanelOpen: (isOpen) => {
+    set((state) => {
+      state.isAIPanelOpen = isOpen
+    })
+  },
+
+  updateStyleConfig: (config) => {
+    set((state) => {
+      state.styleConfig = { ...state.styleConfig, ...config }
+    })
+    get().save()
+  },
+
+  setTemplate: (id) => {
+    set((state) => {
+      state.currentTemplate = id
+    })
+    get().save()
+  },
+
   save: async () => {
-    const { serviceId, resumeData, sectionConfig } = get()
+    const {
+      serviceId,
+      resumeData,
+      sectionConfig,
+      styleConfig,
+      currentTemplate,
+    } = get()
     if (serviceId && resumeData) {
-      debouncedSave(serviceId, resumeData, sectionConfig, set)
+      debouncedSave(
+        serviceId,
+        resumeData,
+        sectionConfig,
+        { styleConfig, currentTemplate },
+        set
+      )
+    }
+  },
+
+  resetToOriginal: async () => {
+    const { originalData, serviceId } = get()
+    if (originalData) {
+      set((state) => {
+        state.resumeData = originalData
+      })
+      await get().save()
+
+      // Also reset in DB if serviceId exists
+      if (serviceId) {
+        try {
+          await resetCustomizedResumeAction(serviceId)
+        } catch (e) {
+          console.error('Failed to reset remote data', e)
+        }
+      }
     }
   },
 })

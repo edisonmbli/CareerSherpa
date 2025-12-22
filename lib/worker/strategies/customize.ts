@@ -6,6 +6,7 @@ import {
 } from '@/lib/dal/services'
 import { retrieveCustomizeContext } from '@/lib/rag/retriever'
 import { llmResumeResponseSchema } from '@/lib/types/resume-schema'
+import { validateJson } from '@/lib/llm/json-validator'
 import { z } from 'zod'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import fs from 'fs'
@@ -128,7 +129,7 @@ export const customizeStrategy: WorkerStrategy = {
       JSON.stringify(execResult, null, 2)
     )
 
-    if (!execResult.ok) {
+    if (!execResult.ok && !execResult.data?.raw) {
       await setCustomizedResumeResult(
         serviceId,
         undefined,
@@ -163,8 +164,28 @@ export const customizeStrategy: WorkerStrategy = {
     }
 
     try {
+      // Parse result with robust validator (like match strategy)
+      let resultJson: any = null
+      const validation = validateJson(execResult.raw || '', {
+        enableFallback: true,
+        strictMode: false,
+      })
+
+      if (validation.success && validation.data) {
+        resultJson = validation.data
+      } else if (execResult.data && typeof execResult.data === 'object') {
+        resultJson = execResult.data
+      }
+
+      if (!resultJson) {
+        throw new Error(
+          'Failed to parse LLM response: ' +
+            (validation.error || 'Unknown error')
+        )
+      }
+
       // Validate Result against Schema
-      const validatedData = llmResumeResponseSchema.parse(result)
+      const validatedData = llmResumeResponseSchema.parse(resultJson)
 
       // Map to DB format
       await setCustomizedResumeResult(

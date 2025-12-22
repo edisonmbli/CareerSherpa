@@ -251,13 +251,33 @@ export async function setInterviewTipsJson(
 export async function updateCustomizedResumeEditedData(
   serviceId: string,
   editedResumeJson: any,
-  sectionConfig?: any
+  sectionConfig?: any,
+  opsJson?: any
 ) {
   return prisma.customizedResume.update({
     where: { serviceId },
     data: {
       editedResumeJson,
       ...(sectionConfig ? { sectionConfig } : {}),
+      ...(opsJson ? { ops_json: opsJson } : {}),
+    },
+  })
+}
+
+export async function resetCustomizedResumeEditedData(serviceId: string) {
+  const record = await prisma.customizedResume.findUnique({
+    where: { serviceId },
+    select: { customizedResumeJson: true },
+  })
+
+  if (!record || !record.customizedResumeJson) {
+    throw new Error('Original resume data not found')
+  }
+
+  return prisma.customizedResume.update({
+    where: { serviceId },
+    data: {
+      editedResumeJson: record.customizedResumeJson,
     },
   })
 }

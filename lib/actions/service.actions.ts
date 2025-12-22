@@ -50,6 +50,7 @@ export type GenerateInterviewTipsActionResult =
       taskType: 'interview'
       isFree: boolean
       stream: true
+      executionSessionId: string
     }
   | { ok: false; error: string }
 
@@ -378,6 +379,14 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
       templateId: 'interview_prep',
     })
     const hasQuota = debit3.ok
+
+    const executionSessionId = nanoid()
+    await updateServiceExecutionStatus(
+      params.serviceId,
+      ExecutionStatus.INTERVIEW_PENDING,
+      { executionSessionId }
+    )
+
     {
       const enq = await ensureEnqueued({
         kind: 'stream',
@@ -390,10 +399,18 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
           interviewId: rec.id,
           wasPaid: hasQuota,
           cost,
+          executionSessionId,
           ...(hasQuota ? { debitId: debit3.id } : {}),
-        },
+        } as any,
       })
-      if (!enq.ok) return { ok: false, error: enq.error }
+      if (!enq.ok) {
+        await updateServiceExecutionStatus(
+          params.serviceId,
+          ExecutionStatus.INTERVIEW_FAILED,
+          { executionSessionId }
+        )
+        return { ok: false, error: enq.error }
+      }
     }
     trackEvent('TASK_ENQUEUED', {
       userId,
@@ -405,6 +422,7 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
       taskType: 'interview',
       isFree: !hasQuota,
       stream: true,
+      executionSessionId,
     }
   }
 )

@@ -1,12 +1,16 @@
 import { WorkerStrategy, StrategyContext, ExecutionResult } from './interface'
-import { setInterviewTipsJson } from '@/lib/dal/services'
-import { AsyncTaskStatus } from '@prisma/client'
+import {
+  setInterviewTipsJson,
+  updateServiceExecutionStatus,
+} from '@/lib/dal/services'
+import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import {
   recordRefund,
   markDebitSuccess,
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
+import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
 
 export class InterviewStrategy implements WorkerStrategy<any> {
   templateId = 'interview_prep' as const
@@ -37,6 +41,49 @@ export class InterviewStrategy implements WorkerStrategy<any> {
         parsed || { markdown: raw },
         execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
       )
+
+      // Status update logic
+      const sessionId = String(variables.executionSessionId || '')
+      const matchTaskId = buildMatchTaskId(serviceId, sessionId)
+      const channel = getChannel(userId, serviceId, matchTaskId)
+
+      if (execResult.ok) {
+        await updateServiceExecutionStatus(
+          serviceId,
+          ExecutionStatus.INTERVIEW_COMPLETED,
+          { executionSessionId: variables.executionSessionId }
+        )
+        try {
+          await publishEvent(channel, {
+            type: 'status',
+            taskId: matchTaskId,
+            code: 'interview_completed',
+            status: 'INTERVIEW_COMPLETED',
+            lastUpdatedAt: new Date().toISOString(),
+            requestId,
+          })
+        } catch (e) {
+          /* ignore */
+        }
+      } else {
+        await updateServiceExecutionStatus(
+          serviceId,
+          ExecutionStatus.INTERVIEW_FAILED,
+          { executionSessionId: variables.executionSessionId }
+        )
+        try {
+          await publishEvent(channel, {
+            type: 'status',
+            taskId: matchTaskId,
+            code: 'interview_failed',
+            status: 'INTERVIEW_FAILED',
+            lastUpdatedAt: new Date().toISOString(),
+            requestId,
+          })
+        } catch (e) {
+          /* ignore */
+        }
+      }
     } catch (err) {
       logError({
         reqId: requestId,

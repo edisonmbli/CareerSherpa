@@ -46,6 +46,21 @@ export function SidebarClient({
         ? localStorage.getItem('sidebar_collapsed')
         : null
     setCollapsed(v === '1')
+
+    // Solution A: Event Bus Synchronization
+    // Listen for global sidebar change events to keep state in sync
+    const handleStorageChange = () => {
+      const nv = localStorage.getItem('sidebar_collapsed')
+      setCollapsed(nv === '1')
+    }
+
+    window.addEventListener('sidebar:collapsed-changed', handleStorageChange)
+    return () => {
+      window.removeEventListener(
+        'sidebar:collapsed-changed',
+        handleStorageChange
+      )
+    }
   }, [])
   const toggle = () => {
     const next = !collapsed
@@ -60,7 +75,13 @@ export function SidebarClient({
     : 'flex flex-col h-full border-0 dark:border dark:border-white/10 rounded-lg p-4 gap-4 bg-card shadow-sm'
   return (
     <div className={containerClass}>
-      <div className="flex items-center justify-between">
+      <div
+        className={
+          collapsed
+            ? 'flex items-center justify-center'
+            : 'flex items-center justify-between'
+        }
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -68,6 +89,9 @@ export function SidebarClient({
               size="icon"
               onClick={toggle}
               aria-label="Toggle sidebar"
+              className={
+                collapsed ? 'hover:bg-accent hover:text-accent-foreground' : ''
+              }
             >
               <Menu className="h-4 w-4" />
             </Button>
@@ -79,7 +103,11 @@ export function SidebarClient({
           </TooltipContent>
         </Tooltip>
       </div>
-      <div className="flex items-center">
+      <div
+        className={
+          collapsed ? 'flex items-center justify-center' : 'flex items-center'
+        }
+      >
         {!collapsed ? (
           <Button
             className="w-full"
@@ -95,7 +123,6 @@ export function SidebarClient({
                 size="icon"
                 onClick={() => router.push(`/${locale}/workbench`)}
                 aria-label="Create"
-                className="mx-auto"
               >
                 <PlusCircle className="h-4 w-4" />
               </Button>
@@ -104,17 +131,16 @@ export function SidebarClient({
           </Tooltip>
         )}
       </div>
-      {!collapsed && (
-        <SidebarHistory
-          locale={locale}
-          services={services.map((s) => ({
-            id: s.id,
-            title: s.title,
-            createdAt: s.createdAt,
-            updatedAt: s.updatedAt || new Date(s.createdAt),
-          }))}
-        />
-      )}
+      <SidebarHistory
+        locale={locale}
+        collapsed={collapsed}
+        services={services.map((s) => ({
+          id: s.id,
+          title: s.title,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt || new Date(s.createdAt),
+        }))}
+      />
       {!collapsed && (
         <div className="flex items-center justify-between gap-2">
           <Button asChild className="w-32" variant="secondary">

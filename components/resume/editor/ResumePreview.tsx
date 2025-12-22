@@ -9,6 +9,7 @@ import { TemplateTechnical } from '../templates/TemplateTechnical'
 import { TemplateCorporate } from '../templates/TemplateCorporate'
 import { TemplateElegant } from '../templates/TemplateElegant'
 import { TemplateDarkSidebar } from '../templates/TemplateDarkSidebar'
+import { useResumeStore } from '@/store/resume-store'
 
 interface ResumePreviewProps {
   templateId: TemplateId
@@ -18,6 +19,8 @@ interface ResumePreviewProps {
 
 export const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
   ({ templateId, data, config }, ref) => {
+    const { styleConfig } = useResumeStore()
+
     if (!data) {
       return (
         <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -42,36 +45,49 @@ export const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
       hidden: [],
     }
 
+    // Inject style config
+    const props = { data, config: activeConfig, styleConfig }
+
+    const basePageMarginMm = styleConfig?.pageMargin ?? 10
+    const isMobileViewport =
+      typeof window !== 'undefined' && window.innerWidth < 768
+    const pageMarginMm = isMobileViewport
+      ? Math.max(3, basePageMarginMm * 0.3)
+      : basePageMarginMm
+
     const renderTemplate = () => {
       switch (templateId) {
         case 'professional':
-          return <TemplateProfessional data={data} config={activeConfig} />
+          return <TemplateProfessional {...props} />
         case 'technical':
-          return <TemplateTechnical data={data} config={activeConfig} />
+          return <TemplateTechnical {...props} />
         case 'corporate':
-          return <TemplateCorporate data={data} config={activeConfig} />
+          return <TemplateCorporate {...props} />
         case 'elegant':
-          return <TemplateElegant data={data} config={activeConfig} />
+          return <TemplateElegant {...props} />
         case 'darkSidebar':
-          return <TemplateDarkSidebar data={data} config={activeConfig} />
+          return <TemplateDarkSidebar {...props} />
         case 'creative':
-          // Placeholder: Reuse Elegant for now as it's more creative than Standard
-          return <TemplateElegant data={data} config={activeConfig} />
+          return <TemplateElegant {...props} />
         case 'standard':
         default:
-          return <TemplateStandard data={data} config={activeConfig} />
+          return <TemplateStandard {...props} />
       }
     }
 
     return (
-      <div className="origin-top scale-[0.5] sm:scale-[0.6] md:scale-[0.75] lg:scale-[0.85] xl:scale-100 transition-transform duration-300 ease-in-out">
+      <div className="origin-top transition-transform duration-[800ms] ease-in-out">
         <div
           ref={ref}
-          className="w-[210mm] min-h-[297mm] bg-white shadow-xl"
+          className="min-h-[297mm] bg-white shadow-xl w-full"
           style={{
-            // A4 Size
-            width: '210mm',
+            width:
+              typeof window !== 'undefined' && window.innerWidth < 768
+                ? '100%'
+                : '210mm',
+            maxWidth: '210mm',
             minHeight: '297mm',
+            padding: `${pageMarginMm}mm`,
           }}
         >
           {renderTemplate()}

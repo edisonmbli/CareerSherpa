@@ -4,6 +4,7 @@ import { useResumeStore } from '@/store/resume-store'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ResumeData } from '@/lib/types/resume-schema'
+import { formTextareaClass } from './styles'
 
 interface SimpleSectionFormProps {
   sectionKey: keyof Pick<ResumeData, 'skills' | 'certificates' | 'hobbies'>
@@ -11,24 +12,28 @@ interface SimpleSectionFormProps {
   placeholder?: string
 }
 
-export function SimpleSectionForm({ sectionKey, label, placeholder }: SimpleSectionFormProps) {
+export function SimpleSectionForm({
+  sectionKey,
+  label,
+  placeholder,
+}: SimpleSectionFormProps) {
   const { resumeData, updateSimpleSection } = useResumeStore()
-  
+
   if (!resumeData) return null
-  
+
   const value = resumeData[sectionKey] || ''
 
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
-      <Textarea 
-        value={value} 
+      {/* Label removed to avoid duplication with panel header */}
+      <Textarea
+        value={value}
         onChange={(e) => updateSimpleSection(sectionKey, e.target.value)}
-        className="min-h-[150px]"
+        className={formTextareaClass}
         placeholder={placeholder}
       />
       <p className="text-xs text-muted-foreground">
-        提示：支持 Markdown 格式，使用 - 或 * 开头可生成列表。
+        💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
       </p>
     </div>
   )

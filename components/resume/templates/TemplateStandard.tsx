@@ -1,146 +1,329 @@
-import { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
+'use client'
+
+import { TemplateProps } from './types'
+import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
 import { Mail, Phone, Link as LinkIcon, Github, MapPin } from 'lucide-react'
+import { InteractiveSection } from './InteractiveSection'
 
-interface TemplateProps {
-  data: ResumeData
-  config: SectionConfig
-}
-
-export function TemplateStandard({ data, config }: TemplateProps) {
+export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
   const { basics } = data
-  
+  const {
+    container: containerStyle,
+    header: headerStyle,
+    subHeader: subHeaderStyle,
+    text: textStyle,
+    section: sectionStyle,
+    item: itemStyle,
+    fontFamilyClass,
+    themeColor,
+    isMobile,
+  } = useResumeTheme(styleConfig)
+
+  // Specific overrides for this template
+  const sectionTitleStyle = {
+    ...headerStyle,
+    borderColor: themeColor, // Use theme color for divider
+    borderBottomWidth: '1px',
+    color: themeColor, // Keep text color themed
+    fontSize: isMobile ? '1.1em' : '1.25em',
+  }
+
   const sectionMap: Record<string, React.ReactNode> = {
     basics: null, // Rendered separately in header
     summary: basics.summary && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-2 pb-1 uppercase tracking-wide">个人总结</h3>
-        <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">{basics.summary}</p>
-      </section>
+      <InteractiveSection sectionKey="summary">
+        <section style={sectionStyle}>
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            个人总结
+          </h3>
+          <div style={textStyle} className="text-gray-700 leading-relaxed">
+            {renderDescription(basics.summary)}
+          </div>
+        </section>
+      </InteractiveSection>
     ),
     workExperiences: data.workExperiences?.length > 0 && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-3 pb-1 uppercase tracking-wide">工作经历</h3>
-        <div className="space-y-4">
-          {data.workExperiences.map((item) => (
-            <div key={item.id}>
-              <div className="flex justify-between items-baseline mb-1">
-                <h4 className="font-bold text-gray-900">{item.company}</h4>
-                <span className="text-sm text-gray-600 font-medium">
-                  {formatDate(item.startDate)} - {formatDate(item.endDate)}
-                </span>
-              </div>
-              <div className="text-sm font-semibold text-gray-800 mb-1">{item.position}</div>
-              {renderDescription(item.description)}
+      <section style={sectionStyle}>
+        <InteractiveSection sectionKey="workExperiences">
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            工作经历
+          </h3>
+        </InteractiveSection>
+        <div className="space-y-3">
+          {data.workExperiences.map((item, index) => (
+            <div
+              key={item.id}
+              style={
+                index < data.workExperiences.length - 1 ? itemStyle : undefined
+              }
+            >
+              <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
+                    <h4
+                      className="font-bold text-gray-900"
+                      style={subHeaderStyle}
+                    >
+                      {item.company}
+                    </h4>
+                    <span
+                      className="text-gray-700 font-medium"
+                      style={textStyle}
+                    >
+                      {item.position}
+                    </span>
+                  </div>
+                  <span className="text-gray-500 font-medium whitespace-nowrap text-sm mt-1 sm:mt-0">
+                    {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                  </span>
+                </div>
+
+                <div style={textStyle} className="text-gray-700 mt-2">
+                  {renderDescription(item.description)}
+                </div>
+              </InteractiveSection>
             </div>
           ))}
         </div>
       </section>
     ),
     projectExperiences: data.projectExperiences?.length > 0 && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-3 pb-1 uppercase tracking-wide">项目经历</h3>
-        <div className="space-y-4">
-          {data.projectExperiences.map((item) => (
-            <div key={item.id}>
-              <div className="flex justify-between items-baseline mb-1">
-                <h4 className="font-bold text-gray-900">{item.projectName}</h4>
-                <span className="text-sm text-gray-600 font-medium">
-                  {formatDate(item.startDate)} - {formatDate(item.endDate)}
-                </span>
-              </div>
-              {item.role && <div className="text-sm font-semibold text-gray-800 mb-1">{item.role}</div>}
-              {renderDescription(item.description)}
+      <section style={sectionStyle}>
+        <InteractiveSection sectionKey="projectExperiences">
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            项目经历
+          </h3>
+        </InteractiveSection>
+        <div className="space-y-3">
+          {data.projectExperiences.map((item, index) => (
+            <div
+              key={item.id}
+              style={
+                index < data.projectExperiences.length - 1
+                  ? itemStyle
+                  : undefined
+              }
+            >
+              <InteractiveSection
+                sectionKey="projectExperiences"
+                itemId={item.id}
+              >
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
+                    <h4
+                      className="font-bold text-gray-900"
+                      style={subHeaderStyle}
+                    >
+                      {item.projectName}
+                    </h4>
+                    {item.role && (
+                      <span
+                        className="text-gray-700 font-medium"
+                        style={textStyle}
+                      >
+                        {item.role}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-gray-500 font-medium whitespace-nowrap text-sm mt-1 sm:mt-0">
+                    {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                  </span>
+                </div>
+                <div style={textStyle} className="text-gray-700 mt-2">
+                  {renderDescription(item.description)}
+                </div>
+              </InteractiveSection>
             </div>
           ))}
         </div>
       </section>
     ),
     educations: data.educations?.length > 0 && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-3 pb-1 uppercase tracking-wide">教育经历</h3>
+      <section style={sectionStyle}>
+        <InteractiveSection sectionKey="educations">
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            教育经历
+          </h3>
+        </InteractiveSection>
         <div className="space-y-3">
-          {data.educations.map((item) => (
-            <div key={item.id}>
-              <div className="flex justify-between items-baseline">
-                <h4 className="font-bold text-gray-900">{item.school}</h4>
-                <span className="text-sm text-gray-600 font-medium">
-                  {formatDate(item.startDate)} - {formatDate(item.endDate)}
-                </span>
-              </div>
-              <div className="text-sm text-gray-800">
-                {item.major} {item.degree && `| ${item.degree}`}
-              </div>
-              {item.description && <div className="mt-1">{renderDescription(item.description)}</div>}
+          {data.educations.map((item, index) => (
+            <div
+              key={item.id}
+              style={index < data.educations.length - 1 ? itemStyle : undefined}
+            >
+              <InteractiveSection sectionKey="educations" itemId={item.id}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4
+                      className="font-bold text-gray-900"
+                      style={subHeaderStyle}
+                    >
+                      {item.school}
+                    </h4>
+                    <div className="text-gray-700 mt-0.5" style={textStyle}>
+                      {item.major} {item.degree && `| ${item.degree}`}
+                    </div>
+                  </div>
+                  <span className="text-gray-500 font-medium text-sm whitespace-nowrap">
+                    {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                  </span>
+                </div>
+                {item.description && (
+                  <div className="mt-1 text-gray-600" style={textStyle}>
+                    {renderDescription(item.description)}
+                  </div>
+                )}
+              </InteractiveSection>
             </div>
           ))}
         </div>
       </section>
     ),
     skills: data.skills && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-2 pb-1 uppercase tracking-wide">技能特长</h3>
-        {renderDescription(data.skills)}
-      </section>
+      <InteractiveSection sectionKey="skills">
+        <section style={sectionStyle}>
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            技能特长
+          </h3>
+          <div style={textStyle} className="text-gray-700 leading-relaxed">
+            {renderDescription(data.skills)}
+          </div>
+        </section>
+      </InteractiveSection>
     ),
     certificates: data.certificates && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-2 pb-1 uppercase tracking-wide">证书奖项</h3>
-        {renderDescription(data.certificates)}
-      </section>
+      <InteractiveSection sectionKey="certificates">
+        <section style={sectionStyle}>
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            证书奖项
+          </h3>
+          <div style={textStyle} className="text-gray-700 leading-relaxed">
+            {renderDescription(data.certificates)}
+          </div>
+        </section>
+      </InteractiveSection>
     ),
     hobbies: data.hobbies && (
-      <section className="mb-6">
-        <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-2 pb-1 uppercase tracking-wide">兴趣爱好</h3>
-        {renderDescription(data.hobbies)}
-      </section>
+      <InteractiveSection sectionKey="hobbies">
+        <section style={sectionStyle}>
+          <h3
+            className="font-bold mb-2 pb-2 uppercase tracking-wide"
+            style={sectionTitleStyle}
+          >
+            兴趣爱好
+          </h3>
+          <div style={textStyle} className="text-gray-700 leading-relaxed">
+            {renderDescription(data.hobbies)}
+          </div>
+        </section>
+      </InteractiveSection>
     ),
     customSections: data.customSections?.length > 0 && (
-      <>
-        {data.customSections.map((item) => (
-          <section key={item.id} className="mb-6">
-            <h3 className="text-lg font-bold border-b-2 border-gray-800 mb-2 pb-1 uppercase tracking-wide">{item.title}</h3>
-            {renderDescription(item.description)}
-          </section>
-        ))}
-      </>
-    )
+      <InteractiveSection sectionKey="customSections">
+        <>
+          {data.customSections.map((item) => (
+            <section key={item.id} style={sectionStyle}>
+              <h3
+                className="font-bold mb-2 pb-2 uppercase tracking-wide"
+                style={sectionTitleStyle}
+              >
+                {item.title}
+              </h3>
+              <div style={textStyle} className="text-gray-700 leading-relaxed">
+                {renderDescription(item.description)}
+              </div>
+            </section>
+          ))}
+        </>
+      </InteractiveSection>
+    ),
   }
 
   return (
-    <div className="font-serif text-gray-900 p-8 h-full bg-white">
+    <div
+      className={`${fontFamilyClass} text-gray-900 h-full bg-white w-full`}
+      style={containerStyle}
+    >
       {/* Header */}
-      <header className="text-center mb-8 border-b-2 border-gray-900 pb-6">
-        <h1 className="text-3xl font-bold uppercase tracking-wider mb-2">{basics.name}</h1>
-        {basics.summary && !config.order.includes('summary') && (
-             <p className="text-sm text-gray-600 mb-3 max-w-2xl mx-auto">{basics.summary}</p>
-        )}
-        <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600">
-          {basics.mobile && (
-            <span className="flex items-center gap-1">
-              <Phone className="h-3 w-3" /> {basics.mobile}
-            </span>
+      <InteractiveSection sectionKey="basics">
+        <header
+          className="text-center mb-6" // Removed border-b-2, reduced mb
+          style={{
+            marginBottom:
+              typeof sectionStyle.marginBottom === 'string'
+                ? `calc(${sectionStyle.marginBottom} * 1.5)`
+                : 32,
+          }}
+        >
+          {basics.photoUrl && (
+            <div className="flex justify-center mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={basics.photoUrl}
+                alt={basics.name}
+                className="w-28 h-28 rounded-full object-cover shadow-lg" // Changed border-2 to shadow-lg
+                style={
+                  {
+                    // Optional: subtle ring if needed, but shadow is usually enough for "clean" look
+                    // ring: `2px solid ${themeColor}20`
+                  }
+                }
+              />
+            </div>
           )}
-          {basics.email && (
-            <span className="flex items-center gap-1">
-              <Mail className="h-3 w-3" /> {basics.email}
-            </span>
-          )}
-          {basics.wechat && (
-             <span className="flex items-center gap-1">
-               <span className="font-bold text-xs">WX</span> {basics.wechat}
-             </span>
-          )}
-           {basics.qq && (
-             <span className="flex items-center gap-1">
-               <span className="font-bold text-xs">QQ</span> {basics.qq}
-             </span>
-          )}
-        </div>
-      </header>
+          <h1
+            className="font-bold tracking-tight mb-2 text-gray-900"
+            style={{
+              fontSize: `calc(${headerStyle.fontSize} * 1.5)`,
+              lineHeight: 1.2,
+            }}
+          >
+            {basics.name}
+          </h1>
+
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 mt-3">
+            {basics.mobile && (
+              <span className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 opacity-70" /> {basics.mobile}
+              </span>
+            )}
+            {basics.email && (
+              <span className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 opacity-70" /> {basics.email}
+              </span>
+            )}
+            {basics.wechat && (
+              <span className="flex items-center gap-1.5">
+                <span className="font-bold text-xs opacity-70">WX</span>{' '}
+                {basics.wechat}
+              </span>
+            )}
+            {/* Optional: Add Link/Github if in data schema later */}
+          </div>
+        </header>
+      </InteractiveSection>
 
       {/* Dynamic Sections */}
-      {config.order.map(key => {
+      {config.order.map((key) => {
         if (config.hidden.includes(key)) return null
         const section = sectionMap[key]
         return section ? <div key={key}>{section}</div> : null

@@ -3,6 +3,8 @@ import React from 'react'
 import Link from 'next/link'
 import type { Locale } from '@/i18n-config'
 
+import { FileClock } from 'lucide-react'
+
 interface HistoryItem {
   id: string
   title: string | null
@@ -14,14 +16,39 @@ export function SidebarHistory({
   locale,
   services,
   initialLimit = 8,
+  collapsed = false,
 }: {
   locale: Locale
   services: HistoryItem[]
   initialLimit?: number
+  collapsed?: boolean
 }) {
   const [limit, setLimit] = React.useState<number>(initialLimit)
   const items = Array.isArray(services) ? services.slice(0, limit) : []
   const hasMore = (services?.length || 0) > limit
+
+  if (collapsed) {
+    return (
+      <div className="flex-1 overflow-y-auto mt-3 flex flex-col items-center">
+        {/* H label removed as per user request */}
+        <ul className="space-y-3 w-full flex flex-col items-center">
+          {items.map((s) => (
+            <li key={s.id} className="group w-full flex justify-center">
+              <Link
+                href={`/${locale}/workbench/${s.id}`}
+                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+                title={String(
+                  s.title ?? (locale === 'zh' ? '新服务创建中' : 'Creating...')
+                )}
+              >
+                <FileClock className="h-4 w-4" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-y-auto mt-3">

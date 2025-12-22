@@ -47,6 +47,7 @@ interface ResultCardProps {
     expertVerdict?: string
   }
   className?: string
+  actionButton?: React.ReactNode
 }
 
 export function ResultCard({
@@ -55,6 +56,7 @@ export function ResultCard({
   jobTitle,
   labels,
   className,
+  actionButton,
 }: ResultCardProps) {
   const score =
     typeof data?.score !== 'undefined'
@@ -165,16 +167,18 @@ export function ResultCard({
 
     // Regex to match tags like 【H】, [H], 【V】, [V], 【C】, [C]
     const parts = cleanText.split(/([【\[][HVC][】\]])/g)
+
+    // Unified typography with Expert Verdict: Playfair Display
     return (
-      <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
+      <div className="text-sm leading-loose whitespace-pre-wrap font-normal text-foreground/80 tracking-wide font-[family-name:var(--font-playfair),serif]">
         {parts.map((part, i) => {
           if (part.match(/^[【\[]H[】\]]$/)) {
             return (
               <span
                 key={i}
-                className="text-blue-600/50 dark:text-blue-400/50 font-bold mx-0.5"
+                className="text-blue-600 dark:text-blue-400 font-bold mx-1 text-[10px] uppercase tracking-wider bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-sm select-none font-sans"
               >
-                {part}
+                HOOK
               </span>
             )
           }
@@ -182,9 +186,9 @@ export function ResultCard({
             return (
               <span
                 key={i}
-                className="text-blue-600/50 dark:text-blue-400/50 font-bold mx-0.5"
+                className="text-blue-600 dark:text-blue-400 font-bold mx-1 text-[10px] uppercase tracking-wider bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-sm select-none font-sans"
               >
-                {part}
+                VALUE
               </span>
             )
           }
@@ -192,19 +196,15 @@ export function ResultCard({
             return (
               <span
                 key={i}
-                className="text-blue-600/50 dark:text-blue-400/50 font-bold mx-0.5"
+                className="text-blue-600 dark:text-blue-400 font-bold mx-1 text-[10px] uppercase tracking-wider bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-sm select-none font-sans"
               >
-                {part}
+                CTA
               </span>
             )
           }
           // Fix: Ensure regular text is rendered if it's not empty
           if (!part) return null
-          return (
-            <span key={i} className="text-muted-foreground/90">
-              {part}
-            </span>
-          )
+          return <span key={i}>{part}</span>
         })}
       </div>
     )
@@ -270,12 +270,12 @@ export function ResultCard({
   return (
     <div
       className={cn(
-        'flex flex-col bg-card border rounded-xl shadow-sm md:flex-1 md:overflow-hidden h-auto relative',
+        'flex flex-col bg-card mt-4 border rounded-xl shadow-sm md:flex-1 md:overflow-hidden h-auto relative',
         className
       )}
     >
-      {/* Header Section - No border */}
-      <div className="flex items-center justify-between p-6 shrink-0">
+      {/* Mobile Header (< md) - Keep existing layout */}
+      <div className="flex md:hidden items-center justify-between p-6 shrink-0">
         {/* Left: Company & Job */}
         <div className="flex flex-col gap-1 min-w-0 flex-1 mr-4">
           <div className="text-lg font-semibold truncate text-foreground">
@@ -289,7 +289,6 @@ export function ResultCard({
         {/* Right: Score & Assessment */}
         <div className="flex items-center gap-4 shrink-0">
           <div className="flex flex-col items-center justify-center gap-0.5 min-h-[3.5rem]">
-            {/* Redesigned Header: Vertical Center Alignment */}
             <Badge
               variant="outline"
               className={cn(
@@ -315,112 +314,179 @@ export function ResultCard({
         </div>
       </div>
 
+      {/* Desktop Header (>= md) - Redesigned per user request */}
+      <div className="hidden md:flex items-center justify-between h-20 shrink-0 bg-muted/5 w-full px-6">
+        {/* Left: Square Score + Info */}
+        <div className="flex items-center">
+          {/* Square Score Box */}
+          <div
+            className={cn(
+              'flex flex-col items-center justify-center w-14 h-14 rounded-lg shadow-sm border border-border/50 shrink-0',
+              score >= 80
+                ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                : score >= 60
+                ? 'bg-amber-50 dark:bg-amber-900/20'
+                : 'bg-red-50 dark:bg-red-900/20'
+            )}
+          >
+            <span
+              className={cn(
+                'text-[10px] font-bold uppercase tracking-wider mb-0.5',
+                score >= 80
+                  ? 'text-emerald-600/90 dark:text-emerald-400'
+                  : score >= 60
+                  ? 'text-amber-700/90 dark:text-amber-400'
+                  : 'text-red-700/90 dark:text-red-400'
+              )}
+            >
+              {assessmentLabel}
+            </span>
+            <span
+              className={cn(
+                'text-2xl font-black leading-none',
+                score >= 80
+                  ? 'text-emerald-500/90 dark:text-emerald-500'
+                  : score >= 60
+                  ? 'text-amber-500/90 dark:text-amber-500'
+                  : 'text-red-500/90 dark:text-red-500'
+              )}
+            >
+              {score}
+            </span>
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="w-px h-8 bg-border/60 mx-5"></div>
+
+          {/* Info Text */}
+          <div className="flex flex-col justify-center space-y-1">
+            <div className="text-lg font-bold text-foreground tracking-tight leading-none">
+              {company || labels?.targetCompany || 'Target Company'}
+            </div>
+            <div className="text-sm font-medium text-muted-foreground leading-none">
+              {jobTitle || labels?.targetPosition || 'Target Position'}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Action Button (CTA) */}
+        <div className="flex items-center">{actionButton}</div>
+      </div>
+
       {/* Scrollable Content */}
       <div
         ref={scrollRef}
-        className="flex-1 md:overflow-y-auto overflow-visible px-6 pb-20 md:pb-6 space-y-8 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent relative"
+        className="flex-1 md:overflow-y-auto overflow-visible px-4 md:px-6 pb-20 md:pb-0 space-y-8 md:space-y-10 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent relative"
       >
-        {/* Expert Verdict Section - Enhanced UI */}
+        {/* Expert Verdict Section - Clean & Premium */}
         {expertVerdict && (
-          <div className="relative overflow-hidden bg-gradient-to-br from-muted/40 to-muted/10 rounded-xl p-5 border border-border/50 shadow-sm">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary/60 to-primary/20" />
-
-            {/* LampDesk Icon with lighting effect */}
-            <div className="absolute top-4 right-4 opacity-40 pointer-events-none select-none">
-              {/* Light cone effect - gradient simulating light beam */}
-              <div className="absolute top-[75px] right-[5px] w-32 h-64 bg-gradient-to-br from-yellow-500/30 via-yellow-500/15 to-transparent rounded-full blur-xl rotate-45 transform-gpu origin-top-right" />
-
-              {/* The Lamp Icon - Flipped horizontally to face left */}
-              <LampDesk className="w-12 h-12 text-primary/20 -scale-x-100" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50/50 via-transparent to-transparent dark:from-amber-900/10 p-5 md:p-8 border border-amber-100/20 dark:border-amber-900/20">
+            {/* Watermark Icon - Flipped & Warm Lighting Effect */}
+            <div className="absolute -top-6 -right-6 opacity-100 pointer-events-none">
+              {/* The Lamp */}
+              <LampDesk className="w-40 h-40 text-amber-500/10 dark:text-amber-500/10 scale-x-[-1]" />
+              {/* The Warm Light Glow */}
+              <div className="absolute top-3/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-amber-100/20 dark:bg-amber-500/10 blur-[50px] rounded-full mix-blend-multiply dark:mix-blend-screen" />
             </div>
 
-            <div className="relative z-10 flex gap-3">
-              <Quote className="w-5 h-5 text-primary/70 shrink-0 mt-0.5 fill-primary/5" />
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-primary/80">
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4 bg-amber-500/40 rounded-full" />
+                <span className="text-xs font-bold uppercase tracking-widest text-amber-900/60 dark:text-amber-500/60">
                   {labels?.expertVerdict || 'Expert Verdict'}
-                </div>
-                <div className="text-sm leading-relaxed text-foreground/90 font-medium font-serif italic">
-                  &quot;{expertVerdict}&quot;
-                </div>
+                </span>
+              </div>
+              {/* Typography matched with Smart Pitch: text-sm, leading-loose, tracking-wide */}
+              <div className="text-sm leading-loose text-foreground/80 font-normal tracking-wide text-justify font-[family-name:var(--font-playfair),serif]">
+                {expertVerdict}
               </div>
             </div>
           </div>
         )}
 
-        {/* Block A: Strengths (Highlights) */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            {labels?.highlights || 'Highlights'}
+        {/* Block A: Strengths (Highlights) - Magazine Style Header */}
+        <div className="space-y-5 md:space-y-7">
+          {/* Magazine Header: Gradient Background + Offset */}
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-transparent dark:from-emerald-900/20 -skew-x-12 rounded-sm -mx-2" />
+            <div className="relative flex items-center gap-2 px-1">
+              <span className="text-base font-black text-emerald-900/80 dark:text-emerald-400 tracking-tight italic">
+                {labels?.highlights || 'Highlights'}
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/30 to-transparent w-32" />
+            </div>
           </div>
-          <div className="space-y-4">
+
+          <div className="relative pl-2 ml-1.5 space-y-6">
+            {/* Vertical Line */}
+            <div className="absolute left-0 top-1 bottom-1 w-px bg-gradient-to-b from-emerald-500/30 via-emerald-500/10 to-transparent" />
+
             {strengths.map((item: any, i: number) => (
-              <div
-                key={i}
-                className="group relative pl-4 border-l-2 border-emerald-500/20 hover:border-emerald-500/50 transition-colors"
-              >
-                <div className="font-medium text-sm text-foreground">
-                  {item.point}
-                </div>
-                {item.evidence && (
-                  <div className="mt-1.5 text-xs text-muted-foreground">
-                    {item.evidence}
+              <div key={i} className="relative pl-6">
+                {/* Timeline Dot - Smaller & Subtle */}
+                <div className="absolute -left-[3px] top-2.5 w-1.5 h-1.5 rounded-full bg-emerald-500/60 shadow-sm z-10 ring-4 ring-background" />
+
+                <div className="space-y-1.5">
+                  <div className="text-sm font-semibold text-foreground/90 leading-relaxed font-[family-name:var(--font-jetbrains-mono),monospace]">
+                    {item.point}
                   </div>
-                )}
+                  {item.evidence && (
+                    <div className="text-xs text-muted-foreground/80 leading-relaxed">
+                      {item.evidence}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
             {strengths.length === 0 && (
-              <div className="text-sm text-muted-foreground italic pl-2">
+              <div className="text-sm text-muted-foreground pl-6">
                 {labels?.noHighlights || 'No highlights found.'}
               </div>
             )}
           </div>
         </div>
 
-        {/* Block B: Weaknesses (Gaps) - Enhanced Vertical Layout */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            <Target className="w-4 h-4 text-amber-500" />
-            {labels?.gapsAndSuggestions || 'Risks & Challenges'}
+        {/* Block B: Weaknesses (Gaps) - Magazine Style Header */}
+        <div className="space-y-5 md:space-y-7">
+          {/* Magazine Header */}
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-900/20 -skew-x-12 rounded-sm -mx-2" />
+            <div className="relative flex items-center gap-2 px-1">
+              <span className="text-base font-black text-amber-900/80 dark:text-amber-400 tracking-tight italic">
+                {labels?.gapsAndSuggestions || 'Risks & Challenges'}
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-r from-amber-500/30 to-transparent w-32" />
+            </div>
           </div>
-          <div className="space-y-6">
-            {weaknesses.map((item: any, i: number) => (
-              <div
-                key={i}
-                className="group relative pl-4 border-l-2 border-amber-500/20 hover:border-amber-500/50 transition-colors"
-              >
-                <div className="font-medium text-sm text-foreground mb-3">
-                  {item.point}
-                </div>
 
-                {/* Vertical Layout always, but rows inside for Desktop */}
-                <div className="space-y-3">
+          <div className="relative pl-2 ml-1.5 space-y-6">
+            {/* Vertical Line */}
+            <div className="absolute left-0 top-1 bottom-1 w-px bg-gradient-to-b from-amber-500/30 via-amber-500/10 to-transparent" />
+
+            {weaknesses.map((item: any, i: number) => (
+              <div key={i} className="relative pl-6">
+                {/* Timeline Dot */}
+                <div className="absolute -left-[3px] top-2.5 w-1.5 h-1.5 rounded-full bg-amber-500/60 shadow-sm z-10 ring-4 ring-background" />
+
+                <div className="space-y-1.5">
+                  <div className="text-sm font-semibold text-foreground/90 leading-relaxed font-[family-name:var(--font-jetbrains-mono),monospace]">
+                    {item.point}
+                  </div>
+
                   {/* Evidence Block */}
                   {item.evidence && (
-                    <div className="flex flex-col md:flex-row md:items-start md:gap-3 gap-1">
-                      <div className="shrink-0 flex items-center gap-1.5 md:mt-0.5 min-w-[4.5rem]">
-                        <div className="w-1 h-1 rounded-full bg-amber-500/50" />
-                        <span className="text-[10px] font-bold uppercase text-amber-600/80 tracking-wider">
-                          Evidence
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground leading-relaxed">
-                        {item.evidence}
-                      </div>
+                    <div className="text-xs text-muted-foreground/80 leading-relaxed">
+                      {item.evidence}
                     </div>
                   )}
 
-                  {/* Tip Block */}
+                  {/* Tip Block - Integrated elegantly */}
                   {item.tip && (
-                    <div className="flex flex-col md:flex-row md:items-start md:gap-3 gap-1">
-                      <div className="shrink-0 flex items-center gap-1.5 md:mt-0.5 min-w-[4.5rem]">
-                        <div className="w-1 h-1 rounded-full bg-emerald-500/50" />
-                        <span className="text-[10px] font-bold uppercase text-emerald-600/80 tracking-wider">
-                          Pro Tip
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground leading-relaxed">
+                    <div className="mt-2 inline-flex items-start gap-2 py-1.5 px-3 rounded-md bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100/50 dark:border-amber-900/20 max-w-full">
+                      <span className="shrink-0 text-[10px] font-bold uppercase text-amber-600/60 tracking-wider mt-0.5">
+                        TIP
+                      </span>
+                      <div className="text-xs text-muted-foreground/90 leading-relaxed">
                         {item.tip}
                       </div>
                     </div>
@@ -429,7 +495,7 @@ export function ResultCard({
               </div>
             ))}
             {weaknesses.length === 0 && (
-              <div className="text-sm text-muted-foreground italic pl-2">
+              <div className="text-sm text-muted-foreground pl-6">
                 {labels?.noGaps || 'No gaps detected.'}
               </div>
             )}
@@ -439,9 +505,13 @@ export function ResultCard({
         {/* Block C: Recommendations (New) */}
         {recommendations.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              <Target className="w-4 h-4 text-blue-500" />
-              Recommendations
+            <div className="flex items-center gap-2 px-1">
+              <div className="p-1 rounded bg-blue-100 dark:bg-blue-900/30">
+                <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-sm font-bold text-foreground tracking-tight">
+                Recommendations
+              </span>
             </div>
             <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
               {recommendations.map((rec: string, i: number) => (
@@ -453,11 +523,15 @@ export function ResultCard({
 
         {/* Smart Pitch Section */}
         {dmScript && (
-          <div className="space-y-3 pt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                <Quote className="w-4 h-4 text-blue-500" />
-                {labels?.smartPitch || 'Smart Pitch'}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded bg-blue-100 dark:bg-blue-900/30">
+                  <Quote className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-sm font-bold text-foreground tracking-tight">
+                  {labels?.smartPitch || 'Smart Pitch'}
+                </span>
               </div>
 
               <TooltipProvider delayDuration={0}>
@@ -466,7 +540,7 @@ export function ResultCard({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs gap-1.5"
+                      className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
                       onClick={handleCopy}
                     >
                       {isCopied ? (
@@ -485,9 +559,9 @@ export function ResultCard({
                   <TooltipContent
                     side="left"
                     sideOffset={10}
-                    className="hidden md:block bg-transparent border-0 shadow-none p-0"
+                    className="hidden md:block bg-popover text-popover-foreground border shadow-sm"
                   >
-                    <p className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                    <p className="text-xs">
                       {labels?.copyTooltip || 'Hook, Value, Call to Action'}
                     </p>
                   </TooltipContent>
@@ -495,9 +569,9 @@ export function ResultCard({
               </TooltipProvider>
             </div>
 
-            <div className="relative rounded-xl border bg-muted/30 p-5 font-mono text-sm">
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50 rounded-l-xl" />
-              {renderPitch(dmScript)}
+            <div className="relative rounded-xl border bg-muted/30 p-5 font-mono text-sm shadow-sm">
+              <div className="absolute top-4 left-0 w-1 h-[calc(100%-32px)] bg-blue-500/30 rounded-r-full" />
+              <div className="pl-2">{renderPitch(dmScript)}</div>
             </div>
 
             {/* Mobile Fallback Hint */}
@@ -519,10 +593,13 @@ export function ResultCard({
       {showScrollHint && (
         <>
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none hidden md:block z-10" />
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none hidden md:block">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none hidden md:flex flex-col items-center gap-1">
             <div className="animate-bounce p-2 bg-background/80 backdrop-blur-sm rounded-full shadow-sm border border-border/50">
               <ChevronDown className="w-4 h-4 text-primary" />
             </div>
+            <span className="text-xs text-muted-foreground font-extralight">
+              向下滚动 查看更多
+            </span>
           </div>
         </>
       )}

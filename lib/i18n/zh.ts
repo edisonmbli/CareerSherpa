@@ -181,7 +181,7 @@ const dict = {
       expertVerdict: '专家点评',
     },
     interviewUi: {
-      start: '生成面试 Tips',
+      start: '面试 Tips',
     },
     statusText: {
       analyzing: 'AI 正在分析...',

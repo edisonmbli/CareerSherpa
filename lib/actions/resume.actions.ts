@@ -15,7 +15,10 @@ import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getTaskLimits } from '@/lib/llm/config'
 import { ensureEnqueued } from '@/lib/actions/enqueue'
-import { updateCustomizedResumeEditedData } from '@/lib/dal/services'
+import {
+  updateCustomizedResumeEditedData,
+  resetCustomizedResumeEditedData,
+} from '@/lib/dal/services'
 import {
   resumeDataSchema,
   sectionConfigSchema,
@@ -163,8 +166,9 @@ export async function updateCustomizedResumeAction(params: {
   serviceId: string
   resumeData: any
   sectionConfig?: any
+  opsJson?: any
 }) {
-  const { serviceId, resumeData, sectionConfig } = params
+  const { serviceId, resumeData, sectionConfig, opsJson } = params
 
   try {
     // Validate data before saving
@@ -176,7 +180,8 @@ export async function updateCustomizedResumeAction(params: {
     await updateCustomizedResumeEditedData(
       serviceId,
       validatedData,
-      validatedConfig
+      validatedConfig,
+      opsJson
     )
 
     revalidatePath(`/workbench/${serviceId}`)
@@ -184,5 +189,16 @@ export async function updateCustomizedResumeAction(params: {
   } catch (error) {
     console.error('Failed to update resume data:', error)
     return { ok: false, error: 'Failed to save changes' }
+  }
+}
+
+export async function resetCustomizedResumeAction(serviceId: string) {
+  try {
+    await resetCustomizedResumeEditedData(serviceId)
+    revalidatePath(`/workbench/${serviceId}`)
+    return { ok: true }
+  } catch (error) {
+    console.error('Failed to reset resume data:', error)
+    return { ok: false, error: 'Failed to reset data' }
   }
 }

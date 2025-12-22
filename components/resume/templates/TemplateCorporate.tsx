@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
 import { renderDescription, formatDate } from './utils'
 import { Mail, Phone, MapPin } from 'lucide-react'
@@ -11,6 +12,18 @@ interface TemplateProps {
 
 export function TemplateCorporate({ data, config }: TemplateProps) {
   const { basics } = data
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const update = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768)
+      }
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   const renderSection = (key: string) => {
     if (config.hidden.includes(key)) return null
@@ -183,12 +196,16 @@ export function TemplateCorporate({ data, config }: TemplateProps) {
   }
 
   return (
-    <div className="font-sans text-gray-900 bg-white h-full">
+    <div className="font-sans text-gray-900 bg-white h-full w-full">
       {/* Header */}
       <header className="bg-blue-600 text-white p-8 mb-8 shadow-md">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold mb-2 tracking-wide">
+            <h1
+              className={`${
+                isMobile ? 'text-2xl' : 'text-4xl'
+              } font-bold mb-2 tracking-wide`}
+            >
               {basics.name}
             </h1>
             <div className="flex gap-4 text-sm text-blue-100">
