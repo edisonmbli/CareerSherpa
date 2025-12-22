@@ -31,6 +31,16 @@ export function TemplateSelector() {
         itemSpacing: 12, // Paragraph Spacing (px)
         pageMargin: 12, // Page Margin (mm)
       })
+    } else if (id === 'elegant') {
+      // Apply default styles for Elegant template
+      updateStyleConfig({
+        themeColor: '#84A59D', // Muted Sage
+        fontFamily: 'lato',
+        fontSize: 1.05, // 1.05x
+        lineHeight: 1.2,
+        itemSpacing: 12, // Paragraph Spacing (px)
+        pageMargin: 12, // Page Margin (mm)
+      })
     }
 
     setIsOpen(false)

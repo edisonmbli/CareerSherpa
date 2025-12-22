@@ -1,247 +1,437 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
+import React from 'react'
+import { TemplateProps } from './types'
+import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
-import { Mail, Phone } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Mail, Phone, MapPin, Github, ExternalLink } from 'lucide-react'
+import { InteractiveSection } from './InteractiveSection'
 
-interface TemplateProps {
-  data: ResumeData
-  config: SectionConfig
-}
+/**
+ * Elegant 模板 - 雅致格调
+ * 特点：全居中平衡、莫兰迪色系装饰、呼吸感排版
+ */
+export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
+  const {
+    basics,
+    workExperiences,
+    projectExperiences,
+    educations,
+    skills,
+    certificates,
+    hobbies,
+    customSections,
+  } = data
+  const theme = useResumeTheme(styleConfig)
+  const { isMobile } = theme
 
-export function TemplateElegant({ data, config }: TemplateProps) {
-  const { basics } = data
-  const [isMobile, setIsMobile] = useState(false)
+  // 辅助组件：雅致模块标题 (居中 + 莫兰迪发丝线)
+  const SectionHeader = ({ title }: { title: string }) => (
+    <div className="flex flex-col items-center mb-6 mt-10">
+      <h3 className="text-[1.1em] font-serif font-bold text-gray-800 tracking-[0.2em] uppercase mb-2">
+        {title}
+      </h3>
+      {/* 莫兰迪色系短线: 使用主色调但降低不透明度 */}
+      <div
+        className="w-12 h-[1px]"
+        style={{ backgroundColor: theme.themeColor, opacity: 0.3 }}
+      />
+    </div>
+  )
 
-  useEffect(() => {
-    const update = () => {
-      if (typeof window !== 'undefined') {
-        setIsMobile(window.innerWidth < 768)
-      }
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
+  // 辅助组件：描述文本渲染 (自定义极细空心圆点)
+  const Description = ({
+    content,
+    className,
+    center = false,
+  }: {
+    content?: string
+    className?: string
+    center?: boolean
+  }) => {
+    if (!content) return null
+    return (
+      <div
+        className={cn(
+          'text-gray-600 leading-relaxed',
+          center && 'text-center',
+          // 自定义列表样式：极细空心圆圈
+          '[&_ul]:!list-none [&_ul]:!pl-0',
+          '[&_li]:relative [&_li]:pl-4',
+          '[&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-[0.55em]',
+          "[&_li]:before:content-['○'] [&_li]:before:text-[0.6em] [&_li]:before:font-medium",
+          '[&_li]:before:text-[var(--theme-color)] [&_li]:before:opacity-100',
+          className
+        )}
+        style={theme.text}
+      >
+        {renderDescription(content)}
+      </div>
+    )
+  }
 
-  const renderSection = (key: string) => {
-    if (config.hidden.includes(key)) return null
-
-    switch (key) {
-      case 'summary':
-        return (
-          basics.summary && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-3 pb-1 border-b-2 border-teal-500 inline-block">
-                职业摘要
-              </h3>
-              <p className="text-sm text-gray-600 leading-loose whitespace-pre-line">
-                {basics.summary}
-              </p>
-            </section>
-          )
-        )
-      case 'workExperiences':
-        return (
-          data.workExperiences?.length > 0 && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-1 border-b-2 border-teal-500 inline-block">
-                工作经历
-              </h3>
-              <div className="space-y-6">
-                {data.workExperiences.map((item) => (
-                  <div key={item.id}>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h4 className="font-bold text-lg text-gray-900">
+  const sectionMap: Record<string, React.ReactNode> = {
+    basics: null,
+    summary: basics.summary && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="summary">
+          <div className="flex flex-col items-center">
+            <SectionHeader title="Professional Summary" />
+            <p
+              className="leading-[1.8] text-gray-600 text-center max-w-[95%] italic"
+              style={theme.text}
+            >
+              {basics.summary}
+            </p>
+          </div>
+        </InteractiveSection>
+      </section>
+    ),
+    skills: skills && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="skills">
+          <div>
+            <SectionHeader title="Expertise" />
+            <div
+              className="flex flex-wrap justify-center gap-x-6 gap-y-3 leading-relaxed text-gray-600 italic text-center"
+              style={theme.text}
+            >
+              {skills.split('\n').map((skill, idx) => (
+                <span key={idx} className="flex items-center gap-2">
+                  {idx !== 0 && (
+                    <span
+                      style={{ color: theme.themeColor, opacity: 0.3 }}
+                      className="font-light"
+                    >
+                      ·
+                    </span>
+                  )}
+                  {skill.trim().replace(/^[-•]\s*/, '')}
+                </span>
+              ))}
+            </div>
+          </div>
+        </InteractiveSection>
+      </section>
+    ),
+    workExperiences: workExperiences?.length > 0 && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="workExperiences">
+          <SectionHeader title="Experience" />
+        </InteractiveSection>
+        <div className="space-y-8">
+          {workExperiences.map((item) => (
+            <div key={item.id} className="group">
+              <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
+                <div className="flex flex-col items-center">
+                  <div className="w-full flex justify-between items-baseline mb-2">
+                    <div className="flex flex-col items-start">
+                      <h4
+                        className="font-bold text-gray-900 tracking-tight"
+                        style={{ fontSize: '1.05em' }}
+                      >
                         {item.company}
                       </h4>
-                      <span className="text-sm text-gray-500 italic">
-                        {formatDate(item.startDate)} -{' '}
-                        {formatDate(item.endDate)}
+                      <span
+                        className="font-serif italic font-medium"
+                        style={{ ...theme.text, color: theme.themeColor }}
+                      >
+                        {item.position}
                       </span>
                     </div>
-                    <div className="text-md font-medium text-teal-700 mb-2">
-                      {item.position}
-                    </div>
-                    {renderDescription(item.description)}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )
-        )
-      case 'projectExperiences':
-        return (
-          data.projectExperiences?.length > 0 && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-1 border-b-2 border-teal-500 inline-block">
-                项目经历
-              </h3>
-              <div className="space-y-6">
-                {data.projectExperiences.map((item) => (
-                  <div key={item.id}>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h4 className="font-bold text-gray-900">
-                        {item.projectName}
-                      </h4>
-                      <span className="text-sm text-gray-500 italic">
-                        {formatDate(item.startDate)} -{' '}
-                        {formatDate(item.endDate)}
-                      </span>
-                    </div>
-                    {item.role && (
-                      <div className="text-sm font-medium text-teal-700 mb-2">
-                        {item.role}
-                      </div>
-                    )}
-                    {renderDescription(item.description)}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )
-        )
-      case 'educations':
-        return (
-          data.educations?.length > 0 && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-1 border-b-2 border-teal-500 inline-block">
-                教育经历
-              </h3>
-              <div className="space-y-4">
-                {data.educations.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between items-start border-l-2 border-gray-200 pl-4"
-                  >
-                    <div>
-                      <div className="font-bold text-gray-900">
-                        {item.school}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {item.major} {item.degree && `| ${item.degree}`}
-                      </div>
-                    </div>
-                    <span className="text-sm text-gray-500">
-                      {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                    <span
+                      className="text-gray-400 font-medium tracking-widest uppercase text-right shrink-0 ml-4"
+                      style={{ fontSize: '0.85em' }}
+                    >
+                      {formatDate(item.startDate)} —{' '}
+                      {item.endDate ? formatDate(item.endDate) : 'Present'}
                     </span>
                   </div>
-                ))}
-              </div>
-            </section>
-          )
-        )
-      case 'skills':
-        return (
-          data.skills && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-3 pb-1 border-b-2 border-teal-500 inline-block">
-                技能特长
-              </h3>
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                {renderDescription(data.skills)}
-              </div>
-            </section>
-          )
-        )
-      case 'certificates':
-        return (
-          data.certificates && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-3 pb-1 border-b-2 border-teal-500 inline-block">
-                证书奖项
-              </h3>
-              <div className="text-sm text-gray-600">
-                {renderDescription(data.certificates)}
-              </div>
-            </section>
-          )
-        )
-      case 'hobbies':
-        return (
-          data.hobbies && (
-            <section key={key} className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-3 pb-1 border-b-2 border-teal-500 inline-block">
-                兴趣爱好
-              </h3>
-              <div className="text-sm text-gray-600">
-                {renderDescription(data.hobbies)}
-              </div>
-            </section>
-          )
-        )
-      case 'customSections':
-        return (
-          data.customSections?.length > 0 && (
-            <>
-              {data.customSections.map((item) => (
-                <section key={item.id} className="mb-8">
-                  <h3 className="text-lg font-bold text-gray-800 mb-3 pb-1 border-b-2 border-teal-500 inline-block">
-                    {item.title}
-                  </h3>
-                  <div className="text-sm text-gray-600">
-                    {renderDescription(item.description)}
+                  <Description
+                    content={item.description}
+                    className="w-full text-justify"
+                  />
+                </div>
+              </InteractiveSection>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    projectExperiences: projectExperiences?.length > 0 && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="projectExperiences">
+          <SectionHeader title="Selected Projects" />
+        </InteractiveSection>
+        <div className="space-y-6">
+          {projectExperiences.map((item) => (
+            <div key={item.id}>
+              <InteractiveSection
+                sectionKey="projectExperiences"
+                itemId={item.id}
+              >
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <h4
+                      className="font-bold text-gray-800"
+                      style={{ fontSize: '1em' }}
+                    >
+                      {item.projectName}
+                    </h4>
+                    <span
+                      className="text-gray-400 italic shrink-0 ml-4"
+                      style={{ fontSize: '0.85em' }}
+                    >
+                      {formatDate(item.startDate)} — {formatDate(item.endDate)}
+                    </span>
                   </div>
-                </section>
-              ))}
-            </>
-          )
-        )
-      default:
-        return null
-    }
+                  {item.role && (
+                    <div
+                      className="italic mb-1"
+                      style={{
+                        fontSize: '0.9em',
+                        color: theme.themeColor,
+                        opacity: 0.9,
+                      }}
+                    >
+                      {item.role}
+                    </div>
+                  )}
+
+                  {/* Project Links */}
+                  {(item.githubUrl || item.demoUrl) && (
+                    <div
+                      className="flex flex-wrap gap-x-4 gap-y-1 mb-2 font-mono text-gray-500"
+                      style={{ fontSize: '0.8em' }}
+                    >
+                      {item.githubUrl && (
+                        <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                          <Github size={12} className="shrink-0" />
+                          <a
+                            href={item.githubUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-gray-900 hover:underline truncate"
+                          >
+                            {item.githubUrl.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                      {item.demoUrl && (
+                        <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                          <ExternalLink size={12} className="shrink-0" />
+                          <a
+                            href={item.demoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-gray-900 hover:underline truncate"
+                          >
+                            {item.demoUrl.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <Description content={item.description} />
+                </div>
+              </InteractiveSection>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    educations: educations?.length > 0 && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="educations">
+          <SectionHeader title="Education" />
+        </InteractiveSection>
+        <div className="space-y-4">
+          {educations.map((item) => (
+            <div key={item.id}>
+              <InteractiveSection sectionKey="educations" itemId={item.id}>
+                <div className="flex flex-col items-center text-center">
+                  <span
+                    className="font-bold text-gray-900"
+                    style={{ fontSize: '1.05em' }}
+                  >
+                    {item.school}
+                  </span>
+                  <div
+                    className="text-gray-600 mt-1"
+                    style={{ ...theme.text, fontSize: '0.95em' }}
+                  >
+                    <span className="font-serif italic">{item.major}</span>
+                    <span
+                      className="mx-2 font-light"
+                      style={{ color: theme.themeColor, opacity: 0.3 }}
+                    >
+                      /
+                    </span>
+                    <span>{item.degree}</span>
+                  </div>
+                  <span
+                    className="text-gray-400 mt-1 tracking-widest uppercase"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
+                  </span>
+                </div>
+              </InteractiveSection>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    certificates: certificates && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="certificates">
+          <div>
+            <SectionHeader title="Certifications" />
+            <Description content={certificates} center />
+          </div>
+        </InteractiveSection>
+      </section>
+    ),
+    hobbies: hobbies && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="hobbies">
+          <div>
+            <SectionHeader title="Interests" />
+            <Description content={hobbies} center />
+          </div>
+        </InteractiveSection>
+      </section>
+    ),
+    customSections: customSections?.length > 0 && (
+      <InteractiveSection sectionKey="customSections">
+        <>
+          {customSections.map((item) => (
+            <section key={item.id} style={theme.section}>
+              <div className="flex flex-col">
+                <SectionHeader title={item.title} />
+                <Description
+                  content={item.description}
+                  className="w-full text-justify"
+                />
+              </div>
+            </section>
+          ))}
+        </>
+      </InteractiveSection>
+    ),
   }
 
   return (
-    <div className="font-serif text-gray-800 bg-white h-full w-full p-10 relative overflow-hidden">
-      {/* Decorative Circle Top Right */}
-      <div className="absolute -top-20 -right-20 w-64 h-64 bg-teal-50 rounded-full z-0"></div>
+    <div
+      className={cn(
+        'bg-white w-full min-h-full transition-all duration-300 font-serif relative',
+        theme.fontFamilyClass
+      )}
+      style={theme.container}
+    >
+      {/* Header: Centered Balance Layout */}
+      <InteractiveSection sectionKey="basics">
+        <header className="mb-12 flex flex-col items-center text-center pt-8 relative">
+          {/* 背景装饰：极其微弱的莫兰迪色光晕 */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-slate-50 rounded-full blur-3xl -z-10" />
 
-      {/* Header */}
-      <header className="relative z-10 flex justify-between items-start mb-12 border-b border-gray-200 pb-6">
-        <div className="flex-1">
+          {/* Photo (Optional) - Centered above name */}
+          {basics.photoUrl && (
+            <div className="mb-6 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-sm ring-1 ring-slate-100">
+              <img
+                src={basics.photoUrl}
+                alt={basics.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
           <h1
-            className={`${
-              isMobile ? 'text-3xl' : 'text-5xl'
-            } font-bold text-gray-900 mb-4`}
+            className="font-serif font-bold tracking-[0.1em] mb-4 text-gray-900"
+            style={{ fontSize: isMobile ? '2em' : '2.5em' }}
           >
             {basics.name}
           </h1>
-          <div className="flex flex-wrap gap-6 text-sm text-gray-600">
+
+          <div
+            className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-gray-500 tracking-wider px-4"
+            style={{ fontSize: '0.85em' }}
+          >
             {basics.mobile && (
-              <span className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-teal-600" /> {basics.mobile}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <Phone
+                  size={12}
+                  strokeWidth={1.5}
+                  style={{ color: theme.themeColor, opacity: 0.8 }}
+                />{' '}
+                {basics.mobile}
+              </div>
             )}
             {basics.email && (
-              <span className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-teal-600" /> {basics.email}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <Mail
+                  size={12}
+                  strokeWidth={1.5}
+                  style={{ color: theme.themeColor, opacity: 0.8 }}
+                />{' '}
+                {basics.email}
+              </div>
             )}
-            {basics.wechat && (
-              <span className="flex items-center gap-2">
-                <span className="font-bold text-teal-600 text-xs border border-teal-600 rounded px-1">
-                  WX
-                </span>{' '}
-                {basics.wechat}
-              </span>
+            {basics.location && (
+              <div className="flex items-center gap-1.5">
+                <MapPin
+                  size={12}
+                  strokeWidth={1.5}
+                  style={{ color: theme.themeColor, opacity: 0.8 }}
+                />{' '}
+                {basics.location}
+              </div>
+            )}
+            {basics.github && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={basics.github}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                >
+                  <Github
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: theme.themeColor, opacity: 0.8 }}
+                  />
+                  {basics.github.replace(/^https?:\/\//, '')}
+                </a>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Optional Photo Placeholder if we had one */}
-        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 border-4 border-white shadow-lg">
-          <span className="text-xs">Photo</span>
-        </div>
-      </header>
+          <div
+            className="mt-8 w-16 h-[1px]"
+            style={{ backgroundColor: theme.themeColor, opacity: 0.3 }}
+          />
+        </header>
+      </InteractiveSection>
 
-      <div className="relative z-10">
+      {/* Main Content Sections */}
+      <div className="flex flex-col">
         {config.order.map((key) => {
           if (config.hidden.includes(key) || key === 'basics') return null
-          return renderSection(key)
+          return <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
         })}
       </div>
+
+      {/* Footer: Subtle Branding */}
+      <footer className="mt-16 pb-4 text-center">
+        <div className="inline-block px-4 py-1 border-t border-slate-100">
+          <span className="text-[10px] text-slate-300 tracking-[0.3em] uppercase">
+            Curriculum Vitae
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }
