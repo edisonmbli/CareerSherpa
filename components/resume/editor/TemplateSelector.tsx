@@ -15,8 +15,26 @@ import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
 export function TemplateSelector() {
-  const { currentTemplate, setTemplate } = useResumeStore()
+  const { currentTemplate, setTemplate, updateStyleConfig } = useResumeStore()
   const [isOpen, setIsOpen] = useState(false)
+
+  const handleSelectTemplate = (id: TemplateId) => {
+    setTemplate(id)
+
+    // Apply default styles for Corporate template
+    if (id === 'corporate') {
+      updateStyleConfig({
+        themeColor: '#0284c7', // Sky 600
+        fontFamily: 'roboto',
+        fontSize: 1, // 1.00x
+        lineHeight: 1.5,
+        itemSpacing: 12, // Paragraph Spacing (px)
+        pageMargin: 12, // Page Margin (mm)
+      })
+    }
+
+    setIsOpen(false)
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -49,10 +67,7 @@ export function TemplateSelector() {
                     ? 'border-transparent'
                     : 'border-transparent hover:bg-accent/50'
                 )}
-                onClick={() => {
-                  setTemplate(template.id as TemplateId)
-                  setIsOpen(false)
-                }}
+                onClick={() => handleSelectTemplate(template.id as TemplateId)}
               >
                 {/* Preview Image Container */}
                 <div className="relative aspect-[210/297] w-full overflow-hidden rounded-lg border bg-muted shadow-sm group-hover:shadow-md transition-all">

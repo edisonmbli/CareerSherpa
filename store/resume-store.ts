@@ -149,13 +149,13 @@ const debouncedSave = debounce(
         set((state: ResumeState) => {
           state.isSaving = false
         })
-        console.error('Auto-save failed')
+        console.error('Auto-save failed:', (res as any).error)
       }
     } catch (e) {
       set((state: ResumeState) => {
         state.isSaving = false
       })
-      console.error('Auto-save error', e)
+      console.error('Auto-save failed:', e)
     }
   },
   2000
