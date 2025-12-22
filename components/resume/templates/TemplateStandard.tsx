@@ -3,7 +3,14 @@
 import { TemplateProps } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
-import { Mail, Phone, Link as LinkIcon, Github, MapPin } from 'lucide-react'
+import {
+  Mail,
+  Phone,
+  Link as LinkIcon,
+  Github,
+  MapPin,
+  ExternalLink,
+} from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
@@ -139,6 +146,38 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
                     {formatDate(item.startDate)} - {formatDate(item.endDate)}
                   </span>
                 </div>
+
+                {(item.githubUrl || item.demoUrl) && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-[0.8em] font-mono text-gray-500">
+                    {item.githubUrl && (
+                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                        <Github size={12} className="shrink-0" />
+                        <a
+                          href={item.githubUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:text-gray-900 hover:underline truncate"
+                        >
+                          {item.githubUrl.replace(/^https?:\/\//, '')}
+                        </a>
+                      </div>
+                    )}
+                    {item.demoUrl && (
+                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                        <ExternalLink size={12} className="shrink-0" />
+                        <a
+                          href={item.demoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:text-gray-900 hover:underline truncate"
+                        >
+                          {item.demoUrl.replace(/^https?:\/\//, '')}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div style={textStyle} className="text-gray-700 mt-2">
                   {renderDescription(item.description)}
                 </div>

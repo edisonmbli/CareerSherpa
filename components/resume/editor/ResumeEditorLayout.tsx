@@ -236,13 +236,17 @@ export function ResumeEditorLayout({
               isAIPanelOpen,
               setStructureOpen,
               setAIPanelOpen,
+              setActive,
             } = useResumeStore.getState()
             
+            // If sidebars are open, close them
             if (isStructureOpen || isAIPanelOpen) {
-              // Batch updates if possible, or just set both
               if (isStructureOpen) setStructureOpen(false)
               if (isAIPanelOpen) setAIPanelOpen(false)
             }
+            
+            // Also deselect any active item/section
+            setActive(null)
           }}
         >
           {/* 

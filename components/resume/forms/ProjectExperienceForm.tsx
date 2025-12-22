@@ -61,6 +61,32 @@ export function ProjectExperienceForm() {
                 className={inputClass}
               />
             </div>
+            <div className="space-y-2">
+              <Label>GitHub 链接 (可选)</Label>
+              <Input
+                value={activeItem.githubUrl || ''}
+                onChange={(e) =>
+                  updateSectionItem('projectExperiences', activeItem.id, {
+                    githubUrl: e.target.value,
+                  })
+                }
+                className={inputClass}
+                placeholder="https://github.com/..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>作品/演示链接 (可选)</Label>
+              <Input
+                value={activeItem.demoUrl || ''}
+                onChange={(e) =>
+                  updateSectionItem('projectExperiences', activeItem.id, {
+                    demoUrl: e.target.value,
+                  })
+                }
+                className={inputClass}
+                placeholder="https://..."
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>开始时间</Label>

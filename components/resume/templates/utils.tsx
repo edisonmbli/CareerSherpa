@@ -34,10 +34,10 @@ export function renderDescription(description?: string) {
   )
 }
 
-// Simple helper to parse **bold** and *italic*
+// Simple helper to parse **bold**, *italic*, and `code`
 function parseMarkdown(text: string): React.ReactNode {
   // Split by bold pattern first
-  const parts = text.split(/(\*\*.*?\*\*)/g)
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g)
 
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
@@ -47,7 +47,17 @@ function parseMarkdown(text: string): React.ReactNode {
         </strong>
       )
     }
-    // Handle italic inside non-bold parts (simplified)
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code
+          key={index}
+          className="font-mono bg-slate-100 text-slate-900 px-1 py-0.5 rounded text-[0.9em]"
+        >
+          {part.slice(1, -1)}
+        </code>
+      )
+    }
+    // Handle italic inside non-bold/code parts (simplified)
     const italicParts = part.split(/(\*.*?\*)/g)
     return italicParts.map((subPart, subIndex) => {
       if (

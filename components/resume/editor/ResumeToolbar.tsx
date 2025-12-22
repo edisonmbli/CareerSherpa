@@ -245,11 +245,14 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sans">Roboto / Inter (默认)</SelectItem>
+                    <SelectItem value="roboto">Roboto / Inter (默认)</SelectItem>
+                    <SelectItem value="inter">Inter (Modern)</SelectItem>
+                    <SelectItem value="sans">System Sans</SelectItem>
                     <SelectItem value="serif">Noto Serif / Song</SelectItem>
                     <SelectItem value="jetbrains-mono">
                       JetBrains Mono
                     </SelectItem>
+                    <SelectItem value="ibm-plex-mono">IBM Plex Mono</SelectItem>
                     <SelectItem value="lato">Lato</SelectItem>
                     <SelectItem value="open-sans">Open Sans</SelectItem>
                     <SelectItem value="playfair">Playfair Display</SelectItem>

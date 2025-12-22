@@ -11,6 +11,8 @@ export const basicInfoSchema = z.object({
   email: z.string().optional().describe('邮箱'),
   wechat: z.string().optional().describe('微信号'),
   qq: z.string().optional().describe('QQ号'),
+  github: z.string().optional().describe('GitHub'),
+  location: z.string().optional().describe('所在城市'),
   photoUrl: z.string().optional().describe('头像URL'),
   summary: z.string().optional().describe('个人总结/职业摘要'),
 })
@@ -43,6 +45,8 @@ export const projectExperienceSchema = z.object({
   role: z.string().optional().describe('担任角色'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  githubUrl: z.string().optional().describe('GitHub链接'),
+  demoUrl: z.string().optional().describe('作品/演示链接'),
   description: z.string().describe('项目详情描述'), // 重点：包含 \n 的纯文本
 })
 

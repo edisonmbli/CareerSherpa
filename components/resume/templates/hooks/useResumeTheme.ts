@@ -17,13 +17,24 @@ export function useResumeTheme(userConfig?: Partial<ResumeStyleConfig>) {
 
   const defaultConfig: ResumeStyleConfig = {
     themeColor: '#0284c7', // Sky 600
-    fontFamily: 'jetbrains-mono',
+    fontFamily: 'roboto', // Default to Roboto/Inter for most templates
     fontSize: 1, // Multiplier
     lineHeight: 1.5,
     pageMargin: 12, // 12mm
     sectionSpacing: 24,
     itemSpacing: 12,
   }
+
+  // Allow template-specific overrides via userConfig logic,
+  // but if userConfig is empty, we might want to know WHICH template is active to set better defaults.
+  // For now, we'll stick to a safe default, but Technical Template calls this hook with its own defaults if we update it.
+
+  // Actually, the best way is to let the Template component pass in its specific defaults if userConfig is missing/partial.
+  // We will handle that in the Template component itself or merge smartly here.
+  // However, the prompt asks to set defaults for Technical Template specifically.
+  // Since this hook is generic, we shouldn't hardcode Technical defaults here unless we know context.
+  // But wait, the previous code had 'jetbrains-mono' as default which suggests it was biased towards technical.
+  // Let's keep it generic here, and update TemplateTechnical to pass the correct defaults.
 
   const config = { ...defaultConfig, ...userConfig }
 
@@ -41,8 +52,12 @@ export function useResumeTheme(userConfig?: Partial<ResumeStyleConfig>) {
         return 'font-[family-name:var(--font-playfair),serif]'
       case 'jetbrains-mono':
         return 'font-[family-name:var(--font-jetbrains-mono),monospace]'
+      case 'ibm-plex-mono':
+        return 'font-[family-name:var(--font-ibm-plex-mono),monospace]'
       case 'roboto':
         return 'font-[family-name:var(--font-roboto),sans-serif]'
+      case 'inter':
+        return 'font-[family-name:var(--font-inter),sans-serif]'
       default:
         return 'font-[family-name:var(--font-roboto),sans-serif]'
     }
