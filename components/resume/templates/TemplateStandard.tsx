@@ -1,98 +1,121 @@
 'use client'
 
+import React from 'react'
 import { TemplateProps } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
-import {
-  Mail,
-  Phone,
-  Link as LinkIcon,
-  Github,
-  MapPin,
-  ExternalLink,
-} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Mail, Phone, MapPin, Github, Linkedin, Globe } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
+/**
+ * Standard 模板 - 标准通用型
+ * 特点：姓名居中平衡、信笺式头部、克制着色、短粗线视觉锚点
+ */
 export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
-  const { basics } = data
   const {
-    container: containerStyle,
-    header: headerStyle,
-    subHeader: subHeaderStyle,
-    text: textStyle,
-    section: sectionStyle,
-    item: itemStyle,
-    fontFamilyClass,
-    themeColor,
-    isMobile,
-  } = useResumeTheme(styleConfig)
+    basics,
+    workExperiences,
+    projectExperiences,
+    educations,
+    skills,
+    certificates,
+    hobbies,
+    customSections,
+  } = data
+  const theme = useResumeTheme({
+    themeColor: '#0284c7',
+    ...styleConfig,
+  })
 
-  // Specific overrides for this template
-  const sectionTitleStyle = {
-    ...headerStyle,
-    borderColor: themeColor, // Use theme color for divider
-    borderBottomWidth: '1px',
-    color: themeColor, // Keep text color themed
-    fontSize: isMobile ? '1.1em' : '1.25em',
-  }
+  // 辅助组件：标准模块标题 (文字下方短粗线)
+  const SectionHeader = ({ title }: { title: string }) => (
+    <div className="mb-2 mt-2 first:mt-0">
+      <div className="inline-block">
+        <h3
+          className="font-bold text-gray-900 uppercase tracking-wider mb-1"
+          style={{ fontSize: '1em' }}
+        >
+          {title}
+        </h3>
+        <div
+          className="h-[3px] w-8 rounded-full"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+      </div>
+    </div>
+  )
 
   const sectionMap: Record<string, React.ReactNode> = {
-    basics: null, // Rendered separately in header
+    basics: null,
     summary: basics.summary && (
-      <InteractiveSection sectionKey="summary">
-        <section style={sectionStyle}>
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="summary">
+          <SectionHeader title="Professional Summary" />
+          <div
+            className="leading-relaxed text-gray-700 text-justify"
+            style={{ fontSize: '0.93em' }}
           >
-            个人总结
-          </h3>
-          <div style={textStyle} className="text-gray-700 leading-relaxed">
             {renderDescription(basics.summary)}
           </div>
-        </section>
-      </InteractiveSection>
-    ),
-    workExperiences: data.workExperiences?.length > 0 && (
-      <section style={sectionStyle}>
-        <InteractiveSection sectionKey="workExperiences">
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
-          >
-            工作经历
-          </h3>
         </InteractiveSection>
-        <div className="space-y-3">
-          {data.workExperiences.map((item, index) => (
-            <div
-              key={item.id}
-              style={
-                index < data.workExperiences.length - 1 ? itemStyle : undefined
-              }
-            >
+      </section>
+    ),
+    skills: skills && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="skills">
+          <SectionHeader title="Skills & Interests" />
+          <div
+            className="text-gray-700 leading-relaxed px-1"
+            style={{ fontSize: '0.93em' }}
+          >
+            {/* 将技能以平铺方式展示，节省空间且整洁 */}
+            {skills.split('\n').map((skill, i) => (
+              <span key={i} className="inline-block mr-4 mb-1">
+                <span className="text-gray-300 mr-2">•</span>
+                {skill.trim().replace(/^[-•]\s*/, '')}
+              </span>
+            ))}
+          </div>
+        </InteractiveSection>
+      </section>
+    ),
+    workExperiences: workExperiences?.length > 0 && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="workExperiences">
+          <SectionHeader title="Work Experience" />
+        </InteractiveSection>
+        <div className="space-y-2">
+          {workExperiences.map((item) => (
+            <div key={item.id}>
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
-                    <h4
-                      className="font-bold text-gray-900"
-                      style={subHeaderStyle}
-                    >
-                      {item.company}
-                    </h4>
-                    <span
-                      className="text-gray-700 font-medium"
-                      style={textStyle}
-                    >
-                      {item.position}
-                    </span>
-                  </div>
-                  <span className="text-gray-500 font-medium whitespace-nowrap text-sm mt-1 sm:mt-0">
-                    {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                <div className="flex justify-between items-baseline mb-1">
+                  <h4
+                    className="font-bold text-gray-900"
+                    style={{ fontSize: '1.07em' }}
+                  >
+                    {item.company}
+                  </h4>
+                  <span
+                    className="font-medium text-gray-500 tabular-nums"
+                    style={{ fontSize: '0.85em' }}
+                  >
+                    {formatDate(item.startDate)} —{' '}
+                    {item.endDate ? formatDate(item.endDate) : 'Present'}
                   </span>
                 </div>
-
-                <div style={textStyle} className="text-gray-700 mt-2">
+                <div className="flex justify-between items-baseline mb-2">
+                  <span
+                    className="font-medium text-gray-600"
+                    style={{ color: theme.themeColor, fontSize: '0.93em' }}
+                  >
+                    {item.position}
+                  </span>
+                </div>
+                <div
+                  className="text-gray-700 leading-normal"
+                  style={{ fontSize: '0.93em' }}
+                >
                   {renderDescription(item.description)}
                 </div>
               </InteractiveSection>
@@ -101,57 +124,48 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
         </div>
       </section>
     ),
-    projectExperiences: data.projectExperiences?.length > 0 && (
-      <section style={sectionStyle}>
+    projectExperiences: projectExperiences?.length > 0 && (
+      <section style={theme.section}>
         <InteractiveSection sectionKey="projectExperiences">
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
-          >
-            项目经历
-          </h3>
+          <SectionHeader title="Projects" />
         </InteractiveSection>
-        <div className="space-y-3">
-          {data.projectExperiences.map((item, index) => (
-            <div
-              key={item.id}
-              style={
-                index < data.projectExperiences.length - 1
-                  ? itemStyle
-                  : undefined
-              }
-            >
+        <div className="space-y-2">
+          {projectExperiences.map((item) => (
+            <div key={item.id}>
               <InteractiveSection
                 sectionKey="projectExperiences"
                 itemId={item.id}
               >
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
-                    <h4
-                      className="font-bold text-gray-900"
-                      style={subHeaderStyle}
-                    >
-                      {item.projectName}
-                    </h4>
-                    {item.role && (
-                      <span
-                        className="text-gray-700 font-medium"
-                        style={textStyle}
-                      >
-                        {item.role}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-gray-500 font-medium whitespace-nowrap text-sm mt-1 sm:mt-0">
-                    {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                <div className="flex justify-between items-baseline mb-1">
+                  <h4
+                    className="font-bold text-gray-800"
+                    style={{ fontSize: '1em' }}
+                  >
+                    {item.projectName}
+                  </h4>
+                  <span
+                    className="font-medium text-gray-500 tabular-nums"
+                    style={{ fontSize: '0.85em' }}
+                  >
+                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
                   </span>
                 </div>
-
+                {item.role && (
+                  <div
+                    className="font-medium mb-2"
+                    style={{ color: theme.themeColor, fontSize: '0.93em' }}
+                  >
+                    {item.role}
+                  </div>
+                )}
                 {(item.githubUrl || item.demoUrl) && (
-                  <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1.5 mb-2 text-[0.8em] font-mono text-gray-500">
+                  <div
+                    className="flex flex-wrap gap-x-4 gap-y-1 mb-2 font-mono text-gray-500"
+                    style={{ fontSize: '0.78em' }}
+                  >
                     {item.demoUrl && (
-                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
-                        <ExternalLink size={12} className="shrink-0" />
+                      <div className="flex items-center gap-1">
+                        <Globe size={11} className="shrink-0" />
                         <a
                           href={item.demoUrl}
                           target="_blank"
@@ -163,8 +177,8 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
                       </div>
                     )}
                     {item.githubUrl && (
-                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
-                        <Github size={12} className="shrink-0" />
+                      <div className="flex items-center gap-1">
+                        <Github size={11} className="shrink-0" />
                         <a
                           href={item.githubUrl}
                           target="_blank"
@@ -177,8 +191,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
                     )}
                   </div>
                 )}
-
-                <div style={textStyle} className="text-gray-700 mt-2">
+                <div className="text-gray-700" style={{ fontSize: '0.93em' }}>
                   {renderDescription(item.description)}
                 </div>
               </InteractiveSection>
@@ -187,41 +200,42 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
         </div>
       </section>
     ),
-    educations: data.educations?.length > 0 && (
-      <section style={sectionStyle}>
+    educations: educations?.length > 0 && (
+      <section style={theme.section}>
         <InteractiveSection sectionKey="educations">
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
-          >
-            教育经历
-          </h3>
+          <SectionHeader title="Education" />
         </InteractiveSection>
-        <div className="space-y-3">
-          {data.educations.map((item, index) => (
-            <div
-              key={item.id}
-              style={index < data.educations.length - 1 ? itemStyle : undefined}
-            >
+        <div className="space-y-4">
+          {educations.map((item) => (
+            <div key={item.id}>
               <InteractiveSection sectionKey="educations" itemId={item.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline mb-1">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span
                       className="font-bold text-gray-900"
-                      style={subHeaderStyle}
+                      style={{ fontSize: '1em' }}
                     >
                       {item.school}
-                    </h4>
-                    <div className="text-gray-700 mt-0.5" style={textStyle}>
+                    </span>
+                    <span
+                      className="text-gray-600"
+                      style={{ fontSize: '0.93em' }}
+                    >
                       {item.major} {item.degree && `| ${item.degree}`}
-                    </div>
+                    </span>
                   </div>
-                  <span className="text-gray-500 font-medium text-sm whitespace-nowrap">
-                    {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                  <span
+                    className="font-medium text-gray-500 tabular-nums whitespace-nowrap mt-1 sm:mt-0"
+                    style={{ fontSize: '0.85em' }}
+                  >
+                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
                   </span>
                 </div>
                 {item.description && (
-                  <div className="mt-1 text-gray-600" style={textStyle}>
+                  <div
+                    className="mt-1 text-gray-600"
+                    style={{ fontSize: '0.93em' }}
+                  >
                     {renderDescription(item.description)}
                   </div>
                 )}
@@ -231,142 +245,165 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
         </div>
       </section>
     ),
-    skills: data.skills && (
-      <InteractiveSection sectionKey="skills">
-        <section style={sectionStyle}>
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
+    certificates: certificates && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="certificates">
+          <SectionHeader title="Certificates" />
+          <div
+            className="text-gray-700 leading-relaxed"
+            style={{ fontSize: '0.93em' }}
           >
-            技能特长
-          </h3>
-          <div style={textStyle} className="text-gray-700 leading-relaxed">
-            {renderDescription(data.skills)}
+            {renderDescription(certificates)}
           </div>
-        </section>
-      </InteractiveSection>
+        </InteractiveSection>
+      </section>
     ),
-    certificates: data.certificates && (
-      <InteractiveSection sectionKey="certificates">
-        <section style={sectionStyle}>
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
+    hobbies: hobbies && (
+      <section style={theme.section}>
+        <InteractiveSection sectionKey="hobbies">
+          <SectionHeader title="Interests" />
+          <div
+            className="text-gray-700 leading-relaxed"
+            style={{ fontSize: '0.93em' }}
           >
-            证书奖项
-          </h3>
-          <div style={textStyle} className="text-gray-700 leading-relaxed">
-            {renderDescription(data.certificates)}
+            {renderDescription(hobbies)}
           </div>
-        </section>
-      </InteractiveSection>
+        </InteractiveSection>
+      </section>
     ),
-    hobbies: data.hobbies && (
-      <InteractiveSection sectionKey="hobbies">
-        <section style={sectionStyle}>
-          <h3
-            className="font-bold mb-2 pb-2 uppercase tracking-wide"
-            style={sectionTitleStyle}
-          >
-            兴趣爱好
-          </h3>
-          <div style={textStyle} className="text-gray-700 leading-relaxed">
-            {renderDescription(data.hobbies)}
-          </div>
-        </section>
-      </InteractiveSection>
-    ),
-    customSections: data.customSections?.length > 0 && (
-      <InteractiveSection sectionKey="customSections">
-        <>
-          {data.customSections.map((item) => (
-            <section key={item.id} style={sectionStyle}>
-              <h3
-                className="font-bold mb-2 pb-2 uppercase tracking-wide"
-                style={sectionTitleStyle}
+    customSections: customSections?.length > 0 && (
+      <>
+        {customSections.map((item) => (
+          <section key={item.id} style={theme.section}>
+            <InteractiveSection sectionKey="customSections" itemId={item.id}>
+              <SectionHeader title={item.title} />
+              <div
+                className="text-gray-700 leading-relaxed"
+                style={{ fontSize: '0.93em' }}
               >
-                {item.title}
-              </h3>
-              <div style={textStyle} className="text-gray-700 leading-relaxed">
                 {renderDescription(item.description)}
               </div>
-            </section>
-          ))}
-        </>
-      </InteractiveSection>
+            </InteractiveSection>
+          </section>
+        ))}
+      </>
     ),
   }
 
   return (
     <div
-      className={`${fontFamilyClass} text-gray-900 h-full bg-white w-full`}
-      style={containerStyle}
+      className={cn(
+        'bg-white w-full min-h-full transition-all duration-300',
+        theme.fontFamilyClass
+      )}
+      style={theme.container}
     >
-      {/* Header */}
+      {/* Header: Left-aligned Identity with Avatar & Horizontal Contact */}
       <InteractiveSection sectionKey="basics">
-        <header
-          className="text-center mb-6" // Removed border-b-2, reduced mb
-          style={{
-            marginBottom:
-              typeof sectionStyle.marginBottom === 'string'
-                ? `calc(${sectionStyle.marginBottom} * 1.5)`
-                : 32,
-          }}
-        >
+        <header className="flex flex-col-reverse md:flex-row items-center md:items-center justify-between gap-6 mb-6 pt-4">
+          <div className="flex-1 text-center md:text-left">
+            <h1
+              className="font-bold text-gray-900 tracking-tighter mb-3"
+              style={{ fontSize: '2.3em' }}
+            >
+              {basics.name}
+            </h1>
+
+            <div
+              className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-2 text-gray-500"
+              style={{ fontSize: '0.93em' }}
+            >
+              {basics.mobile && (
+                <div className="flex items-center gap-1.5">
+                  <Phone size={13} style={{ color: theme.themeColor }} />{' '}
+                  {basics.mobile}
+                </div>
+              )}
+              {basics.email && (
+                <div className="flex items-center gap-1.5">
+                  <Mail size={13} style={{ color: theme.themeColor }} />{' '}
+                  {basics.email}
+                </div>
+              )}
+              {basics.wechat && (
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="font-bold text-[10px]"
+                    style={{ color: theme.themeColor }}
+                  >
+                    WX
+                  </span>{' '}
+                  {basics.wechat}
+                </div>
+              )}
+              {basics.location && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={13} style={{ color: theme.themeColor }} />{' '}
+                  {basics.location}
+                </div>
+              )}
+              {basics.github && (
+                <a
+                  href={basics.github}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+                >
+                  <Github size={13} />{' '}
+                  <span className="underline underline-offset-2">
+                    {basics.github.replace(/^https?:\/\//, '')}
+                  </span>
+                </a>
+              )}
+              {basics.linkedin && (
+                <a
+                  href={basics.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+                >
+                  <Linkedin size={13} />{' '}
+                  <span className="underline underline-offset-2">LinkedIn</span>
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Avatar - Displayed if photoUrl exists */}
           {basics.photoUrl && (
-            <div className="flex justify-center mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+            <div className="shrink-0">
               <img
                 src={basics.photoUrl}
                 alt={basics.name}
-                className="w-28 h-28 rounded-full object-cover shadow-lg" // Changed border-2 to shadow-lg
-                style={
-                  {
-                    // Optional: subtle ring if needed, but shadow is usually enough for "clean" look
-                    // ring: `2px solid ${themeColor}20`
-                  }
-                }
+                className="w-24 h-24 rounded-full object-cover border-[3px] border-white shadow-sm bg-gray-100"
               />
             </div>
           )}
-          <h1
-            className="font-bold tracking-tight mb-2 text-gray-900"
-            style={{
-              fontSize: `calc(${headerStyle.fontSize} * 1.5)`,
-              lineHeight: 1.2,
-            }}
-          >
-            {basics.name}
-          </h1>
-
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 mt-3">
-            {basics.mobile && (
-              <span className="flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5 opacity-70" /> {basics.mobile}
-              </span>
-            )}
-            {basics.email && (
-              <span className="flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 opacity-70" /> {basics.email}
-              </span>
-            )}
-            {basics.wechat && (
-              <span className="flex items-center gap-1.5">
-                <span className="font-bold text-xs opacity-70">WX</span>{' '}
-                {basics.wechat}
-              </span>
-            )}
-            {/* Optional: Add Link/Github if in data schema later */}
-          </div>
         </header>
       </InteractiveSection>
 
-      {/* Dynamic Sections */}
-      {config.order.map((key) => {
-        if (config.hidden.includes(key)) return null
-        const section = sectionMap[key]
-        return section ? <div key={key}>{section}</div> : null
-      })}
+      {/* Main Sections Body */}
+      <div className="flex flex-col">
+        {config.order.map((key) => {
+          if (
+            config.hidden.includes(key) ||
+            key === 'basics' ||
+            !sectionMap[key]
+          )
+            return null
+          return <div key={key}>{sectionMap[key]}</div>
+        })}
+      </div>
+
+      {/* Footer Placeholder for Printing */}
+      <div className="mt-8 text-center border-t border-gray-100 pt-4 opacity-40">
+        <p
+          className="text-gray-400 uppercase tracking-widest font-medium"
+          style={{ fontSize: '0.7em' }}
+        >
+          - PERSONSAL RESUME - 
+        </p>
+      </div>
     </div>
   )
 }

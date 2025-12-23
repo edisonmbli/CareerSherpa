@@ -245,7 +245,9 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="roboto">Roboto / Inter (默认)</SelectItem>
+                    <SelectItem value="roboto">
+                      Roboto / Inter (默认)
+                    </SelectItem>
                     <SelectItem value="inter">Inter (Modern)</SelectItem>
                     <SelectItem value="sans">System Sans</SelectItem>
                     <SelectItem value="serif">Noto Serif / Song</SelectItem>
@@ -286,9 +288,9 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <RangeControl
                 label="段落间距 (px)"
                 value={styleConfig.sectionSpacing}
-                min={12}
+                min={6}
                 max={48}
-                step={4}
+                step={2}
                 onChange={(v) => updateStyleConfig({ sectionSpacing: v })}
                 formatValue={(v) => `${v}px`}
               />
