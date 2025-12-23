@@ -51,6 +51,16 @@ export function TemplateSelector() {
         itemSpacing: 12, // Paragraph Spacing (px)
         pageMargin: 10, // Page Margin (mm)
       })
+    } else if (id === 'darkSidebar') {
+      // Apply default styles for Dark Sidebar template
+      updateStyleConfig({
+        themeColor: '#4B5563', // Volcanic Ash
+        fontFamily: 'jetbrains',
+        fontSize: 1.05, // 1.05x
+        lineHeight: 1.4,
+        itemSpacing: 12, // Paragraph Spacing (px)
+        pageMargin: 10, // Page Margin (mm)
+      })
     }
 
     setIsOpen(false)

@@ -32,7 +32,7 @@ export const RESUME_TEMPLATES = [
   {
     id: 'darkSidebar',
     name: '深色侧栏',
-    description: '强视觉冲击，适合创意、咨询行业',
+    description: '强视觉冲击，适合创意、个人品牌、初创科技',
     thumbnail: '/images/templates/darkSidebar.png',
   },
   {
