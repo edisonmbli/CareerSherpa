@@ -1,255 +1,462 @@
-import { useState, useEffect } from 'react'
-import { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
+/* eslint-disable @next/next/no-img-element */
+'use client'
+
+import React from 'react'
+import { TemplateProps } from './types'
+import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
-import { Mail, Phone, MapPin } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Github,
+  Linkedin,
+  ExternalLink,
+  Sparkles,
+} from 'lucide-react'
+import { InteractiveSection } from './InteractiveSection'
 
-interface TemplateProps {
-  data: ResumeData
-  config: SectionConfig
-}
+/**
+ * Professional 模板 - 商务专业型
+ * 特点：黄金比例双列布局 (左侧边栏)、高密度排版、极强的模块边界感
+ */
+export function TemplateProfessional({
+  data,
+  config,
+  styleConfig,
+}: TemplateProps) {
+  const {
+    basics,
+    workExperiences,
+    projectExperiences,
+    educations,
+    skills,
+    certificates,
+    hobbies,
+    customSections,
+  } = data
+  const theme = useResumeTheme(styleConfig)
 
-export function TemplateProfessional({ data, config }: TemplateProps) {
-  const { basics } = data
-  const [isMobile, setIsMobile] = useState(false)
+  // 辅助组件：商务模块标题 (带主色调左边框 + 浅灰底色)
+  const SectionHeader = ({
+    title,
+    icon: Icon,
+  }: {
+    title: string
+    icon?: any
+  }) => (
+    <div className="flex items-center gap-2 mb-4 mt-6 first:mt-0 group">
+      <div
+        className="w-1.5 h-6 rounded-sm"
+        style={{ backgroundColor: theme.themeColor }}
+      />
+      <h3 className="text-[1.1em] font-bold text-gray-900 uppercase tracking-tight flex items-center gap-2">
+        {Icon && <Icon size={14} style={{ color: theme.themeColor }} />}
+        {title}
+      </h3>
+      <div className="flex-1 h-[1px] bg-gray-100 group-hover:bg-gray-200 transition-colors" />
+    </div>
+  )
 
-  useEffect(() => {
-    const update = () => {
-      if (typeof window !== 'undefined') {
-        setIsMobile(window.innerWidth < 768)
-      }
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
+  // 侧边栏内容块容器
+  const SidebarSection = ({
+    title,
+    children,
+  }: {
+    title: string
+    children: React.ReactNode
+  }) => (
+    <div className="mb-6 md:mb-8 last:mb-0">
+      <h4 className="text-[0.9em] font-black text-gray-500 uppercase tracking-[0.15em] mb-3 md:mb-4 border-b border-gray-200/50 pb-1">
+        {title}
+      </h4>
+      {children}
+    </div>
+  )
 
-  // Define main content sections and sidebar sections
-  const sidebarSections = ['skills', 'educations', 'certificates', 'hobbies']
-  const mainSections = [
-    'summary',
-    'workExperiences',
-    'projectExperiences',
-    'customSections',
-  ]
-
-  const renderSection = (key: string) => {
-    if (config.hidden.includes(key)) return null
-
-    switch (key) {
-      case 'summary':
-        return (
-          basics.summary && (
-            <section key={key} className="mb-6">
-              <h3 className="text-lg font-bold text-blue-800 mb-2 uppercase">
-                个人总结
-              </h3>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                {basics.summary}
-              </p>
-            </section>
-          )
-        )
-      case 'workExperiences':
-        return (
-          data.workExperiences?.length > 0 && (
-            <section key={key} className="mb-6">
-              <h3 className="text-lg font-bold text-blue-800 mb-3 uppercase border-b border-blue-200 pb-1">
-                工作经历
-              </h3>
-              <div className="space-y-5">
-                {data.workExperiences.map((item) => (
-                  <div key={item.id}>
-                    <div className="flex justify-between items-baseline">
-                      <h4 className="font-bold text-gray-900 text-base">
-                        {item.position}
-                      </h4>
-                      <span className="text-xs text-gray-500 font-medium">
-                        {formatDate(item.startDate)} -{' '}
-                        {formatDate(item.endDate)}
-                      </span>
-                    </div>
-                    <div className="text-sm text-blue-600 font-medium mb-2">
+  const sectionMap: Record<string, React.ReactNode> = {
+    summary: basics.summary && (
+      <section className="mb-8" style={theme.section}>
+        <InteractiveSection sectionKey="summary">
+          <div>
+            <SectionHeader title="Professional Summary" icon={Sparkles} />
+            <p
+              className="leading-relaxed text-gray-700 text-justify"
+              style={theme.text}
+            >
+              {basics.summary}
+            </p>
+          </div>
+        </InteractiveSection>
+      </section>
+    ),
+    workExperiences: workExperiences?.length > 0 && (
+      <section className="mb-8" style={theme.section}>
+        <InteractiveSection sectionKey="workExperiences">
+          <SectionHeader title="Experience" />
+        </InteractiveSection>
+        <div className="space-y-6">
+          {workExperiences.map((item) => (
+            <div key={item.id}>
+              <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <h4
+                      className="font-bold text-gray-900"
+                      style={{ fontSize: '1.1em' }}
+                    >
                       {item.company}
-                    </div>
+                    </h4>
+                    <span
+                      className="font-mono text-gray-400 shrink-0 ml-4"
+                      style={{ fontSize: '0.85em' }}
+                    >
+                      {formatDate(item.startDate)} —{' '}
+                      {item.endDate ? formatDate(item.endDate) : 'Present'}
+                    </span>
+                  </div>
+                  <div
+                    className="font-semibold mb-2"
+                    style={{ color: theme.themeColor, fontSize: '1em' }}
+                  >
+                    {item.position}
+                  </div>
+                  <div className="text-gray-600" style={theme.text}>
                     {renderDescription(item.description)}
                   </div>
-                ))}
-              </div>
-            </section>
-          )
-        )
-      case 'projectExperiences':
-        return (
-          data.projectExperiences?.length > 0 && (
-            <section key={key} className="mb-6">
-              <h3 className="text-lg font-bold text-blue-800 mb-3 uppercase border-b border-blue-200 pb-1">
-                项目经历
-              </h3>
-              <div className="space-y-5">
-                {data.projectExperiences.map((item) => (
-                  <div key={item.id}>
-                    <div className="flex justify-between items-baseline">
-                      <h4 className="font-bold text-gray-900">
+                </div>
+              </InteractiveSection>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    projectExperiences: projectExperiences?.length > 0 && (
+      <section className="mb-8" style={theme.section}>
+        <InteractiveSection sectionKey="projectExperiences">
+          <SectionHeader title="Key Projects" />
+        </InteractiveSection>
+        <div className="space-y-6">
+          {projectExperiences.map((item) => (
+            <div key={item.id}>
+              <InteractiveSection
+                sectionKey="projectExperiences"
+                itemId={item.id}
+              >
+                <div>
+                  <div className="flex flex-col gap-1 mb-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                      <h4
+                        className="font-bold text-gray-800"
+                        style={{ fontSize: '1em' }}
+                      >
                         {item.projectName}
                       </h4>
-                      <span className="text-xs text-gray-500 font-medium">
-                        {formatDate(item.startDate)} -{' '}
-                        {formatDate(item.endDate)}
+                      <span
+                        className="font-mono text-gray-400 shrink-0 ml-auto"
+                        style={{ fontSize: '0.85em' }}
+                      >
+                        {formatDate(item.startDate)} —{' '}
+                        {item.endDate ? formatDate(item.endDate) : 'Present'}
                       </span>
                     </div>
+
                     {item.role && (
-                      <div className="text-sm text-blue-600 font-medium mb-2">
+                      <div
+                        className="font-semibold"
+                        style={{ color: theme.themeColor, fontSize: '1em' }}
+                      >
                         {item.role}
                       </div>
                     )}
-                    {renderDescription(item.description)}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )
-        )
-      case 'educations':
-        return (
-          data.educations?.length > 0 && (
-            <section key={key} className="mb-6">
-              <h3 className="text-md font-bold text-gray-900 mb-3 uppercase">
-                教育经历
-              </h3>
-              <div className="space-y-4">
-                {data.educations.map((item) => (
-                  <div key={item.id}>
-                    <div className="font-bold text-gray-800">{item.school}</div>
-                    <div className="text-sm text-gray-600 mb-1">
-                      {item.major} {item.degree && `| ${item.degree}`}
-                    </div>
-                    <div className="text-xs text-gray-500 mb-2">
-                      {formatDate(item.startDate)} - {formatDate(item.endDate)}
-                    </div>
-                    {item.description && (
-                      <div className="text-xs text-gray-600">
-                        {renderDescription(item.description)}
+
+                    {(item.githubUrl || item.demoUrl) && (
+                      <div className="flex flex-wrap gap-1 text-xs text-gray-500 font-mono min-w-0 mt-1.5 mb-2">
+                        {item.demoUrl && (
+                          <div className="flex items-center gap-1 min-w-0">
+                            <ExternalLink size={12} className="shrink-0" />
+                            <a
+                              href={item.demoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-gray-900 hover:underline truncate"
+                            >
+                              {item.demoUrl.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        )}
+                        {item.githubUrl && (
+                          <div className="flex items-center gap-1 min-w-0">
+                            <Github size={12} className="shrink-0" />
+                            <a
+                              href={item.githubUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-gray-900 hover:underline truncate"
+                            >
+                              {item.githubUrl.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                ))}
+                  <div className="text-gray-600" style={theme.text}>
+                    {renderDescription(item.description)}
+                  </div>
+                </div>
+              </InteractiveSection>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    educations: educations?.length > 0 && (
+      <section className="mb-8" style={theme.section}>
+        <InteractiveSection sectionKey="educations">
+          <SectionHeader title="Education" />
+        </InteractiveSection>
+        <div className="space-y-4">
+          {educations.map((item) => (
+            <div key={item.id}>
+              <InteractiveSection sectionKey="educations" itemId={item.id}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div
+                      className="font-bold text-gray-900"
+                      style={{ fontSize: '1em' }}
+                    >
+                      {item.school}
+                    </div>
+                    <div className="text-gray-600" style={theme.text}>
+                      {item.major} {item.degree && `| ${item.degree}`}
+                    </div>
+                  </div>
+                  <span
+                    className="text-gray-400 italic shrink-0 ml-4"
+                    style={{ fontSize: '0.85em' }}
+                  >
+                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
+                  </span>
+                </div>
+              </InteractiveSection>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    // 侧边栏板块 (Skills, Certificates, Hobbies, CustomSections)
+    skills: skills ? (
+      <InteractiveSection sectionKey="skills">
+        <SidebarSection title="Core Skills">
+          <div className="flex flex-col gap-3">
+            {skills.split('\n').map((skill, idx) => (
+              <div key={idx} className="flex flex-col gap-1">
+                <span
+                  className="font-medium text-gray-700"
+                  style={{ fontSize: '0.9em' }}
+                >
+                  {skill.trim().replace(/^[-•]\s*/, '')}
+                </span>
+                <div className="w-full h-1 bg-gray-200/50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gray-500 w-3/4"
+                    style={{
+                      backgroundColor: theme.themeColor,
+                      opacity: 0.8,
+                    }}
+                  />
+                </div>
               </div>
-            </section>
-          )
-        )
-      case 'skills':
-        return (
-          data.skills && (
-            <section key={key} className="mb-6">
-              <h3 className="text-md font-bold text-gray-900 mb-3 uppercase">
-                技能特长
-              </h3>
-              <div className="text-sm text-gray-700">
-                {renderDescription(data.skills)}
-              </div>
-            </section>
-          )
-        )
-      case 'certificates':
-        return (
-          data.certificates && (
-            <section key={key} className="mb-6">
-              <h3 className="text-md font-bold text-gray-900 mb-3 uppercase">
-                证书奖项
-              </h3>
-              <div className="text-sm text-gray-700">
-                {renderDescription(data.certificates)}
-              </div>
-            </section>
-          )
-        )
-      case 'hobbies':
-        return (
-          data.hobbies && (
-            <section key={key} className="mb-6">
-              <h3 className="text-md font-bold text-gray-900 mb-3 uppercase">
-                兴趣爱好
-              </h3>
-              <div className="text-sm text-gray-700">
-                {renderDescription(data.hobbies)}
-              </div>
-            </section>
-          )
-        )
-      case 'customSections':
-        return (
-          data.customSections?.length > 0 && (
-            <>
-              {data.customSections.map((item) => (
-                <section key={item.id} className="mb-6">
-                  <h3 className="text-lg font-bold text-blue-800 mb-3 uppercase border-b border-blue-200 pb-1">
-                    {item.title}
-                  </h3>
-                  {renderDescription(item.description)}
-                </section>
-              ))}
-            </>
-          )
-        )
-      default:
-        return null
-    }
+            ))}
+          </div>
+        </SidebarSection>
+      </InteractiveSection>
+    ) : null,
+    certificates: certificates ? (
+      <InteractiveSection sectionKey="certificates">
+        <SidebarSection title="Awards">
+          <div
+            className="text-gray-600 leading-relaxed italic"
+            style={{ fontSize: '0.9em' }}
+          >
+            {renderDescription(certificates)}
+          </div>
+        </SidebarSection>
+      </InteractiveSection>
+    ) : null,
+    hobbies: hobbies ? (
+      <InteractiveSection sectionKey="hobbies">
+        <SidebarSection title="Interests">
+          <div
+            className="text-gray-600 leading-relaxed"
+            style={{ fontSize: '0.9em' }}
+          >
+            {renderDescription(hobbies)}
+          </div>
+        </SidebarSection>
+      </InteractiveSection>
+    ) : null,
+    customSections:
+      customSections?.length > 0 ? (
+        <InteractiveSection sectionKey="customSections">
+          <>
+            {customSections.map((item) => (
+              <SidebarSection key={item.id} title={item.title}>
+                <div
+                  className="text-gray-600 leading-relaxed flex flex-col gap-2"
+                  style={{ fontSize: '0.9em' }}
+                >
+                  {item.description.split('\n').map((line, idx) => (
+                    <div key={idx}>{line.replace(/^[-•]\s*/, '')}</div>
+                  ))}
+                </div>
+              </SidebarSection>
+            ))}
+          </>
+        </InteractiveSection>
+      ) : null,
   }
 
   return (
-    <div className="flex h-full bg-white text-gray-800 w-full">
-      {/* Left Sidebar */}
-      <aside className="w-1/3 bg-gray-100 p-8 border-r border-gray-200">
-        {/* Contact Info in Sidebar */}
-        <div className="mb-8">
-          {basics.mobile && (
-            <div className="flex items-center gap-2 text-sm mb-2">
-              <Phone className="h-4 w-4 text-blue-600" /> {basics.mobile}
+    <div
+      className={cn(
+        'bg-white w-full min-h-full transition-all duration-300',
+        theme.fontFamilyClass
+      )}
+      style={theme.container}
+    >
+      {/* 顶部个人品牌区 (跨双列) */}
+      <InteractiveSection sectionKey="basics">
+        <header className="mb-8 pb-6 border-b-2 border-gray-900 flex justify-between items-start">
+          <div className="flex-1">
+            <h1 className="text-[2.5em] font-black text-gray-900 leading-tight tracking-tighter uppercase mb-4">
+              {basics.name}
+            </h1>
+            {/* Contacts moved to Header */}
+            <div
+              className="flex flex-wrap gap-x-6 gap-y-2 text-gray-600"
+              style={{ fontSize: '0.9em' }}
+            >
+              {basics.email && (
+                <div className="flex items-center gap-2">
+                  <Mail
+                    size={14}
+                    style={{ color: theme.themeColor }}
+                    className="shrink-0"
+                  />{' '}
+                  {basics.email}
+                </div>
+              )}
+              {basics.mobile && (
+                <div className="flex items-center gap-2">
+                  <Phone
+                    size={14}
+                    style={{ color: theme.themeColor }}
+                    className="shrink-0"
+                  />{' '}
+                  {basics.mobile}
+                </div>
+              )}
+              {basics.location && (
+                <div className="flex items-center gap-2">
+                  <MapPin
+                    size={14}
+                    style={{ color: theme.themeColor }}
+                    className="shrink-0"
+                  />{' '}
+                  {basics.location}
+                </div>
+              )}
+              {basics.github && (
+                <div className="flex items-center gap-2">
+                  <Github
+                    size={14}
+                    style={{ color: theme.themeColor }}
+                    className="shrink-0"
+                  />
+                  <a
+                    href={basics.github}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-gray-900 hover:underline"
+                  >
+                    {basics.github.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.linkedin && (
+                <div className="flex items-center gap-2">
+                  <Linkedin
+                    size={14}
+                    style={{ color: theme.themeColor }}
+                    className="shrink-0"
+                  />
+                  <a
+                    href={basics.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-gray-900 hover:underline"
+                  >
+                    {basics.linkedin.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
             </div>
-          )}
-          {basics.email && (
-            <div className="flex items-center gap-2 text-sm mb-2">
-              <Mail className="h-4 w-4 text-blue-600" /> {basics.email}
+          </div>
+          {/* 头像 */}
+          {basics.photoUrl && (
+            <div className="w-24 h-24 rounded-md overflow-hidden border border-gray-200 shadow-sm shrink-0 ml-6">
+              <img
+                src={basics.photoUrl}
+                alt={basics.name}
+                className="w-full h-full object-cover"
+              />
             </div>
-          )}
-          {basics.wechat && (
-            <div className="flex items-center gap-2 text-sm mb-2">
-              <span className="font-bold text-xs text-blue-600 w-4 text-center">
-                WX
-              </span>{' '}
-              {basics.wechat}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar Sections */}
-        {config.order
-          .filter((key) => sidebarSections.includes(key))
-          .map((key) => renderSection(key))}
-      </aside>
-
-      {/* Main Content */}
-      <main className="w-2/3 p-8">
-        <header className="mb-8">
-          <h1
-            className={`${
-              isMobile ? 'text-2xl' : 'text-4xl'
-            } font-bold text-gray-900 mb-2`}
-          >
-            {basics.name}
-          </h1>
-          {basics.summary && !config.order.includes('summary') && (
-            <p className="text-gray-600 text-sm leading-relaxed">
-              {basics.summary}
-            </p>
           )}
         </header>
+      </InteractiveSection>
 
-        {/* Main Sections */}
-        {config.order
-          .filter((key) => !sidebarSections.includes(key) && key !== 'basics')
-          .map((key) => renderSection(key))}
-      </main>
+      {/* 核心双列容器：移动端堆叠，PC/Print 保持 A4 比例 */}
+      <div className="grid grid-cols-1 md:grid-cols-10 print:grid-cols-10 gap-y-8 md:gap-10 print:gap-10">
+        {/* 左侧边栏 (30%) */}
+        <aside
+          className="md:col-span-3 print:col-span-3 space-y-6 md:space-y-8 p-6 md:rounded-lg print:p-6 print:rounded-none"
+          style={{ backgroundColor: `${theme.themeColor}0D` }} // 5% opacity hex 0D
+        >
+          {/* 渲染侧边栏内容 (Skills, Awards, Custom) */}
+          {['skills', 'certificates', 'hobbies', 'customSections'].map(
+            (key) => {
+              if (config.hidden.includes(key)) return null
+              return (
+                <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
+              )
+            }
+          )}
+        </aside>
+
+        {/* 右侧主内容区 (70%) */}
+        <main className="md:col-span-7 print:col-span-7">
+          {config.order.map((key) => {
+            if (
+              config.hidden.includes(key) ||
+              ['skills', 'certificates', 'hobbies', 'customSections'].includes(
+                key
+              ) ||
+              key === 'basics'
+            )
+              return null
+            return <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
+          })}
+        </main>
+      </div>
+
+      {/* 页脚装饰线 */}
+      <footer className="mt-12 pt-4 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-300 uppercase tracking-widest">
+        <span>PERSONAL RESUME</span>
+        {/* Remove right side content as requested */}
+      </footer>
     </div>
   )
 }

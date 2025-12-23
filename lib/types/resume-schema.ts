@@ -12,6 +12,7 @@ export const basicInfoSchema = z.object({
   wechat: z.string().optional().describe('微信号'),
   qq: z.string().optional().describe('QQ号'),
   github: z.string().optional().describe('GitHub'),
+  linkedin: z.string().optional().describe('LinkedIn'),
   location: z.string().optional().describe('所在城市'),
   photoUrl: z.string().optional().describe('头像URL'),
   summary: z.string().optional().describe('个人总结/职业摘要'),

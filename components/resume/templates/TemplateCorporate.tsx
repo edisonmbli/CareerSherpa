@@ -172,22 +172,9 @@ export function TemplateCorporate({
                 {/* Project Links - Optimized for Corporate style */}
                 {(item.githubUrl || item.demoUrl) && (
                   <div
-                    className="flex flex-wrap gap-x-4 gap-y-1 mb-2 font-mono text-gray-500"
+                    className="flex flex-wrap gap-x-6 gap-y-1 mt-1.5 mb-2 font-mono text-gray-500"
                     style={{ fontSize: '0.8em' }}
                   >
-                    {item.githubUrl && (
-                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
-                        <Github size={12} className="shrink-0" />
-                        <a
-                          href={item.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:text-gray-900 hover:underline truncate"
-                        >
-                          {item.githubUrl.replace(/^https?:\/\//, '')}
-                        </a>
-                      </div>
-                    )}
                     {item.demoUrl && (
                       <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
                         <ExternalLink size={12} className="shrink-0" />
@@ -195,9 +182,22 @@ export function TemplateCorporate({
                           href={item.demoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="hover:text-gray-900 hover:underline truncate"
+                          className="hover:text-sky-700 hover:underline truncate"
                         >
                           {item.demoUrl.replace(/^https?:\/\//, '')}
+                        </a>
+                      </div>
+                    )}
+                    {item.githubUrl && (
+                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                        <Github size={12} className="shrink-0" />
+                        <a
+                          href={item.githubUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:text-sky-700 hover:underline truncate"
+                        >
+                          {item.githubUrl.replace(/^https?:\/\//, '')}
                         </a>
                       </div>
                     )}

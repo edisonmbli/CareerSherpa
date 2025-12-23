@@ -271,7 +271,11 @@ const createResumeSlice = (
       if (state.resumeData && Array.isArray(state.resumeData[sectionKey])) {
         const arr = state.resumeData[sectionKey] as any[]
         // Add basic empty item with ID
-        arr.push({ id, description: '' })
+        if (sectionKey === 'customSections') {
+          arr.push({ id, title: 'New Section', description: '' })
+        } else {
+          arr.push({ id, description: '' })
+        }
       }
     })
     get().setActive(sectionKey, id)

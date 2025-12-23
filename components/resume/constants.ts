@@ -8,7 +8,7 @@ export const RESUME_TEMPLATES = [
   {
     id: 'professional',
     name: '商务专业',
-    description: '双栏布局，适合产品、运营、管理岗',
+    description: '双栏布局，适合咨询、投行、管理咨询',
     thumbnail: '/images/templates/professional.png',
   },
   {

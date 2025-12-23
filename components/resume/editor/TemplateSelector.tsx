@@ -41,6 +41,16 @@ export function TemplateSelector() {
         itemSpacing: 12, // Paragraph Spacing (px)
         pageMargin: 12, // Page Margin (mm)
       })
+    } else if (id === 'professional') {
+      // Apply default styles for Professional template
+      updateStyleConfig({
+        themeColor: '#7F1D1D', // Burgundy
+        fontFamily: 'roboto',
+        fontSize: 1, // 1.00x
+        lineHeight: 1.4,
+        itemSpacing: 12, // Paragraph Spacing (px)
+        pageMargin: 10, // Page Margin (mm)
+      })
     }
 
     setIsOpen(false)
