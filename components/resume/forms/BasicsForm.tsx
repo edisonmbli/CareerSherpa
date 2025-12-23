@@ -127,6 +127,54 @@ export function BasicsForm() {
           className={formInputClass}
         />
       </div>
+      <div className="space-y-2">
+        <Label>GitHub</Label>
+        <Input
+          value={basics.github || ''}
+          onChange={(e) => handleChange('github', e.target.value)}
+          className={formInputClass}
+          placeholder="github.com/username"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>LinkedIn</Label>
+        <Input
+          value={basics.linkedin || ''}
+          onChange={(e) => handleChange('linkedin', e.target.value)}
+          className={formInputClass}
+          placeholder="linkedin.com/in/username"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>个人网站</Label>
+        <Input
+          value={basics.website || ''}
+          onChange={(e) => handleChange('website', e.target.value)}
+          className={formInputClass}
+          placeholder="your-portfolio.com"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Behance</Label>
+        <Input
+          value={basics.behance || ''}
+          onChange={(e) => handleChange('behance', e.target.value)}
+          className={formInputClass}
+          placeholder="behance.net/user"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Dribbble</Label>
+        <Input
+          value={basics.dribbble || ''}
+          onChange={(e) => handleChange('dribbble', e.target.value)}
+          className={formInputClass}
+          placeholder="dribbble.com/user"
+        />
+      </div>
     </div>
   )
 }

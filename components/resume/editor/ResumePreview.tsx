@@ -9,6 +9,7 @@ import { TemplateTechnical } from '../templates/TemplateTechnical'
 import { TemplateCorporate } from '../templates/TemplateCorporate'
 import { TemplateElegant } from '../templates/TemplateElegant'
 import { TemplateDarkSidebar } from '../templates/TemplateDarkSidebar'
+import { TemplateDesign } from '../templates/TemplateDesign'
 import { useResumeStore } from '@/store/resume-store'
 
 interface ResumePreviewProps {
@@ -68,7 +69,7 @@ export const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         case 'darkSidebar':
           return <TemplateDarkSidebar {...props} />
         case 'creative':
-          return <TemplateElegant {...props} />
+          return <TemplateDesign {...props} />
         case 'standard':
         default:
           return <TemplateStandard {...props} />
