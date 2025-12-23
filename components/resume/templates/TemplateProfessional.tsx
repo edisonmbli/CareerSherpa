@@ -68,7 +68,7 @@ export function TemplateProfessional({
     children: React.ReactNode
   }) => (
     <div className="mb-6 md:mb-8 last:mb-0">
-      <h4 className="text-[0.9em] font-black text-gray-500 uppercase tracking-[0.15em] mb-3 md:mb-4 border-b border-gray-200/50 pb-1">
+      <h4 className="text-[0.9em] font-bold text-gray-600 uppercase tracking-[0.15em] mb-3 md:mb-4 border-b border-gray-200/50 pb-1">
         {title}
       </h4>
       {children}
@@ -90,6 +90,27 @@ export function TemplateProfessional({
           </div>
         </InteractiveSection>
       </section>
+    ),
+    educations: educations?.length > 0 && (
+      <InteractiveSection sectionKey="educations">
+        <SidebarSection title="Education">
+          <div className="flex flex-col gap-4">
+            {educations.map((item) => (
+              <div key={item.id} className="flex flex-col gap-1">
+                <div className="font-bold text-gray-900 text-sm">
+                  {item.school}
+                </div>
+                <div className="text-xs text-gray-600 leading-snug">
+                  {item.major} {item.degree && `| ${item.degree}`}
+                </div>
+                <div className="text-xs text-gray-400 font-mono mt-0.5" style={{ fontSize: '0.8em' }}>
+                  {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SidebarSection>
+      </InteractiveSection>
     ),
     workExperiences: workExperiences?.length > 0 && (
       <section className="mb-8" style={theme.section}>
@@ -212,40 +233,6 @@ export function TemplateProfessional({
         </div>
       </section>
     ),
-    educations: educations?.length > 0 && (
-      <section className="mb-8" style={theme.section}>
-        <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Education" />
-        </InteractiveSection>
-        <div className="space-y-4">
-          {educations.map((item) => (
-            <div key={item.id}>
-              <InteractiveSection sectionKey="educations" itemId={item.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div
-                      className="font-bold text-gray-900"
-                      style={{ fontSize: '1em' }}
-                    >
-                      {item.school}
-                    </div>
-                    <div className="text-gray-600" style={theme.text}>
-                      {item.major} {item.degree && `| ${item.degree}`}
-                    </div>
-                  </div>
-                  <span
-                    className="text-gray-400 italic shrink-0 ml-4"
-                    style={{ fontSize: '0.85em' }}
-                  >
-                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
-                  </span>
-                </div>
-              </InteractiveSection>
-            </div>
-          ))}
-        </div>
-      </section>
-    ),
     // 侧边栏板块 (Skills, Certificates, Hobbies, CustomSections)
     skills: skills ? (
       <InteractiveSection sectionKey="skills">
@@ -254,7 +241,7 @@ export function TemplateProfessional({
             {skills.split('\n').map((skill, idx) => (
               <div key={idx} className="flex flex-col gap-1">
                 <span
-                  className="font-medium text-gray-700"
+                  className="font-normal text-gray-700"
                   style={{ fontSize: '0.9em' }}
                 >
                   {skill.trim().replace(/^[-•]\s*/, '')}
@@ -426,14 +413,16 @@ export function TemplateProfessional({
           style={{ backgroundColor: `${theme.themeColor}0D` }} // 5% opacity hex 0D
         >
           {/* 渲染侧边栏内容 (Skills, Awards, Custom) */}
-          {['skills', 'certificates', 'hobbies', 'customSections'].map(
-            (key) => {
-              if (config.hidden.includes(key)) return null
-              return (
-                <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
-              )
-            }
-          )}
+          {[
+            'educations',
+            'skills',
+            'certificates',
+            'hobbies',
+            'customSections',
+          ].map((key) => {
+            if (config.hidden.includes(key)) return null
+            return <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
+          })}
         </aside>
 
         {/* 右侧主内容区 (70%) */}
@@ -441,9 +430,13 @@ export function TemplateProfessional({
           {config.order.map((key) => {
             if (
               config.hidden.includes(key) ||
-              ['skills', 'certificates', 'hobbies', 'customSections'].includes(
-                key
-              ) ||
+              [
+                'educations',
+                'skills',
+                'certificates',
+                'hobbies',
+                'customSections',
+              ].includes(key) ||
               key === 'basics'
             )
               return null
