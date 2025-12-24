@@ -10,23 +10,23 @@ import {
   Phone,
   MapPin,
   Github,
-  Globe,
+  Palette,
   ExternalLink,
+  Globe,
   Linkedin,
   Dribbble,
-  Palette,
-  LucideIcon,
+  Twitter,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 /**
- * Designer Template V4 - "Studio Pro"
- * Refinements:
- * - Unified Icon Styles
- * - Grid Alignment for Contact Links
- * - Consistent Section Widths (Fixed Alignment)
- * - Enhanced Visual Depth (Gradients & Noise)
- * - Full Visible Links for Print
+ * Designer Template V5 - "Swiss Style" (Visual Premium)
+ * Features:
+ * - Swiss Grid System (Hairlines, Asymmetric Whitespace)
+ * - Micro-Typography (Bold Spacing, Contrast)
+ * - Geometric Decoration (Shapes, High Saturation Accents)
+ * - Card Layout (Projects as Artworks)
  */
 export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
   const {
@@ -40,156 +40,151 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     customSections,
   } = data
 
-  const theme = useResumeTheme({
-    themeColor: '#2563EB',
-    ...styleConfig,
-  })
+  const theme = useResumeTheme(styleConfig)
 
-  // Helper: Generate Gradient Colors
-  // This is a simplified logic. In a real app, use a color manipulation library.
-  // We'll generate a secondary color by shifting the hue of the primary color.
-  const getGradientStyle = (hexColor: string) => {
-    // Simple logic: If we can't parse, return fallback.
-    // For this demo, we will use a "smart" approach using CSS variables or HSL if possible,
-    // but since we only have a hex string, we might need to rely on CSS filters or just
-    // simple overlay opacity tricks if we want to be safe without a library.
-    //
-    // HOWEVER, the user asked for "calculated 1-2 auxiliary colors".
-    // Let's assume standard theme colors are passed.
-    // We will use a "hardcoded relative" approach:
-    // We can't easily manipulate HEX in vanilla JS without 50 lines of code.
-    // BUT we can use CSS `color-mix` if modern browsers, or just use the noise overlay which we already have.
-    //
-    // Let's implement a proper Hex to RGB/HSL converter to do this right.
-
-    const hexToRgb = (hex: string) => {
-      let c: any = hex.substring(1).split('')
-      if (c.length === 3) {
-        c = [c[0], c[0], c[1], c[1], c[2], c[2]]
-      }
-      c = '0x' + c.join('')
-      return [(c >> 16) & 255, (c >> 8) & 255, c & 255]
-    }
-
-    const rgbToHsl = (r: number, g: number, b: number) => {
-      r /= 255
-      g /= 255
-      b /= 255
-      const max = Math.max(r, g, b),
-        min = Math.min(r, g, b)
-      let h: number = 0,
-        s: number,
-        l: number = (max + min) / 2
-
-      if (max === min) {
-        h = s = 0 // achromatic
-      } else {
-        const d = max - min
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-        switch (max) {
-          case r:
-            h = (g - b) / d + (g < b ? 6 : 0)
-            break
-          case g:
-            h = (b - r) / d + 2
-            break
-          case b:
-            h = (r - g) / d + 4
-            break
-        }
-        h /= 6
-      }
-      return [h * 360, s * 100, l * 100]
-    }
-
-    try {
-      const [r, g, b] = hexToRgb(hexColor)
-      const [h, s, l] = rgbToHsl(r || 0, g || 0, b || 0)
-
-      // Calculate auxiliary colors
-      // 1. Analogous Color (shifted 30-40 degrees)
-      const h2 = ((h || 0) + 35) % 360
-      // 2. Darker/Richer shade
-      const l2 = Math.max((l || 0) - 15, 10) // Darken by 15%
-
-      const color1 = `hsl(${h || 0}, ${s || 0}%, ${l || 0}%)` // Original
-      const color2 = `hsl(${h2}, ${s || 0}%, ${l2}%)` // Shifted & Darker
-
-      return {
-        background: `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`,
-      }
-    } catch (e) {
-      // Fallback if hex parsing fails
-      return { backgroundColor: hexColor }
-    }
+  // Helper to check if section has data
+  const hasData = (key: string) => {
+    if (key === 'summary') return !!basics.summary
+    if (key === 'basics') return true
+    const val = data[key as keyof typeof data]
+    if (Array.isArray(val)) return val.length > 0
+    return !!val
   }
 
-  const gradientStyle = getGradientStyle(theme.themeColor)
+  // Generate flat list of visible sections for correct indexing
+  const getFlatOrderedKeys = () => {
+    const keys: string[] = []
+    config.order.forEach((key) => {
+      if (config.hidden.includes(key)) return
+      if (key === 'basics') return // Basics usually doesn't have a number
 
-  // Helper: Remove protocol for cleaner display but keep path
-  const displayUrl = (url: string) =>
-    url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
+      if (key === 'customSections') {
+        if (customSections && customSections.length > 0) {
+          customSections.forEach((item) => {
+            keys.push(`customSections-${item.id}`)
+          })
+        }
+      } else {
+        if (hasData(key)) {
+          keys.push(key)
+        }
+      }
+    })
+    return keys
+  }
 
-  // Helper: Unified Social Link Component
-  const SocialLink = ({
-    href,
-    icon: Icon,
-    label,
-    className,
+  const flatOrderedKeys = getFlatOrderedKeys()
+
+  const getDynamicIndex = (sectionKey: string) => {
+    const index = flatOrderedKeys.indexOf(sectionKey)
+    return index !== -1 ? (index + 1).toString().padStart(2, '0') : '00'
+  }
+
+  // Helper: Section Header with Digital Index & Geometric Line
+  const SectionHeader = ({
+    title,
+    sectionKey,
+    customIndex,
   }: {
-    href: string
-    icon: React.ElementType
-    label: string
-    className?: string
+    title: string
+    sectionKey: string
+    customIndex?: string
   }) => (
-    <a
-      href={href.startsWith('http') ? href : `https://${href}`}
-      target="_blank"
-      rel="noreferrer"
-      className={cn(
-        'flex items-center gap-3 text-gray-600 hover:text-black transition-colors group min-w-0 whitespace-nowrap',
-        className
-      )}
-    >
-      <div
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-100 group-hover:scale-110 group-hover:shadow-md transition-all shrink-0"
-        style={{ color: theme.themeColor }}
-      >
-        <Icon size={15} className="w-[15px] h-[15px]" />
-      </div>
-      <span className="font-medium text-[0.9em] border-b border-transparent group-hover:border-gray-300 transition-colors">
-        {displayUrl(label)}
-      </span>
-    </a>
-  )
-
-  // Component: "Line & Dot" Section Header
-  const SectionHeader = ({ title }: { title: string }) => (
-    <div className="mb-4 mt-4 first:mt-0 relative group">
-      <div className="flex items-center gap-4">
+    <div className="mb-5 mt-4 first:mt-0 relative group">
+      <div className="flex items-end gap-4">
+        <span
+          className="font-black opacity-30 mb-1 leading-none"
+          style={{ color: theme.themeColor, fontSize: '1.5em' }}
+        >
+          {customIndex || getDynamicIndex(sectionKey)}
+        </span>
         <h3
-          className="font-black uppercase tracking-[0.15em] text-gray-900 shrink-0"
-          style={{ fontSize: '1.1em' }}
+          className="font-black uppercase tracking-tight text-gray-900 leading-none"
+          style={{ fontSize: '1.25em' }}
         >
           {title}
         </h3>
-        {/* Decorative Line with Gradient */}
-        <div className="flex-1 h-[1px] relative top-[1px] opacity-20 bg-gradient-to-r from-gray-900 to-transparent" />
       </div>
+      {/* Geometric Decoration: Hairline spanning the page width (conceptually) */}
+      <div className="absolute -left-12 right-0 h-[1px] bg-gray-100 top-full mt-2" />
+      {/* Animated Accent Bar */}
+      <div
+        className="w-12 h-[3px] mt-2 rounded-full transform origin-left group-hover:scale-x-150 transition-transform duration-500"
+        style={{ backgroundColor: theme.themeColor }}
+      />
     </div>
   )
+
+  // Helper: Social Icon Link (Expanded with Text)
+  const SocialItem = ({
+    href,
+    icon: Icon,
+    label,
+    showFullUrl = false,
+  }: {
+    href?: string
+    icon: any
+    label: string
+    showFullUrl?: boolean
+  }) => {
+    if (!href) return null
+    // Clean URL for display
+    const displayUrl = label
+      .replace(/^https?:\/\/(www\.)?/, '')
+      .replace(/\/$/, '')
+
+    return (
+      <a
+        href={href.startsWith('http') ? href : `https://${href}`}
+        target="_blank"
+        rel="noreferrer"
+        className="group/item flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-6 h-6 rounded-full flex items-center justify-center border border-slate-100 shadow-sm group-hover/item:scale-110 transition-transform bg-white">
+          <Icon size={12} style={{ color: theme.themeColor }} />
+        </div>
+        <span
+          className="font-medium text-gray-600 group-hover/item:text-gray-900 truncate max-w-[200px]"
+          style={{ fontSize: '0.85em' }}
+        >
+          {showFullUrl ? displayUrl : displayUrl}
+        </span>
+      </a>
+    )
+  }
 
   const sectionMap: Record<string, React.ReactNode> = {
     basics: null,
     summary: basics.summary && (
-      <section style={theme.section}>
+      <section style={theme.section} className="relative">
         <InteractiveSection sectionKey="summary">
-          <SectionHeader title="About Me" />
-          <div
-            className="leading-loose text-gray-700 font-medium text-justify"
-            style={{ fontSize: '0.95em' }}
-          >
-            {renderDescription(basics.summary)}
+          <SectionHeader title="Personal Summary" sectionKey="summary" />
+          <div className="pl-8 mb-2 border-l-2 border-slate-50 hover:border-slate-200 transition-colors duration-300 relative">
+            <span
+              className="absolute -left-3 -top-4 leading-none opacity-20 font-serif select-none"
+              style={{ color: theme.themeColor, fontSize: '4em' }}
+            >
+              “
+            </span>
+            <div className="pt-2">
+              <div
+                className="leading-[1.8] text-gray-600 font-medium italic relative z-10"
+                style={{ fontSize: '0.95em' }}
+              >
+                {basics.summary.split('\n').map((line, i) => (
+                  <p key={i} className="mb-2 last:mb-0">
+                    {line.replace(/^[-•]\s*/, '')}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <span
+              className="absolute -left-3 -bottom-6 leading-none opacity-20 font-serif select-none transform rotate-180"
+              style={{ color: theme.themeColor, fontSize: '4em' }}
+            >
+              “
+            </span>
           </div>
         </InteractiveSection>
       </section>
@@ -197,16 +192,36 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     skills: skills && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="skills">
-          <SectionHeader title="Skills & Tools" />
-          <div className="flex flex-wrap gap-3">
-            {skills.split('\n').map((skill, idx) => (
-              <span
-                key={idx}
-                className="px-4 py-1.5 bg-gray-50 border border-gray-100 rounded-full font-bold text-gray-700 text-[0.85em]"
-              >
-                {skill.trim().replace(/^[-•]\s*/, '')}
-              </span>
-            ))}
+          <SectionHeader title="Toolkit & Expertise" sectionKey="skills" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 pl-8">
+            {skills.split('\n').map((skillLine, idx) => {
+              const [cat, items] = skillLine.includes(':')
+                ? skillLine.split(':')
+                : ['', skillLine]
+              return (
+                <div key={idx} className="flex flex-col gap-2">
+                  {cat && (
+                    <span
+                      className="font-black text-gray-400 uppercase tracking-widest"
+                      style={{ fontSize: '0.7em' }}
+                    >
+                      {cat}
+                    </span>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {(items || '').split(/[,，]/).map((item, i) => (
+                      <span
+                        key={i}
+                        className="text-gray-800 font-medium border-b border-gray-100 pb-0.5"
+                        style={{ fontSize: '0.85em' }}
+                      >
+                        {item.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </InteractiveSection>
       </section>
@@ -214,39 +229,43 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     workExperiences: workExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="workExperiences">
-          <SectionHeader title="Experience" />
+          <SectionHeader title="Experience" sectionKey="workExperiences" />
         </InteractiveSection>
-        <div className="space-y-4">
+        <div className="space-y-4 pl-8">
           {workExperiences.map((item) => (
-            <div key={item.id} className="relative pl-0 md:pl-0">
+            <div key={item.id} className="relative group">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
-                <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2 mb-3">
-                  <h4
-                    className="font-black text-gray-900 leading-tight"
-                    style={{ fontSize: '1.25em' }}
-                  >
-                    {item.company}
-                  </h4>
+                <div className="flex flex-col md:flex-row justify-between items-start gap-2 mb-2">
+                  <div>
+                    <h4
+                      className="font-black text-gray-900 tracking-tighter mb-1 leading-none"
+                      style={{ fontSize: '1.4em' }}
+                    >
+                      {item.company}
+                    </h4>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span
+                        className="px-2 py-0.5 font-bold text-white uppercase rounded"
+                        style={{
+                          backgroundColor: theme.themeColor,
+                          fontSize: '0.7em',
+                        }}
+                      >
+                        {item.position}
+                      </span>
+                    </div>
+                  </div>
                   <span
-                    className="font-bold text-gray-400 tracking-wider tabular-nums uppercase shrink-0"
-                    style={{ fontSize: '0.8em' }}
+                    className="font-black text-gray-400 tabular-nums bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest shrink-0"
+                    style={{ fontSize: '0.75em' }}
                   >
                     {formatDate(item.startDate)} —{' '}
-                    {item.endDate ? formatDate(item.endDate) : 'Present'}
+                    {item.endDate ? formatDate(item.endDate) : 'Now'}
                   </span>
                 </div>
-
                 <div
-                  className="font-bold mb-4 uppercase tracking-wider flex items-center gap-2"
-                  style={{ color: theme.themeColor, fontSize: '0.85em' }}
-                >
-                  <span className="w-2 h-2 rounded-full bg-current opacity-50" />
-                  {item.position}
-                </div>
-
-                <div
-                  className="text-gray-600 leading-relaxed"
-                  style={{ fontSize: '0.92em' }}
+                  className="text-gray-600 leading-[1.8] max-w-3xl"
+                  style={{ fontSize: '0.9em' }}
                 >
                   {renderDescription(item.description)}
                 </div>
@@ -259,91 +278,66 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     projectExperiences: projectExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="projectExperiences">
-          <SectionHeader title="Featured Projects" />
+          <SectionHeader
+            title="Selected Projects"
+            sectionKey="projectExperiences"
+          />
         </InteractiveSection>
-        <div className="grid grid-cols-1 gap-10">
+        <div className="space-y-4 pl-8">
           {projectExperiences.map((item) => (
-            <div key={item.id} className="group">
+            <div key={item.id} className="relative group">
               <InteractiveSection
                 sectionKey="projectExperiences"
                 itemId={item.id}
               >
-                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-3">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-2 mb-2">
                   <div>
-                    <h4
-                      className="font-black text-gray-900 uppercase tracking-tight"
-                      style={{ fontSize: '1.1em' }}
-                    >
-                      {item.projectName}
-                    </h4>
-                    {item.role && (
-                      <div
-                        className="font-bold mt-3 mb-1 uppercase tracking-wider flex items-center gap-2"
-                        style={{ color: theme.themeColor, fontSize: '0.85em' }}
+                    <div className="flex items-center gap-3">
+                      <h4
+                        className="font-black text-gray-900 tracking-tighter mb-1 leading-none"
+                        style={{ fontSize: '1.4em' }}
                       >
-                        <span className="w-2 h-2 rounded-full bg-current opacity-50" />
-                        {item.role}
+                        {item.projectName}
+                      </h4>
+                      {(item.demoUrl || item.githubUrl) && (
+                        <a
+                          href={item.demoUrl || item.githubUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-slate-100 text-gray-400 hover:text-gray-900"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
+                    {item.role && (
+                      <div className="flex items-center gap-3 mt-2">
+                        <span
+                          className="px-2 py-0.5 font-bold text-white uppercase rounded opacity-80"
+                          style={{
+                            backgroundColor: theme.themeColor,
+                            fontSize: '0.7em',
+                          }}
+                        >
+                          {item.role}
+                        </span>
                       </div>
                     )}
                   </div>
                   <span
-                    className="font-bold text-gray-400 tracking-wider tabular-nums uppercase shrink-0"
+                    className="font-black text-gray-400 tabular-nums bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest shrink-0"
                     style={{ fontSize: '0.75em' }}
                   >
                     {formatDate(item.startDate)} — {formatDate(item.endDate)}
                   </span>
                 </div>
-
                 <div
-                  className="text-gray-600 mb-5 leading-relaxed"
-                  style={{ fontSize: '0.92em' }}
+                  className="text-gray-600 leading-[1.8] max-w-3xl"
+                  style={{ fontSize: '0.9em' }}
                 >
                   {renderDescription(item.description)}
                 </div>
-
-                {/* Unified Project Links - Full Text Display */}
-                {(item.demoUrl || item.githubUrl) && (
-                  <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                    {item.demoUrl && (
-                      <a
-                        href={item.demoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors group"
-                        style={{ fontSize: '0.9em' }}
-                      >
-                        <div
-                          className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 group-hover:border-gray-400 transition-all shrink-0"
-                          style={{ color: theme.themeColor }}
-                        >
-                          <Globe size={14} />
-                        </div>
-                        <span className="font-medium border-b border-transparent group-hover:border-gray-400 break-all">
-                          {displayUrl(item.demoUrl)}
-                        </span>
-                      </a>
-                    )}
-                    {item.githubUrl && (
-                      <a
-                        href={item.githubUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors group"
-                        style={{ fontSize: '0.9em' }}
-                      >
-                        <div
-                          className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 group-hover:border-gray-400 transition-all shrink-0"
-                          style={{ color: theme.themeColor }}
-                        >
-                          <Github size={14} />
-                        </div>
-                        <span className="font-medium border-b border-transparent group-hover:border-gray-400 break-all">
-                          {displayUrl(item.githubUrl)}
-                        </span>
-                      </a>
-                    )}
-                  </div>
-                )}
               </InteractiveSection>
             </div>
           ))}
@@ -353,40 +347,47 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     educations: educations?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Education" />
+          <SectionHeader title="Education" sectionKey="educations" />
         </InteractiveSection>
-        <div className="space-y-6">
+        <div className="space-y-4 pl-8">
           {educations.map((item) => (
-            <div key={item.id}>
+            <div key={item.id} className="relative group">
               <InteractiveSection sectionKey="educations" itemId={item.id}>
-                <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-1">
-                  <h4
-                    className="font-black text-gray-900"
-                    style={{ fontSize: '1.1em' }}
-                  >
-                    {item.school}
-                  </h4>
+                <div className="flex flex-col md:flex-row justify-between items-start gap-2 mb-2">
+                  <div>
+                    <h4
+                      className="font-black text-gray-900 tracking-tighter mb-1 leading-none"
+                      style={{ fontSize: '1.4em' }}
+                    >
+                      {item.school}
+                    </h4>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span
+                        className="px-2 py-0.5 font-bold text-white uppercase rounded opacity-80"
+                        style={{
+                          backgroundColor: theme.themeColor,
+                          fontSize: '0.7em',
+                        }}
+                      >
+                        {item.major}
+                      </span>
+                      {item.degree && (
+                        <span
+                          className="text-gray-400 font-medium tracking-wide"
+                          style={{ fontSize: '0.8em' }}
+                        >
+                          / {item.degree}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <span
-                    className="font-bold text-gray-400 tracking-wider tabular-nums uppercase"
+                    className="font-black text-gray-400 tabular-nums bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest shrink-0"
                     style={{ fontSize: '0.75em' }}
                   >
                     {formatDate(item.startDate)} — {formatDate(item.endDate)}
                   </span>
                 </div>
-                <div
-                  className="mt-1 font-medium text-gray-600"
-                  style={{ fontSize: '0.9em' }}
-                >
-                  {item.major} {item.degree && `| ${item.degree}`}
-                </div>
-                {item.description && (
-                  <div
-                    className="mt-2 text-gray-500"
-                    style={{ fontSize: '0.85em' }}
-                  >
-                    {renderDescription(item.description)}
-                  </div>
-                )}
               </InteractiveSection>
             </div>
           ))}
@@ -396,9 +397,9 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     certificates: certificates && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="certificates">
-          <SectionHeader title="Certificates" />
+          <SectionHeader title="Certificates" sectionKey="certificates" />
           <div
-            className="text-gray-600 leading-relaxed"
+            className="pl-8 text-gray-600 leading-relaxed"
             style={{ fontSize: '0.9em' }}
           >
             {renderDescription(certificates)}
@@ -409,9 +410,9 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     hobbies: hobbies && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="hobbies">
-          <SectionHeader title="Interests" />
+          <SectionHeader title="Interests" sectionKey="hobbies" />
           <div
-            className="text-gray-600 leading-relaxed"
+            className="pl-8 text-gray-600 leading-relaxed"
             style={{ fontSize: '0.9em' }}
           >
             {renderDescription(hobbies)}
@@ -421,12 +422,15 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     ),
     customSections: customSections?.length > 0 && (
       <>
-        {customSections.map((item) => (
+        {customSections.map((item, idx) => (
           <section key={item.id} style={theme.section}>
             <InteractiveSection sectionKey="customSections" itemId={item.id}>
-              <SectionHeader title={item.title} />
+              <SectionHeader
+                title={item.title}
+                sectionKey={`customSections-${item.id}`}
+              />
               <div
-                className="text-gray-600 leading-relaxed"
+                className="pl-8 text-gray-600 leading-relaxed"
                 style={{ fontSize: '0.9em' }}
               >
                 {renderDescription(item.description)}
@@ -438,140 +442,160 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     ),
   }
 
+  // Redesigned Basics Header
   return (
     <div
       className={cn(
-        'bg-white w-full min-h-full transition-all duration-300 relative overflow-hidden flex flex-col',
+        'bg-white w-full min-h-full transition-all duration-300 px-8 md:px-16 py-12 relative overflow-hidden',
         theme.fontFamilyClass
       )}
       style={theme.container}
     >
-      {/* HEADER SECTION - Full Width */}
-      <header className="w-full">
-        {/* Main Hero Area with Stronger Gradient */}
-        <div
-          className="w-full text-white relative overflow-hidden"
-          style={gradientStyle}
-        >
-          {/* Artistic Noise/Texture Overlay */}
-          <div
-            className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            }}
-          />
+      {/* Decorative Radial Background */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(${theme.themeColor} 1px, transparent 0)`,
+          backgroundSize: '40px 40px',
+        }}
+      />
 
-          {/* Geometric Shapes */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-black opacity-10 rounded-full translate-y-1/3 -translate-x-1/3 blur-2xl pointer-events-none" />
-
-          {/* Content Container - PADDING INSIDE HEADER */}
-          <div className="px-8 md:px-12 py-12 md:py-16 relative z-10">
-            {/* InteractiveSection INSIDE padding to align with body */}
-            <InteractiveSection sectionKey="basics">
-              <div className="flex flex-col-reverse md:flex-row items-center md:items-start justify-between gap-8 text-center md:text-left">
-                <div className="flex-1 min-w-0">
-                  <h1
-                    className="font-black tracking-tighter leading-none mb-6"
-                    style={{ fontSize: '3.8em' }}
-                  >
-                    {basics.name}
-                  </h1>
-
-                  {/* Basic Contact Info - Horizontal Flow */}
-                  <div className="flex flex-wrap justify-center md:justify-start gap-x-8 gap-y-3 text-white/90 font-medium text-[0.9em] tracking-wide">
-                    {basics.mobile && (
-                      <div className="flex items-center gap-2.5">
-                        <Phone size={15} className="opacity-80" />
-                        <span>{basics.mobile}</span>
-                      </div>
-                    )}
-                    {basics.email && (
-                      <div className="flex items-center gap-2.5">
-                        <Mail size={15} className="opacity-80" />
-                        <span>{basics.email}</span>
-                      </div>
-                    )}
-                    {basics.location && (
-                      <div className="flex items-center gap-2.5">
-                        <MapPin size={15} className="opacity-80" />
-                        <span>{basics.location}</span>
-                      </div>
-                    )}
-                  </div>
+      {/* Header: Redesigned for better Visual Hierarchy */}
+      <header className="mb-12 relative z-10">
+        <InteractiveSection sectionKey="basics">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start">
+            {/* Left Column: Avatar & Contact Info (4 cols) */}
+            <div className="md:col-span-4 flex flex-col gap-6 order-2 md:order-1">
+              {basics.photoUrl && (
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[4px] border-white shadow-xl overflow-hidden relative mx-auto md:mx-0">
+                  <img
+                    src={basics.photoUrl}
+                    alt={basics.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
+              )}
 
-                {/* Avatar */}
-                {basics.photoUrl && (
-                  <div className="shrink-0 relative">
-                    <div className="w-36 h-36 rounded-full border-[6px] border-white/10 shadow-2xl overflow-hidden bg-white relative z-10">
-                      <img
-                        src={basics.photoUrl}
-                        alt={basics.name}
-                        className="w-full h-full object-cover"
-                      />
+              <div className="flex flex-col gap-3">
+                {/* Contact Details with Better Typography */}
+                <div className="space-y-2">
+                  {basics.mobile && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
+                        <Phone size={14} style={{ color: theme.themeColor }} />
+                      </div>
+                      <span
+                        className="font-bold tracking-tight"
+                        style={{ fontSize: '0.85em' }}
+                      >
+                        {basics.mobile}
+                      </span>
                     </div>
-                    {/* Decorative Ring */}
-                    <div className="absolute inset-0 rounded-full border border-white/20 scale-110 -z-0" />
-                  </div>
-                )}
+                  )}
+                  {basics.email && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
+                        <Mail size={14} style={{ color: theme.themeColor }} />
+                      </div>
+                      <span
+                        className="font-bold tracking-tight break-all"
+                        style={{ fontSize: '0.85em' }}
+                      >
+                        {basics.email}
+                      </span>
+                    </div>
+                  )}
+                  {basics.location && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
+                        <MapPin size={14} style={{ color: theme.themeColor }} />
+                      </div>
+                      <span
+                        className="font-bold tracking-tight"
+                        style={{ fontSize: '0.85em' }}
+                      >
+                        {basics.location}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </InteractiveSection>
-          </div>
-        </div>
+            </div>
 
-        {/* Social Links Bar - Full Width but Aligned Content */}
-        <div className="w-full bg-gray-50 border-b border-gray-100">
-          <div className="px-8 md:px-12 py-6">
-            {/* InteractiveSection INSIDE padding to align with body */}
-            <InteractiveSection sectionKey="basics">
-              {/* Flex Layout for Perfect Single-Line Wrapping */}
-              <div className="flex flex-wrap gap-x-8 gap-y-4">
+            {/* Right Column: Name, Title, Socials (8 cols) */}
+            <div className="md:col-span-8 flex flex-col gap-6 order-1 md:order-2">
+              <div>
+                <h1
+                  className="font-black text-gray-900 leading-[0.9] tracking-[-0.05em] mb-4"
+                  style={{ color: theme.themeColor, fontSize: '4.5em' }}
+                >
+                  {basics.name}
+                </h1>
+                {/* Job Title / Tagline could go here if available in basics */}
+                <div
+                  className="h-1 w-24 rounded-full bg-gray-900 mb-6"
+                  style={{ backgroundColor: theme.themeColor }}
+                />
+              </div>
+
+              {/* Social Links Grid - Professional Layout */}
+              <div className="flex flex-wrap gap-x-6 gap-y-3">
                 {basics.website && (
-                  <SocialLink
+                  <SocialItem
                     href={basics.website}
                     icon={Globe}
                     label={basics.website}
-                  />
-                )}
-                {basics.behance && (
-                  <SocialLink
-                    href={basics.behance}
-                    icon={() => (
-                      <span className="font-black text-[10px]">Be</span>
-                    )}
-                    label={basics.behance}
-                  />
-                )}
-                {basics.dribbble && (
-                  <SocialLink
-                    href={basics.dribbble}
-                    icon={Dribbble}
-                    label={basics.dribbble}
+                    showFullUrl={true}
                   />
                 )}
                 {basics.linkedin && (
-                  <SocialLink
+                  <SocialItem
                     href={basics.linkedin}
                     icon={Linkedin}
                     label={basics.linkedin}
+                    showFullUrl={true}
                   />
                 )}
                 {basics.github && (
-                  <SocialLink
+                  <SocialItem
                     href={basics.github}
                     icon={Github}
                     label={basics.github}
+                    showFullUrl={true}
+                  />
+                )}
+                {basics.dribbble && (
+                  <SocialItem
+                    href={basics.dribbble}
+                    icon={Dribbble}
+                    label={basics.dribbble}
+                    showFullUrl={true}
+                  />
+                )}
+                {basics.behance && (
+                  <SocialItem
+                    href={basics.behance}
+                    icon={Palette}
+                    label={basics.behance}
+                    showFullUrl={true}
+                  />
+                )}
+                {basics.twitter && (
+                  <SocialItem
+                    href={basics.twitter}
+                    icon={Twitter}
+                    label={basics.twitter}
+                    showFullUrl={true}
                   />
                 )}
               </div>
-            </InteractiveSection>
+            </div>
           </div>
-        </div>
+        </InteractiveSection>
       </header>
 
-      {/* Main Content Body */}
-      <div className="flex-1 w-full py-4 flex flex-col gap-2">
+      {/* Main Content Flow */}
+      <div className="flex flex-col relative z-10">
         {config.order.map((key) => {
           if (
             config.hidden.includes(key) ||
@@ -582,6 +606,15 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
           return <div key={key}>{sectionMap[key]}</div>
         })}
       </div>
+
+      {/* Minimal Footer */}
+      <footer
+        className="mt-16 pt-8 border-t border-slate-50 flex justify-between items-center font-black text-slate-300 uppercase tracking-[0.4em]"
+        style={{ fontSize: '0.7em' }}
+      >
+        <span>Portfolio {new Date().getFullYear()}</span>
+        <span>{basics.name} // DESIGN CV</span>
+      </footer>
     </div>
   )
 }
