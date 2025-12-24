@@ -61,6 +61,16 @@ export function TemplateSelector() {
         itemSpacing: 12, // Paragraph Spacing (px)
         pageMargin: 10, // Page Margin (mm)
       })
+    } else if (id === 'product') {
+      // Apply default styles for Product template
+      updateStyleConfig({
+        themeColor: '#0F172A', // Slate 900
+        fontFamily: 'inter',
+        fontSize: 1, // 1.00x
+        lineHeight: 1.5,
+        itemSpacing: 14, // Relaxed Spacing
+        pageMargin: 15, // Standard Margin
+      })
     }
 
     setIsOpen(false)

@@ -41,6 +41,12 @@ export const RESUME_TEMPLATES = [
     description: '时尚排版，适合设计、市场、媒体岗',
     thumbnail: '/images/templates/creative.png',
   },
+  {
+    id: 'product',
+    name: '产品/运营',
+    description: '逻辑导向，适合策略、运营、数据岗位',
+    thumbnail: '/images/templates/technical.png',
+  },
 ] as const
 
 export type TemplateId = (typeof RESUME_TEMPLATES)[number]['id']
