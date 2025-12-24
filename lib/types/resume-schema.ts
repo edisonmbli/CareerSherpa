@@ -14,9 +14,11 @@ export const basicInfoSchema = z.object({
   github: z.string().optional().describe('GitHub'),
   linkedin: z.string().optional().describe('LinkedIn'),
   website: z.string().optional().describe('个人网站'),
+  twitter: z.string().optional().describe('Twitter'),
   behance: z.string().optional().describe('Behance'),
   dribbble: z.string().optional().describe('Dribbble'),
   location: z.string().optional().describe('所在城市'),
+  address: z.string().optional().describe('详细地址'),
   photoUrl: z.string().optional().describe('头像URL'),
   summary: z.string().optional().describe('个人总结/职业摘要'),
 })
@@ -25,7 +27,7 @@ export const basicInfoSchema = z.object({
 // description 字段统一约定：使用纯文本，换行符 \n 代表新的 bullet point
 export const educationSchema = z.object({
   id: z.string().describe('UUID'),
-  school: z.string().describe('学校名称'),
+  school: z.string().optional().describe('学校名称'),
   major: z.string().optional().describe('专业'),
   degree: z.string().optional().describe('学历'),
   startDate: z.string().optional().describe('开始时间'),
@@ -35,23 +37,24 @@ export const educationSchema = z.object({
 
 export const workExperienceSchema = z.object({
   id: z.string(),
-  company: z.string().describe('公司名称'),
-  position: z.string().describe('职位'),
+  company: z.string().optional().describe('公司名称'),
+  position: z.string().optional().describe('职位'),
   industry: z.string().optional().describe('行业'), // 针对匹配分析很有用
+  location: z.string().optional().describe('工作地点'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  description: z.string().describe('工作内容描述'), // 重点：包含 \n 的纯文本
+  description: z.string().optional().describe('工作内容描述'), // 重点：包含 \n 的纯文本
 })
 
 export const projectExperienceSchema = z.object({
   id: z.string(),
-  projectName: z.string().describe('项目名称'),
+  projectName: z.string().optional().describe('项目名称'),
   role: z.string().optional().describe('担任角色'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   githubUrl: z.string().optional().describe('GitHub链接'),
   demoUrl: z.string().optional().describe('作品/演示链接'),
-  description: z.string().describe('项目详情描述'), // 重点：包含 \n 的纯文本
+  description: z.string().optional().describe('项目详情描述'), // 重点：包含 \n 的纯文本
 })
 
 // 自定义板块 (用于无法归类的额外信息)

@@ -16,16 +16,18 @@ import {
   Linkedin,
   Dribbble,
   Twitter,
-  Link as LinkIcon,
+  User,
+  GraduationCap,
+  Home,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 /**
  * Designer Template V5 - "Swiss Style" (Visual Premium)
  * Features:
- * - Swiss Grid System (Hairlines, Asymmetric Whitespace)
+ * - Brand Canvas Header (Asymmetric Split)
+ * - Academic Matrix (Grid Education)
  * - Micro-Typography (Bold Spacing, Contrast)
- * - Geometric Decoration (Shapes, High Saturation Accents)
  * - Card Layout (Projects as Artworks)
  */
 export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
@@ -90,7 +92,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     sectionKey: string
     customIndex?: string
   }) => (
-    <div className="mb-5 mt-4 first:mt-0 relative group">
+    <div className="mb-8 mt-4 first:mt-0 relative group">
       <div className="flex items-end gap-4">
         <span
           className="font-black opacity-30 mb-1 leading-none"
@@ -138,15 +140,15 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
         href={href.startsWith('http') ? href : `https://${href}`}
         target="_blank"
         rel="noreferrer"
-        className="group/item flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all"
+        className="group/item flex items-center gap-2 p-1 pr-3 rounded-full bg-slate-100/80 hover:bg-slate-100 transition-all border border-slate-100 min-w-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-6 h-6 rounded-full flex items-center justify-center border border-slate-100 shadow-sm group-hover/item:scale-110 transition-transform bg-white">
-          <Icon size={12} style={{ color: theme.themeColor }} />
+        <div className="w-5 h-5 rounded-full flex items-center justify-center text-slate-500 group-hover/item:text-slate-900 shrink-0">
+          <Icon size={12} />
         </div>
         <span
-          className="font-medium text-gray-600 group-hover/item:text-gray-900 truncate max-w-[200px]"
-          style={{ fontSize: '0.85em' }}
+          className="font-medium text-slate-500 group-hover/item:text-slate-900 truncate max-w-[300px] md:max-w-full transition-colors"
+          style={{ fontSize: '0.8em' }}
         >
           {showFullUrl ? displayUrl : displayUrl}
         </span>
@@ -157,17 +159,17 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
   const sectionMap: Record<string, React.ReactNode> = {
     basics: null,
     summary: basics.summary && (
-      <section style={theme.section} className="relative">
+      <section style={theme.section} className="relative mb-12">
         <InteractiveSection sectionKey="summary">
           <SectionHeader title="Personal Summary" sectionKey="summary" />
-          <div className="pl-8 mb-2 border-l-2 border-slate-50 hover:border-slate-200 transition-colors duration-300 relative">
+          <div className="pl-8 border-l-2 border-slate-50 hover:border-slate-200 transition-colors duration-300 relative py-2">
             <span
               className="absolute -left-3 -top-4 leading-none opacity-20 font-serif select-none"
               style={{ color: theme.themeColor, fontSize: '4em' }}
             >
               “
             </span>
-            <div className="pt-2">
+            <div className="pt-1">
               <div
                 className="leading-[1.8] text-gray-600 font-medium italic relative z-10"
                 style={{ fontSize: '0.95em' }}
@@ -179,31 +181,25 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                 ))}
               </div>
             </div>
-            <span
-              className="absolute -left-3 -bottom-6 leading-none opacity-20 font-serif select-none transform rotate-180"
-              style={{ color: theme.themeColor, fontSize: '4em' }}
-            >
-              “
-            </span>
           </div>
         </InteractiveSection>
       </section>
     ),
     skills: skills && (
-      <section style={theme.section}>
+      <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="skills">
           <SectionHeader title="Toolkit & Expertise" sectionKey="skills" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 pl-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8 pl-8">
             {skills.split('\n').map((skillLine, idx) => {
               const [cat, items] = skillLine.includes(':')
                 ? skillLine.split(':')
                 : ['', skillLine]
               return (
-                <div key={idx} className="flex flex-col gap-2">
+                <div key={idx} className="flex flex-col gap-3">
                   {cat && (
                     <span
-                      className="font-black text-gray-400 uppercase tracking-widest"
-                      style={{ fontSize: '0.7em' }}
+                      className="font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2"
+                      style={{ fontSize: '0.75em' }}
                     >
                       {cat}
                     </span>
@@ -212,7 +208,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                     {(items || '').split(/[,，]/).map((item, i) => (
                       <span
                         key={i}
-                        className="text-gray-800 font-medium border-b border-gray-100 pb-0.5"
+                        className="px-3 py-1 rounded-full bg-slate-50 text-gray-700 font-medium hover:bg-slate-100 transition-colors"
                         style={{ fontSize: '0.85em' }}
                       >
                         {item.trim()}
@@ -227,25 +223,26 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       </section>
     ),
     workExperiences: workExperiences?.length > 0 && (
-      <section style={theme.section}>
+      <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="workExperiences">
           <SectionHeader title="Experience" sectionKey="workExperiences" />
         </InteractiveSection>
-        <div className="space-y-4 pl-8">
+        <div className="space-y-5 pl-8">
           {workExperiences.map((item) => (
             <div key={item.id} className="relative group">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
-                <div className="flex flex-col md:flex-row justify-between items-start gap-2 mb-2">
-                  <div>
+                {/* Optimized Header for Mobile/Print: Flex Row with No-Wrap Date */}
+                <div className="flex flex-row justify-between items-baseline gap-4 mb-2">
+                  <div className="min-w-0 flex-1">
                     <h4
-                      className="font-black text-gray-900 tracking-tighter mb-1 leading-none"
+                      className="font-black text-gray-900 tracking-tighter leading-tight"
                       style={{ fontSize: '1.4em' }}
                     >
                       {item.company}
                     </h4>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                       <span
-                        className="px-2 py-0.5 font-bold text-white uppercase rounded"
+                        className="px-2 py-0.5 font-bold text-white uppercase rounded opacity-80 inline-block"
                         style={{
                           backgroundColor: theme.themeColor,
                           fontSize: '0.7em',
@@ -253,18 +250,28 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                       >
                         {item.position}
                       </span>
+                      {item.location && (
+                        <span
+                          className="text-gray-400 font-medium tracking-wide"
+                          style={{ fontSize: '0.8em' }}
+                        >
+                          / {item.location}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  {/* Date: Right Aligned, No Wrap */}
                   <span
-                    className="font-black text-gray-400 tabular-nums bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest shrink-0"
-                    style={{ fontSize: '0.75em' }}
+                    className="font-black text-gray-400 tabular-nums whitespace-nowrap shrink-0 text-right"
+                    style={{ fontSize: '0.8em' }}
                   >
                     {formatDate(item.startDate)} —{' '}
                     {item.endDate ? formatDate(item.endDate) : 'Now'}
                   </span>
                 </div>
+
                 <div
-                  className="text-gray-600 leading-[1.8] max-w-3xl"
+                  className="text-gray-600 leading-[1.8] max-w-3xl mt-3"
                   style={{ fontSize: '0.9em' }}
                 >
                   {renderDescription(item.description)}
@@ -276,45 +283,34 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       </section>
     ),
     projectExperiences: projectExperiences?.length > 0 && (
-      <section style={theme.section}>
+      <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="projectExperiences">
           <SectionHeader
             title="Selected Projects"
             sectionKey="projectExperiences"
           />
         </InteractiveSection>
-        <div className="space-y-4 pl-8">
+        <div className="space-y-5 pl-8">
           {projectExperiences.map((item) => (
             <div key={item.id} className="relative group">
               <InteractiveSection
                 sectionKey="projectExperiences"
                 itemId={item.id}
               >
-                <div className="flex flex-col md:flex-row justify-between items-start gap-2 mb-2">
-                  <div>
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-row justify-between items-baseline gap-4 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <h4
-                        className="font-black text-gray-900 tracking-tighter mb-1 leading-none"
+                        className="font-black text-gray-900 tracking-tighter leading-tight"
                         style={{ fontSize: '1.4em' }}
                       >
                         {item.projectName}
                       </h4>
-                      {(item.demoUrl || item.githubUrl) && (
-                        <a
-                          href={item.demoUrl || item.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-slate-100 text-gray-400 hover:text-gray-900"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink size={14} />
-                        </a>
-                      )}
                     </div>
                     {item.role && (
-                      <div className="flex items-center gap-3 mt-2">
+                      <div className="mt-1.5">
                         <span
-                          className="px-2 py-0.5 font-bold text-white uppercase rounded opacity-80"
+                          className="px-2 py-0.5 font-bold text-white uppercase rounded opacity-80 inline-block"
                           style={{
                             backgroundColor: theme.themeColor,
                             fontSize: '0.7em',
@@ -326,18 +322,48 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                     )}
                   </div>
                   <span
-                    className="font-black text-gray-400 tabular-nums bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest shrink-0"
-                    style={{ fontSize: '0.75em' }}
+                    className="font-black text-gray-400 tabular-nums whitespace-nowrap shrink-0 text-right"
+                    style={{ fontSize: '0.8em' }}
                   >
                     {formatDate(item.startDate)} — {formatDate(item.endDate)}
                   </span>
                 </div>
                 <div
-                  className="text-gray-600 leading-[1.8] max-w-3xl"
+                  className="text-gray-600 leading-[1.8] max-w-3xl mt-3"
                   style={{ fontSize: '0.9em' }}
                 >
                   {renderDescription(item.description)}
                 </div>
+
+                {/* Project Links Footer */}
+                {(item.demoUrl || item.githubUrl) && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.demoUrl && (
+                      <a
+                        href={item.demoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-slate-400 hover:text-slate-900 font-bold text-[0.75em] tracking-wide transition-colors border-b border-transparent hover:border-slate-900 pb-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Globe size={12} />
+                        {item.demoUrl}
+                      </a>
+                    )}
+                    {item.githubUrl && (
+                      <a
+                        href={item.githubUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-slate-400 hover:text-slate-900 font-bold text-[0.75em] tracking-wide transition-colors border-b border-transparent hover:border-slate-900 pb-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Github size={12} />
+                        {item.githubUrl}
+                      </a>
+                    )}
+                  </div>
+                )}
               </InteractiveSection>
             </div>
           ))}
@@ -345,57 +371,91 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       </section>
     ),
     educations: educations?.length > 0 && (
-      <section style={theme.section}>
+      <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Education" sectionKey="educations" />
+          <SectionHeader title="Academic Foundation" sectionKey="educations" />
         </InteractiveSection>
-        <div className="space-y-4 pl-8">
-          {educations.map((item) => (
-            <div key={item.id} className="relative group">
-              <InteractiveSection sectionKey="educations" itemId={item.id}>
-                <div className="flex flex-col md:flex-row justify-between items-start gap-2 mb-2">
-                  <div>
-                    <h4
-                      className="font-black text-gray-900 tracking-tighter mb-1 leading-none"
-                      style={{ fontSize: '1.4em' }}
-                    >
-                      {item.school}
-                    </h4>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span
-                        className="px-2 py-0.5 font-bold text-white uppercase rounded opacity-80"
-                        style={{
-                          backgroundColor: theme.themeColor,
-                          fontSize: '0.7em',
-                        }}
-                      >
-                        {item.major}
-                      </span>
-                      {item.degree && (
-                        <span
-                          className="text-gray-400 font-medium tracking-wide"
-                          style={{ fontSize: '0.8em' }}
-                        >
-                          / {item.degree}
-                        </span>
+        {/* Academic Matrix Grid Layout - Adaptive */}
+        <div
+          className={cn(
+            'pl-8',
+            educations.length > 1
+              ? 'grid grid-cols-1 md:grid-cols-2 gap-4'
+              : 'flex flex-col gap-4'
+          )}
+        >
+          {educations.map((item) => {
+            const isMulti = educations.length > 1
+            return (
+              <div key={item.id} className="relative group h-full">
+                <InteractiveSection sectionKey="educations" itemId={item.id}>
+                  <div
+                    className={cn(
+                      'p-6 border border-slate-100 bg-white rounded-xl shadow-[0_4px_20px_-12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] transition-all gap-4 h-full',
+                      isMulti
+                        ? 'flex flex-col justify-between items-start'
+                        : 'flex flex-col md:flex-row print:flex-row justify-between items-start'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex items-start gap-4 flex-1',
+                        isMulti ? 'w-full' : ''
                       )}
+                    >
+                      {/* University Icon Placehodler */}
+                      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center shrink-0 text-slate-400 group-hover:text-white group-hover:bg-slate-900 transition-colors duration-300">
+                        <GraduationCap size={24} />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4
+                          className="font-black text-gray-900 tracking-tight leading-tight mb-1"
+                          style={{ fontSize: '1.2em' }}
+                        >
+                          {item.school}
+                        </h4>
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className="font-bold text-slate-500"
+                            style={{ fontSize: '0.85em' }}
+                          >
+                            {item.degree}
+                            {item.degree && item.major && (
+                              <span className="mx-1.5 opacity-30">|</span>
+                            )}
+                            {item.major}
+                          </span>
+                        </div>
+                        {item.description && (
+                          <div className="mt-3 text-gray-500 text-[12px] leading-relaxed">
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Date */}
+                    <div
+                      className={cn(
+                        'text-slate-400 font-bold tabular-nums text-[0.75em] tracking-wide whitespace-nowrap shrink-0',
+                        isMulti
+                          ? 'mt-4 self-end border-t border-slate-50 pt-3 w-full text-right'
+                          : 'mt-1 md:block print:block'
+                      )}
+                    >
+                      {formatDate(item.startDate)} — {formatDate(item.endDate)}
                     </div>
                   </div>
-                  <span
-                    className="font-black text-gray-400 tabular-nums bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest shrink-0"
-                    style={{ fontSize: '0.75em' }}
-                  >
-                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
-                  </span>
-                </div>
-              </InteractiveSection>
-            </div>
-          ))}
+                </InteractiveSection>
+              </div>
+            )
+          })}
         </div>
       </section>
     ),
     certificates: certificates && (
-      <section style={theme.section}>
+      <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="certificates">
           <SectionHeader title="Certificates" sectionKey="certificates" />
           <div
@@ -408,7 +468,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       </section>
     ),
     hobbies: hobbies && (
-      <section style={theme.section}>
+      <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="hobbies">
           <SectionHeader title="Interests" sectionKey="hobbies" />
           <div
@@ -423,7 +483,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     customSections: customSections?.length > 0 && (
       <>
         {customSections.map((item, idx) => (
-          <section key={item.id} style={theme.section}>
+          <section key={item.id} style={theme.section} className="mb-12">
             <InteractiveSection sectionKey="customSections" itemId={item.id}>
               <SectionHeader
                 title={item.title}
@@ -442,7 +502,6 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     ),
   }
 
-  // Redesigned Basics Header
   return (
     <div
       className={cn(
@@ -460,92 +519,84 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
         }}
       />
 
-      {/* Header: Redesigned for better Visual Hierarchy */}
-      <header className="mb-12 relative z-10">
+      {/* Header: Brand Canvas Layout (Asymmetric Split) */}
+      <header className="mb-5 relative z-10">
         <InteractiveSection sectionKey="basics">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start">
-            {/* Left Column: Avatar & Contact Info (4 cols) */}
-            <div className="md:col-span-4 flex flex-col gap-6 order-2 md:order-1">
-              {basics.photoUrl && (
-                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[4px] border-white shadow-xl overflow-hidden relative mx-auto md:mx-0">
+          <div className="flex flex-col md:flex-row print:flex-row items-center md:items-stretch print:items-stretch gap-8 md:gap-12">
+            {/* Group 1: Avatar (Left) */}
+            <div className="shrink-0 flex justify-center">
+              {basics.photoUrl ? (
+                <div className="w-32 h-32 rounded-[2rem] bg-white shadow-2xl overflow-hidden border-[6px] border-white rotate-0 hover:rotate-3 transition-transform duration-500 relative z-10">
                   <img
                     src={basics.photoUrl}
                     alt={basics.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                {/* Contact Details with Better Typography */}
-                <div className="space-y-2">
-                  {basics.mobile && (
-                    <div className="flex items-center gap-3 text-gray-600">
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
-                        <Phone size={14} style={{ color: theme.themeColor }} />
-                      </div>
-                      <span
-                        className="font-bold tracking-tight"
-                        style={{ fontSize: '0.85em' }}
-                      >
-                        {basics.mobile}
-                      </span>
-                    </div>
-                  )}
-                  {basics.email && (
-                    <div className="flex items-center gap-3 text-gray-600">
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
-                        <Mail size={14} style={{ color: theme.themeColor }} />
-                      </div>
-                      <span
-                        className="font-bold tracking-tight break-all"
-                        style={{ fontSize: '0.85em' }}
-                      >
-                        {basics.email}
-                      </span>
-                    </div>
-                  )}
-                  {basics.location && (
-                    <div className="flex items-center gap-3 text-gray-600">
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
-                        <MapPin size={14} style={{ color: theme.themeColor }} />
-                      </div>
-                      <span
-                        className="font-bold tracking-tight"
-                        style={{ fontSize: '0.85em' }}
-                      >
-                        {basics.location}
-                      </span>
-                    </div>
-                  )}
+              ) : (
+                <div className="w-32 h-32 rounded-[2rem] bg-slate-50 flex items-center justify-center rotate-3 border-[6px] border-white shadow-xl text-slate-300">
+                  <User size={48} />
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Right Column: Name, Title, Socials (8 cols) */}
-            <div className="md:col-span-8 flex flex-col gap-6 order-1 md:order-2">
-              <div>
-                <h1
-                  className="font-black text-gray-900 leading-[0.9] tracking-[-0.05em] mb-4"
-                  style={{ color: theme.themeColor, fontSize: '4.5em' }}
-                >
-                  {basics.name}
-                </h1>
-                {/* Job Title / Tagline could go here if available in basics */}
-                <div
-                  className="h-1 w-24 rounded-full bg-gray-900 mb-6"
-                  style={{ backgroundColor: theme.themeColor }}
-                />
+            {/* Vertical Divider (Hidden on Mobile) */}
+            <div className="hidden md:block print:block w-[1px] bg-slate-200 self-stretch my-2" />
+
+            {/* Right Content Area */}
+            <div className="flex flex-col flex-1 gap-6 text-center md:text-left print:text-left">
+              {/* Group 2: Name + Contacts */}
+              <div className="space-y-8">
+                <div>
+                  <h1
+                    className="font-black tracking-tight leading-[0.85] text-gray-900 mb-2"
+                    style={{ fontSize: '4.5em' }}
+                  >
+                    {basics.name}
+                    <span style={{ color: theme.themeColor }}>.</span>
+                  </h1>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center md:justify-start print:justify-start gap-x-2 gap-y-2 text-slate-500 font-bold text-[13px]">
+                  {[
+                    basics.email && { icon: Mail, value: basics.email },
+                    basics.mobile && { icon: Phone, value: basics.mobile },
+                    basics.location && { icon: MapPin, value: basics.location },
+                    basics.address && { icon: Home, value: basics.address },
+                  ]
+                    .filter(
+                      (item): item is { icon: any; value: string } => !!item
+                    )
+                    .map((item, index) => (
+                      <React.Fragment key={index}>
+                        {index > 0 && (
+                          <span className="hidden md:inline print:inline text-slate-200">
+                            |
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2 hover:text-slate-900 transition-colors">
+                          <item.icon
+                            size={14}
+                            style={{ color: theme.themeColor }}
+                          />
+                          <span>{item.value}</span>
+                        </div>
+                      </React.Fragment>
+                    ))}
+                </div>
               </div>
 
-              {/* Social Links Grid - Professional Layout */}
-              <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {/* Horizontal Divider */}
+              <div className="h-[1px] bg-slate-200 w-full" />
+
+              {/* Group 3: Social Links */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start print:justify-start gap-3">
                 {basics.website && (
                   <SocialItem
                     href={basics.website}
                     icon={Globe}
                     label={basics.website}
-                    showFullUrl={true}
+                    showFullUrl
                   />
                 )}
                 {basics.linkedin && (
@@ -553,7 +604,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                     href={basics.linkedin}
                     icon={Linkedin}
                     label={basics.linkedin}
-                    showFullUrl={true}
+                    showFullUrl
                   />
                 )}
                 {basics.github && (
@@ -561,23 +612,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                     href={basics.github}
                     icon={Github}
                     label={basics.github}
-                    showFullUrl={true}
-                  />
-                )}
-                {basics.dribbble && (
-                  <SocialItem
-                    href={basics.dribbble}
-                    icon={Dribbble}
-                    label={basics.dribbble}
-                    showFullUrl={true}
-                  />
-                )}
-                {basics.behance && (
-                  <SocialItem
-                    href={basics.behance}
-                    icon={Palette}
-                    label={basics.behance}
-                    showFullUrl={true}
+                    showFullUrl
                   />
                 )}
                 {basics.twitter && (
@@ -585,7 +620,23 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                     href={basics.twitter}
                     icon={Twitter}
                     label={basics.twitter}
-                    showFullUrl={true}
+                    showFullUrl
+                  />
+                )}
+                {basics.behance && (
+                  <SocialItem
+                    href={basics.behance}
+                    icon={Palette}
+                    label={basics.behance}
+                    showFullUrl
+                  />
+                )}
+                {basics.dribbble && (
+                  <SocialItem
+                    href={basics.dribbble}
+                    icon={Dribbble}
+                    label={basics.dribbble}
+                    showFullUrl
                   />
                 )}
               </div>
@@ -609,7 +660,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
 
       {/* Minimal Footer */}
       <footer
-        className="mt-16 pt-8 border-t border-slate-50 flex justify-between items-center font-black text-slate-300 uppercase tracking-[0.4em]"
+        className="mt-20 pt-8 border-t border-slate-50 flex justify-between items-center font-black text-slate-200 uppercase tracking-[0.4em]"
         style={{ fontSize: '0.7em' }}
       >
         <span>Portfolio {new Date().getFullYear()}</span>

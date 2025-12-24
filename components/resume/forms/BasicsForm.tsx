@@ -79,15 +79,25 @@ export function BasicsForm() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Label>姓名</Label>
-        <Input
-          value={basics.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
-          className={formInputClass}
-          placeholder="您的姓名"
-        />
-        {/* Future: Job Title field could go here */}
+      <div className="flex flex-col gap-4">
+        <div className="space-y-2">
+          <Label>姓名</Label>
+          <Input
+            value={basics.name || ''}
+            onChange={(e) => handleChange('name', e.target.value)}
+            className={formInputClass}
+            placeholder="您的姓名"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>地址</Label>
+          <Input
+            value={basics.address || ''}
+            onChange={(e) => handleChange('address', e.target.value)}
+            className={formInputClass}
+            placeholder="例如：北京市海淀区"
+          />
+        </div>
       </div>
 
       {/* Row 2: Mobile and Email */}
@@ -154,6 +164,16 @@ export function BasicsForm() {
           onChange={(e) => handleChange('website', e.target.value)}
           className={formInputClass}
           placeholder="your-portfolio.com"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Twitter / X</Label>
+        <Input
+          value={basics.twitter || ''}
+          onChange={(e) => handleChange('twitter', e.target.value)}
+          className={formInputClass}
+          placeholder="twitter.com/username"
         />
       </div>
 
