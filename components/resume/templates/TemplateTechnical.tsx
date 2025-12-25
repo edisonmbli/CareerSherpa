@@ -12,6 +12,11 @@ import {
   MapPin,
   ExternalLink,
   Link as LinkIcon,
+  Twitter,
+  Palette,
+  Dribbble,
+  Linkedin,
+  Globe,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
@@ -147,7 +152,7 @@ export function TemplateTechnical({
         <InteractiveSection sectionKey="workExperiences">
           <SectionHeader title="Experience" />
         </InteractiveSection>
-        <div className="mt-2">
+        <div className="mt-0">
           {workExperiences.map((item, idx) => (
             <InteractiveSection
               key={item.id}
@@ -155,20 +160,20 @@ export function TemplateTechnical({
               itemId={item.id}
             >
               <TimelineItem>
-                <div className="flex justify-between items-start mb-1">
+                <div className="flex justify-between items-start mt-2 mb-1">
                   <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
                     <span
                       className="font-bold text-gray-900"
                       style={{ fontSize: '1.1em' }}
                     >
-                      {item.position}
+                      {item.company}
                     </span>
                     <span className="hidden sm:inline text-gray-300">|</span>
                     <span
                       className="font-semibold text-gray-700"
                       style={theme.text}
                     >
-                      {item.company}
+                      {item.position}
                     </span>
                   </div>
                   <span
@@ -179,7 +184,7 @@ export function TemplateTechnical({
                     {item.endDate ? formatDate(item.endDate) : 'Present'}
                   </span>
                 </div>
-                <div style={theme.text} className="text-gray-600">
+                <div style={theme.text} className="text-gray-600 mt-2">
                   {renderDescription(item.description)}
                 </div>
               </TimelineItem>
@@ -200,74 +205,76 @@ export function TemplateTechnical({
               sectionKey="projectExperiences"
               itemId={item.id}
             >
-              <div className="border-l-2 border-transparent hover:border-gray-200 pl-4 transition-colors -ml-4">
-                {/* Updated Layout: Title | Role */}
-                <div className="flex justify-between items-baseline mb-1">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
-                    <h4
-                      className="font-bold text-gray-900"
-                      style={{ fontSize: '1.1em' }}
+              <TimelineItem>
+                <div className="border-l-2 border-transparent hover:border-gray-200 pl-4 transition-colors -ml-4">
+                  {/* Updated Layout: Title | Role */}
+                  <div className="flex justify-between items-baseline mb-1">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
+                      <h4
+                        className="font-bold text-gray-900"
+                        style={{ fontSize: '1.1em' }}
+                      >
+                        {item.projectName}
+                      </h4>
+                      {item.role && (
+                        <>
+                          <span className="hidden sm:inline text-gray-300">
+                            |
+                          </span>
+                          <span
+                            className="font-medium text-gray-600"
+                            style={theme.text}
+                          >
+                            {item.role}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <span
+                      className="font-mono text-gray-500 italic whitespace-nowrap"
+                      style={{ fontSize: '0.9em' }}
                     >
-                      {item.projectName}
-                    </h4>
-                    {item.role && (
-                      <>
-                        <span className="hidden sm:inline text-gray-300">
-                          |
-                        </span>
-                        <span
-                          className="font-medium text-gray-600"
-                          style={theme.text}
-                        >
-                          {item.role}
-                        </span>
-                      </>
-                    )}
+                      {formatDate(item.startDate)} — {formatDate(item.endDate)}
+                    </span>
                   </div>
-                  <span
-                    className="font-mono text-gray-500 italic whitespace-nowrap"
-                    style={{ fontSize: '0.9em' }}
-                  >
-                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
-                  </span>
-                </div>
 
-                {/* Project Links - Optimized for print & web */}
-                {(item.githubUrl || item.demoUrl) && (
-                  <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1.5 mb-2 text-[0.8em] font-mono text-gray-500">
-                    {item.demoUrl && (
-                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
-                        <ExternalLink size={12} className="shrink-0" />
-                        <a
-                          href={item.demoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:text-sky-700 hover:underline truncate"
-                        >
-                          {item.demoUrl.replace(/^https?:\/\//, '')}
-                        </a>
-                      </div>
-                    )}
-                    {item.githubUrl && (
-                      <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
-                        <Github size={12} className="shrink-0" />
-                        <a
-                          href={item.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:text-sky-700 hover:underline truncate"
-                        >
-                          {item.githubUrl.replace(/^https?:\/\//, '')}
-                        </a>
-                      </div>
-                    )}
+                  {/* Project Links - Optimized for print & web */}
+                  {(item.githubUrl || item.demoUrl) && (
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1.5 mb-2 text-[0.8em] font-mono text-gray-500">
+                      {item.demoUrl && (
+                        <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                          <ExternalLink size={12} className="shrink-0" />
+                          <a
+                            href={item.demoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-sky-700 hover:underline truncate"
+                          >
+                            {item.demoUrl.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                      {item.githubUrl && (
+                        <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                          <Github size={12} className="shrink-0" />
+                          <a
+                            href={item.githubUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-sky-700 hover:underline truncate"
+                          >
+                            {item.githubUrl.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={theme.text} className="text-gray-600">
+                    {renderDescription(item.description)}
                   </div>
-                )}
-
-                <div style={theme.text} className="text-gray-600">
-                  {renderDescription(item.description)}
                 </div>
-              </div>
+              </TimelineItem>
             </InteractiveSection>
           ))}
         </div>
@@ -388,37 +395,93 @@ export function TemplateTechnical({
                   <Phone size={12} /> {basics.mobile}
                 </div>
               )}
-              {basics.location && (
+              {(basics.address || basics.location) && (
                 <div className="flex items-center gap-1.5 hover:text-gray-900 transition-colors">
-                  <MapPin size={12} /> {basics.location}
+                  <MapPin size={12} /> {basics.address || basics.location}
                 </div>
               )}
             </div>
 
             {/* Social / Links */}
             <div className="flex flex-wrap gap-3 pt-1">
+              {basics.website && (
+                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
+                  <Globe size={11} />
+                  <a
+                    href={basics.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {basics.website.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
               {basics.github && (
                 <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
                   <Github size={11} />
-                  <span style={{ fontSize: '0.8em' }}>
-                    github.com/{basics.github}
-                  </span>
+                  <a
+                    href={basics.github}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {basics.github.replace(/^https?:\/\//, '')}
+                  </a>
                 </div>
               )}
-              <div
-                className="flex gap-3 text-gray-500"
-                style={{ fontSize: '0.85em' }}
-              >
-                {basics.wechat && (
-                  <span className="flex items-center gap-1">
-                    <span className="font-bold text-[0.8em] bg-green-50 text-green-700 px-1 rounded">
-                      WX
-                    </span>{' '}
-                    {basics.wechat}
-                  </span>
-                )}
-                {basics.qq && <span>QQ: {basics.qq}</span>}
-              </div>
+              {basics.linkedin && (
+                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
+                  <Linkedin size={11} />
+                  <a
+                    href={basics.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {basics.linkedin.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.twitter && (
+                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
+                  <Twitter size={11} />
+                  <a
+                    href={basics.twitter}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {basics.twitter.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.dribbble && (
+                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
+                  <Dribbble size={11} />
+                  <a
+                    href={basics.dribbble}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {basics.dribbble.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.behance && (
+                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
+                  <Palette size={11} />
+                  <a
+                    href={basics.behance}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.8em' }}
+                  >
+                    {basics.behance.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -446,13 +509,12 @@ export function TemplateTechnical({
       </div>
 
       {/* Footer */}
-      <footer className="mt-12 pt-6 border-t border-gray-100 text-center">
-        <span
-          className="text-gray-300 uppercase tracking-[0.2em] font-mono"
-          style={{ fontSize: '0.7em' }}
-        >
-          Resume • {basics.name} • {new Date().getFullYear()}
-        </span>
+      <footer
+        className="mt-12 pt-6 border-t border-gray-100 flex justify-between items-center font-mono text-slate-400/60 tracking-[0.25em]"
+        style={{ fontSize: '0.8em' }}
+      >
+        <span>PORTFOLIO {new Date().getFullYear()}</span>
+        <span>By CareerShaper AI</span>
       </footer>
     </div>
   )

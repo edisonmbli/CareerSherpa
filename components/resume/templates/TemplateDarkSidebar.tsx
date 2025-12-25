@@ -19,6 +19,9 @@ import {
   Sparkles,
   Heart,
   Globe,
+  Twitter,
+  Dribbble,
+  Palette,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
@@ -109,13 +112,31 @@ export function TemplateDarkSidebar({
                   </span>
                 </div>
               )}
-              {basics.location && (
+              {(basics.address || basics.location) && (
                 <div className="flex items-center gap-3 group w-full">
                   <MapPin
                     size={14}
                     className="text-white/40 group-hover:text-white/80 transition-colors shrink-0"
                   />
-                  <span className="text-left">{basics.location}</span>
+                  <span className="text-left">
+                    {basics.address || basics.location}
+                  </span>
+                </div>
+              )}
+              {basics.website && (
+                <div className="flex items-center gap-3 group w-full">
+                  <Globe
+                    size={14}
+                    className="text-white/40 group-hover:text-white/80 transition-colors shrink-0"
+                  />
+                  <a
+                    href={basics.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-white transition-colors break-all text-left"
+                  >
+                    {basics.website.replace(/^https?:\/\//, '')}
+                  </a>
                 </div>
               )}
               {basics.github && (
@@ -128,7 +149,7 @@ export function TemplateDarkSidebar({
                     href={basics.github}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:text-white transition-colors truncate text-left"
+                    className="hover:text-white transition-colors break-all text-left"
                   >
                     {basics.github.replace(/^https?:\/\//, '')}
                   </a>
@@ -144,9 +165,57 @@ export function TemplateDarkSidebar({
                     href={basics.linkedin}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:text-white transition-colors truncate text-left"
+                    className="hover:text-white transition-colors break-all text-left"
                   >
                     {basics.linkedin.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.twitter && (
+                <div className="flex items-center gap-3 group w-full">
+                  <Twitter
+                    size={14}
+                    className="text-white/40 group-hover:text-white/80 transition-colors shrink-0"
+                  />
+                  <a
+                    href={basics.twitter}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-white transition-colors break-all text-left"
+                  >
+                    {basics.twitter.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.dribbble && (
+                <div className="flex items-center gap-3 group w-full">
+                  <Dribbble
+                    size={14}
+                    className="text-white/40 group-hover:text-white/80 transition-colors shrink-0"
+                  />
+                  <a
+                    href={basics.dribbble}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-white transition-colors break-all text-left"
+                  >
+                    {basics.dribbble.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
+              {basics.behance && (
+                <div className="flex items-center gap-3 group w-full">
+                  <Palette
+                    size={14}
+                    className="text-white/40 group-hover:text-white/80 transition-colors shrink-0"
+                  />
+                  <a
+                    href={basics.behance}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-white transition-colors break-all text-left"
+                  >
+                    {basics.behance.replace(/^https?:\/\//, '')}
                   </a>
                 </div>
               )}
@@ -475,6 +544,14 @@ export function TemplateDarkSidebar({
           })}
         </main>
       </div>
+      {/* Minimal Footer */}
+      <footer
+        className="mt-8 pt-4 border-t border-slate-50 flex justify-between items-center font-mono text-slate-400/60 tracking-[0.25em]"
+        style={{ fontSize: '0.8em' }}
+      >
+        <span>PORTFOLIO {new Date().getFullYear()}</span>
+        <span>By CareerShaper AI</span>
+      </footer>
     </div>
   )
 }

@@ -660,11 +660,11 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
 
       {/* Minimal Footer */}
       <footer
-        className="mt-20 pt-8 border-t border-slate-50 flex justify-between items-center font-black text-slate-200 uppercase tracking-[0.4em]"
-        style={{ fontSize: '0.7em' }}
+        className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center font-mono text-slate-400/60 tracking-[0.25em]"
+        style={{ fontSize: '0.8em' }}
       >
-        <span>Portfolio {new Date().getFullYear()}</span>
-        <span>{basics.name} // DESIGN CV</span>
+        <span>PORTFOLIO {new Date().getFullYear()}</span>
+        <span>By CareerShaper AI</span>
       </footer>
     </div>
   )

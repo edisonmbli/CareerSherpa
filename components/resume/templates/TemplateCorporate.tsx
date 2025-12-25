@@ -6,7 +6,18 @@ import { TemplateProps } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
 import { cn } from '@/lib/utils'
-import { Mail, Phone, Github, MapPin, ExternalLink } from 'lucide-react'
+import {
+  Mail,
+  Phone,
+  Github,
+  MapPin,
+  ExternalLink,
+  Linkedin,
+  Twitter,
+  Palette,
+  Dribbble,
+  Globe,
+} from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 /**
@@ -76,7 +87,11 @@ export function TemplateCorporate({
           <SectionHeader title="Core Competencies" />
           <div className="px-1">
             <div className="text-gray-700 leading-relaxed" style={theme.text}>
-              {renderDescription(skills)}
+              {skills.split('\n').map((skill, idx) => (
+                <div key={idx} className="mb-1">
+                  {skill.trim().replace(/^[-•]\s*/, '')}
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -361,9 +376,9 @@ export function TemplateCorporate({
                     />
                   </div>
                 )}
-                {basics.location && (
+                {(basics.address || basics.location) && (
                   <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium justify-end text-right">
-                    {basics.location}{' '}
+                    {basics.address || basics.location}{' '}
                     <MapPin
                       size={14}
                       style={{ color: theme.themeColor }}
@@ -371,18 +386,74 @@ export function TemplateCorporate({
                     />
                   </div>
                 )}
-                {basics.github && (
-                  <div className="flex items-center gap-2 mt-1 justify-end">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-end text-[11px] text-gray-500 font-mono">
+                  {basics.github && (
                     <a
                       href={basics.github}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-gray-400 hover:text-gray-600"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
                     >
                       <Github size={14} />
+                      <span>{basics.github.replace(/^https?:\/\//, '')}</span>
                     </a>
-                  </div>
-                )}
+                  )}
+                  {basics.linkedin && (
+                    <a
+                      href={basics.linkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Linkedin size={14} />
+                      <span>{basics.linkedin.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.website && (
+                    <a
+                      href={basics.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Globe size={14} />
+                      <span>{basics.website.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.twitter && (
+                    <a
+                      href={basics.twitter}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Twitter size={14} />
+                      <span>{basics.twitter.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.dribbble && (
+                    <a
+                      href={basics.dribbble}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Dribbble size={14} />
+                      <span>{basics.dribbble.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.behance && (
+                    <a
+                      href={basics.behance}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Palette size={14} />
+                      <span>{basics.behance.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                </div>
 
                 <h1
                   className="font-black uppercase tracking-tight mt-3 text-2xl text-right leading-tight"
@@ -433,24 +504,80 @@ export function TemplateCorporate({
                     <Mail size={14} style={{ color: theme.themeColor }} />
                   </div>
                 )}
-                {basics.location && (
+                {(basics.address || basics.location) && (
                   <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
-                    {basics.location}{' '}
+                    {basics.address || basics.location}{' '}
                     <MapPin size={14} style={{ color: theme.themeColor }} />
                   </div>
                 )}
-                {basics.github && (
-                  <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-end text-[11px] text-gray-500 font-mono">
+                  {basics.github && (
                     <a
                       href={basics.github}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-gray-400 hover:text-gray-600"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
                     >
                       <Github size={14} />
+                      <span>{basics.github.replace(/^https?:\/\//, '')}</span>
                     </a>
-                  </div>
-                )}
+                  )}
+                  {basics.linkedin && (
+                    <a
+                      href={basics.linkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Linkedin size={14} />
+                      <span>{basics.linkedin.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.website && (
+                    <a
+                      href={basics.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Globe size={14} />
+                      <span>{basics.website.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.twitter && (
+                    <a
+                      href={basics.twitter}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Twitter size={14} />
+                      <span>{basics.twitter.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.dribbble && (
+                    <a
+                      href={basics.dribbble}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Dribbble size={14} />
+                      <span>{basics.dribbble.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {basics.behance && (
+                    <a
+                      href={basics.behance}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Palette size={14} />
+                      <span>{basics.behance.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -464,6 +591,13 @@ export function TemplateCorporate({
           return <React.Fragment key={key}>{sectionMap[key]}</React.Fragment>
         })}
       </div>
+      <footer
+        className="mt-12 pt-4 border-t border-gray-100 flex justify-between items-center font-mono text-slate-400/60 tracking-[0.25em]"
+        style={{ fontSize: '0.8em' }}
+      >
+        <span>PORTFOLIO {new Date().getFullYear()}</span>
+        <span>By CareerShaper AI</span>
+      </footer>
     </div>
   )
 }

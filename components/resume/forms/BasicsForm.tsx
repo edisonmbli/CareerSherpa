@@ -4,8 +4,20 @@ import { useResumeStore } from '@/store/resume-store'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ResumeData } from '@/lib/types/resume-schema'
-
 import { formInputClass } from './styles'
+import {
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  Globe,
+  Github,
+  Linkedin,
+  Twitter,
+  Dribbble,
+  Palette,
+  Upload,
+} from 'lucide-react'
 
 export function BasicsForm() {
   const { resumeData, updateBasics } = useResumeStore()
@@ -43,157 +55,192 @@ export function BasicsForm() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-      {/* Row 1: Avatar and Name */}
-      <div className="flex flex-col gap-3 items-center sm:items-start">
-        <Label>头像</Label>
-        <div className="relative group">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-100 bg-gray-50 dark:bg-secondary/50 dark:border-gray-800 flex items-center justify-center">
-            {basics.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={basics.photoUrl}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-gray-300 text-xs">上传头像</span>
-            )}
+    <div className="space-y-8">
+      {/* Group 1: Core Information */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
+          <User className="w-4 h-4" />
+          核心信息
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+          {/* Avatar and Name */}
+          <div className="flex flex-col gap-3 items-center sm:items-start">
+            <Label className="text-xs font-medium text-gray-500">头像</Label>
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-100 bg-gray-50 dark:bg-secondary/50 dark:border-gray-800 flex items-center justify-center shadow-sm">
+                {basics.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={basics.photoUrl}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-8 h-8 text-gray-300" />
+                )}
+              </div>
+              <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer rounded-full backdrop-blur-[1px]">
+                <div className="flex flex-col items-center gap-1 text-white">
+                  <Upload className="w-4 h-4" />
+                  <span className="text-[10px] font-medium">更换</span>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center sm:text-left w-24 leading-tight">
+              支持 jpg/png
+              <br />
+              Max 2MB
+            </p>
           </div>
-          <label className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
-            <span className="text-white text-xs font-medium bg-black/50 px-2 py-1 rounded">
-              更换
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
+
+          <div className="flex flex-col gap-4 justify-center">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-gray-600">
+                <User className="w-3.5 h-3.5" />
+                姓名
+              </Label>
+              <Input
+                value={basics.name || ''}
+                onChange={(e) => handleChange('name', e.target.value)}
+                className={formInputClass}
+                placeholder="您的姓名"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-gray-600">
+                <MapPin className="w-3.5 h-3.5" />
+                地址
+              </Label>
+              <Input
+                value={basics.address || ''}
+                onChange={(e) => handleChange('address', e.target.value)}
+                className={formInputClass}
+                placeholder="例如：北京市海淀区"
+              />
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Phone className="w-3.5 h-3.5" />
+              手机
+            </Label>
+            <Input
+              value={basics.mobile || ''}
+              onChange={(e) => handleChange('mobile', e.target.value)}
+              className={formInputClass}
+              placeholder="+86 188..."
             />
-          </label>
-        </div>
-        <p className="text-[10px] text-muted-foreground text-center sm:text-left w-24 leading-tight">
-          支持 jpg/png
-          <br />
-          Max 2MB
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <div className="space-y-2">
-          <Label>姓名</Label>
-          <Input
-            value={basics.name || ''}
-            onChange={(e) => handleChange('name', e.target.value)}
-            className={formInputClass}
-            placeholder="您的姓名"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>地址</Label>
-          <Input
-            value={basics.address || ''}
-            onChange={(e) => handleChange('address', e.target.value)}
-            className={formInputClass}
-            placeholder="例如：北京市海淀区"
-          />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Mail className="w-3.5 h-3.5" />
+              邮箱
+            </Label>
+            <Input
+              value={basics.email || ''}
+              onChange={(e) => handleChange('email', e.target.value)}
+              className={formInputClass}
+              placeholder="example@email.com"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Row 2: Mobile and Email */}
-      <div className="space-y-2">
-        <Label>手机</Label>
-        <Input
-          value={basics.mobile || ''}
-          onChange={(e) => handleChange('mobile', e.target.value)}
-          className={formInputClass}
-          placeholder="+86 188..."
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>邮箱</Label>
-        <Input
-          value={basics.email || ''}
-          onChange={(e) => handleChange('email', e.target.value)}
-          className={formInputClass}
-          placeholder="example@email.com"
-        />
-      </div>
+      {/* Group 2: Social Links */}
+      <div className="space-y-4 pt-2">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
+          <Globe className="w-4 h-4" />
+          社交链接
+        </h3>
 
-      {/* Row 3: WeChat and QQ */}
-      <div className="space-y-2">
-        <Label>微信</Label>
-        <Input
-          value={basics.wechat || ''}
-          onChange={(e) => handleChange('wechat', e.target.value)}
-          className={formInputClass}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>QQ</Label>
-        <Input
-          value={basics.qq || ''}
-          onChange={(e) => handleChange('qq', e.target.value)}
-          className={formInputClass}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>GitHub</Label>
-        <Input
-          value={basics.github || ''}
-          onChange={(e) => handleChange('github', e.target.value)}
-          className={formInputClass}
-          placeholder="github.com/username"
-        />
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Github className="w-3.5 h-3.5" />
+              GitHub
+            </Label>
+            <Input
+              value={basics.github || ''}
+              onChange={(e) => handleChange('github', e.target.value)}
+              className={formInputClass}
+              placeholder="github.com/username"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label>LinkedIn</Label>
-        <Input
-          value={basics.linkedin || ''}
-          onChange={(e) => handleChange('linkedin', e.target.value)}
-          className={formInputClass}
-          placeholder="linkedin.com/in/username"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Linkedin className="w-3.5 h-3.5" />
+              LinkedIn
+            </Label>
+            <Input
+              value={basics.linkedin || ''}
+              onChange={(e) => handleChange('linkedin', e.target.value)}
+              className={formInputClass}
+              placeholder="linkedin.com/in/username"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label>个人网站</Label>
-        <Input
-          value={basics.website || ''}
-          onChange={(e) => handleChange('website', e.target.value)}
-          className={formInputClass}
-          placeholder="your-portfolio.com"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Globe className="w-3.5 h-3.5" />
+              个人网站
+            </Label>
+            <Input
+              value={basics.website || ''}
+              onChange={(e) => handleChange('website', e.target.value)}
+              className={formInputClass}
+              placeholder="your-portfolio.com"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label>Twitter / X</Label>
-        <Input
-          value={basics.twitter || ''}
-          onChange={(e) => handleChange('twitter', e.target.value)}
-          className={formInputClass}
-          placeholder="twitter.com/username"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Twitter className="w-3.5 h-3.5" />
+              Twitter / X
+            </Label>
+            <Input
+              value={basics.twitter || ''}
+              onChange={(e) => handleChange('twitter', e.target.value)}
+              className={formInputClass}
+              placeholder="twitter.com/username"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label>Behance</Label>
-        <Input
-          value={basics.behance || ''}
-          onChange={(e) => handleChange('behance', e.target.value)}
-          className={formInputClass}
-          placeholder="behance.net/user"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Dribbble</Label>
-        <Input
-          value={basics.dribbble || ''}
-          onChange={(e) => handleChange('dribbble', e.target.value)}
-          className={formInputClass}
-          placeholder="dribbble.com/user"
-        />
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Palette className="w-3.5 h-3.5" />
+              Behance
+            </Label>
+            <Input
+              value={basics.behance || ''}
+              onChange={(e) => handleChange('behance', e.target.value)}
+              className={formInputClass}
+              placeholder="behance.net/user"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-gray-600">
+              <Dribbble className="w-3.5 h-3.5" />
+              Dribbble
+            </Label>
+            <Input
+              value={basics.dribbble || ''}
+              onChange={(e) => handleChange('dribbble', e.target.value)}
+              className={formInputClass}
+              placeholder="dribbble.com/user"
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

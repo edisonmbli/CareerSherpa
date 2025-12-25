@@ -82,13 +82,13 @@ export function TemplateSelector() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-9 gap-2 text-muted-foreground hover:text-foreground"
+          className="h-8 gap-2 text-muted-foreground hover:text-foreground shrink-0 px-2"
         >
           <LayoutTemplate className="h-4 w-4" />
-          <span className="hidden sm:inline">模板</span>
+          <span className="hidden lg:inline">模板</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>选择简历模板</DialogTitle>
           <p className="text-sm text-muted-foreground">

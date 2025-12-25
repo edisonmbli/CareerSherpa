@@ -177,6 +177,77 @@ function SortableItem({
   )
 }
 
+function FixedItem({
+  id,
+  label,
+  isActive,
+  onClick,
+  isMobile,
+}: {
+  id: string
+  label: string
+  isActive: boolean
+  onClick: () => void
+  isMobile?: boolean
+}) {
+  const Icon = SECTION_ICONS[id] || Layers
+
+  return (
+    <div
+      className={cn(
+        'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none border-b border-dashed border-gray-200 dark:border-zinc-800 pb-2',
+        isMobile ? 'py-3 px-3 bg-white dark:bg-zinc-900' : 'p-2',
+        isActive && !isMobile
+          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+          : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300'
+      )}
+      onClick={onClick}
+    >
+      {/* Active Indicator Strip */}
+      {isActive && !isMobile && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-l-md" />
+      )}
+
+      {/* Placeholder for Drag Handle alignment */}
+      <div
+        className={cn(
+          'flex items-center justify-center text-gray-300 dark:text-zinc-600',
+          isMobile ? 'p-1' : 'p-0.5'
+        )}
+      >
+        <div className="w-4 h-4" />
+      </div>
+
+      {/* Section Icon */}
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-md transition-colors',
+          isActive && !isMobile
+            ? 'text-blue-600 dark:text-blue-400'
+            : 'text-gray-400 dark:text-gray-500'
+        )}
+      >
+        <Icon className={cn('h-4 w-4', isMobile && 'h-5 w-5')} />
+      </div>
+
+      <span
+        className={cn(
+          'flex-1 text-sm truncate',
+          isMobile && 'text-base font-normal'
+        )}
+      >
+        {label}
+      </span>
+
+      {isMobile && (
+        <div className="flex items-center text-gray-400">
+          <ChevronRight className="h-5 w-5" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface StructureOutlineProps {
   isMobile?: boolean
   onClose?: () => void
@@ -208,6 +279,8 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
     }
   }
 
+  const sortableItems = sectionConfig.order.filter((key) => key !== 'basics')
+
   return (
     <div className="h-full flex flex-col bg-white dark:bg-zinc-900 transition-colors">
       {!isMobile && (
@@ -231,31 +304,42 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
           isMobile ? 'pt-0' : 'pt-2 px-3'
         )}
       >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={sectionConfig.order}
-            strategy={verticalListSortingStrategy}
+        <div className={cn('space-y-1', isMobile && 'space-y-3')}>
+          {/* Fixed Basics Section */}
+          <FixedItem
+            id="basics"
+            label={SECTION_LABELS['basics'] || '基本信息'}
+            isActive={activeSectionKey === 'basics'}
+            onClick={() => setActive('basics')}
+            isMobile={!!isMobile}
+          />
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className={cn('space-y-1', isMobile && 'space-y-3')}>
-              {sectionConfig.order.map((sectionKey) => (
-                <SortableItem
-                  key={sectionKey}
-                  id={sectionKey}
-                  label={SECTION_LABELS[sectionKey] || sectionKey}
-                  isActive={activeSectionKey === sectionKey}
-                  isHidden={sectionConfig.hidden.includes(sectionKey)}
-                  onClick={() => setActive(sectionKey)}
-                  onToggle={() => toggleSectionVisibility(sectionKey)}
-                  isMobile={isMobile}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+            <SortableContext
+              items={sortableItems}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className={cn('space-y-1', isMobile && 'space-y-3')}>
+                {sortableItems.map((sectionKey) => (
+                  <SortableItem
+                    key={sectionKey}
+                    id={sectionKey}
+                    label={SECTION_LABELS[sectionKey] || sectionKey}
+                    isActive={activeSectionKey === sectionKey}
+                    isHidden={sectionConfig.hidden.includes(sectionKey)}
+                    onClick={() => setActive(sectionKey)}
+                    onToggle={() => toggleSectionVisibility(sectionKey)}
+                    isMobile={isMobile}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
       </div>
     </div>
   )

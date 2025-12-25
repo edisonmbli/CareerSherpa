@@ -37,11 +37,13 @@ import {
   FileJson,
   PanelLeft,
   Sparkles,
+  Pipette,
+  Check,
 } from 'lucide-react'
 import { RESUME_TEMPLATES, TemplateId } from '../constants'
 import { TemplateSelector } from './TemplateSelector'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 
 interface ResumeToolbarProps {
@@ -86,6 +88,16 @@ const RangeControl = ({
   </div>
 )
 
+// Define preset colors constant
+const PRESET_COLORS = [
+  '#000000', // Black
+  '#3f3f46', // Zinc 700
+  '#155e75', // Cyan 900
+  '#0369a1', // Sky 700
+  '#1d4ed8', // Blue 700
+  '#be123c', // Rose 700
+]
+
 export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   const {
     resumeData,
@@ -102,6 +114,33 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   } = useResumeStore()
 
   const [isResetOpen, setIsResetOpen] = useState(false)
+  const colorInputRef = useRef<HTMLInputElement>(null)
+  const [recentColors, setRecentColors] = useState<string[]>([])
+  const [isStyleOpen, setIsStyleOpen] = useState(false)
+
+  // Logic to add current color to history (called on native change event)
+  const handleColorCommit = () => {
+    const color = colorInputRef.current?.value
+    if (color && !PRESET_COLORS.includes(color)) {
+      setRecentColors((prev) => {
+        const newColors = [color, ...prev.filter((c) => c !== color)].slice(
+          0,
+          3
+        )
+        return newColors
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (!isStyleOpen) return
+    const input = colorInputRef.current
+    if (!input) return
+    input.addEventListener('change', handleColorCommit)
+    return () => {
+      input.removeEventListener('change', handleColorCommit)
+    }
+  }, [isStyleOpen])
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -173,7 +212,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
         <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
         {/* Style Tweaks */}
-        <Popover>
+        <Popover open={isStyleOpen} onOpenChange={setIsStyleOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -184,50 +223,113 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <span className="hidden lg:inline">样式</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4" align="start">
+          <PopoverContent className="w-80 p-4 relative" align="start">
+            {/* Native Color Input positioned relative to Popover Content */}
+            <input
+              ref={colorInputRef}
+              type="color"
+              value={styleConfig.themeColor}
+              onChange={(e) =>
+                updateStyleConfig({ themeColor: e.target.value })
+              }
+              className="sr-only"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                opacity: 0,
+                pointerEvents: 'none',
+                zIndex: -1,
+              }}
+              tabIndex={-1}
+            />
+
             <div className="space-y-6">
               {/* Theme Color */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  主色调
-                </label>
-                <div className="flex py-2 gap-2 flex-wrap items-center">
-                  {/* Professional Palette */}
-                  {[
-                    '#000000', // Black
-                    '#71717a', // Zinc 500
-                    '#155e75', // Cyan 900
-                    '#0284c7', // Sky 600
-                    '#0d9488', // Teal 600
-                    '#9d174d', // Pink 800
-                  ].map((color) => (
-                    <button
-                      key={color}
-                      className={cn(
-                        'w-6 h-6 rounded-full border-2 transition-all',
-                        styleConfig.themeColor === color
-                          ? 'border-zinc-300 scale-120'
-                          : 'border-transparent hover:scale-110'
-                      )}
-                      style={{ backgroundColor: color }}
-                      onClick={() => updateStyleConfig({ themeColor: color })}
-                    />
-                  ))}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    主色调
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-[10px] gap-1.5 px-2"
+                      onClick={() => colorInputRef.current?.click()}
+                    >
+                      <Pipette className="w-3.5 h-3.5 text-indigo-500" />
+                      取色器
+                    </Button>
+                  </div>
+                </div>
 
-                  {/* Custom Color Picker */}
-                  <div
-                    className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-gray-200 hover:border-gray-900 hover:scale-110 transition-all cursor-pointer shadow-sm group"
-                    title="自定义颜色"
-                  >
-                    <div className="absolute inset-0 bg-[conic-gradient(from_90deg,red,yellow,lime,aqua,blue,magenta,red)]" />
-                    <input
-                      type="color"
-                      value={styleConfig.themeColor}
-                      onChange={(e) =>
-                        updateStyleConfig({ themeColor: e.target.value })
-                      }
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] p-0 m-0 border-none cursor-pointer opacity-0"
-                    />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    {/* Presets */}
+                    <div className="flex gap-1.5">
+                      {PRESET_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          className={cn(
+                            'w-6 h-6 rounded-full border border-gray-200 shadow-sm transition-all hover:scale-110 flex items-center justify-center',
+                            styleConfig.themeColor === color
+                              ? 'scale-110 ring-1 ring-offset-1'
+                              : 'hover:border-gray-400'
+                          )}
+                          style={{
+                            backgroundColor: color,
+                            ...(styleConfig.themeColor === color
+                              ? {
+                                  boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
+                                }
+                              : {}),
+                          }}
+                          onClick={() =>
+                            updateStyleConfig({ themeColor: color })
+                          }
+                        >
+                          {styleConfig.themeColor === color && (
+                            <Check className="w-3 h-3 text-white drop-shadow-md" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Divider & Recent Colors */}
+                    {recentColors.length > 0 && (
+                      <>
+                        <div className="w-px h-6 bg-border shrink-0" />
+                        <div className="flex gap-1.5">
+                          {recentColors.map((color) => (
+                            <button
+                              key={color}
+                              className={cn(
+                                'w-6 h-6 rounded-full border border-gray-200 shadow-sm transition-all hover:scale-110 flex items-center justify-center',
+                                styleConfig.themeColor === color
+                                  ? 'scale-110 ring-1 ring-offset-1'
+                                  : 'hover:border-gray-400'
+                              )}
+                              style={{
+                                backgroundColor: color,
+                                ...(styleConfig.themeColor === color
+                                  ? {
+                                      boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
+                                    }
+                                  : {}),
+                              }}
+                              onClick={() =>
+                                updateStyleConfig({ themeColor: color })
+                              }
+                            >
+                              {styleConfig.themeColor === color && (
+                                <Check className="w-3 h-3 text-white drop-shadow-md" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

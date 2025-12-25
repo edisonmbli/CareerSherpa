@@ -6,7 +6,18 @@ import { TemplateProps } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
 import { renderDescription, formatDate } from './utils'
 import { cn } from '@/lib/utils'
-import { Mail, Phone, MapPin, Github, ExternalLink } from 'lucide-react'
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Github,
+  ExternalLink,
+  Twitter,
+  Palette,
+  Dribbble,
+  Linkedin,
+  Globe,
+} from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 /**
@@ -47,7 +58,7 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
     className,
     center = false,
   }: {
-    content?: string
+    content?: string | undefined
     className?: string
     center?: boolean
   }) => {
@@ -380,14 +391,31 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
                 {basics.email}
               </div>
             )}
-            {basics.location && (
+            {(basics.address || basics.location) && (
               <div className="flex items-center gap-1.5">
                 <MapPin
                   size={12}
                   strokeWidth={1.5}
                   style={{ color: theme.themeColor, opacity: 0.8 }}
                 />{' '}
-                {basics.location}
+                {basics.address || basics.location}
+              </div>
+            )}
+            {basics.website && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={basics.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                >
+                  <Globe
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: theme.themeColor, opacity: 0.8 }}
+                  />
+                  {basics.website.replace(/^https?:\/\//, '')}
+                </a>
               </div>
             )}
             {basics.github && (
@@ -404,6 +432,74 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
                     style={{ color: theme.themeColor, opacity: 0.8 }}
                   />
                   {basics.github.replace(/^https?:\/\//, '')}
+                </a>
+              </div>
+            )}
+            {basics.linkedin && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={basics.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                >
+                  <Linkedin
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: theme.themeColor, opacity: 0.8 }}
+                  />
+                  {basics.linkedin.replace(/^https?:\/\//, '')}
+                </a>
+              </div>
+            )}
+            {basics.twitter && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={basics.twitter}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                >
+                  <Twitter
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: theme.themeColor, opacity: 0.8 }}
+                  />
+                  {basics.twitter.replace(/^https?:\/\//, '')}
+                </a>
+              </div>
+            )}
+            {basics.dribbble && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={basics.dribbble}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                >
+                  <Dribbble
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: theme.themeColor, opacity: 0.8 }}
+                  />
+                  {basics.dribbble.replace(/^https?:\/\//, '')}
+                </a>
+              </div>
+            )}
+            {basics.behance && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={basics.behance}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                >
+                  <Palette
+                    size={12}
+                    strokeWidth={1.5}
+                    style={{ color: theme.themeColor, opacity: 0.8 }}
+                  />
+                  {basics.behance.replace(/^https?:\/\//, '')}
                 </a>
               </div>
             )}
@@ -424,13 +520,13 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
         })}
       </div>
 
-      {/* Footer: Subtle Branding */}
-      <footer className="mt-16 pb-4 text-center">
-        <div className="inline-block px-4 py-1 border-t border-slate-100">
-          <span className="text-[10px] text-slate-300 tracking-[0.3em] uppercase">
-            Curriculum Vitae
-          </span>
-        </div>
+      {/* Minimal Footer */}
+      <footer
+        className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center font-mono text-slate-400/60 tracking-[0.25em]"
+        style={{ fontSize: '0.8em' }}
+      >
+        <span>PORTFOLIO {new Date().getFullYear()}</span>
+        <span>By CareerShaper AI</span>
       </footer>
     </div>
   )
