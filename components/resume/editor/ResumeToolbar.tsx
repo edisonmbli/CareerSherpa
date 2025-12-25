@@ -117,8 +117,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   const colorInputRef = useRef<HTMLInputElement>(null)
   const [recentColors, setRecentColors] = useState<string[]>([])
   const [isStyleOpen, setIsStyleOpen] = useState(false)
+  const commitTimerRef = useRef<number | null>(null)
 
-  // Logic to add current color to history (called on native change event)
   const handleColorCommit = () => {
     const color = colorInputRef.current?.value
     if (color && !PRESET_COLORS.includes(color)) {
@@ -229,9 +229,18 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               ref={colorInputRef}
               type="color"
               value={styleConfig.themeColor}
-              onChange={(e) =>
-                updateStyleConfig({ themeColor: e.target.value })
-              }
+              onChange={(e) => {
+                const val = e.target.value
+                updateStyleConfig({ themeColor: val })
+                if (commitTimerRef.current) {
+                  window.clearTimeout(commitTimerRef.current)
+                }
+                commitTimerRef.current = window.setTimeout(() => {
+                  handleColorCommit()
+                  commitTimerRef.current = null
+                }, 400)
+              }}
+              onBlur={() => handleColorCommit()}
               className="sr-only"
               style={{
                 position: 'absolute',
