@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 // 基础信息 (固定置顶，通常不参与普通排序，但内容可编辑)
 export const basicInfoSchema = z.object({
-  name: z.string().describe('姓名'),
+  name: z.string().optional().describe('姓名'),
   mobile: z.string().optional().describe('手机号'),
   email: z.string().optional().describe('邮箱'),
   wechat: z.string().optional().describe('微信号'),
@@ -21,6 +21,7 @@ export const basicInfoSchema = z.object({
   address: z.string().optional().describe('详细地址'),
   photoUrl: z.string().optional().describe('头像URL'),
   summary: z.string().optional().describe('个人总结/职业摘要'),
+  lang: z.enum(['zh', 'en']).default('zh').describe('简历语言'),
 })
 
 // 通用列表项 (用于教育、工作、项目)
@@ -60,8 +61,8 @@ export const projectExperienceSchema = z.object({
 // 自定义板块 (用于无法归类的额外信息)
 export const customSectionItemSchema = z.object({
   id: z.string(),
-  title: z.string().describe('小标题'),
-  description: z.string().describe('描述内容'),
+  title: z.string().optional().describe('小标题'),
+  description: z.string().optional().describe('描述内容'),
 })
 
 // ==========================================
@@ -86,6 +87,9 @@ export const resumeDataSchema = z.object({
     .array(customSectionItemSchema)
     .default([])
     .describe('其他自定义板块'),
+
+  // 用户自定义章节标题 (覆盖默认翻译)
+  sectionTitles: z.record(z.string()).optional().describe('自定义章节标题'),
 })
 
 // ==========================================
@@ -94,22 +98,9 @@ export const resumeDataSchema = z.object({
 
 // 用于控制 ResumeEditor 的章节顺序和显隐
 export const sectionConfigSchema = z.object({
-  // 排序数组，存储板块 Key，例如 ["basics", "workExperiences", "educations", "skills", ...]
-  order: z
-    .array(z.string())
-    .default([
-      'basics',
-      'summary',
-      'workExperiences',
-      'projectExperiences',
-      'educations',
-      'skills',
-      'certificates',
-      'hobbies',
-      'customSections',
-    ]),
-  // 隐藏的板块 Key 列表
+  order: z.array(z.string()).default([]),
   hidden: z.array(z.string()).default([]),
+  pageBreaks: z.record(z.boolean()).optional().describe('章节后强制分页'),
 })
 
 // ==========================================

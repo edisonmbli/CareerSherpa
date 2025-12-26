@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid'
 
 export const MOCK_RESUME_DATA: ResumeData = {
   basics: {
+    lang: 'zh',
     name: '张三',
     mobile: '13800138000',
     email: 'zhangsan@example.com',

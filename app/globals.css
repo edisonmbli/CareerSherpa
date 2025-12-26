@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -82,6 +82,33 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+@media print {
+  @page {
+    margin: var(--resume-page-margin, 10mm);
+    size: auto;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background-color: white;
+  }
+  /* Ensure page breaks behave correctly */
+  .page-break-fix {
+    break-inside: auto;
+  }
+  .page-break-fix h3,
+  .page-break-fix h4 {
+    break-after: avoid;
+  }
+  .break-after-avoid {
+    break-after: avoid;
+  }
+  /* Hide UI elements with specific class */
+  .no-print {
+    display: none !important;
+  }
+}
+
 /* Class-based dark mode to support theme toggling */
 .dark {
   --background: oklch(0.145 0 0);
@@ -149,29 +176,163 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--foreground);
 }
-.resume-classic h1, .resume-classic h2, .resume-classic h3 { font-weight: 700; letter-spacing: -0.01em; }
-.resume-classic h2 { border-bottom: 2px solid var(--border); padding-bottom: 4px; margin-top: 24px; }
-.resume-classic ul { list-style-type: disc; }
-.resume-classic li { margin: 4px 0; }
-.resume-classic p { line-height: 1.7; }
+.resume-classic h1,
+.resume-classic h2,
+.resume-classic h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.resume-classic h2 {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 4px;
+  margin-top: 24px;
+}
+.resume-classic ul {
+  list-style-type: disc;
+}
+.resume-classic li {
+  margin: 4px 0;
+}
+.resume-classic p {
+  line-height: 1.7;
+}
 
 .resume-modern {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--foreground);
 }
-.resume-modern h1 { font-weight: 800; font-size: 2rem; }
-.resume-modern h2 { font-weight: 700; margin-top: 20px; position: relative; }
-.resume-modern h2::after { content: ''; display: block; width: 48px; height: 3px; background: oklch(0.488 0.243 264.376); margin-top: 6px; }
-.resume-modern ul { list-style-type: none; padding-left: 0; }
-.resume-modern li::before { content: '• '; color: oklch(0.488 0.243 264.376); }
-.resume-modern p { line-height: 1.75; }
+.resume-modern h1 {
+  font-weight: 800;
+  font-size: 2rem;
+}
+.resume-modern h2 {
+  font-weight: 700;
+  margin-top: 20px;
+  position: relative;
+}
+.resume-modern h2::after {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  background: oklch(0.488 0.243 264.376);
+  margin-top: 6px;
+}
+.resume-modern ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+.resume-modern li::before {
+  content: '• ';
+  color: oklch(0.488 0.243 264.376);
+}
+.resume-modern p {
+  line-height: 1.75;
+}
 
 .resume-professional {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--foreground);
 }
-.resume-professional h1 { font-weight: 800; font-size: 2rem; letter-spacing: -0.02em; }
-.resume-professional h2 { font-weight: 700; margin-top: 18px; border-left: 4px solid oklch(0.205 0 0); padding-left: 8px; }
-.resume-professional ul { list-style-type: disc; }
-.resume-professional li { margin: 6px 0; }
-.resume-professional p { line-height: 1.8; }
+.resume-professional h1 {
+  font-weight: 800;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+.resume-professional h2 {
+  font-weight: 700;
+  margin-top: 18px;
+  border-left: 4px solid oklch(0.205 0 0);
+  padding-left: 8px;
+}
+.resume-professional ul {
+  list-style-type: disc;
+}
+.resume-professional li {
+  margin: 6px 0;
+}
+.resume-professional p {
+  line-height: 1.8;
+}
+
+/* Resume Customization & Print Physics */
+:root {
+  --resume-padding-x: 10mm;
+  --resume-padding-y: 10mm;
+  --resume-base-font-size: 14px;
+  --resume-line-height: 1.5;
+  --resume-paragraph-spacing: 12px;
+}
+
+.resume-paper {
+  width: 210mm;
+  min-height: 297mm;
+  background: white;
+  padding-top: var(--resume-padding-y);
+  padding-bottom: var(--resume-padding-y);
+  padding-left: var(--resume-padding-x);
+  padding-right: var(--resume-padding-x);
+  font-size: var(--resume-base-font-size);
+  line-height: var(--resume-line-height);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  margin: 0 auto;
+  position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .resume-paper {
+    width: 100%;
+    min-height: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+    box-shadow: none;
+  }
+}
+
+.page-break-fix {
+  break-inside: auto;
+}
+
+.break-after-avoid {
+  break-after: avoid;
+}
+
+/* Manual page break utility */
+.break-after-page {
+  break-after: page;
+}
+
+h3,
+h4,
+.item-header {
+  break-after: avoid;
+}
+
+p,
+li {
+  break-inside: avoid;
+}
+
+@media print {
+  @page {
+    margin: var(--resume-page-margin, 10mm);
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .resume-paper {
+    width: 100%;
+    margin: 0;
+    box-shadow: none;
+    /* Use CSS variables for padding to ensure margins are respected */
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}

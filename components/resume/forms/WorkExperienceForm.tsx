@@ -14,6 +14,8 @@ import {
   formCardTitleClass,
   formAddButtonClass,
 } from './styles'
+import { SECTION_TITLES } from '../section-titles'
+import { PageBreakSwitch } from './PageBreakSwitch'
 
 export function WorkExperienceForm() {
   const {
@@ -23,11 +25,16 @@ export function WorkExperienceForm() {
     removeSectionItem,
     activeItemId,
     setActive,
+    updateSectionTitle,
   } = useResumeStore()
 
   if (!resumeData) return null
 
   const items = resumeData.workExperiences || []
+  const sectionTitles = resumeData.sectionTitles || {}
+  const basics = resumeData.basics
+  const defaultTitle = SECTION_TITLES['workExperiences'][basics.lang || 'zh']
+  const currentTitle = sectionTitles['workExperiences'] || ''
 
   // If a specific item is active, show ONLY that item's form
   if (activeItemId) {
@@ -104,6 +111,8 @@ export function WorkExperienceForm() {
                 💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
               </p>
             </div>
+
+            <PageBreakSwitch sectionKey={activeItem.id} />
           </div>
         </div>
       )
@@ -117,6 +126,21 @@ export function WorkExperienceForm() {
 
   return (
     <div className="space-y-4">
+      {/* Section Title Editor */}
+      <div className="space-y-2 border-b pb-4 mb-4">
+        <Label className="text-xs font-medium text-gray-500">
+          自定义章节标题
+        </Label>
+        <Input
+          value={currentTitle}
+          onChange={(e) =>
+            updateSectionTitle('workExperiences', e.target.value)
+          }
+          placeholder={defaultTitle}
+          className={formInputClass}
+        />
+      </div>
+
       {items.map((item, index) => (
         <div
           key={item.id}
@@ -171,6 +195,8 @@ export function WorkExperienceForm() {
         <Plus className="h-4 w-4 mr-2" />
         添加工作经历
       </Button>
+
+      <PageBreakSwitch sectionKey="workExperiences" />
     </div>
   )
 }

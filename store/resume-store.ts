@@ -13,6 +13,26 @@ import {
   resetCustomizedResumeAction,
 } from '@/lib/actions/resume.actions'
 import debounce from 'lodash/debounce'
+import { TechnicalDefaults } from '@/components/resume/templates/TemplateTechnical'
+import { CorporateDefaults } from '@/components/resume/templates/TemplateCorporate'
+import { ElegantDefaults } from '@/components/resume/templates/TemplateElegant'
+import { ProfessionalDefaults } from '@/components/resume/templates/TemplateProfessional'
+import { DarkSidebarDefaults } from '@/components/resume/templates/TemplateDarkSidebar'
+import { StandardDefaults } from '@/components/resume/templates/TemplateStandard'
+import { DesignDefaults } from '@/components/resume/templates/TemplateDesign'
+import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
+import { TemplateConfig } from '@/components/resume/templates/types'
+
+const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
+  technical: TechnicalDefaults,
+  corporate: CorporateDefaults,
+  elegant: ElegantDefaults,
+  professional: ProfessionalDefaults,
+  darkSidebar: DarkSidebarDefaults,
+  standard: StandardDefaults,
+  creative: DesignDefaults,
+  product: ProductDefaults,
+}
 
 // Default Section Config
 const DEFAULT_SECTION_CONFIG: SectionConfig = {
@@ -38,6 +58,7 @@ interface ResumeState {
   optimizeSuggestion: string | null
   sectionConfig: SectionConfig
   currentTemplate: TemplateId
+  viewMode: 'web' | 'print'
 
   // UI State
   activeSectionKey: string | null // e.g., 'workExperiences'
@@ -47,16 +68,20 @@ interface ResumeState {
   isAIPanelOpen: boolean
   isSaving: boolean
   lastSavedAt: Date | null
+  statusMessage: { text: string; type: 'success' | 'info' } | null
 
   // Style Config
   styleConfig: {
     themeColor: string
     fontFamily: string
     fontSize: number
+    baseFontSize?: number
     lineHeight: number
     pageMargin: number
     sectionSpacing: number
     itemSpacing: number
+    compactMode?: boolean
+    smartFill?: boolean
   }
 
   // Actions
@@ -70,6 +95,9 @@ interface ResumeState {
   ) => void
 
   updateBasics: (data: Partial<ResumeData['basics']>) => void
+  updateSectionTitle: (sectionKey: string, title: string) => void
+  setViewMode: (mode: 'web' | 'print') => void
+  togglePageBreak: (sectionKey: string) => void
 
   // Generic update for array sections (work, project, education)
   updateSectionItem: (
@@ -108,6 +136,9 @@ interface ResumeState {
   setSidebarOpen: (isOpen: boolean) => void
   setStructureOpen: (isOpen: boolean) => void
   setAIPanelOpen: (isOpen: boolean) => void
+  setStatusMessage: (
+    message: { text: string; type: 'success' | 'info' } | null
+  ) => void
 
   updateStyleConfig: (config: Partial<ResumeState['styleConfig']>) => void
   setTemplate: (id: TemplateId) => void
@@ -182,6 +213,7 @@ const createResumeSlice = (
   optimizeSuggestion: null,
   sectionConfig: DEFAULT_SECTION_CONFIG,
   currentTemplate: 'standard',
+  viewMode: 'web',
 
   activeSectionKey: null,
   activeItemId: null,
@@ -190,6 +222,7 @@ const createResumeSlice = (
   isAIPanelOpen: true,
   isSaving: false,
   lastSavedAt: null,
+  statusMessage: null,
 
   styleConfig: {
     themeColor: '#0284c7', // Sky 600
@@ -199,6 +232,8 @@ const createResumeSlice = (
     pageMargin: 16, // 16mm
     sectionSpacing: 24,
     itemSpacing: 12,
+    compactMode: false,
+    smartFill: false,
   },
 
   initStore: (
@@ -249,6 +284,37 @@ const createResumeSlice = (
         state.resumeData.basics = { ...state.resumeData.basics, ...data }
       }
     })
+    get().save()
+  },
+
+  updateSectionTitle: (sectionKey, title) => {
+    set((state) => {
+      if (state.resumeData) {
+        if (!state.resumeData.sectionTitles) {
+          state.resumeData.sectionTitles = {}
+        }
+        state.resumeData.sectionTitles[sectionKey] = title
+      }
+    })
+    get().save()
+  },
+
+  setViewMode: (mode) => {
+    set((state) => {
+      state.viewMode = mode
+    })
+  },
+
+  togglePageBreak: (sectionKey) => {
+    set((state) => {
+      if (!state.sectionConfig.pageBreaks) {
+        state.sectionConfig.pageBreaks = {}
+      }
+      // Toggle
+      state.sectionConfig.pageBreaks[sectionKey] =
+        !state.sectionConfig.pageBreaks[sectionKey]
+    })
+    // Save needed because it's part of sectionConfig
     get().save()
   },
 
@@ -353,6 +419,19 @@ const createResumeSlice = (
     })
   },
 
+  setStatusMessage: (message) => {
+    set((state) => {
+      state.statusMessage = message
+    })
+    if (message) {
+      setTimeout(() => {
+        set((state) => {
+          state.statusMessage = null
+        })
+      }, 3000)
+    }
+  },
+
   updateStyleConfig: (config) => {
     set((state) => {
       state.styleConfig = { ...state.styleConfig, ...config }
@@ -363,6 +442,13 @@ const createResumeSlice = (
   setTemplate: (id) => {
     set((state) => {
       state.currentTemplate = id
+      const defaults = TemplateDefaultsMap[id]
+      if (defaults) {
+        state.styleConfig = {
+          ...state.styleConfig,
+          ...defaults,
+        }
+      }
     })
     get().save()
   },

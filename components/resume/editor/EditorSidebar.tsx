@@ -22,7 +22,7 @@ import {
 import { SortableSectionItem } from './SortableSectionItem'
 
 export function EditorSidebar() {
-  const { sectionConfig, reorderSection, activeSectionId, setActiveSection } =
+  const { sectionConfig, reorderSection, activeSectionKey, setActive } =
     useResumeStore()
 
   const sensors = useSensors(
@@ -63,8 +63,8 @@ export function EditorSidebar() {
               <Accordion
                 type="single"
                 collapsible
-                value={activeSectionId || ''}
-                onValueChange={(val) => setActiveSection(val || null)}
+                value={activeSectionKey || ''}
+                onValueChange={(val) => setActive(val || null)}
                 className="space-y-2"
               >
                 {sectionConfig.order.map((sectionKey) => (

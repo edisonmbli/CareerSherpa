@@ -257,7 +257,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
 
           {/* Chapters View */}
           {activeView === 'chapters' && (
-            <div className="flex flex-col h-auto max-h-[85vh]">
+            <div className="flex flex-col h-[65vh]">
               {!activeSectionKey && (
                 <SubmenuHeader
                   onBack={() => setActiveView('menu')}
@@ -265,7 +265,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                 />
               )}
               {activeSectionKey ? (
-                <div className="flex-1 overflow-hidden h-[60vh]">
+                <div className="flex-1 overflow-hidden relative">
                   <RightPropertyPanel isMobile onClose={handleClose} />
                 </div>
               ) : (
@@ -280,7 +280,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
 
           {/* AI View */}
           {activeView === 'ai' && (
-            <div className="flex flex-col h-auto max-h-[85vh] [&_.close-button]:hidden [&_.pb-20]:pb-6 [&_.p-6]:p-4">
+            <div className="flex flex-col h-[65vh] [&_.close-button]:hidden [&_.pb-20]:pb-6 [&_.p-6]:p-4">
               <SubmenuHeader
                 onBack={() => setActiveView('menu')}
                 onClose={handleClose}
@@ -291,8 +291,12 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                   AI suggestions for your resume
                 </DrawerDescription>
               </div>
-              <div className="flex-1 overflow-y-auto px-2 pt-0">
-                <RightPropertyPanel />
+              <div className="flex-1 overflow-hidden relative px-2 pt-0">
+                <RightPropertyPanel
+                  showAI={true}
+                  isMobile
+                  onClose={handleClose}
+                />
               </div>
             </div>
           )}

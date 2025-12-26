@@ -8,6 +8,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { StandardDefaults } from '@/components/resume/templates/TemplateStandard'
+import { TechnicalDefaults } from '@/components/resume/templates/TemplateTechnical'
+import { CorporateDefaults } from '@/components/resume/templates/TemplateCorporate'
+import { ProfessionalDefaults } from '@/components/resume/templates/TemplateProfessional'
+import { ElegantDefaults } from '@/components/resume/templates/TemplateElegant'
+import { DarkSidebarDefaults } from '@/components/resume/templates/TemplateDarkSidebar'
+import { DesignDefaults } from '@/components/resume/templates/TemplateDesign'
+import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Check, LayoutTemplate } from 'lucide-react'
 import { RESUME_TEMPLATES, TemplateId } from '../constants'
@@ -15,63 +24,19 @@ import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
 export function TemplateSelector() {
-  const { currentTemplate, setTemplate, updateStyleConfig } = useResumeStore()
+  const { currentTemplate, setTemplate, setStatusMessage } = useResumeStore()
   const [isOpen, setIsOpen] = useState(false)
 
   const handleSelectTemplate = (id: TemplateId) => {
+    // 1. Update Template ID and Apply Defaults (handled in store setTemplate)
     setTemplate(id)
 
-    // Apply default styles for Corporate template
-    if (id === 'corporate') {
-      updateStyleConfig({
-        themeColor: '#0284c7', // Sky 600
-        fontFamily: 'roboto',
-        fontSize: 1, // 1.00x
-        lineHeight: 1.5,
-        itemSpacing: 12, // Paragraph Spacing (px)
-        pageMargin: 12, // Page Margin (mm)
-      })
-    } else if (id === 'elegant') {
-      // Apply default styles for Elegant template
-      updateStyleConfig({
-        themeColor: '#84A59D', // Muted Sage
-        fontFamily: 'lato',
-        fontSize: 1.05, // 1.05x
-        lineHeight: 1.2,
-        itemSpacing: 12, // Paragraph Spacing (px)
-        pageMargin: 12, // Page Margin (mm)
-      })
-    } else if (id === 'professional') {
-      // Apply default styles for Professional template
-      updateStyleConfig({
-        themeColor: '#7F1D1D', // Burgundy
-        fontFamily: 'roboto',
-        fontSize: 1, // 1.00x
-        lineHeight: 1.4,
-        itemSpacing: 12, // Paragraph Spacing (px)
-        pageMargin: 10, // Page Margin (mm)
-      })
-    } else if (id === 'darkSidebar') {
-      // Apply default styles for Dark Sidebar template
-      updateStyleConfig({
-        themeColor: '#4B5563', // Volcanic Ash
-        fontFamily: 'jetbrains',
-        fontSize: 1.05, // 1.05x
-        lineHeight: 1.4,
-        itemSpacing: 12, // Paragraph Spacing (px)
-        pageMargin: 10, // Page Margin (mm)
-      })
-    } else if (id === 'product') {
-      // Apply default styles for Product template
-      updateStyleConfig({
-        themeColor: '#0F172A', // Slate 900
-        fontFamily: 'inter',
-        fontSize: 1, // 1.00x
-        lineHeight: 1.5,
-        itemSpacing: 14, // Relaxed Spacing
-        pageMargin: 15, // Standard Margin
-      })
-    }
+    // 2. Show Success Status Message (Subtle)
+    const templateName = RESUME_TEMPLATES.find((t) => t.id === id)?.name
+    setStatusMessage({
+      text: `已切换到 ${templateName} 模板，已自动应用最佳字体与配色`,
+      type: 'success',
+    })
 
     setIsOpen(false)
   }

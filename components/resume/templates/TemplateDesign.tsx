@@ -1,21 +1,21 @@
 'use client'
 
 import React from 'react'
-import { TemplateProps } from './types'
+import { TemplateProps, TemplateConfig } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
-import { renderDescription, formatDate } from './utils'
+import {
+  renderDescription,
+  formatDate,
+  getSectionTitle,
+  renderSocialItem,
+} from './utils'
 import { cn } from '@/lib/utils'
 import {
   Mail,
   Phone,
   MapPin,
   Github,
-  Palette,
-  ExternalLink,
   Globe,
-  Linkedin,
-  Dribbble,
-  Twitter,
   User,
   GraduationCap,
   Home,
@@ -40,6 +40,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     certificates,
     hobbies,
     customSections,
+    sectionTitles,
   } = data
 
   const theme = useResumeTheme(styleConfig)
@@ -92,7 +93,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     sectionKey: string
     customIndex?: string
   }) => (
-    <div className="mb-8 mt-4 first:mt-0 relative group">
+    <div className="mb-8 mt-4 first:mt-0 relative group break-after-avoid">
       <div className="flex items-end gap-4">
         <span
           className="font-black opacity-30 mb-1 leading-none"
@@ -161,7 +162,14 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     summary: basics.summary && (
       <section style={theme.section} className="relative mb-12">
         <InteractiveSection sectionKey="summary">
-          <SectionHeader title="Personal Summary" sectionKey="summary" />
+          <SectionHeader
+            title={getSectionTitle(
+              'summary',
+              basics.lang,
+              sectionTitles?.['summary']
+            )}
+            sectionKey="summary"
+          />
           <div className="pl-8 border-l-2 border-slate-50 hover:border-slate-200 transition-colors duration-300 relative py-2">
             <span
               className="absolute -left-3 -top-4 leading-none opacity-20 font-serif select-none"
@@ -188,7 +196,14 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     skills: skills && (
       <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="skills">
-          <SectionHeader title="Toolkit & Expertise" sectionKey="skills" />
+          <SectionHeader
+            title={getSectionTitle(
+              'skills',
+              basics.lang,
+              sectionTitles?.['skills']
+            )}
+            sectionKey="skills"
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8 pl-8">
             {skills.split('\n').map((skillLine, idx) => {
               const [cat, items] = skillLine.includes(':')
@@ -225,11 +240,18 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     workExperiences: workExperiences?.length > 0 && (
       <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="workExperiences">
-          <SectionHeader title="Experience" sectionKey="workExperiences" />
+          <SectionHeader
+            title={getSectionTitle(
+              'workExperiences',
+              basics.lang,
+              sectionTitles?.['workExperiences']
+            )}
+            sectionKey="workExperiences"
+          />
         </InteractiveSection>
         <div className="space-y-5 pl-8">
           {workExperiences.map((item) => (
-            <div key={item.id} className="relative group">
+            <div key={item.id} className="relative group page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
                 {/* Optimized Header for Mobile/Print: Flex Row with No-Wrap Date */}
                 <div className="flex flex-row justify-between items-baseline gap-4 mb-2">
@@ -286,13 +308,17 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="projectExperiences">
           <SectionHeader
-            title="Selected Projects"
+            title={getSectionTitle(
+              'projectExperiences',
+              basics.lang,
+              sectionTitles?.['projectExperiences']
+            )}
             sectionKey="projectExperiences"
           />
         </InteractiveSection>
         <div className="space-y-5 pl-8">
           {projectExperiences.map((item) => (
-            <div key={item.id} className="relative group">
+            <div key={item.id} className="relative group page-break-fix">
               <InteractiveSection
                 sectionKey="projectExperiences"
                 itemId={item.id}
@@ -373,7 +399,14 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     educations: educations?.length > 0 && (
       <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Academic Foundation" sectionKey="educations" />
+          <SectionHeader
+            title={getSectionTitle(
+              'educations',
+              basics.lang,
+              sectionTitles?.['educations']
+            )}
+            sectionKey="educations"
+          />
         </InteractiveSection>
         {/* Academic Matrix Grid Layout - Adaptive */}
         <div
@@ -387,7 +420,10 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
           {educations.map((item) => {
             const isMulti = educations.length > 1
             return (
-              <div key={item.id} className="relative group h-full">
+              <div
+                key={item.id}
+                className="relative group h-full page-break-fix"
+              >
                 <InteractiveSection sectionKey="educations" itemId={item.id}>
                   <div
                     className={cn(
@@ -457,7 +493,14 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     certificates: certificates && (
       <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="certificates">
-          <SectionHeader title="Certificates" sectionKey="certificates" />
+          <SectionHeader
+            title={getSectionTitle(
+              'certificates',
+              basics.lang,
+              sectionTitles?.['certificates']
+            )}
+            sectionKey="certificates"
+          />
           <div
             className="pl-8 text-gray-600 leading-relaxed"
             style={{ fontSize: '0.9em' }}
@@ -470,7 +513,14 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     hobbies: hobbies && (
       <section style={theme.section} className="mb-12">
         <InteractiveSection sectionKey="hobbies">
-          <SectionHeader title="Interests" sectionKey="hobbies" />
+          <SectionHeader
+            title={getSectionTitle(
+              'hobbies',
+              basics.lang,
+              sectionTitles?.['hobbies']
+            )}
+            sectionKey="hobbies"
+          />
           <div
             className="pl-8 text-gray-600 leading-relaxed"
             style={{ fontSize: '0.9em' }}
@@ -486,12 +536,12 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
           <section key={item.id} style={theme.section} className="mb-12">
             <InteractiveSection sectionKey="customSections" itemId={item.id}>
               <SectionHeader
-                title={item.title}
+                title={item.title || 'Untitled'}
                 sectionKey={`customSections-${item.id}`}
               />
               <div
-                className="pl-8 text-gray-600 leading-relaxed"
-                style={{ fontSize: '0.9em' }}
+                style={theme.text}
+                className="text-gray-700 leading-relaxed pl-8"
               >
                 {renderDescription(item.description)}
               </div>
@@ -502,10 +552,19 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
     ),
   }
 
+  const hasSocialLinks = !!(
+    basics.website ||
+    basics.linkedin ||
+    basics.github ||
+    basics.twitter ||
+    basics.behance ||
+    basics.dribbble
+  )
+
   return (
     <div
       className={cn(
-        'bg-white w-full min-h-full transition-all duration-300 px-8 md:px-16 py-12 relative overflow-hidden',
+        'bg-white w-full min-h-full transition-all duration-300 px-8 md:px-12 py-12 relative overflow-hidden',
         theme.fontFamilyClass
       )}
       style={theme.container}
@@ -519,10 +578,11 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
         }}
       />
 
-      {/* Header: Brand Canvas Layout (Asymmetric Split) */}
-      <header className="mb-5 relative z-10">
+      {/* Header: Brand Canvas Split (Asymmetric) */}
+      <header className="mb-16 break-inside-avoid">
+        {/* Left: Identity Block */}
         <InteractiveSection sectionKey="basics">
-          <div className="flex flex-col md:flex-row print:flex-row items-center md:items-stretch print:items-stretch gap-8 md:gap-12">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-10">
             {/* Group 1: Avatar (Left) */}
             <div className="shrink-0 flex justify-center">
               {basics.photoUrl ? (
@@ -544,9 +604,9 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
             <div className="hidden md:block print:block w-[1px] bg-slate-200 self-stretch my-2" />
 
             {/* Right Content Area */}
-            <div className="flex flex-col flex-1 gap-6 text-center md:text-left print:text-left">
+            <div className="flex flex-col flex-1 gap-6 text-center md:text-left print:text-left min-w-0">
               {/* Group 2: Name + Contacts */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
                   <h1
                     className="font-black tracking-tight leading-[0.85] text-gray-900 mb-2"
@@ -557,7 +617,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                   </h1>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center md:justify-start print:justify-start gap-x-2 gap-y-2 text-slate-500 font-bold text-[13px]">
+                <div className="flex flex-wrap items-center justify-center md:justify-start print:justify-start gap-x-4 gap-y-2 text-slate-500 font-bold text-[13px]">
                   {[
                     basics.email && { icon: Mail, value: basics.email },
                     basics.mobile && { icon: Phone, value: basics.mobile },
@@ -574,7 +634,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                             |
                           </span>
                         )}
-                        <div className="flex items-center gap-2 hover:text-slate-900 transition-colors">
+                        <div className="flex items-center gap-2 hover:text-slate-900 transition-colors whitespace-nowrap">
                           <item.icon
                             size={14}
                             style={{ color: theme.themeColor }}
@@ -586,60 +646,37 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                 </div>
               </div>
 
-              {/* Horizontal Divider */}
-              <div className="h-[1px] bg-slate-200 w-full" />
-
-              {/* Group 3: Social Links */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start print:justify-start gap-3">
-                {basics.website && (
-                  <SocialItem
-                    href={basics.website}
-                    icon={Globe}
-                    label={basics.website}
-                    showFullUrl
-                  />
-                )}
-                {basics.linkedin && (
-                  <SocialItem
-                    href={basics.linkedin}
-                    icon={Linkedin}
-                    label={basics.linkedin}
-                    showFullUrl
-                  />
-                )}
-                {basics.github && (
-                  <SocialItem
-                    href={basics.github}
-                    icon={Github}
-                    label={basics.github}
-                    showFullUrl
-                  />
-                )}
-                {basics.twitter && (
-                  <SocialItem
-                    href={basics.twitter}
-                    icon={Twitter}
-                    label={basics.twitter}
-                    showFullUrl
-                  />
-                )}
-                {basics.behance && (
-                  <SocialItem
-                    href={basics.behance}
-                    icon={Palette}
-                    label={basics.behance}
-                    showFullUrl
-                  />
-                )}
-                {basics.dribbble && (
-                  <SocialItem
-                    href={basics.dribbble}
-                    icon={Dribbble}
-                    label={basics.dribbble}
-                    showFullUrl
-                  />
-                )}
-              </div>
+              {/* Horizontal Divider & Social Links */}
+              {hasSocialLinks && (
+                <>
+                  <div className="h-[1px] bg-slate-200 w-full" />
+                  <div className="flex flex-wrap items-center justify-center md:justify-start print:justify-start gap-3">
+                    {[
+                      'website',
+                      'github',
+                      'linkedin',
+                      'twitter',
+                      'dribbble',
+                      'behance',
+                    ].map((key) => {
+                      const val = basics[key as keyof typeof basics]
+                      if (!val) return null
+                      const social = renderSocialItem(key, val)
+                      if (!social) return null
+                      const { href, icon, displayLabel } = social
+                      return (
+                        <SocialItem
+                          key={key}
+                          href={href}
+                          icon={icon}
+                          label={displayLabel}
+                          showFullUrl
+                        />
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </InteractiveSection>
@@ -668,4 +705,15 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       </footer>
     </div>
   )
+}
+
+export const DesignDefaults: TemplateConfig = {
+  themeColor: '#0052FF', // 克莱因蓝
+  fontFamily: 'inter', // Inter (Modern)
+  fontSize: 1,
+  baseFontSize: 13, // 稍小字号
+  lineHeight: 1.6,
+  pageMargin: 16,
+  sectionSpacing: 24,
+  itemSpacing: 12,
 }

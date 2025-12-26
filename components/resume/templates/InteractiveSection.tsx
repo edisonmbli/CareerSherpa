@@ -17,12 +17,16 @@ export function InteractiveSection({
   children,
   className,
 }: InteractiveSectionProps) {
-  const { activeSectionKey, activeItemId, setActive } = useResumeStore()
+  const { activeSectionKey, activeItemId, setActive, sectionConfig } =
+    useResumeStore()
 
   // Strict matching if itemId is provided
   const isActive = itemId
     ? activeSectionKey === sectionKey && activeItemId === itemId
     : activeSectionKey === sectionKey && !activeItemId
+
+  const configKey = itemId || sectionKey
+  const hasPageBreak = sectionConfig.pageBreaks?.[configKey]
 
   // If this is a section container (no itemId) and a child item is active,
   // we might want to show a subtle state or nothing.
@@ -38,6 +42,8 @@ export function InteractiveSection({
         isActive
           ? 'border-blue-500 bg-blue-50/10'
           : 'hover:border-gray-300 hover:bg-gray-50/50',
+        hasPageBreak &&
+          "break-after-page mb-8 border-b-2 border-dashed border-red-300 print:border-none relative after:content-['分页符'] after:absolute after:right-0 after:-bottom-5 after:text-xs after:text-red-400 print:after:hidden",
         className
       )}
       onClick={(e) => {

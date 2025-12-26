@@ -14,15 +14,26 @@ import {
   formCardTitleClass,
   formAddButtonClass,
 } from './styles'
+import { SECTION_TITLES } from '../section-titles'
+import { PageBreakSwitch } from './PageBreakSwitch'
 
 export function CustomSectionForm() {
-  const { resumeData, updateSectionItem, addSectionItem, removeSectionItem } =
-    useResumeStore()
+  const {
+    resumeData,
+    updateSectionItem,
+    addSectionItem,
+    removeSectionItem,
+    updateSectionTitle,
+  } = useResumeStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (!resumeData) return null
 
   const items = resumeData.customSections || []
+  const sectionTitles = resumeData.sectionTitles || {}
+  const basics = resumeData.basics
+  const defaultTitle = SECTION_TITLES['customSections'][basics.lang || 'zh']
+  const currentTitle = sectionTitles['customSections'] || ''
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id)
@@ -30,6 +41,19 @@ export function CustomSectionForm() {
 
   return (
     <div className="space-y-4">
+      {/* Section Title Editor */}
+      <div className="space-y-2 border-b pb-4 mb-4">
+        <Label className="text-xs font-medium text-gray-500">
+          自定义章节标题
+        </Label>
+        <Input
+          value={currentTitle}
+          onChange={(e) => updateSectionTitle('customSections', e.target.value)}
+          placeholder={defaultTitle}
+          className={formInputClass}
+        />
+      </div>
+
       {items.map((item, index) => (
         <div key={item.id} className={formCardClass}>
           <div className="flex items-center justify-between mb-2">
@@ -99,6 +123,8 @@ export function CustomSectionForm() {
                   💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
                 </p>
               </div>
+
+              <PageBreakSwitch sectionKey={item.id} />
             </div>
           )}
         </div>
@@ -111,6 +137,8 @@ export function CustomSectionForm() {
       >
         <Plus className="mr-2 h-4 w-4" /> 添加自定义板块
       </Button>
+
+      <PageBreakSwitch sectionKey="customSections" />
     </div>
   )
 }

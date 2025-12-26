@@ -2,7 +2,6 @@
 
 import { useResumeStore } from '@/store/resume-store'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { X, Lightbulb, ArrowLeft, Sparkles, Bot } from 'lucide-react'
 import { BasicsForm } from '../forms/BasicsForm'
 import { SummaryForm } from '../forms/SummaryForm'
@@ -29,9 +28,11 @@ const SECTION_LABELS: Record<string, string> = {
 export function RightPropertyPanel({
   isMobile,
   onClose,
+  showAI,
 }: {
   isMobile?: boolean
   onClose?: () => void
+  showAI?: boolean
 }) {
   const {
     activeSectionKey,
@@ -96,8 +97,8 @@ export function RightPropertyPanel({
   }
 
   if (!activeSectionKey) {
-    // If panel is not open (closing), don't render content to avoid flash
-    if (!isAIPanelOpen) return null
+    // If panel is not open (closing) and not forced to show AI, don't render content to avoid flash
+    if (!isAIPanelOpen && !showAI) return null
 
     return (
       <div className="flex flex-col h-full bg-white dark:bg-zinc-900 transition-colors">
@@ -113,8 +114,16 @@ export function RightPropertyPanel({
         </div>
 
         {/* AI Suggestions with native scrolling for better reliability */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="px-6 pb-20 pt-4">
+        <div
+          className="flex-1 overflow-y-auto min-h-0"
+          data-vaul-no-drag
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
+          }}
+        >
+          <div className="px-6 pb-24 pt-4">
             {optimizeSuggestion ? (
               <div className="space-y-6">
                 <div className="flex items-start gap-3 bg-gradient-to-r from-blue-50/80 to-blue-200/80 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30">
@@ -244,11 +253,20 @@ export function RightPropertyPanel({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className={cn('pb-20', isMobile ? 'p-4' : 'p-6')}>
+      {/* Content Area with native scrolling for better reliability */}
+      <div
+        className="flex-1 overflow-y-auto min-h-0"
+        data-vaul-no-drag
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+          overscrollBehavior: 'contain',
+        }}
+      >
+        <div className={cn('pb-24', isMobile ? 'p-4' : 'p-6')}>
           {renderForm()}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }

@@ -17,17 +17,42 @@ import {
   Dribbble,
   Palette,
   Upload,
+  Languages,
+  Type,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useState } from 'react'
+import { SECTION_TITLES, SectionKey } from '../section-titles'
+import { SOCIAL_PLATFORMS } from '../social-config'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function BasicsForm() {
-  const { resumeData, updateBasics } = useResumeStore()
+  const { resumeData, updateBasics, updateSectionTitle } = useResumeStore()
+  const [isTitlesOpen, setIsTitlesOpen] = useState(false)
 
   if (!resumeData) return null
 
   const basics = resumeData.basics
+  const sectionTitles = resumeData.sectionTitles || {}
 
-  const handleChange = (key: keyof ResumeData['basics'], value: string) => {
+  const handleChange = (
+    key: keyof ResumeData['basics'],
+    value: string | undefined
+  ) => {
     updateBasics({ [key]: value })
+  }
+
+  const handleTitleChange = (key: string, value: string) => {
+    updateSectionTitle(key, value)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +81,30 @@ export function BasicsForm() {
 
   return (
     <div className="space-y-8">
+      {/* Group: Language Selection (Moved Up) */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
+          <Languages className="w-4 h-4" />
+          标题语言
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+          <div className="space-y-2">
+            <Select
+              value={basics.lang || 'zh'}
+              onValueChange={(v) => handleChange('lang', v as 'zh' | 'en')}
+            >
+              <SelectTrigger className={formInputClass}>
+                <SelectValue placeholder="选择语言" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="zh">中文 (Chinese)</SelectItem>
+                <SelectItem value="en">英文 (English)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       {/* Group 1: Core Information */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
@@ -162,84 +211,44 @@ export function BasicsForm() {
           社交链接
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-gray-600">
-              <Github className="w-3.5 h-3.5" />
-              GitHub
-            </Label>
-            <Input
-              value={basics.github || ''}
-              onChange={(e) => handleChange('github', e.target.value)}
-              className={formInputClass}
-              placeholder="github.com/username"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-gray-600">
-              <Linkedin className="w-3.5 h-3.5" />
-              LinkedIn
-            </Label>
-            <Input
-              value={basics.linkedin || ''}
-              onChange={(e) => handleChange('linkedin', e.target.value)}
-              className={formInputClass}
-              placeholder="linkedin.com/in/username"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-gray-600">
-              <Globe className="w-3.5 h-3.5" />
-              个人网站
-            </Label>
-            <Input
-              value={basics.website || ''}
-              onChange={(e) => handleChange('website', e.target.value)}
-              className={formInputClass}
-              placeholder="your-portfolio.com"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-gray-600">
-              <Twitter className="w-3.5 h-3.5" />
-              Twitter / X
-            </Label>
-            <Input
-              value={basics.twitter || ''}
-              onChange={(e) => handleChange('twitter', e.target.value)}
-              className={formInputClass}
-              placeholder="twitter.com/username"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-gray-600">
-              <Palette className="w-3.5 h-3.5" />
-              Behance
-            </Label>
-            <Input
-              value={basics.behance || ''}
-              onChange={(e) => handleChange('behance', e.target.value)}
-              className={formInputClass}
-              placeholder="behance.net/user"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-gray-600">
-              <Dribbble className="w-3.5 h-3.5" />
-              Dribbble
-            </Label>
-            <Input
-              value={basics.dribbble || ''}
-              onChange={(e) => handleChange('dribbble', e.target.value)}
-              className={formInputClass}
-              placeholder="dribbble.com/user"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-y-5">
+          {Object.values(SOCIAL_PLATFORMS).map((platform) => (
+            <div key={platform.key} className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-gray-600">
+                <platform.icon className="w-3.5 h-3.5" />
+                {platform.label}
+              </Label>
+              <div className="flex rounded-md shadow-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                {platform.urlPrefix && (
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-xs select-none">
+                    {platform.domainDisplay}
+                  </span>
+                )}
+                <Input
+                  value={basics[platform.key] || ''}
+                  onChange={(e) => {
+                    let val = e.target.value
+                    // Smart cleaning for standard platforms
+                    if (
+                      platform.key !== 'website' &&
+                      val.includes(platform.domainDisplay)
+                    ) {
+                      val = val
+                        .replace(/^https?:\/\/(www\.)?/, '')
+                        .replace(platform.domainDisplay, '')
+                    }
+                    handleChange(platform.key, val)
+                  }}
+                  className={cn(
+                    formInputClass,
+                    platform.urlPrefix ? 'rounded-l-none' : '',
+                    'focus-visible:ring-0 focus-visible:ring-offset-0' // Remove default input ring to use container ring
+                  )}
+                  placeholder={platform.placeholder}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,9 +1,14 @@
 'use client'
 
 import React from 'react'
-import { TemplateProps } from './types'
+import { TemplateProps, TemplateConfig } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
-import { renderDescription, formatDate } from './utils'
+import {
+  renderDescription,
+  formatDate,
+  getSectionTitle,
+  renderSocialItem,
+} from './utils'
 import { cn } from '@/lib/utils'
 import {
   Mail,
@@ -11,12 +16,6 @@ import {
   Github,
   MapPin,
   ExternalLink,
-  Link as LinkIcon,
-  Twitter,
-  Palette,
-  Dribbble,
-  Linkedin,
-  Globe,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
@@ -38,6 +37,7 @@ export function TemplateTechnical({
     certificates,
     hobbies,
     customSections,
+    sectionTitles,
   } = data
   const theme = useResumeTheme({
     themeColor: '#71717a', // Zinc 500
@@ -51,7 +51,7 @@ export function TemplateTechnical({
 
   // Helper: Section Title with technical style
   const SectionHeader = ({ title }: { title: string }) => (
-    <div className="flex items-center mb-4 mt-2">
+    <div className="flex items-center mb-4 mt-2 break-after-avoid">
       <h3
         className="font-bold uppercase tracking-wider whitespace-nowrap border-b-2 pb-1"
         style={{
@@ -70,7 +70,7 @@ export function TemplateTechnical({
   // UPDATED: Line now spans full height of content (no "extra line" in margin)
   // And last item also has the line (no "missing line")
   const TimelineItem = ({ children }: { children: React.ReactNode }) => (
-    <div className="relative pl-6 mb-6 last:mb-0 group">
+    <div className="relative pl-6 mb-6 last:mb-0 group page-break-fix">
       {/* Vertical Line - Spans the full height of THIS item's content */}
       <div className="absolute left-[3.5px] top-[14px] bottom-0 w-[1px] bg-gray-200 group-hover:bg-gray-400 transition-colors" />
 
@@ -85,7 +85,13 @@ export function TemplateTechnical({
     summary: basics.summary && (
       <InteractiveSection sectionKey="summary">
         <section style={theme.section}>
-          <SectionHeader title="Summary" />
+          <SectionHeader
+            title={getSectionTitle(
+              'summary',
+              basics.lang,
+              sectionTitles?.['summary']
+            )}
+          />
           <div
             style={theme.text}
             className="leading-relaxed text-gray-700 text-justify"
@@ -98,7 +104,13 @@ export function TemplateTechnical({
     skills: skills && (
       <InteractiveSection sectionKey="skills">
         <section style={theme.section}>
-          <SectionHeader title="Technical Skills" />
+          <SectionHeader
+            title={getSectionTitle(
+              'skills',
+              basics.lang,
+              sectionTitles?.['skills']
+            )}
+          />
           <div className="flex flex-col gap-2">
             {skills.split('\n').map((skillLine, idx) => {
               if (!skillLine.trim()) return null
@@ -150,7 +162,13 @@ export function TemplateTechnical({
     workExperiences: workExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="workExperiences">
-          <SectionHeader title="Experience" />
+          <SectionHeader
+            title={getSectionTitle(
+              'workExperiences',
+              basics.lang,
+              sectionTitles?.['workExperiences']
+            )}
+          />
         </InteractiveSection>
         <div className="mt-0">
           {workExperiences.map((item, idx) => (
@@ -196,7 +214,13 @@ export function TemplateTechnical({
     projectExperiences: projectExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="projectExperiences">
-          <SectionHeader title="Projects" />
+          <SectionHeader
+            title={getSectionTitle(
+              'projectExperiences',
+              basics.lang,
+              sectionTitles?.['projectExperiences']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-6 pl-2">
           {projectExperiences.map((item) => (
@@ -283,7 +307,13 @@ export function TemplateTechnical({
     educations: educations?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Education" />
+          <SectionHeader
+            title={getSectionTitle(
+              'educations',
+              basics.lang,
+              sectionTitles?.['educations']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-3">
           {educations.map((item) => (
@@ -292,7 +322,7 @@ export function TemplateTechnical({
               sectionKey="educations"
               itemId={item.id}
             >
-              <div className="flex justify-between items-baseline border-b border-gray-50 pb-2 last:border-0">
+              <div className="flex justify-between items-baseline border-b border-gray-50 pb-2 last:border-0 page-break-fix">
                 <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
                   <span
                     className="font-bold text-gray-900"
@@ -324,7 +354,13 @@ export function TemplateTechnical({
     certificates: certificates && (
       <InteractiveSection sectionKey="certificates">
         <section style={theme.section}>
-          <SectionHeader title="Certificates" />
+          <SectionHeader
+            title={getSectionTitle(
+              'certificates',
+              basics.lang,
+              sectionTitles?.['certificates']
+            )}
+          />
           <div style={theme.text} className="text-gray-700 leading-relaxed">
             {renderDescription(certificates)}
           </div>
@@ -334,7 +370,13 @@ export function TemplateTechnical({
     hobbies: hobbies && (
       <InteractiveSection sectionKey="hobbies">
         <section style={theme.section}>
-          <SectionHeader title="Interests" />
+          <SectionHeader
+            title={getSectionTitle(
+              'hobbies',
+              basics.lang,
+              sectionTitles?.['hobbies']
+            )}
+          />
           <div style={theme.text} className="text-gray-700 leading-relaxed">
             {renderDescription(hobbies)}
           </div>
@@ -346,7 +388,7 @@ export function TemplateTechnical({
         {customSections.map((item) => (
           <section key={item.id} style={theme.section}>
             <InteractiveSection sectionKey="customSections" itemId={item.id}>
-              <SectionHeader title={item.title} />
+              <SectionHeader title={item.title || 'Untitled'} />
               <div style={theme.text} className="text-gray-700 leading-relaxed">
                 {renderDescription(item.description)}
               </div>
@@ -368,13 +410,13 @@ export function TemplateTechnical({
       {/* Header */}
       <InteractiveSection sectionKey="basics">
         <header
-          className="mb-8 flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 pb-6"
+          className="mb-8 flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4 border-b-2 pb-6"
           style={{ borderColor: theme.themeColor }}
         >
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 flex flex-col items-center sm:items-start space-y-3 w-full sm:w-auto">
             <div>
               <h1
-                className="font-bold text-gray-900 leading-none mb-1 tracking-tighter"
+                className="font-bold text-gray-900 leading-none mb-1 tracking-tighter text-center sm:text-left"
                 style={{ fontSize: '2.5em' }}
               >
                 {basics.name}
@@ -382,7 +424,7 @@ export function TemplateTechnical({
             </div>
 
             <div
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 text-gray-600 font-medium"
+              className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-2 text-gray-600 font-medium"
               style={{ fontSize: '0.9em' }}
             >
               {basics.email && (
@@ -403,91 +445,43 @@ export function TemplateTechnical({
             </div>
 
             {/* Social / Links */}
-            <div className="flex flex-wrap gap-3 pt-1">
-              {basics.website && (
-                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
-                  <Globe size={11} />
-                  <a
-                    href={basics.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.8em' }}
+            <div className="flex flex-wrap justify-center sm:justify-start gap-3 pt-1">
+              {[
+                'website',
+                'github',
+                'linkedin',
+                'twitter',
+                'dribbble',
+                'behance',
+              ].map((key) => {
+                const val = basics[key as keyof typeof basics]
+                if (!val) return null
+                const social = renderSocialItem(key, val)
+                if (!social) return null
+                const { href, icon: Icon, displayLabel } = social
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
                   >
-                    {basics.website.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-              {basics.github && (
-                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
-                  <Github size={11} />
-                  <a
-                    href={basics.github}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.8em' }}
-                  >
-                    {basics.github.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-              {basics.linkedin && (
-                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
-                  <Linkedin size={11} />
-                  <a
-                    href={basics.linkedin}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.8em' }}
-                  >
-                    {basics.linkedin.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-              {basics.twitter && (
-                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
-                  <Twitter size={11} />
-                  <a
-                    href={basics.twitter}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.8em' }}
-                  >
-                    {basics.twitter.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-              {basics.dribbble && (
-                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
-                  <Dribbble size={11} />
-                  <a
-                    href={basics.dribbble}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.8em' }}
-                  >
-                    {basics.dribbble.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-              {basics.behance && (
-                <div className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
-                  <Palette size={11} />
-                  <a
-                    href={basics.behance}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.8em' }}
-                  >
-                    {basics.behance.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
+                    <Icon size={11} />
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: '0.8em' }}
+                    >
+                      {displayLabel}
+                    </a>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           {/* Avatar - Only show if present */}
           {basics.photoUrl && (
-            <div className="shrink-0">
+            <div className="shrink-0 order-first sm:order-last">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={basics.photoUrl}
@@ -518,4 +512,15 @@ export function TemplateTechnical({
       </footer>
     </div>
   )
+}
+
+export const TechnicalDefaults: TemplateConfig = {
+  themeColor: '#2563EB', // Tech Blue (Tailwind blue-600)
+  fontFamily: 'jetbrains-mono', // 硬核代码感
+  fontSize: 1, // Multiplier
+  baseFontSize: 13.5, // 稍小字号，适合技术栈这种高密度内容
+  lineHeight: 1.5, // 标准行高
+  pageMargin: 10, // p-10 (约 2.5cm)，留白适中
+  sectionSpacing: 24,
+  itemSpacing: 12,
 }

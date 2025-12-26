@@ -2,22 +2,16 @@
 'use client'
 
 import React from 'react'
-import { TemplateProps } from './types'
+import { TemplateProps, TemplateConfig } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
-import { renderDescription, formatDate } from './utils'
-import { cn } from '@/lib/utils'
 import {
-  Mail,
-  Phone,
-  MapPin,
-  Github,
-  ExternalLink,
-  Twitter,
-  Palette,
-  Dribbble,
-  Linkedin,
-  Globe,
-} from 'lucide-react'
+  renderDescription,
+  formatDate,
+  getSectionTitle,
+  renderSocialItem,
+} from './utils'
+import { cn } from '@/lib/utils'
+import { Mail, Phone, MapPin, Github, ExternalLink } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 /**
@@ -34,13 +28,14 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
     certificates,
     hobbies,
     customSections,
+    sectionTitles,
   } = data
   const theme = useResumeTheme(styleConfig)
   const { isMobile } = theme
 
   // 辅助组件：雅致模块标题 (居中 + 莫兰迪发丝线)
   const SectionHeader = ({ title }: { title: string }) => (
-    <div className="flex flex-col items-center mb-6 mt-10">
+    <div className="flex flex-col items-center mb-6 mt-10 break-after-avoid">
       <h3 className="text-[1.1em] font-serif font-bold text-gray-800 tracking-[0.2em] uppercase mb-2">
         {title}
       </h3>
@@ -89,7 +84,13 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       <section style={theme.section}>
         <InteractiveSection sectionKey="summary">
           <div className="flex flex-col items-center">
-            <SectionHeader title="Professional Summary" />
+            <SectionHeader
+              title={getSectionTitle(
+                'summary',
+                basics.lang,
+                sectionTitles?.['summary']
+              )}
+            />
             <p
               className="leading-[1.8] text-gray-600 text-center max-w-[95%] italic"
               style={theme.text}
@@ -104,7 +105,13 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       <section style={theme.section}>
         <InteractiveSection sectionKey="skills">
           <div>
-            <SectionHeader title="Expertise" />
+            <SectionHeader
+              title={getSectionTitle(
+                'skills',
+                basics.lang,
+                sectionTitles?.['skills']
+              )}
+            />
             <div
               className="flex flex-wrap justify-center gap-x-6 gap-y-3 leading-relaxed text-gray-600 italic text-center"
               style={theme.text}
@@ -130,11 +137,17 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
     workExperiences: workExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="workExperiences">
-          <SectionHeader title="Experience" />
+          <SectionHeader
+            title={getSectionTitle(
+              'workExperiences',
+              basics.lang,
+              sectionTitles?.['workExperiences']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-8">
           {workExperiences.map((item) => (
-            <div key={item.id} className="group">
+            <div key={item.id} className="group page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
                 <div className="flex flex-col items-center">
                   <div className="w-full flex justify-between items-baseline mb-2">
@@ -174,11 +187,17 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
     projectExperiences: projectExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="projectExperiences">
-          <SectionHeader title="Selected Projects" />
+          <SectionHeader
+            title={getSectionTitle(
+              'projectExperiences',
+              basics.lang,
+              sectionTitles?.['projectExperiences']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-6">
           {projectExperiences.map((item) => (
-            <div key={item.id}>
+            <div key={item.id} className="page-break-fix">
               <InteractiveSection
                 sectionKey="projectExperiences"
                 itemId={item.id}
@@ -257,11 +276,17 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
     educations: educations?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Education" />
+          <SectionHeader
+            title={getSectionTitle(
+              'educations',
+              basics.lang,
+              sectionTitles?.['educations']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-4">
           {educations.map((item) => (
-            <div key={item.id}>
+            <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="educations" itemId={item.id}>
                 <div className="flex flex-col items-center text-center">
                   <span
@@ -300,7 +325,13 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       <section style={theme.section}>
         <InteractiveSection sectionKey="certificates">
           <div>
-            <SectionHeader title="Certifications" />
+            <SectionHeader
+              title={getSectionTitle(
+                'certificates',
+                basics.lang,
+                sectionTitles?.['certificates']
+              )}
+            />
             <Description content={certificates} center />
           </div>
         </InteractiveSection>
@@ -310,7 +341,13 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       <section style={theme.section}>
         <InteractiveSection sectionKey="hobbies">
           <div>
-            <SectionHeader title="Interests" />
+            <SectionHeader
+              title={getSectionTitle(
+                'hobbies',
+                basics.lang,
+                sectionTitles?.['hobbies']
+              )}
+            />
             <Description content={hobbies} center />
           </div>
         </InteractiveSection>
@@ -322,7 +359,7 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
           {customSections.map((item) => (
             <section key={item.id} style={theme.section}>
               <div className="flex flex-col">
-                <SectionHeader title={item.title} />
+                <SectionHeader title={item.title || 'Untitled'} />
                 <Description
                   content={item.description}
                   className="w-full text-justify"
@@ -401,108 +438,37 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
                 {basics.address || basics.location}
               </div>
             )}
-            {basics.website && (
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={basics.website}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
-                >
-                  <Globe
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: theme.themeColor, opacity: 0.8 }}
-                  />
-                  {basics.website.replace(/^https?:\/\//, '')}
-                </a>
-              </div>
-            )}
-            {basics.github && (
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={basics.github}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
-                >
-                  <Github
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: theme.themeColor, opacity: 0.8 }}
-                  />
-                  {basics.github.replace(/^https?:\/\//, '')}
-                </a>
-              </div>
-            )}
-            {basics.linkedin && (
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={basics.linkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
-                >
-                  <Linkedin
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: theme.themeColor, opacity: 0.8 }}
-                  />
-                  {basics.linkedin.replace(/^https?:\/\//, '')}
-                </a>
-              </div>
-            )}
-            {basics.twitter && (
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={basics.twitter}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
-                >
-                  <Twitter
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: theme.themeColor, opacity: 0.8 }}
-                  />
-                  {basics.twitter.replace(/^https?:\/\//, '')}
-                </a>
-              </div>
-            )}
-            {basics.dribbble && (
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={basics.dribbble}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
-                >
-                  <Dribbble
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: theme.themeColor, opacity: 0.8 }}
-                  />
-                  {basics.dribbble.replace(/^https?:\/\//, '')}
-                </a>
-              </div>
-            )}
-            {basics.behance && (
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={basics.behance}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
-                >
-                  <Palette
-                    size={12}
-                    strokeWidth={1.5}
-                    style={{ color: theme.themeColor, opacity: 0.8 }}
-                  />
-                  {basics.behance.replace(/^https?:\/\//, '')}
-                </a>
-              </div>
-            )}
+            {[
+              'website',
+              'github',
+              'linkedin',
+              'twitter',
+              'dribbble',
+              'behance',
+            ].map((key) => {
+              const val = basics[key as keyof typeof basics]
+              if (!val) return null
+              const social = renderSocialItem(key, val)
+              if (!social) return null
+              const { href, icon: Icon, displayLabel } = social
+              return (
+                <div key={key} className="flex items-center gap-1.5">
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 hover:text-gray-800 transition-colors"
+                  >
+                    <Icon
+                      size={12}
+                      strokeWidth={1.5}
+                      style={{ color: theme.themeColor, opacity: 0.8 }}
+                    />
+                    {displayLabel}
+                  </a>
+                </div>
+              )
+            })}
           </div>
 
           <div
@@ -530,4 +496,15 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       </footer>
     </div>
   )
+}
+
+export const ElegantDefaults: TemplateConfig = {
+  themeColor: '#475569', // Slate Grey
+  fontFamily: 'playfair', // Playfair Display 时尚杂志感
+  fontSize: 1,
+  baseFontSize: 13.5,
+  lineHeight: 1.75, // 宽松行高
+  pageMargin: 12,
+  sectionSpacing: 24,
+  itemSpacing: 12,
 }

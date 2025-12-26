@@ -139,7 +139,6 @@ export const customizeStrategy: WorkerStrategy = {
 
       await updateServiceExecutionStatus(
         serviceId,
-        // @ts-ignore: dynamic enum
         ExecutionStatus.CUSTOMIZE_FAILED,
         {
           executionSessionId: variables.executionSessionId,
@@ -197,7 +196,6 @@ export const customizeStrategy: WorkerStrategy = {
 
       await updateServiceExecutionStatus(
         serviceId,
-        // @ts-ignore: dynamic enum
         ExecutionStatus.CUSTOMIZE_COMPLETED,
         {
           executionSessionId: variables.executionSessionId,
@@ -237,7 +235,6 @@ export const customizeStrategy: WorkerStrategy = {
 
       await updateServiceExecutionStatus(
         serviceId,
-        // @ts-ignore: dynamic enum
         ExecutionStatus.CUSTOMIZE_FAILED,
         {
           executionSessionId: variables.executionSessionId,

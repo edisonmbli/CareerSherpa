@@ -14,6 +14,8 @@ import {
   formCardTitleClass,
   formAddButtonClass,
 } from './styles'
+import { SECTION_TITLES } from '../section-titles'
+import { PageBreakSwitch } from './PageBreakSwitch'
 
 export function EducationForm() {
   const {
@@ -23,11 +25,16 @@ export function EducationForm() {
     removeSectionItem,
     activeItemId,
     setActive,
+    updateSectionTitle,
   } = useResumeStore()
 
   if (!resumeData) return null
 
   const items = resumeData.educations || []
+  const sectionTitles = resumeData.sectionTitles || {}
+  const basics = resumeData.basics
+  const defaultTitle = SECTION_TITLES['educations'][basics.lang || 'zh']
+  const currentTitle = sectionTitles['educations'] || ''
 
   // If a specific item is active, show ONLY that item's form
   if (activeItemId) {
@@ -127,6 +134,8 @@ export function EducationForm() {
                 💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
               </p>
             </div>
+
+            <PageBreakSwitch sectionKey={activeItem.id} />
           </div>
         </div>
       )
@@ -140,6 +149,19 @@ export function EducationForm() {
 
   return (
     <div className="space-y-4">
+      {/* Section Title Editor */}
+      <div className="space-y-2 border-b pb-4 mb-4">
+        <Label className="text-xs font-medium text-gray-500">
+          自定义章节标题
+        </Label>
+        <Input
+          value={currentTitle}
+          onChange={(e) => updateSectionTitle('educations', e.target.value)}
+          placeholder={defaultTitle}
+          className={formInputClass}
+        />
+      </div>
+
       {items.map((item, index) => (
         <div
           key={item.id}
@@ -193,6 +215,8 @@ export function EducationForm() {
       >
         <Plus className="mr-2 h-4 w-4" /> 添加教育经历
       </Button>
+
+      <PageBreakSwitch sectionKey="educations" />
     </div>
   )
 }

@@ -35,6 +35,7 @@ import {
   Heart,
   Layers,
 } from 'lucide-react'
+import { Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const SECTION_LABELS: Record<string, string> = {
@@ -70,6 +71,7 @@ function SortableItem({
   onToggle,
   isMobile,
 }: any) {
+  const { sectionConfig, resumeData } = useResumeStore()
   const {
     attributes,
     listeners,
@@ -88,6 +90,19 @@ function SortableItem({
 
   const Icon = SECTION_ICONS[id] || Layers
 
+  // Check if section itself or any of its items has a page break
+  const sectionHasBreak = !!sectionConfig.pageBreaks?.[id]
+  const itemsHaveBreak = (() => {
+    if (!resumeData) return false
+    const items = (resumeData as any)[id]
+    if (Array.isArray(items)) {
+      return items.some((item: any) => sectionConfig.pageBreaks?.[item.id])
+    }
+    return false
+  })()
+
+  const hasPageBreak = sectionHasBreak || itemsHaveBreak
+
   return (
     <div
       ref={setNodeRef}
@@ -102,7 +117,8 @@ function SortableItem({
           : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300',
         isDragging &&
           'opacity-50 bg-gray-50 dark:bg-zinc-800 ring-2 ring-blue-500/20 z-50 shadow-lg',
-        isHidden && 'opacity-60 grayscale'
+        isHidden && 'opacity-60 grayscale',
+        hasPageBreak && 'border-l-2 border-orange-300'
       )}
       onClick={onClick}
     >
@@ -145,6 +161,12 @@ function SortableItem({
       >
         {label}
       </span>
+
+      {hasPageBreak && (
+        <div className="flex items-center gap-1 text-orange-600">
+          <Scissors className={cn('h-3.5 w-3.5', isMobile && 'h-5 w-5')} />
+        </div>
+      )}
 
       <Button
         variant="ghost"

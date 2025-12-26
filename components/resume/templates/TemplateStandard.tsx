@@ -1,21 +1,16 @@
 'use client'
 
 import React from 'react'
-import { TemplateProps } from './types'
+import { TemplateProps, TemplateConfig } from './types'
 import { useResumeTheme } from './hooks/useResumeTheme'
-import { renderDescription, formatDate } from './utils'
-import { cn } from '@/lib/utils'
 import {
-  Mail,
-  Phone,
-  MapPin,
-  Github,
-  Linkedin,
-  Globe,
-  Twitter,
-  Palette,
-  Dribbble,
-} from 'lucide-react'
+  renderDescription,
+  formatDate,
+  getSectionTitle,
+  renderSocialItem,
+} from './utils'
+import { cn } from '@/lib/utils'
+import { Mail, Phone, MapPin, Github, Globe } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
 
 /**
@@ -32,6 +27,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     certificates,
     hobbies,
     customSections,
+    sectionTitles,
   } = data
   const theme = useResumeTheme({
     themeColor: '#0284c7',
@@ -40,7 +36,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
 
   // 辅助组件：标准模块标题 (文字下方短粗线)
   const SectionHeader = ({ title }: { title: string }) => (
-    <div className="mb-2 mt-2 first:mt-0">
+    <div className="mb-2 mt-2 first:mt-0 break-after-avoid">
       <div className="inline-block">
         <h3
           className="font-bold text-gray-900 uppercase tracking-wider mb-1"
@@ -61,7 +57,13 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     summary: basics.summary && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="summary">
-          <SectionHeader title="Professional Summary" />
+          <SectionHeader
+            title={getSectionTitle(
+              'summary',
+              basics.lang,
+              sectionTitles?.['summary']
+            )}
+          />
           <div
             className="leading-relaxed text-gray-700 text-justify"
             style={{ fontSize: '0.93em' }}
@@ -74,7 +76,13 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     skills: skills && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="skills">
-          <SectionHeader title="Skills & Interests" />
+          <SectionHeader
+            title={getSectionTitle(
+              'skills',
+              basics.lang,
+              sectionTitles?.['skills']
+            )}
+          />
           <div
             className="text-gray-700 leading-relaxed px-1"
             style={{ fontSize: '0.93em' }}
@@ -92,11 +100,17 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     workExperiences: workExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="workExperiences">
-          <SectionHeader title="Work Experience" />
+          <SectionHeader
+            title={getSectionTitle(
+              'workExperiences',
+              basics.lang,
+              sectionTitles?.['workExperiences']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-2">
           {workExperiences.map((item) => (
-            <div key={item.id}>
+            <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
                 <div className="flex justify-between items-baseline mb-1">
                   <h4
@@ -136,11 +150,17 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     projectExperiences: projectExperiences?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="projectExperiences">
-          <SectionHeader title="Projects" />
+          <SectionHeader
+            title={getSectionTitle(
+              'projectExperiences',
+              basics.lang,
+              sectionTitles?.['projectExperiences']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-2">
           {projectExperiences.map((item) => (
-            <div key={item.id}>
+            <div key={item.id} className="page-break-fix">
               <InteractiveSection
                 sectionKey="projectExperiences"
                 itemId={item.id}
@@ -212,11 +232,17 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     educations: educations?.length > 0 && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="educations">
-          <SectionHeader title="Education" />
+          <SectionHeader
+            title={getSectionTitle(
+              'educations',
+              basics.lang,
+              sectionTitles?.['educations']
+            )}
+          />
         </InteractiveSection>
         <div className="space-y-4">
           {educations.map((item) => (
-            <div key={item.id}>
+            <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="educations" itemId={item.id}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline mb-1">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -257,7 +283,13 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     certificates: certificates && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="certificates">
-          <SectionHeader title="Certificates" />
+          <SectionHeader
+            title={getSectionTitle(
+              'certificates',
+              basics.lang,
+              sectionTitles?.['certificates']
+            )}
+          />
           <div
             className="text-gray-700 leading-relaxed"
             style={{ fontSize: '0.93em' }}
@@ -270,7 +302,13 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     hobbies: hobbies && (
       <section style={theme.section}>
         <InteractiveSection sectionKey="hobbies">
-          <SectionHeader title="Interests" />
+          <SectionHeader
+            title={getSectionTitle(
+              'hobbies',
+              basics.lang,
+              sectionTitles?.['hobbies']
+            )}
+          />
           <div
             className="text-gray-700 leading-relaxed"
             style={{ fontSize: '0.93em' }}
@@ -285,7 +323,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
         {customSections.map((item) => (
           <section key={item.id} style={theme.section}>
             <InteractiveSection sectionKey="customSections" itemId={item.id}>
-              <SectionHeader title={item.title} />
+              <SectionHeader title={item.title || 'Untitled'} />
               <div
                 className="text-gray-700 leading-relaxed"
                 style={{ fontSize: '0.93em' }}
@@ -309,8 +347,8 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     >
       {/* Header: Left-aligned Identity with Avatar & Horizontal Contact */}
       <InteractiveSection sectionKey="basics">
-        <header className="flex flex-col-reverse md:flex-row items-center md:items-center justify-between gap-6 mb-6 pt-4">
-          <div className="flex-1 text-center md:text-left">
+        <header className="flex flex-col-reverse md:flex-row print:flex-row items-center md:items-center print:items-center justify-between gap-6 mb-6 pt-4">
+          <div className="flex-1 text-center md:text-left print:text-left">
             <h1
               className="font-bold text-gray-900 tracking-tighter mb-3"
               style={{ fontSize: '2.3em' }}
@@ -321,7 +359,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             <div className="flex flex-col gap-2 mt-3">
               {/* Row 1: Contact Info */}
               <div
-                className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-1 text-gray-500"
+                className="flex flex-wrap justify-center md:justify-start print:justify-start items-center gap-x-4 gap-y-1 text-gray-500"
                 style={{ fontSize: '0.93em' }}
               >
                 {basics.mobile && (
@@ -346,87 +384,37 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
 
               {/* Row 2: Social Links */}
               <div
-                className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-1 text-gray-500"
+                className="flex flex-wrap justify-center md:justify-start print:justify-start items-center gap-x-4 gap-y-1 text-gray-500"
                 style={{ fontSize: '0.93em' }}
               >
-                {basics.website && (
-                  <a
-                    href={basics.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
-                  >
-                    <Globe size={13} />
-                    <span className="underline underline-offset-2">
-                      {basics.website.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
-                )}
-                {basics.github && (
-                  <a
-                    href={basics.github}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
-                  >
-                    <Github size={13} />
-                    <span className="underline underline-offset-2">
-                      {basics.github.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
-                )}
-                {basics.linkedin && (
-                  <a
-                    href={basics.linkedin}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
-                  >
-                    <Linkedin size={13} />
-                    <span className="underline underline-offset-2">
-                      {basics.linkedin.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
-                )}
-                {basics.twitter && (
-                  <a
-                    href={basics.twitter}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
-                  >
-                    <Twitter size={13} />
-                    <span className="underline underline-offset-2">
-                      {basics.twitter.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
-                )}
-                {basics.dribbble && (
-                  <a
-                    href={basics.dribbble}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
-                  >
-                    <Dribbble size={13} />
-                    <span className="underline underline-offset-2">
-                      {basics.dribbble.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
-                )}
-                {basics.behance && (
-                  <a
-                    href={basics.behance}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
-                  >
-                    <Palette size={13} />
-                    <span className="underline underline-offset-2">
-                      {basics.behance.replace(/^https?:\/\//, '')}
-                    </span>
-                  </a>
-                )}
+                {[
+                  'website',
+                  'github',
+                  'linkedin',
+                  'twitter',
+                  'dribbble',
+                  'behance',
+                ].map((key) => {
+                  const val = basics[key as keyof typeof basics]
+                  if (!val) return null
+                  const social = renderSocialItem(key, val)
+                  if (!social) return null
+                  const { href, icon: Icon, displayLabel } = social
+                  return (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+                    >
+                      <Icon size={13} />
+                      <span className="underline underline-offset-2">
+                        {displayLabel}
+                      </span>
+                    </a>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -467,4 +455,15 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
       </footer>
     </div>
   )
+}
+
+export const StandardDefaults: TemplateConfig = {
+  themeColor: '#374151', // 石墨灰
+  fontFamily: 'roboto', // Roboto / Inter
+  fontSize: 1,
+  baseFontSize: 14,
+  lineHeight: 1.5,
+  pageMargin: 10,
+  sectionSpacing: 24,
+  itemSpacing: 12,
 }

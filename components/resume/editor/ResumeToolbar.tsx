@@ -45,6 +45,13 @@ import { TemplateSelector } from './TemplateSelector'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip'
+import { HelpCircle } from 'lucide-react'
 
 interface ResumeToolbarProps {
   printRef: React.RefObject<HTMLDivElement>
@@ -111,6 +118,9 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     setAIPanelOpen,
     resetToOriginal,
     setActive,
+    statusMessage,
+    viewMode,
+    setViewMode,
   } = useResumeStore()
 
   const [isResetOpen, setIsResetOpen] = useState(false)
@@ -145,6 +155,11 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerShaper`,
+    // @ts-expect-error - onBeforeGetContent is supported in v3 but types might be outdated
+    onBeforeGetContent: () => {
+      setActive(null)
+      return Promise.resolve()
+    },
   })
 
   const handleExportMarkdown = () => {
@@ -186,7 +201,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     RESUME_TEMPLATES.find((t) => t.id === currentTemplate)?.name || '标准通用'
 
   return (
-    <header className="flex h-12 items-center justify-between border-b bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3 mt-2 mx-2 shrink-0 z-30 shadow-sm transition-colors">
+    <header className="flex h-12 items-center justify-between border-b bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3 mt-2 mx-2 shrink-0 z-30 shadow-sm transition-colors no-print relative">
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-4 ">
         {/* Left Sidebar Toggle - Chapters */}
         <Button
@@ -374,6 +389,80 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               </div>
 
               <div className="h-px bg-border" />
+              {/* Compact & Smart Fill Row */}
+              <TooltipProvider>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      紧凑模式
+                    </label>
+                    <button
+                      role="switch"
+                      aria-checked={styleConfig.compactMode}
+                      onClick={() =>
+                        updateStyleConfig({
+                          compactMode: !styleConfig.compactMode,
+                        })
+                      }
+                      className={cn(
+                        'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+                        styleConfig.compactMode ? 'bg-primary' : 'bg-input'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                          styleConfig.compactMode
+                            ? 'translate-x-4'
+                            : 'translate-x-0'
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      智能填充
+                    </label>
+                    <button
+                      role="switch"
+                      aria-checked={styleConfig.smartFill}
+                      onClick={() =>
+                        updateStyleConfig({ smartFill: !styleConfig.smartFill })
+                      }
+                      className={cn(
+                        'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+                        styleConfig.smartFill ? 'bg-primary' : 'bg-input'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                          styleConfig.smartFill
+                            ? 'translate-x-4'
+                            : 'translate-x-0'
+                        )}
+                      />
+                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full hover:bg-muted"
+                        >
+                          <HelpCircle className="h-3 w-3 text-muted-foreground/50" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="text-xs text-muted-foreground bg-popover border shadow-sm">
+                        智能微调当前页的行高与段间距，以减少页尾空白
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              </TooltipProvider>
+
+              <div className="h-px bg-border" />
 
               {/* Sliders */}
               <RangeControl
@@ -457,6 +546,46 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
+
+        {/* View Mode Toggle - Moved to be part of the left group */}
+        <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-md p-0.5 border border-transparent mx-1">
+          <button
+            onClick={() => setViewMode('web')}
+            className={cn(
+              'px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all',
+              viewMode === 'web'
+                ? 'bg-white dark:bg-zinc-700 shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Web
+          </button>
+          <button
+            onClick={() => setViewMode('print')}
+            className={cn(
+              'px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all',
+              viewMode === 'print'
+                ? 'bg-white dark:bg-zinc-700 shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            打印
+          </button>
+        </div>
+
+        {/* Status Message In-Flow */}
+        {statusMessage && (
+          <div className="ml-4 animate-in fade-in slide-in-from-left-2 duration-300 whitespace-nowrap">
+            <div className="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs text-muted-foreground flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5" />
+              {statusMessage.text}
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1" />
 
         <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
           <DialogContent>
