@@ -41,8 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # documentation
-/docs
-/docs/*
+
 
 # rag documents
 /rag_documents
@@ -57,4 +56,3 @@ next-env.d.ts
 /tmp
 /tmp/*
 
-/.trae/*

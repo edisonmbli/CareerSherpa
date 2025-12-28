@@ -194,7 +194,7 @@ body {
   margin: 4px 0;
 }
 .resume-classic p {
-  line-height: 1.7;
+  line-height: var(--resume-line-height, 1.7);
 }
 
 .resume-modern {
@@ -227,7 +227,7 @@ body {
   color: oklch(0.488 0.243 264.376);
 }
 .resume-modern p {
-  line-height: 1.75;
+  line-height: var(--resume-line-height, 1.75);
 }
 
 .resume-professional {
@@ -252,7 +252,7 @@ body {
   margin: 6px 0;
 }
 .resume-professional p {
-  line-height: 1.8;
+  line-height: var(--resume-line-height, 1.8);
 }
 
 /* Resume Customization & Print Physics */
@@ -329,10 +329,24 @@ li {
     width: 100%;
     margin: 0;
     box-shadow: none;
+    min-height: auto !important;
+    background-image: none !important;
+    background-size: auto !important;
     /* Use CSS variables for padding to ensure margins are respected */
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
+  }
+
+  /* WYSIWYG Spacer Support */
+  .no-print {
+    display: none !important;
+  }
+
+  /* 移除红色的虚线分页符提示，因为我们已经用真实距离推开了 */
+  .break-after-page {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
   }
 }

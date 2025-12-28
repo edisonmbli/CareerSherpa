@@ -23,7 +23,7 @@ import { DesignDefaults } from '@/components/resume/templates/TemplateDesign'
 import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
 import { TemplateConfig } from '@/components/resume/templates/types'
 
-const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
+export const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
   technical: TechnicalDefaults,
   corporate: CorporateDefaults,
   elegant: ElegantDefaults,
@@ -69,6 +69,11 @@ interface ResumeState {
   isSaving: boolean
   lastSavedAt: Date | null
   statusMessage: { text: string; type: 'success' | 'info' } | null
+
+  // Layout Info (Calculated by ResumePreview)
+  layoutInfo: {
+    contentHeight: number
+  }
 
   // Style Config
   styleConfig: {
@@ -141,6 +146,7 @@ interface ResumeState {
   ) => void
 
   updateStyleConfig: (config: Partial<ResumeState['styleConfig']>) => void
+  setLayoutInfo: (info: Partial<ResumeState['layoutInfo']>) => void
   setTemplate: (id: TemplateId) => void
 
   // Auto-save trigger
@@ -223,6 +229,10 @@ const createResumeSlice = (
   isSaving: false,
   lastSavedAt: null,
   statusMessage: null,
+
+  layoutInfo: {
+    contentHeight: 0,
+  },
 
   styleConfig: {
     themeColor: '#0284c7', // Sky 600
@@ -439,6 +449,12 @@ const createResumeSlice = (
     get().save()
   },
 
+  setLayoutInfo: (info) => {
+    set((state) => {
+      state.layoutInfo = { ...state.layoutInfo, ...info }
+    })
+  },
+
   setTemplate: (id) => {
     set((state) => {
       state.currentTemplate = id
@@ -447,6 +463,8 @@ const createResumeSlice = (
         state.styleConfig = {
           ...state.styleConfig,
           ...defaults,
+          compactMode: false,
+          smartFill: false,
         }
       }
     })

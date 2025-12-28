@@ -130,6 +130,16 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
   const handlePrint = useReactToPrint({
     contentRef: printRef as any,
     documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerShaper`,
+    ignoreGlobalStyles: false,
+    pageStyle: `
+@page { margin: var(--resume-page-margin, 10mm); }
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+`,
     onAfterPrint: () => handleClose(),
   })
 

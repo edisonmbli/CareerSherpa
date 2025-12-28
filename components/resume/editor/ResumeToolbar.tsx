@@ -1,6 +1,7 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore, TemplateDefaultsMap } from '@/store/resume-store'
+import { getEffectivePageHeightPx } from '@/hooks/use-resume-layout'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -39,6 +40,7 @@ import {
   Sparkles,
   Pipette,
   Check,
+  Eye,
 } from 'lucide-react'
 import { RESUME_TEMPLATES, TemplateId } from '../constants'
 import { TemplateSelector } from './TemplateSelector'
@@ -112,6 +114,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     updateStyleConfig,
     currentTemplate,
     setTemplate,
+    layoutInfo,
+    setLayoutInfo,
     isStructureOpen,
     setStructureOpen,
     isAIPanelOpen,
@@ -119,6 +123,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     resetToOriginal,
     setActive,
     statusMessage,
+    setStatusMessage,
     viewMode,
     setViewMode,
   } = useResumeStore()
@@ -128,6 +133,169 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   const [recentColors, setRecentColors] = useState<string[]>([])
   const [isStyleOpen, setIsStyleOpen] = useState(false)
   const commitTimerRef = useRef<number | null>(null)
+
+  // Helper to round to 1 decimal place
+  const roundVal = (val: number) => Math.round(val * 10) / 10
+
+  const handleCompactMode = () => {
+    const newCompact = !styleConfig.compactMode
+    const defaults =
+      TemplateDefaultsMap[currentTemplate] || TemplateDefaultsMap['standard']
+
+    if (newCompact) {
+      updateStyleConfig({
+        compactMode: true,
+        smartFill: false, // Mutual exclusive logically
+        lineHeight: roundVal(Math.max(defaults.lineHeight * 0.85, 1.0)),
+        itemSpacing: roundVal(Math.max(defaults.itemSpacing * 0.6, 2)),
+        sectionSpacing: roundVal(Math.max(defaults.sectionSpacing * 0.6, 6)),
+        pageMargin: roundVal(Math.max(defaults.pageMargin * 0.7, 5)),
+      })
+    } else {
+      updateStyleConfig({
+        compactMode: false,
+        lineHeight: defaults.lineHeight,
+        itemSpacing: defaults.itemSpacing,
+        sectionSpacing: defaults.sectionSpacing,
+        pageMargin: defaults.pageMargin,
+      })
+    }
+  }
+
+  const handleSmartFill = () => {
+    const newSmartFill = !styleConfig.smartFill
+
+    // 1. 关闭逻辑：恢复默认值
+    if (!newSmartFill) {
+      const defaults =
+        TemplateDefaultsMap[currentTemplate] || TemplateDefaultsMap['standard']
+      updateStyleConfig({
+        smartFill: false,
+        fontSize: 1, // 恢复默认倍率
+        lineHeight: defaults.lineHeight,
+        itemSpacing: defaults.itemSpacing,
+        sectionSpacing: defaults.sectionSpacing,
+        pageMargin: defaults.pageMargin,
+      })
+      return
+    }
+
+    // 2. 开启逻辑：基于比例计算
+    const contentHeight = layoutInfo?.contentHeight || 0
+    if (!contentHeight) {
+      // 还没测量到高度，先仅开启状态
+      updateStyleConfig({ smartFill: true })
+      setStatusMessage({ text: '正在测量内容高度...', type: 'info' })
+      return
+    }
+
+    const pageHeightPx = getEffectivePageHeightPx(styleConfig?.pageMargin)
+    const currentPages = contentHeight / pageHeightPx
+    const integerPages = Math.floor(currentPages)
+    const decimalPart = currentPages - integerPages
+
+    // DEBUG: 输出计算值帮助调试
+    console.log('[SmartFill] contentHeight:', contentHeight, 'pageHeight:', pageHeightPx, 'pages:', currentPages.toFixed(2), 'decimal:', decimalPart.toFixed(2))
+
+    // 默认配置快照
+    const defaults =
+      TemplateDefaultsMap[currentTemplate] || TemplateDefaultsMap['standard']
+    const baseFontSize = 1 // 这里的 1 是倍率
+    const baseSectionGap = defaults.sectionSpacing
+    const baseItemGap = defaults.itemSpacing
+
+    let newScale = 1.0
+    let actionType: 'info' | 'success' | 'error' = 'info'
+    let message = '当前排版已接近最优，无需自动调整'
+    let shouldApply = false
+
+    // 策略判断逻辑：
+    // - 收缩场景: 最后一页内容较少 (< 35%)，尝试压回上一页
+    // - 扩张场景: 最后一页内容很多 (> 70%)，尝试撑满
+    // - 无需调整: 最后一页内容适中 (35% ~ 70%)
+    // 
+    // 阈值放宽是因为：打印引擎与屏幕渲染有累积误差 (1-5px/页)
+
+    if (currentPages <= 1) {
+      // 单页场景
+      if (decimalPart > 0.80) {
+        // 快满了，稍微扩张让它看起来更饱满
+        const targetHeight = pageHeightPx * 0.95
+        newScale = targetHeight / contentHeight
+        newScale = Math.min(newScale, 1.15) // 最多放大 15%
+        message = '已自动填充页面'
+        actionType = 'success'
+        shouldApply = true
+      } else if (decimalPart < 0.4) {
+        // 内容较少
+        message = '当前内容较少，无需自动调整'
+        actionType = 'info'
+        shouldApply = false
+      } else {
+        // 0.4 ~ 0.80，还算正常
+        message = '当前排版已接近最优'
+        actionType = 'info'
+        shouldApply = false
+      }
+    } else {
+      // 多页场景 (currentPages > 1)
+      if (decimalPart > 0 && decimalPart < 0.35) {
+        // 最后一页只有少量内容 (< 35%)，尝试压缩
+        // 目标高度：正好整数页 (留 3% 余量防止误差)
+        const targetHeight = integerPages * pageHeightPx * 0.97
+        newScale = targetHeight / contentHeight
+        // 安全限制：最小缩放到 0.80 (再小就影响可读性了)
+        if (newScale >= 0.80) {
+          message = `已自动缩放至 ${integerPages} 页`
+          actionType = 'success'
+          shouldApply = true
+        } else {
+          // 需要压缩太多，放弃
+          message = `内容过多，无法压缩至 ${integerPages} 页 (需缩放${Math.round((1 - newScale) * 100)}%)`
+          actionType = 'info'
+          shouldApply = false
+          newScale = 1.0 // 重置
+        }
+      } else if (decimalPart > 0.70) {
+        // 最后一页内容较多 (> 70%)，稍微扩张让它更满
+        const targetHeight = (integerPages + 1) * pageHeightPx * 0.95
+        newScale = targetHeight / contentHeight
+        // 安全限制：最大放大到 1.15
+        newScale = Math.min(newScale, 1.15)
+        message = '已自动填充页面'
+        actionType = 'success'
+        shouldApply = true
+      } else {
+        // 0.35 ~ 0.70，排版还行
+        message = `当前排版已接近最优 (最后一页 ${Math.round(decimalPart * 100)}%)`
+        actionType = 'info'
+        shouldApply = false
+      }
+    }
+
+    // 3. 应用变更
+    if (shouldApply && newScale !== 1.0) {
+      // 核心魔法：所有间距参数都乘以这个系数
+      updateStyleConfig({
+        smartFill: true,
+        compactMode: false,
+        // 1. 字号缩放 (控制文字占用)
+        fontSize: roundVal(baseFontSize * newScale),
+        // 2. 间距缩放 (控制留白占用)
+        sectionSpacing: Math.round(baseSectionGap * newScale),
+        itemSpacing: Math.round(baseItemGap * newScale),
+        // 3. 行高微调 (辅助) - 缩小时行高也稍微紧一点
+        lineHeight: roundVal(
+          defaults.lineHeight * (newScale < 1 ? Math.sqrt(newScale) : newScale)
+        ),
+      })
+    } else {
+      // 不需要调整，只更新状态，不改变现有样式
+      updateStyleConfig({ smartFill: false })
+    }
+
+    setStatusMessage({ text: message, type: actionType })
+  }
 
   const handleColorCommit = () => {
     const color = colorInputRef.current?.value
@@ -152,12 +320,36 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     }
   }, [isStyleOpen])
 
+  const printPageStyle = `
+@page { margin: var(--resume-page-margin, 10mm); }
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+`
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerShaper`,
+    ignoreGlobalStyles: false,
+    pageStyle: printPageStyle,
     // @ts-expect-error - onBeforeGetContent is supported in v3 but types might be outdated
-    onBeforeGetContent: () => {
-      setActive(null)
+    onBeforeGetContent: async () => {
+      // Direct store access to ensure immediate state update
+      useResumeStore.getState().setActive(null, null)
+
+      // Force close sidebars to ensure clean print layout and no overlapping UI
+      useResumeStore.getState().setAIPanelOpen(false)
+      useResumeStore.getState().setStructureOpen(false)
+
+      // Wait for:
+      // 1. State updates to propagate (immediate)
+      // 2. Sidebar closing animation to finish (800ms in CSS)
+      // 3. Layout to stabilize after width change
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
       return Promise.resolve()
     },
   })
@@ -167,9 +359,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
 
     // Basic implementation of Markdown generation
     let md = `# ${resumeData.basics.name}\n\n`
-    md += `${resumeData.basics.mobile || ''} | ${
-      resumeData.basics.email || ''
-    }\n\n`
+    md += `${resumeData.basics.mobile || ''} | ${resumeData.basics.email || ''
+      }\n\n`
 
     if (resumeData.basics.summary) {
       md += `## 个人总结\n${resumeData.basics.summary}\n\n`
@@ -305,8 +496,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                             backgroundColor: color,
                             ...(styleConfig.themeColor === color
                               ? {
-                                  boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
-                                }
+                                boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
+                              }
                               : {}),
                           }}
                           onClick={() =>
@@ -338,8 +529,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                                 backgroundColor: color,
                                 ...(styleConfig.themeColor === color
                                   ? {
-                                      boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
-                                    }
+                                    boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
+                                  }
                                   : {}),
                               }}
                               onClick={() =>
@@ -399,11 +590,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                     <button
                       role="switch"
                       aria-checked={styleConfig.compactMode}
-                      onClick={() =>
-                        updateStyleConfig({
-                          compactMode: !styleConfig.compactMode,
-                        })
-                      }
+                      onClick={handleCompactMode}
                       className={cn(
                         'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
                         styleConfig.compactMode ? 'bg-primary' : 'bg-input'
@@ -421,15 +608,16 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      智能填充
+                    <label className="text-xs font-medium text-muted-foreground relative">
+                      智能满页
+                      <span className="absolute -top-3 -left-2 text-[9px] bg-indigo-50 text-indigo-500 px-1 rounded-full border border-indigo-100 scale-75 origin-bottom-left">
+                        Beta
+                      </span>
                     </label>
                     <button
                       role="switch"
                       aria-checked={styleConfig.smartFill}
-                      onClick={() =>
-                        updateStyleConfig({ smartFill: !styleConfig.smartFill })
-                      }
+                      onClick={handleSmartFill}
                       className={cn(
                         'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
                         styleConfig.smartFill ? 'bg-primary' : 'bg-input'
@@ -455,7 +643,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent className="text-xs text-muted-foreground bg-popover border shadow-sm">
-                        智能微调当前页的行高与段间距，以减少页尾空白
+                        智能微调当前页的行高与段间距，尽量减少页尾空白
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -478,8 +666,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <RangeControl
                 label="行间距"
                 value={styleConfig.lineHeight}
-                min={1.0}
-                max={2.0}
+                min={0.8}
+                max={2.4}
                 step={0.1}
                 onChange={(v) => updateStyleConfig({ lineHeight: v })}
                 formatValue={(v) => v.toFixed(1)}
@@ -498,8 +686,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <RangeControl
                 label="页面边距 (mm)"
                 value={styleConfig.pageMargin}
-                min={10}
-                max={30}
+                min={5}
+                max={35}
                 step={2}
                 onChange={(v) => updateStyleConfig({ pageMargin: v })}
                 formatValue={(v) => `${v}mm`}
@@ -549,31 +737,35 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
 
         <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
-        {/* View Mode Toggle - Moved to be part of the left group */}
-        <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-md p-0.5 border border-transparent mx-1">
-          <button
-            onClick={() => setViewMode('web')}
-            className={cn(
-              'px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all',
-              viewMode === 'web'
-                ? 'bg-white dark:bg-zinc-700 shadow-sm text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Web
-          </button>
-          <button
-            onClick={() => setViewMode('print')}
-            className={cn(
-              'px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all',
-              viewMode === 'print'
-                ? 'bg-white dark:bg-zinc-700 shadow-sm text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            打印
-          </button>
-        </div>
+        {/* View Mode Toggle - Page Preview */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={viewMode === 'print' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="gap-2 h-8 text-muted-foreground hover:text-foreground shrink-0 px-2"
+                onClick={() =>
+                  setViewMode(viewMode === 'print' ? 'web' : 'print')
+                }
+              >
+                <Eye className="h-4 w-4" />
+                <span className="hidden lg:inline">分页预览</span>
+                <span className="hidden lg:inline-flex text-[10px] leading-none bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded-full border border-indigo-100">
+                  Beta
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              align="center"
+              sideOffset={10}
+              className="text-xs text-muted-foreground"
+            >
+              预览打印分页效果
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Status Message In-Flow */}
         {statusMessage && (
