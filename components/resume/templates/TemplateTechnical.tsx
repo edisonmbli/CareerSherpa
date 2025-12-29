@@ -486,7 +486,7 @@ export function TemplateTechnical({
               <img
                 src={basics.photoUrl}
                 alt={basics.name}
-                className="w-24 h-24 rounded-lg object-cover border border-gray-200 shadow-sm"
+                className="w-24 h-24 rounded-lg object-cover border border-gray-200 shadow-sm print:shadow-none"
               />
             </div>
           )}

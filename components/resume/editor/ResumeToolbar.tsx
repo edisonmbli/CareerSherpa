@@ -337,7 +337,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <span className="hidden lg:inline">样式</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4 relative max-h-[80vh] overflow-y-auto" align="start">
+          <PopoverContent className="w-80 p-4 relative max-h-[80vh] overflow-y-auto" align="end" alignOffset={-70}>
             {/* Native Color Input positioned relative to Popover Content */}
             <input
               ref={colorInputRef}
@@ -735,6 +735,6 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
         {/* CTA Zone */}
         {ctaAction}
       </div>
-    </header>
+    </header >
   )
 }

@@ -141,7 +141,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
         href={href.startsWith('http') ? href : `https://${href}`}
         target="_blank"
         rel="noreferrer"
-        className="group/item flex items-center gap-2 p-1 pr-3 rounded-full bg-slate-100/80 hover:bg-slate-100 transition-all border border-slate-100 min-w-0"
+        className="group/item flex items-center gap-2 p-1 pr-3 rounded-full bg-slate-100/80 hover:bg-slate-100 transition-all border border-slate-100 min-w-0 print-bg-reset"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-5 h-5 rounded-full flex items-center justify-center text-slate-500 group-hover/item:text-slate-900 shrink-0">
@@ -223,7 +223,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                     {(items || '').split(/[,，]/).map((item, i) => (
                       <span
                         key={i}
-                        className="px-3 py-1 rounded-full bg-slate-50 text-gray-700 font-medium hover:bg-slate-100 transition-colors"
+                        className="px-3 py-1 rounded-full bg-slate-50 text-gray-700 font-medium hover:bg-slate-100 transition-colors print-bg-reset"
                         style={{ fontSize: '0.85em' }}
                       >
                         {item.trim()}
@@ -427,7 +427,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                 <InteractiveSection sectionKey="educations" itemId={item.id}>
                   <div
                     className={cn(
-                      'p-6 border border-slate-100 bg-white rounded-xl shadow-[0_4px_20px_-12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] transition-all gap-4 h-full',
+                      'p-6 border border-slate-100 bg-white rounded-xl shadow-[0_4px_20px_-12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] transition-all gap-4 h-full print:shadow-none',
                       isMulti
                         ? 'flex flex-col justify-between items-start'
                         : 'flex flex-col md:flex-row print:flex-row justify-between items-start'
@@ -440,7 +440,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                       )}
                     >
                       {/* University Icon Placehodler */}
-                      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center shrink-0 text-slate-400 group-hover:text-white group-hover:bg-slate-900 transition-colors duration-300">
+                      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center shrink-0 text-slate-400 group-hover:text-white group-hover:bg-slate-900 transition-colors duration-300 print-bg-reset">
                         <GraduationCap size={24} />
                       </div>
 
@@ -486,9 +486,10 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                 </InteractiveSection>
               </div>
             )
-          })}
-        </div>
-      </section>
+          })
+          }
+        </div >
+      </section >
     ),
     certificates: certificates && (
       <section style={theme.section} className="mb-12">
@@ -582,11 +583,11 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
       <header className="mb-16 break-inside-avoid">
         {/* Left: Identity Block */}
         <InteractiveSection sectionKey="basics">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-10">
+          <div className="flex flex-col md:flex-row print:flex-row items-center md:items-start print:items-start gap-8 md:gap-10 print:gap-10">
             {/* Group 1: Avatar (Left) */}
             <div className="shrink-0 flex justify-center">
               {basics.photoUrl ? (
-                <div className="w-32 h-32 rounded-[2rem] bg-white shadow-2xl overflow-hidden border-[6px] border-white rotate-0 hover:rotate-3 transition-transform duration-500 relative z-10">
+                <div className="w-32 h-32 rounded-[2rem] bg-white shadow-2xl overflow-hidden border-[6px] border-white rotate-0 hover:rotate-3 transition-transform duration-500 relative z-10 print:shadow-none">
                   <img
                     src={basics.photoUrl}
                     alt={basics.name}
@@ -594,7 +595,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                   />
                 </div>
               ) : (
-                <div className="w-32 h-32 rounded-[2rem] bg-slate-50 flex items-center justify-center rotate-3 border-[6px] border-white shadow-xl text-slate-300">
+                <div className="w-32 h-32 rounded-[2rem] bg-slate-50 flex items-center justify-center rotate-3 border-[6px] border-white shadow-xl text-slate-300 print-bg-reset print:shadow-none">
                   <User size={48} />
                 </div>
               )}

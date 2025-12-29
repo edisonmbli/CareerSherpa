@@ -93,9 +93,8 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
   const secondaryBorder = `hsl(${(h + 10) % 360}, ${s}%, 90%)`
 
   // Gradient for Header/Accents: Theme Color -> Slightly Lighter & Shifted
-  const accentGradient = `linear-gradient(135deg, ${theme.themeColor} 0%, hsl(${
-    (h + 15) % 360
-  }, ${s}%, ${Math.min(l + 20, 90)}%) 100%)`
+  const accentGradient = `linear-gradient(135deg, ${theme.themeColor} 0%, hsl(${(h + 15) % 360
+    }, ${s}%, ${Math.min(l + 20, 90)}%) 100%)`
 
   // ==========================================
   // Helper Components
@@ -111,7 +110,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
     <div className="flex items-center gap-3 mb-5 group mt-6 first:mt-0 break-after-avoid">
       {Icon ? (
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm text-white shrink-0"
+          className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm text-white shrink-0 print:shadow-none"
           style={{ background: accentGradient }}
         >
           <Icon size={16} />
@@ -128,7 +127,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
           {title}
         </h3>
         {/* Progress Bar Style Decoration */}
-        <div className="h-[2px] w-full bg-gray-100 mt-2 relative overflow-hidden rounded-full">
+        <div className="h-[2px] w-full bg-gray-100 mt-2 relative overflow-hidden rounded-full print:bg-gray-200">
           <div
             className="absolute left-0 top-0 h-full w-12 transition-all duration-500 group-hover:w-full opacity-30"
             style={{ backgroundColor: theme.themeColor }}
@@ -172,7 +171,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
         href={href.startsWith('http') ? href : `https://${href}`}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100 group"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100 group print:bg-transparent print:border-slate-200"
       >
         <Icon
           size={14}
@@ -204,7 +203,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
             icon={Target}
           />
           <div
-            className="p-5 rounded-xl border relative flex flex-col md:flex-row print:flex-row gap-5 items-center md:items-start print:items-start"
+            className="p-5 rounded-xl border relative flex flex-col md:flex-row print:flex-row gap-5 items-center md:items-start print:items-start print-bg-reset"
             style={{
               backgroundColor: secondaryColor,
               borderColor: secondaryBorder,
@@ -215,7 +214,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
                 <img
                   src={basics.photoUrl}
                   alt={basics.name}
-                  className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm"
+                  className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm print:shadow-none"
                 />
               </div>
             )}
@@ -248,7 +247,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
               return (
                 <div
                   key={idx}
-                  className="px-4 py-1.5 rounded-lg border text-[0.85em] font-bold text-gray-700 bg-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                  className="px-4 py-1.5 rounded-lg border text-[0.85em] font-bold text-gray-700 bg-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 print:shadow-none"
                   style={{
                     borderColor: secondaryBorder,
                     borderLeftWidth: '3px',
@@ -284,7 +283,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
                 {/* Timeline Dot - Centered on line */}
                 <div
-                  className="absolute -left-[25px] top-[10px] w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all group-hover:scale-125 z-10"
+                  className="absolute -left-[25px] top-[10px] w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all group-hover:scale-125 z-10 print:shadow-none"
                   style={{ backgroundColor: theme.themeColor }}
                 />
 
@@ -303,13 +302,13 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
                       >
                         {item.position}
                       </div>
-                      <span className="md:hidden print:hidden text-[0.85em] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded whitespace-nowrap">
+                      <span className="md:hidden print:hidden text-[0.85em] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded whitespace-nowrap print:bg-transparent">
                         {formatDate(item.startDate)} —{' '}
                         {item.endDate ? formatDate(item.endDate) : 'Present'}
                       </span>
                     </div>
                   </div>
-                  <span className="hidden md:block print:block text-[0.85em] font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded mt-2 md:mt-0 print:mt-0 whitespace-nowrap self-start md:self-auto print:self-auto">
+                  <span className="hidden md:block print:block text-[0.85em] font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded mt-2 md:mt-0 print:mt-0 whitespace-nowrap self-start md:self-auto print:self-auto print:bg-transparent">
                     {formatDate(item.startDate)} —{' '}
                     {item.endDate ? formatDate(item.endDate) : 'Present'}
                   </span>
@@ -340,7 +339,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
           {projectExperiences.map((item) => (
             <div
               key={item.id}
-              className="p-5 border border-gray-200 rounded-xl bg-white shadow-[0_2px_10px_-5px_rgba(0,0,0,0.05)] hover:shadow-md transition-all group page-break-fix"
+              className="p-5 border border-gray-200 rounded-xl bg-white shadow-[0_2px_10px_-5px_rgba(0,0,0,0.05)] hover:shadow-md transition-all group page-break-fix print:shadow-none"
             >
               <InteractiveSection
                 sectionKey="projectExperiences"
@@ -386,7 +385,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
                         href={item.demoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-sky-700 hover:underline transition-colors bg-gray-50 px-2 py-1 rounded"
+                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-sky-700 hover:underline transition-colors bg-gray-50 px-2 py-1 rounded print:bg-transparent"
                       >
                         <ExternalLink size={12} />
                         {item.demoUrl.replace(/^https?:\/\//, '')}
@@ -397,7 +396,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
                         href={item.githubUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-sky-700 hover:underline transition-colors bg-gray-50 px-2 py-1 rounded"
+                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-sky-700 hover:underline transition-colors bg-gray-50 px-2 py-1 rounded print:bg-transparent"
                       >
                         <Github size={12} />
                         {item.githubUrl.replace(/^https?:\/\//, '')}
@@ -434,7 +433,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
           {educations.map((item) => (
             <div
               key={item.id}
-              className="p-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/50 page-break-fix"
+              className="p-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/50 page-break-fix print:bg-transparent"
             >
               <InteractiveSection sectionKey="educations" itemId={item.id}>
                 <div className="flex flex-col md:flex-row print:flex-row justify-between items-start md:items-center print:items-center gap-2">

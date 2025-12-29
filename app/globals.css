@@ -87,22 +87,27 @@
     margin: var(--resume-page-margin, 10mm);
     size: auto;
   }
+
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     background-color: white;
   }
+
   /* Ensure page breaks behave correctly */
   .page-break-fix {
     break-inside: auto;
   }
+
   .page-break-fix h3,
   .page-break-fix h4 {
     break-after: avoid;
   }
+
   .break-after-avoid {
     break-after: avoid;
   }
+
   /* Hide UI elements with specific class */
   .no-print {
     display: none !important;
@@ -166,6 +171,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -176,23 +182,28 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--foreground);
 }
+
 .resume-classic h1,
 .resume-classic h2,
 .resume-classic h3 {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
+
 .resume-classic h2 {
   border-bottom: 2px solid var(--border);
   padding-bottom: 4px;
   margin-top: 24px;
 }
+
 .resume-classic ul {
   list-style-type: disc;
 }
+
 .resume-classic li {
   margin: 4px 0;
 }
+
 .resume-classic p {
   line-height: var(--resume-line-height, 1.7);
 }
@@ -201,15 +212,18 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--foreground);
 }
+
 .resume-modern h1 {
   font-weight: 800;
   font-size: 2rem;
 }
+
 .resume-modern h2 {
   font-weight: 700;
   margin-top: 20px;
   position: relative;
 }
+
 .resume-modern h2::after {
   content: '';
   display: block;
@@ -218,14 +232,17 @@ body {
   background: oklch(0.488 0.243 264.376);
   margin-top: 6px;
 }
+
 .resume-modern ul {
   list-style-type: none;
   padding-left: 0;
 }
+
 .resume-modern li::before {
   content: '• ';
   color: oklch(0.488 0.243 264.376);
 }
+
 .resume-modern p {
   line-height: var(--resume-line-height, 1.75);
 }
@@ -234,23 +251,28 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   color: var(--foreground);
 }
+
 .resume-professional h1 {
   font-weight: 800;
   font-size: 2rem;
   letter-spacing: -0.02em;
 }
+
 .resume-professional h2 {
   font-weight: 700;
   margin-top: 18px;
   border-left: 4px solid oklch(0.205 0 0);
   padding-left: 8px;
 }
+
 .resume-professional ul {
   list-style-type: disc;
 }
+
 .resume-professional li {
   margin: 6px 0;
 }
+
 .resume-professional p {
   line-height: var(--resume-line-height, 1.8);
 }
@@ -262,11 +284,12 @@ body {
   --resume-base-font-size: 14px;
   --resume-line-height: 1.5;
   --resume-paragraph-spacing: 12px;
-  --resume-item-spacing: 8px; /* Default for work/project item gaps */
+  --resume-item-spacing: 8px;
+  /* Default for work/project item gaps */
 }
 
 /* Utility class for controllable item spacing */
-.item-gap > * + * {
+.item-gap>*+* {
   margin-top: var(--resume-item-spacing);
 }
 
@@ -354,5 +377,11 @@ li {
   .break-after-page {
     border-bottom: none !important;
     margin-bottom: 0 !important;
+  }
+
+  /* Force transparent background in print to avoid gray blocks */
+  .print-bg-reset {
+    background-color: transparent !important;
+    background-image: none !important;
   }
 }

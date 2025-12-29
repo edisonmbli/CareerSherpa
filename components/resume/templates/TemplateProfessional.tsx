@@ -448,7 +448,7 @@ export function TemplateProfessional({
           </div>
           {/* 头像 */}
           {basics.photoUrl && (
-            <div className="w-24 h-24 rounded-md overflow-hidden border border-gray-200 shadow-sm shrink-0 ml-6">
+            <div className="w-24 h-24 rounded-md overflow-hidden border border-gray-200 shadow-sm shrink-0 ml-6 print:shadow-none">
               <img
                 src={basics.photoUrl}
                 alt={basics.name}

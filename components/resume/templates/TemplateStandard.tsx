@@ -425,7 +425,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
               <img
                 src={basics.photoUrl}
                 alt={basics.name}
-                className="w-24 h-24 rounded-full object-cover border-[3px] border-white shadow-sm bg-gray-100"
+                className="w-24 h-24 rounded-full object-cover border-[3px] border-white shadow-sm bg-gray-100 print:bg-transparent print:shadow-none"
               />
             </div>
           )}

@@ -353,177 +353,147 @@ export function TemplateCorporate({
         style={{ backgroundColor: theme.themeColor }}
       />
 
-      {/* Header: Executive Split Layout */}
+      {/* Header: Responsive Executive Layout */}
       <InteractiveSection sectionKey="basics">
         <header className="mb-10 pl-4 pr-2 pt-2">
-          {isMobile ? (
-            <div className="flex justify-between items-stretch relative min-h-[140px] mb-6">
-              {/* Left Line */}
-              <div
-                className="w-[5px] shrink-0"
-                style={{ backgroundColor: theme.themeColor }}
-              />
+          {/* Unified responsive layout */}
+          <div className="flex justify-between items-stretch relative mb-6">
 
-              {/* Content Container */}
-              <div className="flex-1 flex items-center justify-between px-4 py-2 gap-4">
-                {/* Avatar (Left) */}
-                {basics.photoUrl && (
-                  <div className="w-24 h-32 shrink-0 bg-gray-100 overflow-hidden border border-gray-200 shadow-sm">
-                    <img
-                      src={basics.photoUrl}
-                      alt={basics.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+            {/* Content Container - Responsive */}
+            <div className="flex-1 flex items-stretch px-3 md:px-0 py-3 md:py-0 gap-3 md:gap-6">
+              {/* Avatar */}
+              {basics.photoUrl && (
+                <div className="w-20 h-24 md:w-24 md:h-32 shrink-0 bg-gray-100 overflow-hidden border border-gray-200 shadow-sm print:bg-transparent print:shadow-none">
+                  <img
+                    src={basics.photoUrl}
+                    alt={basics.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
 
-                {/* Info (Right) */}
-                <div className="flex flex-col items-end text-right min-w-0 flex-1">
-                  <h1
-                    className="font-black uppercase tracking-tight text-2xl leading-tight mb-3"
-                    style={{ color: theme.themeColor }}
-                  >
-                    {basics.name}
-                  </h1>
+              {/* Info Column - Mobile: right-aligned compact, Desktop: left-aligned expanded */}
+              <div className="flex flex-col items-end md:items-start text-right md:text-left min-w-0 flex-1 justify-between md:justify-center">
+                {/* Name */}
+                <h1
+                  className="font-black uppercase tracking-tight text-lg md:text-4xl leading-tight mb-0 md:mb-2"
+                  style={{ color: theme.themeColor }}
+                >
+                  {basics.name}
+                </h1>
 
-                  <div
-                    className="flex flex-col items-end gap-1.5 w-full"
-                    style={{ borderColor: theme.themeColor }}
-                  >
-                    {basics.mobile && (
-                      <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium justify-end">
-                        {basics.mobile}
-                        <Phone size={14} style={{ color: theme.themeColor }} />
-                      </div>
-                    )}
-                    {basics.email && (
-                      <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium justify-end break-all">
-                        {basics.email}
-                        <Mail size={14} style={{ color: theme.themeColor }} />
-                      </div>
-                    )}
-                    {(basics.address || basics.location) && (
-                      <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium justify-end">
-                        {basics.address || basics.location}
-                        <MapPin size={14} style={{ color: theme.themeColor }} />
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-end text-[11px] text-gray-500 font-mono">
-                      {[
-                        'website',
-                        'github',
-                        'linkedin',
-                        'twitter',
-                        'dribbble',
-                        'behance',
-                      ].map((key) => {
-                        const val = basics[key as keyof typeof basics]
-                        if (!val) return null
-                        const social = renderSocialItem(key, val)
-                        if (!social) return null
-                        const { href, icon: Icon, displayLabel } = social
-                        return (
-                          <a
-                            key={key}
-                            href={href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1 hover:text-gray-900 transition-colors"
-                          >
-                            <Icon size={14} />
-                            <span>{displayLabel}</span>
-                          </a>
-                        )
-                      })}
+                {/* Contacts - Mobile: compact right-aligned, Desktop: hidden (shown in right column) */}
+                <div className="flex flex-col items-end gap-0.5 w-full mt-1 md:hidden">
+                  {basics.mobile && (
+                    <div className="flex flex-row-reverse items-center gap-1.5 text-[11px] text-gray-600 font-medium">
+                      <Phone size={12} style={{ color: theme.themeColor }} />
+                      <span>{basics.mobile}</span>
                     </div>
+                  )}
+                  {basics.email && (
+                    <div className="flex flex-row-reverse items-center gap-1.5 text-[11px] text-gray-600 font-medium">
+                      <Mail size={12} style={{ color: theme.themeColor }} />
+                      <span className="truncate max-w-[140px]">{basics.email}</span>
+                    </div>
+                  )}
+                  {(basics.address || basics.location) && (
+                    <div className="flex flex-row-reverse items-center gap-1.5 text-[11px] text-gray-600 font-medium">
+                      <MapPin size={12} style={{ color: theme.themeColor }} />
+                      <span>{basics.address || basics.location}</span>
+                    </div>
+                  )}
+                  {/* Social links - compact mobile */}
+                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 justify-end text-[10px] text-gray-500 font-mono">
+                    {[
+                      'website',
+                      'github',
+                      'linkedin',
+                      'twitter',
+                      'dribbble',
+                      'behance',
+                    ].map((key) => {
+                      const val = basics[key as keyof typeof basics]
+                      if (!val) return null
+                      const social = renderSocialItem(key, val)
+                      if (!social) return null
+                      const { href, icon: Icon, displayLabel } = social
+                      return (
+                        <a
+                          key={key}
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex flex-row-reverse items-center gap-1 hover:text-gray-900 transition-colors"
+                        >
+                          <Icon size={11} />
+                          <span>{displayLabel}</span>
+                        </a>
+                      )
+                    })}
                   </div>
-                </div>
-              </div>
-
-              {/* Right Line */}
-              <div
-                className="w-[5px] shrink-0"
-                style={{ backgroundColor: theme.themeColor }}
-              />
-            </div>
-          ) : (
-            <div className="flex justify-between items-start">
-              <div className="flex-1 flex gap-6">
-                {/* Photo (Optional) */}
-                {basics.photoUrl && (
-                  <div className="w-24 h-32 bg-gray-100 shrink-0 overflow-hidden border border-gray-200 shadow-sm">
-                    <img
-                      src={basics.photoUrl}
-                      alt={basics.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-
-                <div className="flex flex-col justify-center">
-                  <h1
-                    className="font-black uppercase tracking-tight mb-2 text-4xl"
-                    style={{ color: theme.themeColor }}
-                  >
-                    {basics.name}
-                  </h1>
-                  {/* 如果有Title字段可以加在这里，目前Schema中没有，暂留空或展示其他信息 */}
-                </div>
-              </div>
-
-              <div
-                className="flex flex-col items-end gap-1.5 pt-2 border-r-4 pr-4"
-                style={{ borderColor: theme.themeColor }}
-              >
-                {basics.mobile && (
-                  <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
-                    {basics.mobile}{' '}
-                    <Phone size={14} style={{ color: theme.themeColor }} />
-                  </div>
-                )}
-                {basics.email && (
-                  <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
-                    {basics.email}{' '}
-                    <Mail size={14} style={{ color: theme.themeColor }} />
-                  </div>
-                )}
-                {(basics.address || basics.location) && (
-                  <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
-                    {basics.address || basics.location}{' '}
-                    <MapPin size={14} style={{ color: theme.themeColor }} />
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-end text-[11px] text-gray-500 font-mono">
-                  {[
-                    'website',
-                    'github',
-                    'linkedin',
-                    'twitter',
-                    'dribbble',
-                    'behance',
-                  ].map((key) => {
-                    const val = basics[key as keyof typeof basics]
-                    if (!val) return null
-                    const social = renderSocialItem(key, val)
-                    if (!social) return null
-                    const { href, icon: Icon, displayLabel } = social
-                    return (
-                      <a
-                        key={key}
-                        href={href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 hover:text-gray-900 transition-colors"
-                      >
-                        <Icon size={14} />
-                        <span>{displayLabel}</span>
-                      </a>
-                    )
-                  })}
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Right Column - Desktop only: Contacts */}
+            <div
+              className="hidden md:flex flex-col items-end gap-1.5 pt-2 border-r-4 pr-4"
+              style={{ borderColor: theme.themeColor }}
+            >
+              {basics.mobile && (
+                <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
+                  {basics.mobile}{' '}
+                  <Phone size={14} style={{ color: theme.themeColor }} />
+                </div>
+              )}
+              {basics.email && (
+                <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
+                  {basics.email}{' '}
+                  <Mail size={14} style={{ color: theme.themeColor }} />
+                </div>
+              )}
+              {(basics.address || basics.location) && (
+                <div className="flex items-center gap-2 text-[12px] text-gray-600 font-medium">
+                  {basics.address || basics.location}{' '}
+                  <MapPin size={14} style={{ color: theme.themeColor }} />
+                </div>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 justify-end text-[11px] text-gray-500 font-mono">
+                {[
+                  'website',
+                  'github',
+                  'linkedin',
+                  'twitter',
+                  'dribbble',
+                  'behance',
+                ].map((key) => {
+                  const val = basics[key as keyof typeof basics]
+                  if (!val) return null
+                  const social = renderSocialItem(key, val)
+                  if (!social) return null
+                  const { href, icon: Icon, displayLabel } = social
+                  return (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                    >
+                      <Icon size={14} />
+                      <span>{displayLabel}</span>
+                    </a>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Right Line - Mobile only */}
+            <div
+              className="w-[5px] shrink-0 md:hidden"
+              style={{ backgroundColor: theme.themeColor }}
+            />
+          </div>
         </header>
       </InteractiveSection>
 

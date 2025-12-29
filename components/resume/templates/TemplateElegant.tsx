@@ -388,7 +388,7 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
 
           {/* Photo (Optional) - Centered above name */}
           {basics.photoUrl && (
-            <div className="mb-6 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-sm ring-1 ring-slate-100">
+            <div className="mb-6 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-sm ring-1 ring-slate-100 print:shadow-none">
               <img
                 src={basics.photoUrl}
                 alt={basics.name}
