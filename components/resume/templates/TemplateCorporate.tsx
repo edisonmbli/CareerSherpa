@@ -358,7 +358,6 @@ export function TemplateCorporate({
         <header className="mb-10 pl-4 pr-2 pt-2">
           {/* Unified responsive layout */}
           <div className="flex justify-between items-stretch relative mb-6">
-
             {/* Content Container - Responsive */}
             <div className="flex-1 flex items-stretch px-3 md:px-0 py-3 md:py-0 gap-3 md:gap-6">
               {/* Avatar */}
@@ -376,7 +375,7 @@ export function TemplateCorporate({
               <div className="flex flex-col items-end md:items-start text-right md:text-left min-w-0 flex-1 justify-between md:justify-center">
                 {/* Name */}
                 <h1
-                  className="font-black uppercase tracking-tight text-lg md:text-4xl leading-tight mb-0 md:mb-2"
+                  className="font-black uppercase tracking-tight text-2xl md:text-4xl leading-tight mb-0 md:mb-2"
                   style={{ color: theme.themeColor }}
                 >
                   {basics.name}
@@ -393,7 +392,9 @@ export function TemplateCorporate({
                   {basics.email && (
                     <div className="flex flex-row-reverse items-center gap-1.5 text-[11px] text-gray-600 font-medium">
                       <Mail size={12} style={{ color: theme.themeColor }} />
-                      <span className="truncate max-w-[140px]">{basics.email}</span>
+                      <span className="truncate max-w-[140px]">
+                        {basics.email}
+                      </span>
                     </div>
                   )}
                   {(basics.address || basics.location) && (

@@ -63,12 +63,15 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
         className={cn(
           'text-gray-600 leading-relaxed',
           center && 'text-center',
-          // 自定义列表样式：极细空心圆圈
-          '[&_ul]:!list-none [&_ul]:!pl-0',
-          '[&_li]:relative [&_li]:pl-4',
-          '[&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-[0.55em]',
-          "[&_li]:before:content-['○'] [&_li]:before:text-[0.6em] [&_li]:before:font-medium",
-          '[&_li]:before:text-[var(--theme-color)] [&_li]:before:opacity-100',
+          // 自定义列表样式：仅在非居中时显示圆点
+          !center && '[&_ul]:!list-none [&_ul]:!pl-0',
+          !center && '[&_li]:relative [&_li]:pl-4',
+          !center && '[&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-[0.55em]',
+          !center && "[&_li]:before:content-['○'] [&_li]:before:text-[0.6em] [&_li]:before:font-medium",
+          !center && '[&_li]:before:text-[var(--theme-color)] [&_li]:before:opacity-100',
+          // 居中时移除列表样式
+          center && '[&_ul]:!list-none [&_ul]:!pl-0',
+          center && '[&_li]:!pl-0',
           className
         )}
         style={theme.text}
@@ -149,35 +152,32 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
           {workExperiences.map((item) => (
             <div key={item.id} className="group page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
-                <div className="flex flex-col items-center">
-                  <div className="w-full flex justify-between items-baseline mb-2">
-                    <div className="flex flex-col items-start">
-                      <h4
-                        className="font-bold text-gray-900 tracking-tight"
-                        style={{ fontSize: '1.05em' }}
-                      >
-                        {item.company}
-                      </h4>
-                      <span
-                        className="font-serif italic font-medium"
-                        style={{ ...theme.text, color: theme.themeColor }}
-                      >
-                        {item.position}
-                      </span>
-                    </div>
+                {/* 全居中布局 */}
+                <div className="flex flex-col items-center text-center mb-4">
+                  <h4
+                    className="font-bold text-gray-900 tracking-tight"
+                    style={{ fontSize: '1.05em' }}
+                  >
+                    {item.company}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1 text-sm">
                     <span
-                      className="text-gray-400 font-medium tracking-widest uppercase text-right shrink-0 ml-4"
-                      style={{ fontSize: '0.85em' }}
+                      className="font-serif italic font-medium"
+                      style={{ color: theme.themeColor }}
                     >
+                      {item.position}
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-gray-400 tracking-wider">
                       {formatDate(item.startDate)} —{' '}
                       {item.endDate ? formatDate(item.endDate) : 'Present'}
                     </span>
                   </div>
-                  <Description
-                    content={item.description}
-                    className="w-full text-justify"
-                  />
                 </div>
+                <Description
+                  content={item.description}
+                  className="max-w-xl mx-auto text-justify"
+                />
               </InteractiveSection>
             </div>
           ))}
@@ -202,71 +202,64 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
                 sectionKey="projectExperiences"
                 itemId={item.id}
               >
-                <div>
-                  <div className="flex justify-between items-baseline mb-1">
-                    <h4
-                      className="font-bold text-gray-800"
-                      style={{ fontSize: '1em' }}
-                    >
-                      {item.projectName}
-                    </h4>
-                    <span
-                      className="text-gray-400 italic shrink-0 ml-4"
-                      style={{ fontSize: '0.85em' }}
-                    >
+                {/* 全居中布局 */}
+                <div className="flex flex-col items-center text-center mb-3">
+                  <h4
+                    className="font-bold text-gray-800"
+                    style={{ fontSize: '1em' }}
+                  >
+                    {item.projectName}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1 text-sm">
+                    {item.role && (
+                      <>
+                        <span
+                          className="italic"
+                          style={{ color: theme.themeColor, opacity: 0.9 }}
+                        >
+                          {item.role}
+                        </span>
+                        <span className="text-gray-300">|</span>
+                      </>
+                    )}
+                    <span className="text-gray-400 tracking-wider">
                       {formatDate(item.startDate)} — {formatDate(item.endDate)}
                     </span>
                   </div>
-                  {item.role && (
-                    <div
-                      className="italic mb-1"
-                      style={{
-                        fontSize: '0.9em',
-                        color: theme.themeColor,
-                        opacity: 0.9,
-                      }}
-                    >
-                      {item.role}
-                    </div>
-                  )}
 
                   {/* Project Links */}
                   {(item.githubUrl || item.demoUrl) && (
                     <div
-                      className="flex flex-wrap gap-x-6 gap-y-1 mb-2 font-mono text-gray-500"
+                      className="flex flex-wrap justify-center gap-x-6 gap-y-1 mt-2 font-mono text-gray-500"
                       style={{ fontSize: '0.8em' }}
                     >
                       {item.demoUrl && (
-                        <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                        <a
+                          href={item.demoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 hover:text-sky-700 hover:underline"
+                        >
                           <ExternalLink size={12} className="shrink-0" />
-                          <a
-                            href={item.demoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:text-sky-700 hover:underline truncate"
-                          >
-                            {item.demoUrl.replace(/^https?:\/\//, '')}
-                          </a>
-                        </div>
+                          {item.demoUrl.replace(/^https?:\/\//, '')}
+                        </a>
                       )}
                       {item.githubUrl && (
-                        <div className="flex items-center gap-1.5 max-w-full overflow-hidden">
+                        <a
+                          href={item.githubUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 hover:text-sky-700 hover:underline"
+                        >
                           <Github size={12} className="shrink-0" />
-                          <a
-                            href={item.githubUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:text-sky-700 hover:underline truncate"
-                          >
-                            {item.githubUrl.replace(/^https?:\/\//, '')}
-                          </a>
-                        </div>
+                          {item.githubUrl.replace(/^https?:\/\//, '')}
+                        </a>
                       )}
                     </div>
                   )}
-
-                  <Description content={item.description} />
                 </div>
+
+                <Description content={item.description} className="max-w-xl mx-auto text-justify" />
               </InteractiveSection>
             </div>
           ))}
@@ -354,38 +347,93 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       </section>
     ),
     customSections: customSections?.length > 0 && (
-      <InteractiveSection sectionKey="customSections">
-        <>
-          {customSections.map((item) => (
-            <section key={item.id} style={theme.section}>
-              <div className="flex flex-col">
-                <SectionHeader title={item.title || 'Untitled'} />
-                <Description
-                  content={item.description}
-                  className="w-full text-justify"
-                />
-              </div>
-            </section>
-          ))}
-        </>
-      </InteractiveSection>
+      <>
+        {customSections.map((item) => (
+          <section key={item.id} style={theme.section}>
+            <InteractiveSection sectionKey="customSections" itemId={item.id}>
+              <SectionHeader title={item.title || 'Untitled'} />
+              <Description
+                content={item.description}
+                className="max-w-xl mx-auto"
+                center={true}
+              />
+            </InteractiveSection>
+          </section>
+        ))}
+      </>
     ),
   }
 
   return (
     <div
       className={cn(
-        'bg-white w-full min-h-full transition-all duration-300 font-serif relative',
+        'bg-white w-full min-h-full transition-all duration-300 font-serif relative overflow-hidden',
         theme.fontFamilyClass
       )}
       style={theme.container}
     >
+      {/* 微妙的渐变背景 */}
+      <div
+        className="absolute inset-0 opacity-[0.02] pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at 50% 0%, ${theme.themeColor}, transparent 70%)`,
+        }}
+      />
+
+      {/* 点状背景图案 - 增强可见度 */}
+      <div
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle, ${theme.themeColor} 1.5px, transparent 1.5px)`,
+          backgroundSize: '32px 32px',
+        }}
+      />
+
+      {/* 四角装饰 */}
+      <div className="absolute top-4 left-4 w-12 h-12 pointer-events-none opacity-10">
+        <div
+          className="absolute top-0 left-0 w-full h-[1px]"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+        <div
+          className="absolute top-0 left-0 w-[1px] h-full"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+      </div>
+      <div className="absolute top-4 right-4 w-12 h-12 pointer-events-none opacity-10">
+        <div
+          className="absolute top-0 right-0 w-full h-[1px]"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+        <div
+          className="absolute top-0 right-0 w-[1px] h-full"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+      </div>
+      <div className="absolute bottom-4 left-4 w-12 h-12 pointer-events-none opacity-10 print:hidden">
+        <div
+          className="absolute bottom-0 left-0 w-full h-[1px]"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-[1px] h-full"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+      </div>
+      <div className="absolute bottom-4 right-4 w-12 h-12 pointer-events-none opacity-10 print:hidden">
+        <div
+          className="absolute bottom-0 right-0 w-full h-[1px]"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+        <div
+          className="absolute bottom-0 right-0 w-[1px] h-full"
+          style={{ backgroundColor: theme.themeColor }}
+        />
+      </div>
+
       {/* Header: Centered Balance Layout */}
       <InteractiveSection sectionKey="basics">
-        <header className="mb-12 flex flex-col items-center text-center pt-8 relative">
-          {/* 背景装饰：极其微弱的莫兰迪色光晕 */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-slate-50 rounded-full blur-3xl -z-10" />
-
+        <header className="mb-12 flex flex-col items-center text-center pt-8 relative z-10">
           {/* Photo (Optional) - Centered above name */}
           {basics.photoUrl && (
             <div className="mb-6 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-sm ring-1 ring-slate-100 print:shadow-none">

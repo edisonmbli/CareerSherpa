@@ -34,20 +34,17 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
     ...styleConfig,
   })
 
-  // 辅助组件：标准模块标题 (文字下方短粗线)
+  // 辅助组件：标准模块标题 (文字 + 全宽延伸线)
   const SectionHeader = ({ title }: { title: string }) => (
-    <div className="mb-2 mt-2 first:mt-0 break-after-avoid">
-      <div className="inline-block">
+    <div className="mb-3 mt-4 first:mt-0 break-after-avoid">
+      <div className="flex items-center gap-3">
         <h3
-          className="font-bold text-gray-900 uppercase tracking-wider mb-1"
-          style={{ fontSize: '1em' }}
+          className="font-bold text-gray-900 uppercase tracking-wider whitespace-nowrap"
+          style={{ fontSize: '1em', color: theme.themeColor }}
         >
           {title}
         </h3>
-        <div
-          className="h-[3px] w-8 rounded-full"
-          style={{ backgroundColor: theme.themeColor }}
-        />
+        <div className="h-[1px] flex-1 bg-gray-200" />
       </div>
     </div>
   )
@@ -84,7 +81,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             )}
           />
           <div
-            className="text-gray-700 leading-relaxed px-1"
+            className="text-gray-700 leading-relaxed px-3 py-2 bg-slate-50 rounded-sm"
             style={{ fontSize: '0.93em' }}
           >
             {/* 将技能以平铺方式展示，节省空间且整洁 */}
@@ -345,9 +342,15 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
       )}
       style={theme.container}
     >
+      {/* 顶部装饰条 */}
+      <div
+        className="h-1 w-full mb-2"
+        style={{ backgroundColor: theme.themeColor }}
+      />
+
       {/* Header: Left-aligned Identity with Avatar & Horizontal Contact */}
       <InteractiveSection sectionKey="basics">
-        <header className="flex flex-col-reverse md:flex-row print:flex-row items-center md:items-center print:items-center justify-between gap-6 mb-6 pt-4">
+        <header className="flex flex-col-reverse md:flex-row print:flex-row items-center md:items-center print:items-center justify-between gap-6 mb-6 pt-2 pb-4 border-b border-gray-100">
           <div className="flex-1 text-center md:text-left print:text-left">
             <h1
               className="font-bold text-gray-900 tracking-tighter mb-3"
