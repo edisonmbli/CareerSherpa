@@ -262,6 +262,12 @@ body {
   --resume-base-font-size: 14px;
   --resume-line-height: 1.5;
   --resume-paragraph-spacing: 12px;
+  --resume-item-spacing: 8px; /* Default for work/project item gaps */
+}
+
+/* Utility class for controllable item spacing */
+.item-gap > * + * {
+  margin-top: var(--resume-item-spacing);
 }
 
 .resume-paper {

@@ -58,7 +58,6 @@ interface ResumeState {
   optimizeSuggestion: string | null
   sectionConfig: SectionConfig
   currentTemplate: TemplateId
-  viewMode: 'web' | 'print'
 
   // UI State
   activeSectionKey: string | null // e.g., 'workExperiences'
@@ -86,7 +85,8 @@ interface ResumeState {
     sectionSpacing: number
     itemSpacing: number
     compactMode?: boolean
-    smartFill?: boolean
+    proportionalScale?: boolean
+    scaleFactor?: number // 0.5 ~ 2.0, for proportional scaling
   }
 
   // Actions
@@ -101,7 +101,6 @@ interface ResumeState {
 
   updateBasics: (data: Partial<ResumeData['basics']>) => void
   updateSectionTitle: (sectionKey: string, title: string) => void
-  setViewMode: (mode: 'web' | 'print') => void
   togglePageBreak: (sectionKey: string) => void
 
   // Generic update for array sections (work, project, education)
@@ -219,7 +218,6 @@ const createResumeSlice = (
   optimizeSuggestion: null,
   sectionConfig: DEFAULT_SECTION_CONFIG,
   currentTemplate: 'standard',
-  viewMode: 'web',
 
   activeSectionKey: null,
   activeItemId: null,
@@ -243,7 +241,8 @@ const createResumeSlice = (
     sectionSpacing: 24,
     itemSpacing: 12,
     compactMode: false,
-    smartFill: false,
+    proportionalScale: false,
+    scaleFactor: 1.0,
   },
 
   initStore: (
@@ -270,7 +269,7 @@ const createResumeSlice = (
           if (cachedAvatar) {
             state.resumeData!.basics.photoUrl = cachedAvatar
           }
-        } catch {}
+        } catch { }
       }
 
       state.originalData = originalData || data // Fallback to current if original missing
@@ -309,11 +308,7 @@ const createResumeSlice = (
     get().save()
   },
 
-  setViewMode: (mode) => {
-    set((state) => {
-      state.viewMode = mode
-    })
-  },
+
 
   togglePageBreak: (sectionKey) => {
     set((state) => {
@@ -464,7 +459,7 @@ const createResumeSlice = (
           ...state.styleConfig,
           ...defaults,
           compactMode: false,
-          smartFill: false,
+          proportionalScale: false,
         }
       }
     })

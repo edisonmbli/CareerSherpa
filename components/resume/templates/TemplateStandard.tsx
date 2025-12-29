@@ -108,7 +108,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             )}
           />
         </InteractiveSection>
-        <div className="space-y-2">
+        <div className="item-gap">
           {workExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
@@ -158,7 +158,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             )}
           />
         </InteractiveSection>
-        <div className="space-y-2">
+        <div className="item-gap">
           {projectExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection
@@ -240,7 +240,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             )}
           />
         </InteractiveSection>
-        <div className="space-y-4">
+        <div className="item-gap">
           {educations.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="educations" itemId={item.id}>

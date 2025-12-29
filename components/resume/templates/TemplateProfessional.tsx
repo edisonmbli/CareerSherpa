@@ -144,7 +144,7 @@ export function TemplateProfessional({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-6">
+        <div className="item-gap">
           {workExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
@@ -191,7 +191,7 @@ export function TemplateProfessional({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-6">
+        <div className="item-gap">
           {projectExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection
@@ -519,5 +519,5 @@ export const ProfessionalDefaults: TemplateConfig = {
   lineHeight: 1.4,
   pageMargin: 8,
   sectionSpacing: 24,
-  itemSpacing: 12,
+  itemSpacing: 24,
 }

@@ -145,7 +145,7 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
             )}
           />
         </InteractiveSection>
-        <div className="space-y-8">
+        <div className="item-gap">
           {workExperiences.map((item) => (
             <div key={item.id} className="group page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
@@ -195,7 +195,7 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
             )}
           />
         </InteractiveSection>
-        <div className="space-y-6">
+        <div className="item-gap">
           {projectExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection
@@ -284,7 +284,7 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
             )}
           />
         </InteractiveSection>
-        <div className="space-y-4">
+        <div className="item-gap">
           {educations.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="educations" itemId={item.id}>
@@ -506,5 +506,5 @@ export const ElegantDefaults: TemplateConfig = {
   lineHeight: 1.75, // 宽松行高
   pageMargin: 12,
   sectionSpacing: 24,
-  itemSpacing: 12,
+  itemSpacing: 32,
 }

@@ -173,7 +173,7 @@ export function TemplateDarkSidebar({
                 sectionTitles?.['educations']
               )}
             />
-            <div className="space-y-6">
+            <div className="item-gap">
               {educations.map((edu) => (
                 <div key={edu.id} className="group">
                   <InteractiveSection sectionKey="educations" itemId={edu.id}>
@@ -317,7 +317,7 @@ export function TemplateDarkSidebar({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-6">
+        <div className="item-gap">
           {workExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
@@ -359,7 +359,7 @@ export function TemplateDarkSidebar({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-6">
+        <div className="item-gap">
           {projectExperiences.map((item) => (
             <div
               key={item.id}
@@ -550,5 +550,5 @@ export const DarkSidebarDefaults: TemplateConfig = {
   lineHeight: 1.5,
   pageMargin: 10,
   sectionSpacing: 24,
-  itemSpacing: 12,
+  itemSpacing: 24,
 }

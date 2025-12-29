@@ -111,7 +111,7 @@ export function TemplateCorporate({
             title={getSectionTitle('workExperiences', basics.lang)}
           />
         </InteractiveSection>
-        <div className="space-y-6 px-1">
+        <div className="item-gap px-1">
           {workExperiences.map((item) => (
             <div key={item.id} className="group page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
@@ -160,7 +160,7 @@ export function TemplateCorporate({
             title={getSectionTitle('projectExperiences', basics.lang)}
           />
         </InteractiveSection>
-        <div className="space-y-5 px-1">
+        <div className="item-gap px-1">
           {projectExperiences.map((item) => (
             <div key={item.id} className="page-break-fix">
               <InteractiveSection
@@ -250,7 +250,7 @@ export function TemplateCorporate({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-4 px-1">
+        <div className="item-gap px-1">
           {educations.map((item) => (
             <div
               key={item.id}
@@ -553,5 +553,5 @@ export const CorporateDefaults: TemplateConfig = {
   lineHeight: 1.6,
   pageMargin: 12,
   sectionSpacing: 24,
-  itemSpacing: 12,
+  itemSpacing: 24,
 }

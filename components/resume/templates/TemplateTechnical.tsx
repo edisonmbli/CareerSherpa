@@ -222,7 +222,7 @@ export function TemplateTechnical({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-6 pl-2">
+        <div className="item-gap pl-2">
           {projectExperiences.map((item) => (
             <InteractiveSection
               key={item.id}
@@ -315,7 +315,7 @@ export function TemplateTechnical({
             )}
           />
         </InteractiveSection>
-        <div className="space-y-3">
+        <div className="item-gap">
           {educations.map((item) => (
             <InteractiveSection
               key={item.id}
@@ -522,5 +522,5 @@ export const TechnicalDefaults: TemplateConfig = {
   lineHeight: 1.5, // 标准行高
   pageMargin: 10, // p-10 (约 2.5cm)，留白适中
   sectionSpacing: 24,
-  itemSpacing: 12,
+  itemSpacing: 24,
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useResumeStore, TemplateDefaultsMap } from '@/store/resume-store'
-import { getEffectivePageHeightPx } from '@/hooks/use-resume-layout'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -40,7 +39,6 @@ import {
   Sparkles,
   Pipette,
   Check,
-  Eye,
 } from 'lucide-react'
 import { RESUME_TEMPLATES, TemplateId } from '../constants'
 import { TemplateSelector } from './TemplateSelector'
@@ -69,6 +67,7 @@ const RangeControl = ({
   step,
   onChange,
   formatValue,
+  disabled,
 }: {
   label: string
   value: number
@@ -77,8 +76,9 @@ const RangeControl = ({
   step: number
   onChange: (val: number) => void
   formatValue?: (val: number) => string
+  disabled?: boolean
 }) => (
-  <div className="space-y-2">
+  <div className={cn('space-y-2', disabled && 'opacity-50')}>
     <div className="flex justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">
@@ -91,8 +91,12 @@ const RangeControl = ({
       max={max}
       step={step}
       value={value}
+      disabled={disabled}
       onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
+      className={cn(
+        'w-full h-1.5 bg-gray-200 rounded-lg appearance-none accent-black dark:accent-white',
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+      )}
     />
   </div>
 )
@@ -124,8 +128,6 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     setActive,
     statusMessage,
     setStatusMessage,
-    viewMode,
-    setViewMode,
   } = useResumeStore()
 
   const [isResetOpen, setIsResetOpen] = useState(false)
@@ -145,7 +147,6 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     if (newCompact) {
       updateStyleConfig({
         compactMode: true,
-        smartFill: false, // Mutual exclusive logically
         lineHeight: roundVal(Math.max(defaults.lineHeight * 0.85, 1.0)),
         itemSpacing: roundVal(Math.max(defaults.itemSpacing * 0.6, 2)),
         sectionSpacing: roundVal(Math.max(defaults.sectionSpacing * 0.6, 6)),
@@ -162,139 +163,46 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     }
   }
 
-  const handleSmartFill = () => {
-    const newSmartFill = !styleConfig.smartFill
-
-    // 1. 关闭逻辑：恢复默认值
-    if (!newSmartFill) {
-      const defaults =
-        TemplateDefaultsMap[currentTemplate] || TemplateDefaultsMap['standard']
+  // 等比缩放：开关切换
+  // 开启时：使用 scaleFactor 从模板默认值计算参数
+  // 关闭时：保留当前缩放后的值，scaleFactor 重置为 1.0
+  const handleProportionalScaleToggle = () => {
+    const newEnabled = !styleConfig.proportionalScale
+    if (newEnabled) {
+      // 开启：初始化 scaleFactor 为 1.0，从当前模板默认值开始
       updateStyleConfig({
-        smartFill: false,
-        fontSize: 1, // 恢复默认倍率
-        lineHeight: defaults.lineHeight,
-        itemSpacing: defaults.itemSpacing,
-        sectionSpacing: defaults.sectionSpacing,
-        pageMargin: defaults.pageMargin,
+        proportionalScale: true,
+        scaleFactor: 1.0,
       })
-      return
+    } else {
+      // 关闭：保留当前值，重置 scaleFactor
+      updateStyleConfig({
+        proportionalScale: false,
+        scaleFactor: 1.0,
+      })
     }
+  }
 
-    // 2. 开启逻辑：基于比例计算
-    const contentHeight = layoutInfo?.contentHeight || 0
-    if (!contentHeight) {
-      // 还没测量到高度，先仅开启状态
-      updateStyleConfig({ smartFill: true })
-      setStatusMessage({ text: '正在测量内容高度...', type: 'info' })
-      return
-    }
-
-    const pageHeightPx = getEffectivePageHeightPx(styleConfig?.pageMargin)
-    const currentPages = contentHeight / pageHeightPx
-    const integerPages = Math.floor(currentPages)
-    const decimalPart = currentPages - integerPages
-
-    // DEBUG: 输出计算值帮助调试
-    console.log('[SmartFill] contentHeight:', contentHeight, 'pageHeight:', pageHeightPx, 'pages:', currentPages.toFixed(2), 'decimal:', decimalPart.toFixed(2))
-
-    // 默认配置快照
+  // 等比缩放：总控制条变化时，基于模板默认值计算所有联动参数
+  // 联动参数: fontSize, lineHeight, itemSpacing, sectionSpacing
+  // pageMargin 不参与
+  const handleMasterScaleChange = (newScaleFactor: number) => {
     const defaults =
       TemplateDefaultsMap[currentTemplate] || TemplateDefaultsMap['standard']
-    const baseFontSize = 1 // 这里的 1 是倍率
-    const baseSectionGap = defaults.sectionSpacing
-    const baseItemGap = defaults.itemSpacing
 
-    let newScale = 1.0
-    let actionType: 'info' | 'success' | 'error' = 'info'
-    let message = '当前排版已接近最优，无需自动调整'
-    let shouldApply = false
+    // 基于模板默认值 × scaleFactor 计算新值
+    const newFontSize = roundVal(1 * newScaleFactor) // fontSize 默认倍率为 1
+    const newLineHeight = roundVal(defaults.lineHeight * newScaleFactor)
+    const newItemSpacing = Math.round(defaults.itemSpacing * newScaleFactor)
+    const newSectionSpacing = Math.round(defaults.sectionSpacing * newScaleFactor)
 
-    // 策略判断逻辑：
-    // - 收缩场景: 最后一页内容较少 (< 35%)，尝试压回上一页
-    // - 扩张场景: 最后一页内容很多 (> 70%)，尝试撑满
-    // - 无需调整: 最后一页内容适中 (35% ~ 70%)
-    // 
-    // 阈值放宽是因为：打印引擎与屏幕渲染有累积误差 (1-5px/页)
-
-    if (currentPages <= 1) {
-      // 单页场景
-      if (decimalPart > 0.80) {
-        // 快满了，稍微扩张让它看起来更饱满
-        const targetHeight = pageHeightPx * 0.95
-        newScale = targetHeight / contentHeight
-        newScale = Math.min(newScale, 1.15) // 最多放大 15%
-        message = '已自动填充页面'
-        actionType = 'success'
-        shouldApply = true
-      } else if (decimalPart < 0.4) {
-        // 内容较少
-        message = '当前内容较少，无需自动调整'
-        actionType = 'info'
-        shouldApply = false
-      } else {
-        // 0.4 ~ 0.80，还算正常
-        message = '当前排版已接近最优'
-        actionType = 'info'
-        shouldApply = false
-      }
-    } else {
-      // 多页场景 (currentPages > 1)
-      if (decimalPart > 0 && decimalPart < 0.35) {
-        // 最后一页只有少量内容 (< 35%)，尝试压缩
-        // 目标高度：正好整数页 (留 3% 余量防止误差)
-        const targetHeight = integerPages * pageHeightPx * 0.97
-        newScale = targetHeight / contentHeight
-        // 安全限制：最小缩放到 0.80 (再小就影响可读性了)
-        if (newScale >= 0.80) {
-          message = `已自动缩放至 ${integerPages} 页`
-          actionType = 'success'
-          shouldApply = true
-        } else {
-          // 需要压缩太多，放弃
-          message = `内容过多，无法压缩至 ${integerPages} 页 (需缩放${Math.round((1 - newScale) * 100)}%)`
-          actionType = 'info'
-          shouldApply = false
-          newScale = 1.0 // 重置
-        }
-      } else if (decimalPart > 0.70) {
-        // 最后一页内容较多 (> 70%)，稍微扩张让它更满
-        const targetHeight = (integerPages + 1) * pageHeightPx * 0.95
-        newScale = targetHeight / contentHeight
-        // 安全限制：最大放大到 1.15
-        newScale = Math.min(newScale, 1.15)
-        message = '已自动填充页面'
-        actionType = 'success'
-        shouldApply = true
-      } else {
-        // 0.35 ~ 0.70，排版还行
-        message = `当前排版已接近最优 (最后一页 ${Math.round(decimalPart * 100)}%)`
-        actionType = 'info'
-        shouldApply = false
-      }
-    }
-
-    // 3. 应用变更
-    if (shouldApply && newScale !== 1.0) {
-      // 核心魔法：所有间距参数都乘以这个系数
-      updateStyleConfig({
-        smartFill: true,
-        compactMode: false,
-        // 1. 字号缩放 (控制文字占用)
-        fontSize: roundVal(baseFontSize * newScale),
-        // 2. 间距缩放 (控制留白占用)
-        sectionSpacing: Math.round(baseSectionGap * newScale),
-        itemSpacing: Math.round(baseItemGap * newScale),
-        // 3. 行高微调 (辅助) - 缩小时行高也稍微紧一点
-        lineHeight: roundVal(
-          defaults.lineHeight * (newScale < 1 ? Math.sqrt(newScale) : newScale)
-        ),
-      })
-    } else {
-      // 不需要调整，只更新状态，不改变现有样式
-      updateStyleConfig({ smartFill: false })
-    }
-
-    setStatusMessage({ text: message, type: actionType })
+    updateStyleConfig({
+      scaleFactor: newScaleFactor,
+      fontSize: Math.max(0.7, Math.min(1.3, newFontSize)),
+      lineHeight: Math.max(0.8, Math.min(3.0, newLineHeight)),
+      itemSpacing: Math.max(0, Math.min(48, newItemSpacing)),
+      sectionSpacing: Math.max(0, Math.min(64, newSectionSpacing)),
+    })
   }
 
   const handleColorCommit = () => {
@@ -429,7 +337,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <span className="hidden lg:inline">样式</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4 relative" align="start">
+          <PopoverContent className="w-80 p-4 relative max-h-[80vh] overflow-y-auto" align="start">
             {/* Native Color Input positioned relative to Popover Content */}
             <input
               ref={colorInputRef}
@@ -608,25 +516,22 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-muted-foreground relative">
-                      智能满页
-                      <span className="absolute -top-3 -left-2 text-[9px] bg-indigo-50 text-indigo-500 px-1 rounded-full border border-indigo-100 scale-75 origin-bottom-left">
-                        Beta
-                      </span>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      等比缩放
                     </label>
                     <button
                       role="switch"
-                      aria-checked={styleConfig.smartFill}
-                      onClick={handleSmartFill}
+                      aria-checked={styleConfig.proportionalScale}
+                      onClick={handleProportionalScaleToggle}
                       className={cn(
                         'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
-                        styleConfig.smartFill ? 'bg-primary' : 'bg-input'
+                        styleConfig.proportionalScale ? 'bg-primary' : 'bg-input'
                       )}
                     >
                       <span
                         className={cn(
                           'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
-                          styleConfig.smartFill
+                          styleConfig.proportionalScale
                             ? 'translate-x-4'
                             : 'translate-x-0'
                         )}
@@ -643,7 +548,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent className="text-xs text-muted-foreground bg-popover border shadow-sm">
-                        智能微调当前页的行高与段间距，尽量减少页尾空白
+                        启用后，调整任一样式参数将等比例联动其它参数
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -652,13 +557,32 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
 
               <div className="h-px bg-border" />
 
-              {/* Sliders */}
+              {/* 等比缩放总控制条 - 仅在启用时显示 */}
+              {styleConfig.proportionalScale && (
+                <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <RangeControl
+                    label="整体缩放"
+                    value={styleConfig.scaleFactor ?? 1.0}
+                    min={0.7}
+                    max={1.3}
+                    step={0.01}
+                    onChange={handleMasterScaleChange}
+                    formatValue={(v) => `${v.toFixed(2)}x`}
+                  />
+                  <p className="text-[10px] text-muted-foreground/70">
+                    拖动此滑块将按比例调整下方所有样式参数
+                  </p>
+                </div>
+              )}
+
+              {/* 独立样式滑块 - 等比缩放开启时 disabled */}
               <RangeControl
                 label="字体大小 (倍率)"
                 value={styleConfig.fontSize}
-                min={0.8}
-                max={1.2}
-                step={0.05}
+                min={0.7}
+                max={1.3}
+                step={0.01}
+                disabled={!!styleConfig.proportionalScale}
                 onChange={(v) => updateStyleConfig({ fontSize: v })}
                 formatValue={(v) => `${v.toFixed(2)}x`}
               />
@@ -667,18 +591,31 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                 label="行间距"
                 value={styleConfig.lineHeight}
                 min={0.8}
-                max={2.4}
-                step={0.1}
+                max={3.0}
+                step={0.05}
+                disabled={!!styleConfig.proportionalScale}
                 onChange={(v) => updateStyleConfig({ lineHeight: v })}
-                formatValue={(v) => v.toFixed(1)}
+                formatValue={(v) => v.toFixed(2)}
               />
 
               <RangeControl
-                label="段落间距 (px)"
-                value={styleConfig.sectionSpacing}
-                min={6}
+                label="条目间距 (px)"
+                value={styleConfig.itemSpacing}
+                min={0}
                 max={48}
+                step={1}
+                disabled={!!styleConfig.proportionalScale}
+                onChange={(v) => updateStyleConfig({ itemSpacing: v })}
+                formatValue={(v) => `${v}px`}
+              />
+
+              <RangeControl
+                label="区块间距 (px)"
+                value={styleConfig.sectionSpacing}
+                min={0}
+                max={64}
                 step={2}
+                disabled={!!styleConfig.proportionalScale}
                 onChange={(v) => updateStyleConfig({ sectionSpacing: v })}
                 formatValue={(v) => `${v}px`}
               />
@@ -688,7 +625,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                 value={styleConfig.pageMargin}
                 min={5}
                 max={35}
-                step={2}
+                step={1}
                 onChange={(v) => updateStyleConfig({ pageMargin: v })}
                 formatValue={(v) => `${v}mm`}
               />
@@ -735,37 +672,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
-        {/* View Mode Toggle - Page Preview */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={viewMode === 'print' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="gap-2 h-8 text-muted-foreground hover:text-foreground shrink-0 px-2"
-                onClick={() =>
-                  setViewMode(viewMode === 'print' ? 'web' : 'print')
-                }
-              >
-                <Eye className="h-4 w-4" />
-                <span className="hidden lg:inline">分页预览</span>
-                <span className="hidden lg:inline-flex text-[10px] leading-none bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded-full border border-indigo-100">
-                  Beta
-                </span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              align="center"
-              sideOffset={10}
-              className="text-xs text-muted-foreground"
-            >
-              预览打印分页效果
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
 
         {/* Status Message In-Flow */}
         {statusMessage && (

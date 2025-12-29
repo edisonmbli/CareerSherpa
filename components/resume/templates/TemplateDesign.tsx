@@ -249,7 +249,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
             sectionKey="workExperiences"
           />
         </InteractiveSection>
-        <div className="space-y-5 pl-8">
+        <div className="item-gap pl-8">
           {workExperiences.map((item) => (
             <div key={item.id} className="relative group page-break-fix">
               <InteractiveSection sectionKey="workExperiences" itemId={item.id}>
@@ -316,7 +316,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
             sectionKey="projectExperiences"
           />
         </InteractiveSection>
-        <div className="space-y-5 pl-8">
+        <div className="item-gap pl-8">
           {projectExperiences.map((item) => (
             <div key={item.id} className="relative group page-break-fix">
               <InteractiveSection
@@ -606,7 +606,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
             {/* Right Content Area */}
             <div className="flex flex-col flex-1 gap-6 text-center md:text-left print:text-left min-w-0">
               {/* Group 2: Name + Contacts */}
-              <div className="space-y-6">
+              <div className="item-gap">
                 <div>
                   <h1
                     className="font-black tracking-tight leading-[0.85] text-gray-900 mb-2"
@@ -715,5 +715,5 @@ export const DesignDefaults: TemplateConfig = {
   lineHeight: 1.6,
   pageMargin: 16,
   sectionSpacing: 24,
-  itemSpacing: 12,
+  itemSpacing: 20,
 }
