@@ -8,38 +8,35 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { StandardDefaults } from '@/components/resume/templates/TemplateStandard'
-import { TechnicalDefaults } from '@/components/resume/templates/TemplateTechnical'
-import { CorporateDefaults } from '@/components/resume/templates/TemplateCorporate'
-import { ProfessionalDefaults } from '@/components/resume/templates/TemplateProfessional'
-import { ElegantDefaults } from '@/components/resume/templates/TemplateElegant'
-import { DarkSidebarDefaults } from '@/components/resume/templates/TemplateDarkSidebar'
-import { DesignDefaults } from '@/components/resume/templates/TemplateDesign'
-import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Check, LayoutTemplate } from 'lucide-react'
 import { RESUME_TEMPLATES, TemplateId } from '../constants'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import Image from 'next/image'
 
 export function TemplateSelector() {
   const { currentTemplate, setTemplate, setStatusMessage } = useResumeStore()
   const [isOpen, setIsOpen] = useState(false)
+  const [hoveredTemplate, setHoveredTemplate] = useState<
+    (typeof RESUME_TEMPLATES)[number] | null
+  >(null)
 
   const handleSelectTemplate = (id: TemplateId) => {
-    // 1. Update Template ID and Apply Defaults (handled in store setTemplate)
     setTemplate(id)
-
-    // 2. Show Success Status Message (Subtle)
     const templateName = RESUME_TEMPLATES.find((t) => t.id === id)?.name
     setStatusMessage({
       text: `已切换到 ${templateName} 模板，已自动应用最佳字体与配色`,
       type: 'success',
     })
-
     setIsOpen(false)
   }
+
+  // Use active template as default preview when not hovering
+  const activeTemplateData =
+    RESUME_TEMPLATES.find((t) => t.id === currentTemplate) ??
+    RESUME_TEMPLATES[0]
+  const previewTemplate = hoveredTemplate ?? activeTemplateData
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -53,95 +50,150 @@ export function TemplateSelector() {
           <span className="hidden lg:inline">模板</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>选择简历模板</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            所有模板均支持 A4 打印与 PDF 导出，自动适配内容排版
-          </p>
-        </DialogHeader>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-4">
-          {RESUME_TEMPLATES.map((template) => {
-            const isActive = currentTemplate === template.id
-            return (
-              <div
-                key={template.id}
-                className={cn(
-                  'group relative flex flex-col gap-3 rounded-xl border-2 p-3 transition-all hover:border-blue-500/50 hover:shadow-lg cursor-pointer bg-white dark:bg-zinc-900',
-                  isActive
-                    ? 'border-transparent'
-                    : 'border-transparent hover:bg-accent/50'
-                )}
-                onClick={() => handleSelectTemplate(template.id as TemplateId)}
-              >
-                {/* Preview Image Container */}
-                <div className="relative aspect-[210/297] w-full overflow-hidden rounded-lg border bg-muted shadow-sm group-hover:shadow-md transition-all">
-                  {/* Placeholder Gradient & Skeleton */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 p-4">
-                    <div className="w-full h-full flex flex-col gap-2 opacity-40">
-                      {/* Skeleton Header */}
-                      <div className="flex gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-current opacity-20" />
-                        <div className="flex-1 space-y-2 py-1">
-                          <div className="h-3 bg-current rounded w-3/4 opacity-20" />
-                          <div className="h-2 bg-current rounded w-1/2 opacity-20" />
+      <DialogContent
+        className={cn(
+          "p-0 gap-0 overflow-hidden",
+          // Responsive container sizing
+          "w-[95vw] max-w-[1200px]",
+          "h-[85vh] max-h-[720px]",
+          // Enhanced dark mode styling
+          "dark:ring-1 dark:ring-white/10",
+          "dark:bg-background/95 dark:backdrop-blur-xl"
+        )}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header - Fixed height */}
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-border/50">
+            <DialogTitle className="text-lg font-semibold">选择简历模板</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              所有模板均支持 A4 打印与 PDF 导出，自动适配内容排版
+            </p>
+          </DialogHeader>
+
+          {/* Content - Fills remaining height */}
+          <div className="flex-1 flex min-h-0">
+            {/* Left: Template Grid (2/3 width on desktop) */}
+            <div className="flex-1 md:w-2/3 md:flex-none flex items-center justify-center p-6 overflow-y-auto">
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 content-center">
+                  {RESUME_TEMPLATES.map((template) => {
+                    const isActive = currentTemplate === template.id
+                    const isHovered = hoveredTemplate?.id === template.id
+                    return (
+                      <div
+                        key={template.id}
+                        className={cn(
+                          'group relative flex flex-col gap-2 rounded-lg p-2 transition-all cursor-pointer',
+                          'hover:bg-accent/50',
+                          isHovered && 'bg-accent/50'
+                        )}
+                        onClick={() =>
+                          handleSelectTemplate(template.id as TemplateId)
+                        }
+                        onMouseEnter={() => setHoveredTemplate(template)}
+                        onMouseLeave={() => setHoveredTemplate(null)}
+                      >
+                        {/* Thumbnail Container - Responsive sizing */}
+                        <div
+                          className={cn(
+                            'relative aspect-[210/297] w-full overflow-hidden rounded-md transition-all',
+                            // Responsive thumbnail width
+                            'min-w-[80px] md:min-w-[100px] lg:min-w-[120px]',
+                            'shadow-md hover:shadow-xl',
+                            'ring-1 ring-black/5 dark:ring-white/10',
+                            isActive && 'ring-2 ring-blue-600'
+                          )}
+                        >
+                          {/* Skeleton Placeholder */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900" />
+
+                          {/* Template Preview Image */}
+                          {template.thumbnail && (
+                            <Image
+                              src={template.thumbnail}
+                              alt={template.name}
+                              fill
+                              placeholder="blur"
+                              className="object-cover object-top"
+                              sizes="(max-width: 768px) 45vw, 140px"
+                            />
+                          )}
+
+                          {/* Active Indicator */}
+                          {isActive && (
+                            <div className="absolute inset-0 bg-blue-600/10 flex items-center justify-center">
+                              <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
+                                <Check className="h-4 w-4" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Template Info */}
+                        <div className="space-y-0.5 px-0.5">
+                          <span
+                            className={cn(
+                              'text-xs font-medium line-clamp-1',
+                              isActive ? 'text-blue-700 dark:text-blue-400' : ''
+                            )}
+                          >
+                            {template.name}
+                          </span>
+                          <p className="text-[10px] text-muted-foreground line-clamp-1">
+                            {template.description}
+                          </p>
                         </div>
                       </div>
-                      {/* Skeleton Body */}
-                      <div className="h-2 bg-current rounded w-full opacity-10" />
-                      <div className="h-2 bg-current rounded w-full opacity-10" />
-                      <div className="h-2 bg-current rounded w-5/6 opacity-10" />
-                      <div className="mt-4 h-3 bg-current rounded w-1/3 opacity-20" />
-                      <div className="h-2 bg-current rounded w-full opacity-10" />
-                      <div className="h-2 bg-current rounded w-full opacity-10" />
-                      <div className="mt-4 h-3 bg-current rounded w-1/3 opacity-20" />
-                      <div className="h-2 bg-current rounded w-full opacity-10" />
-                    </div>
-                  </div>
-
-                  {/* Hover Overlay Button */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 dark:bg-black/20 backdrop-blur-[1px]">
-                    <Button
-                      size="sm"
-                      className="shadow-lg pointer-events-none bg-white text-black hover:bg-white/90 dark:bg-zinc-900 dark:text-white"
-                    >
-                      使用此模板
-                    </Button>
-                  </div>
-
-                  {isActive && (
-                    <div className="absolute inset-0 bg-blue-600/10 flex items-center justify-center ring-inset ring-2 ring-blue-600">
-                      <div className="bg-blue-600 text-white rounded-full p-2 shadow-lg scale-110">
-                        <Check className="h-5 w-5" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-1 px-1">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={cn(
-                        'text-sm font-medium',
-                        isActive ? 'text-blue-700 dark:text-blue-400' : ''
-                      )}
-                    >
-                      {template.name}
-                    </span>
-                  </div>
-
-                  {/* Description with Marquee Effect on Hover */}
-                  <div className="relative h-4 w-full overflow-hidden group/desc text-xs text-muted-foreground">
-                    <div className="absolute left-0 flex whitespace-nowrap transition-transform duration-0 ease-linear group-hover/desc:-translate-x-1/2 group-hover/desc:duration-[4000ms]">
-                      <span>{template.description}</span>
-                      <span className="inline-block w-8"></span>
-                      <span>{template.description}</span>
-                    </div>
-                  </div>
+                    )
+                  })}
                 </div>
               </div>
-            )
-          })}
+            </div>
+
+            {/* Right: Preview Panel (1/3 width, Desktop Only) */}
+            <div
+              className={cn(
+                "hidden md:flex w-1/3 border-l border-border/50",
+                "items-center justify-center p-6",
+                "bg-muted/30 dark:bg-muted/10"
+              )}
+            >
+              <div className="w-full h-full flex flex-col items-center justify-center">
+                {/* Preview Image - Fills available height while maintaining aspect ratio */}
+                {previewTemplate?.thumbnail && (
+                  <div
+                    className={cn(
+                      "relative w-full max-w-[280px] aspect-[210/297]",
+                      "rounded-lg overflow-hidden",
+                      "shadow-2xl",
+                      "ring-1 ring-black/10 dark:ring-white/10"
+                    )}
+                    style={{
+                      // Limit height to ensure text fits below
+                      maxHeight: 'calc(100% - 80px)',
+                    }}
+                  >
+                    <Image
+                      src={previewTemplate.thumbnail}
+                      alt={previewTemplate.name}
+                      fill
+                      placeholder="blur"
+                      className="object-cover object-top"
+                      sizes="280px"
+                    />
+                  </div>
+                )}
+
+                {/* Preview Info */}
+                <div className="mt-4 text-center shrink-0">
+                  <h3 className="font-semibold text-sm">{previewTemplate?.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 text-balance max-w-[240px]">
+                    {previewTemplate?.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

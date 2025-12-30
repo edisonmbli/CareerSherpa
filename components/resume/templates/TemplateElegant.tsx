@@ -94,12 +94,16 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
                 sectionTitles?.['summary']
               )}
             />
-            <p
+            <div
               className="leading-[1.8] text-gray-600 text-center max-w-[95%] italic"
               style={theme.text}
             >
-              {basics.summary}
-            </p>
+              {basics.summary.split('\n').map((line, i) => (
+                <p key={i} className="mb-2 last:mb-0">
+                  {line.trim()}
+                </p>
+              ))}
+            </div>
           </div>
         </InteractiveSection>
       </section>

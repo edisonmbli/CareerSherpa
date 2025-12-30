@@ -73,12 +73,12 @@ export function TemplateCorporate({
               sectionTitles?.['summary']
             )}
           />
-          <p
+          <div
             className="leading-relaxed text-gray-700 text-justify px-1"
             style={theme.text}
           >
-            {basics.summary}
-          </p>
+            {renderDescription(basics.summary)}
+          </div>
         </section>
       </InteractiveSection>
     ),
@@ -517,7 +517,7 @@ export function TemplateCorporate({
 }
 
 export const CorporateDefaults: TemplateConfig = {
-  themeColor: '#1E3A8A', // Navy Blue
+  themeColor: '#2454d6', // Royal Blue - Trust & Modern
   fontFamily: 'serif', // Noto Serif / Song 权威感
   fontSize: 1,
   baseFontSize: 14,

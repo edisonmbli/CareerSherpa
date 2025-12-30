@@ -34,6 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useReactToPrint } from 'react-to-print'
 import { generateMarkdown } from '@/lib/export-utils'
 import { toast } from 'sonner'
+import Image from 'next/image'
 
 interface MobileControlFabProps {
   printRef?: React.RefObject<HTMLDivElement> | React.RefObject<any>
@@ -342,7 +343,18 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                           : 'hover:bg-gray-50 dark:hover:bg-zinc-800'
                       )}
                     >
-                      <div className="aspect-[210/297] bg-gray-200 dark:bg-zinc-700 rounded mb-2" />
+                      <div className="relative aspect-[210/297] bg-gray-200 dark:bg-zinc-700 rounded mb-2 overflow-hidden">
+                        {t.thumbnail && (
+                          <Image
+                            src={t.thumbnail}
+                            alt={t.name}
+                            fill
+                            placeholder="blur"
+                            className="object-cover object-top"
+                            sizes="45vw"
+                          />
+                        )}
+                      </div>
                       <span className="text-sm font-medium">{t.name}</span>
                     </div>
                   ))}

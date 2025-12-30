@@ -43,7 +43,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
   } = data
 
   const theme = useResumeTheme({
-    themeColor: '#0F172A', // Default to a deep slate/navy
+    themeColor: '#0D9488', // Default to Teal
     ...styleConfig,
   })
 
@@ -219,11 +219,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
               </div>
             )}
             <div className="text-gray-700 leading-relaxed font-medium text-justify text-[0.95em] w-full">
-              {basics.summary.split('\n').map((line, i) => (
-                <p key={i} className={cn(i > 0 && 'mt-2')}>
-                  {line}
-                </p>
-              ))}
+              {renderDescription(basics.summary)}
             </div>
           </div>
         </InteractiveSection>
@@ -601,7 +597,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
 }
 
 export const ProductDefaults: TemplateConfig = {
-  themeColor: '#4F46E5', // Indigo
+  themeColor: '#0D9488', // Teal - Growth & Data
   fontFamily: 'inter', // System Sans / Inter
   fontSize: 1,
   baseFontSize: 13.5,

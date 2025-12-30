@@ -182,11 +182,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
                 className="leading-[1.8] text-gray-600 font-medium italic relative z-10"
                 style={{ fontSize: '0.95em' }}
               >
-                {basics.summary.split('\n').map((line, i) => (
-                  <p key={i} className="mb-2 last:mb-0">
-                    {line.replace(/^[-•]\s*/, '')}
-                  </p>
-                ))}
+                {renderDescription(basics.summary)}
               </div>
             </div>
           </div>

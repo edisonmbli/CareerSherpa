@@ -93,12 +93,12 @@ export function TemplateProfessional({
               )}
               icon={Sparkles}
             />
-            <p
+            <div
               className="leading-relaxed text-gray-700 text-justify"
               style={theme.text}
             >
-              {basics.summary}
-            </p>
+              {renderDescription(basics.summary)}
+            </div>
           </div>
         </InteractiveSection>
       </section>
@@ -346,7 +346,10 @@ export function TemplateProfessional({
                   className="text-gray-600 leading-relaxed flex flex-col gap-2"
                   style={{ fontSize: '0.9em' }}
                 >
-                  {renderDescription(item.description)}
+                  {renderDescription(item.description, {
+                    listClass: 'list-none space-y-2 my-1',
+                    itemClass: 'text-[length:inherit] leading-relaxed',
+                  })}
                 </div>
               </SidebarSection>
             ))}
@@ -512,7 +515,7 @@ export function TemplateProfessional({
 }
 
 export const ProfessionalDefaults: TemplateConfig = {
-  themeColor: '#0F766E', // 深青色
+  themeColor: '#334155', // Slate - Executive & Neutral
   fontFamily: 'lato', // Lato 人文商务感
   fontSize: 1,
   baseFontSize: 13.5,

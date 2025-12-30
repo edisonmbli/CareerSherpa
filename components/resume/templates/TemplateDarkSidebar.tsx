@@ -296,12 +296,12 @@ export function TemplateDarkSidebar({
                 sectionTitles?.['summary']
               )}
             />
-            <p
+            <div
               className="text-[0.95em] leading-relaxed text-gray-700 text-justify"
               style={theme.text}
             >
-              {basics.summary}
-            </p>
+              {renderDescription(basics.summary)}
+            </div>
           </div>
         </InteractiveSection>
       </section>
@@ -543,7 +543,7 @@ export function TemplateDarkSidebar({
 }
 
 export const DarkSidebarDefaults: TemplateConfig = {
-  themeColor: '#4338CA', // 靛蓝色
+  themeColor: '#18181B', // Zinc 900 - Professional Dark
   fontFamily: 'open-sans', // Open Sans
   fontSize: 1,
   baseFontSize: 13.5,
