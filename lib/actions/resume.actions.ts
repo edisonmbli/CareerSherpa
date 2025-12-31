@@ -164,15 +164,17 @@ export const getLatestDetailedSummaryAction = withServerActionAuthWrite(
 
 export async function updateCustomizedResumeAction(params: {
   serviceId: string
-  resumeData: any
+  resumeData?: any      // Now optional for incremental updates
   sectionConfig?: any
   opsJson?: any
 }) {
   const { serviceId, resumeData, sectionConfig, opsJson } = params
 
   try {
-    // Validate data before saving
-    const validatedData = resumeDataSchema.parse(resumeData)
+    // Only validate fields that are being updated
+    const validatedData = resumeData
+      ? resumeDataSchema.parse(resumeData)
+      : undefined
     const validatedConfig = sectionConfig
       ? sectionConfigSchema.parse(sectionConfig)
       : undefined

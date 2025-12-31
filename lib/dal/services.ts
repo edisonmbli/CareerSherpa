@@ -250,17 +250,35 @@ export async function setInterviewTipsJson(
 
 export async function updateCustomizedResumeEditedData(
   serviceId: string,
-  editedResumeJson: any,
+  editedResumeJson?: any,
   sectionConfig?: any,
   opsJson?: any
 ) {
+  // Build update data object dynamically - only include provided fields
+  const updateData: {
+    editedResumeJson?: any
+    sectionConfig?: any
+    ops_json?: any
+  } = {}
+
+  if (editedResumeJson !== undefined) {
+    updateData.editedResumeJson = editedResumeJson
+  }
+  if (sectionConfig !== undefined) {
+    updateData.sectionConfig = sectionConfig
+  }
+  if (opsJson !== undefined) {
+    updateData.ops_json = opsJson
+  }
+
+  // Skip update if nothing to change
+  if (Object.keys(updateData).length === 0) {
+    return null
+  }
+
   return prisma.customizedResume.update({
     where: { serviceId },
-    data: {
-      editedResumeJson,
-      ...(sectionConfig ? { sectionConfig } : {}),
-      ...(opsJson ? { ops_json: opsJson } : {}),
-    },
+    data: updateData,
   })
 }
 
@@ -360,8 +378,8 @@ export async function txMarkSummaryFailed(
     failureCode && Object.values(FailureCode).includes(failureCode)
       ? failureCode
       : failureCode === ('llm_error' as any)
-      ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
-      : null
+        ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
+        : null
 
   return prisma.$transaction([
     prisma.job.update({
@@ -438,8 +456,8 @@ export async function txMarkMatchFailed(
     failureCode && Object.values(FailureCode).includes(failureCode)
       ? failureCode
       : failureCode === ('llm_error' as any)
-      ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
-      : null
+        ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
+        : null
 
   return prisma.$transaction([
     prisma.match.update({

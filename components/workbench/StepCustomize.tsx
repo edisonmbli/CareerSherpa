@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 import { useResumeStore } from '@/store/resume-store'
 import type { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
 import { ResumeEditorLayout } from '@/components/resume/editor/ResumeEditorLayout'
-import { Loader2 } from 'lucide-react'
+import { useExitProtection } from '@/hooks/use-exit-protection'
+import { SaveIndicator } from '@/components/ui/SaveIndicator'
 
 interface StepCustomizeProps {
   serviceId: string
@@ -25,7 +26,10 @@ export function StepCustomize({
   initialOpsJson,
   ctaAction,
 }: StepCustomizeProps) {
-  const { initStore, isSaving } = useResumeStore()
+  const { initStore } = useResumeStore()
+
+  // Enable exit protection for unsaved changes
+  useExitProtection()
 
   const initialized = useRef(false)
 
@@ -53,17 +57,12 @@ export function StepCustomize({
 
   return (
     <div className="h-full w-full relative">
-      {/* Auto-save indicator overlay */}
-      <div className="absolute top-4 right-20 z-50 pointer-events-none">
-        {isSaving && (
-          <div className="flex items-center gap-2 text-xs text-blue-600 bg-white/90 px-3 py-1.5 rounded-full shadow-sm border backdrop-blur-sm transition-all duration-200">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>自动保存中...</span>
-          </div>
-        )}
-      </div>
-
       <ResumeEditorLayout ctaAction={ctaAction} />
+
+      {/* Mobile floating save button - hidden on desktop (toolbar has inline version) */}
+      <div className="md:hidden">
+        <SaveIndicator variant="floating" />
+      </div>
     </div>
   )
 }

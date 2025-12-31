@@ -67,7 +67,12 @@ interface ResumeState {
   isAIPanelOpen: boolean
   isSaving: boolean
   lastSavedAt: Date | null
-  statusMessage: { text: string; type: 'success' | 'info' } | null
+  statusMessage: { text: string; type: 'success' | 'info' | 'error' } | null
+
+  // Dirty State Tracking (Hybrid Save)
+  isDirty: boolean
+  dirtyFields: Array<'resumeData' | 'sectionConfig' | 'styleConfig'>
+  lastLocalChangeAt: number | null
 
   // Layout Info (Calculated by ResumePreview)
   layoutInfo: {
@@ -148,9 +153,14 @@ interface ResumeState {
   setLayoutInfo: (info: Partial<ResumeState['layoutInfo']>) => void
   setTemplate: (id: TemplateId) => void
 
-  // Auto-save trigger
+  // Auto-save trigger (background)
   save: () => Promise<void>
+  // Manual save trigger (with UI feedback)
+  manualSave: () => Promise<{ ok: boolean; error?: string }>
   resetToOriginal: () => Promise<void>
+  // Dirty state management
+  markDirty: (field: 'resumeData' | 'sectionConfig' | 'styleConfig') => void
+  clearDirty: () => void
 }
 
 // Debounced save function
@@ -228,6 +238,11 @@ const createResumeSlice = (
   lastSavedAt: null,
   statusMessage: null,
 
+  // Dirty state tracking
+  isDirty: false,
+  dirtyFields: [],
+  lastLocalChangeAt: null,
+
   layoutInfo: {
     contentHeight: 0,
   },
@@ -293,7 +308,7 @@ const createResumeSlice = (
         state.resumeData.basics = { ...state.resumeData.basics, ...data }
       }
     })
-    get().save()
+    get().markDirty('resumeData')
   },
 
   updateSectionTitle: (sectionKey, title) => {
@@ -305,7 +320,7 @@ const createResumeSlice = (
         state.resumeData.sectionTitles[sectionKey] = title
       }
     })
-    get().save()
+    get().markDirty('resumeData')
   },
 
 
@@ -319,8 +334,7 @@ const createResumeSlice = (
       state.sectionConfig.pageBreaks[sectionKey] =
         !state.sectionConfig.pageBreaks[sectionKey]
     })
-    // Save needed because it's part of sectionConfig
-    get().save()
+    get().markDirty('sectionConfig')
   },
 
   updateSectionItem: (sectionKey, itemId, data) => {
@@ -333,7 +347,7 @@ const createResumeSlice = (
         }
       }
     })
-    get().save()
+    get().markDirty('resumeData')
   },
 
   addSectionItem: (sectionKey) => {
@@ -350,7 +364,7 @@ const createResumeSlice = (
       }
     })
     get().setActive(sectionKey, id)
-    get().save()
+    get().markDirty('resumeData')
   },
 
   removeSectionItem: (sectionKey, itemId) => {
@@ -363,7 +377,7 @@ const createResumeSlice = (
         }
       }
     })
-    get().save()
+    get().markDirty('resumeData')
   },
 
   updateSimpleSection: (sectionKey, value) => {
@@ -372,14 +386,14 @@ const createResumeSlice = (
         state.resumeData[sectionKey] = value
       }
     })
-    get().save()
+    get().markDirty('resumeData')
   },
 
   reorderSection: (newOrder) => {
     set((state) => {
       state.sectionConfig.order = newOrder
     })
-    get().save()
+    get().markDirty('sectionConfig')
   },
 
   toggleSectionVisibility: (sectionKey) => {
@@ -391,7 +405,7 @@ const createResumeSlice = (
         state.sectionConfig.hidden.push(sectionKey)
       }
     })
-    get().save()
+    get().markDirty('sectionConfig')
   },
 
   setActive: (key, itemId) => {
@@ -441,7 +455,7 @@ const createResumeSlice = (
     set((state) => {
       state.styleConfig = { ...state.styleConfig, ...config }
     })
-    get().save()
+    get().markDirty('styleConfig')
   },
 
   setLayoutInfo: (info) => {
@@ -463,7 +477,7 @@ const createResumeSlice = (
         }
       }
     })
-    get().save()
+    get().markDirty('styleConfig')
   },
 
   save: async () => {
@@ -501,6 +515,97 @@ const createResumeSlice = (
           console.error('Failed to reset remote data', e)
         }
       }
+    }
+  },
+
+  // Dirty state management
+  markDirty: (field) => {
+    set((state) => {
+      state.isDirty = true
+      if (!state.dirtyFields.includes(field)) {
+        state.dirtyFields.push(field)
+      }
+      state.lastLocalChangeAt = Date.now()
+    })
+  },
+
+  clearDirty: () => {
+    set((state) => {
+      state.isDirty = false
+      state.dirtyFields = []
+      state.lastLocalChangeAt = null
+    })
+  },
+
+  // Manual save with UI feedback
+  manualSave: async () => {
+    const {
+      serviceId,
+      resumeData,
+      sectionConfig,
+      styleConfig,
+      currentTemplate,
+      isDirty,
+      dirtyFields,
+    } = get()
+
+    if (!serviceId) {
+      return { ok: false, error: 'No service ID' }
+    }
+
+    if (!isDirty || dirtyFields.length === 0) {
+      return { ok: true } // Already saved
+    }
+
+    // Cancel any pending debounced save
+    debouncedSave.cancel()
+
+    set((state) => {
+      state.isSaving = true
+    })
+
+    try {
+      // Build payload with only dirty fields (incremental update)
+      const payload: {
+        serviceId: string
+        resumeData?: any
+        sectionConfig?: any
+        opsJson?: any
+      } = { serviceId }
+
+      if (dirtyFields.includes('resumeData') && resumeData) {
+        payload.resumeData = resumeData
+      }
+      if (dirtyFields.includes('sectionConfig')) {
+        payload.sectionConfig = sectionConfig
+      }
+      if (dirtyFields.includes('styleConfig')) {
+        payload.opsJson = { styleConfig, currentTemplate }
+      }
+
+      const res = await updateCustomizedResumeAction(payload)
+
+      if (res.ok) {
+        set((state) => {
+          state.isSaving = false
+          state.lastSavedAt = new Date()
+          state.isDirty = false
+          state.dirtyFields = []
+          state.lastLocalChangeAt = null
+        })
+        return { ok: true }
+      } else {
+        set((state) => {
+          state.isSaving = false
+        })
+        return { ok: false, error: (res as any).error || 'Save failed' }
+      }
+    } catch (e) {
+      set((state) => {
+        state.isSaving = false
+      })
+      console.error('Manual save failed:', e)
+      return { ok: false, error: 'Network error' }
     }
   },
 })

@@ -52,6 +52,7 @@ import {
   TooltipContent,
 } from '@/components/ui/tooltip'
 import { HelpCircle } from 'lucide-react'
+import { SaveIndicator } from '@/components/ui/SaveIndicator'
 
 interface ResumeToolbarProps {
   printRef: React.RefObject<HTMLDivElement>
@@ -672,7 +673,10 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
+        {/* Save Indicator - Shows when dirty */}
+        <SaveIndicator variant="inline" />
 
         {/* Status Message In-Flow */}
         {statusMessage && (
