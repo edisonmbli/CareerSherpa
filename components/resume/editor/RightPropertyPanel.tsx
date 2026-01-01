@@ -12,18 +12,7 @@ import { CustomSectionForm } from '../forms/CustomSectionForm'
 import { SimpleSectionForm } from '../forms/SimpleSectionForm'
 import { cn } from '@/lib/utils'
 import ReactMarkdown from 'react-markdown'
-
-const SECTION_LABELS: Record<string, string> = {
-  basics: '基本信息',
-  summary: '个人总结',
-  workExperiences: '工作经历',
-  projectExperiences: '项目经历',
-  educations: '教育经历',
-  skills: '技能特长',
-  certificates: '证书奖项',
-  hobbies: '兴趣爱好',
-  customSections: '自定义板块',
-}
+import { useResumeDict } from '../ResumeDictContext'
 
 export function RightPropertyPanel({
   isMobile,
@@ -42,6 +31,8 @@ export function RightPropertyPanel({
     setAIPanelOpen,
     isAIPanelOpen,
   } = useResumeStore()
+
+  const dict = useResumeDict()
 
   const handleBack = () => {
     if (activeItemId) {
@@ -69,24 +60,24 @@ export function RightPropertyPanel({
         return (
           <SimpleSectionForm
             sectionKey="skills"
-            label="技能特长"
-            placeholder="列出你的核心技能..."
+            label={dict.sections.skills}
+            placeholder={dict.forms.skillsPlaceholder}
           />
         )
       case 'certificates':
         return (
           <SimpleSectionForm
             sectionKey="certificates"
-            label="证书奖项"
-            placeholder="列出获得的证书或奖项..."
+            label={dict.sections.certificates}
+            placeholder={dict.forms.certificatesPlaceholder}
           />
         )
       case 'hobbies':
         return (
           <SimpleSectionForm
             sectionKey="hobbies"
-            label="兴趣爱好"
-            placeholder="列出你的兴趣爱好..."
+            label={dict.sections.hobbies}
+            placeholder={dict.forms.hobbiesPlaceholder}
           />
         )
       case 'customSections':
@@ -129,7 +120,7 @@ export function RightPropertyPanel({
                 <div className="flex items-start gap-3 bg-gradient-to-r from-blue-50/80 to-blue-200/80 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30">
                   <Bot className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                   <div className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-                    基于简历内容与目标岗位的匹配分析，我为您整理了以下优化建议，希望能帮助您脱颖而出。
+                    {dict.forms.aiSuggestionIntro}
                   </div>
                 </div>
 
@@ -191,7 +182,7 @@ export function RightPropertyPanel({
               <div className="flex flex-col items-center justify-center py-12 text-center space-y-4 opacity-60">
                 <Bot className="w-12 h-12 text-gray-300 dark:text-zinc-600" />
                 <p className="text-sm text-muted-foreground">
-                  暂无优化建议，请先生成简历
+                  {dict.forms.noSuggestions}
                 </p>
               </div>
             )}
@@ -200,6 +191,9 @@ export function RightPropertyPanel({
       </div>
     )
   }
+
+  // Get section label from dictionary
+  const sectionLabel = activeSectionKey ? (dict.sections[activeSectionKey] || dict.forms.editContent) : dict.forms.editContent
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-zinc-900 transition-colors">
@@ -227,7 +221,7 @@ export function RightPropertyPanel({
               isMobile ? 'text-lg' : 'text-base'
             )}
           >
-            {SECTION_LABELS[activeSectionKey] || '编辑内容'}
+            {sectionLabel}
           </span>
         </div>
 

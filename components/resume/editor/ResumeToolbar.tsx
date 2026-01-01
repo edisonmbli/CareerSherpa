@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/tooltip'
 import { HelpCircle } from 'lucide-react'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
+import { useResumeDict } from '../ResumeDictContext'
 
 interface ResumeToolbarProps {
   printRef: React.RefObject<HTMLDivElement>
@@ -136,6 +137,8 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   const [recentColors, setRecentColors] = useState<string[]>([])
   const [isStyleOpen, setIsStyleOpen] = useState(false)
   const commitTimerRef = useRef<number | null>(null)
+
+  const dict = useResumeDict()
 
   // Helper to round to 1 decimal place
   const roundVal = (val: number) => Math.round(val * 10) / 10
@@ -297,8 +300,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
     URL.revokeObjectURL(url)
   }
 
-  const currentTemplateName =
-    RESUME_TEMPLATES.find((t) => t.id === currentTemplate)?.name || '标准通用'
+  // Template name now comes from dictionary via TemplateSelector component
 
   return (
     <header className="flex h-12 items-center justify-between border-b bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3 mt-2 mx-2 shrink-0 z-30 shadow-sm transition-colors no-print relative">
@@ -316,7 +318,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               isStructureOpen ? 'text-blue-600 dark:text-blue-400' : ''
             )}
           />
-          <span className="hidden lg:inline">章节</span>
+          <span className="hidden lg:inline">{dict.toolbar.chapters}</span>
         </Button>
 
         <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
@@ -335,7 +337,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               className="h-8 gap-2 text-muted-foreground hover:text-foreground shrink-0 px-2"
             >
               <Palette className="h-4 w-4" />
-              <span className="hidden lg:inline">样式</span>
+              <span className="hidden lg:inline">{dict.toolbar.style}</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-4 relative max-h-[80vh] overflow-y-auto" align="end" alignOffset={-70}>
@@ -373,7 +375,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-muted-foreground">
-                    主色调
+                    {dict.toolbar.themeColor}
                   </label>
                   <div className="flex items-center gap-2">
                     <Button
@@ -383,7 +385,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                       onClick={() => colorInputRef.current?.click()}
                     >
                       <Pipette className="w-3.5 h-3.5 text-indigo-500" />
-                      取色器
+                      {dict.toolbar.colorPicker}
                     </Button>
                   </div>
                 </div>
@@ -461,7 +463,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               {/* Font Family */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground">
-                  字体
+                  {dict.toolbar.font}
                 </label>
                 <Select
                   value={styleConfig.fontFamily}
@@ -494,7 +496,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-muted-foreground">
-                      紧凑模式
+                      {dict.toolbar.compactMode}
                     </label>
                     <button
                       role="switch"
@@ -518,7 +520,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
 
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-muted-foreground">
-                      等比缩放
+                      {dict.toolbar.proportionalScale}
                     </label>
                     <button
                       role="switch"
@@ -549,7 +551,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent className="text-xs text-muted-foreground bg-popover border shadow-sm">
-                        启用后，调整任一样式参数将等比例联动其它参数
+                        {dict.toolbar.proportionalTip}
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -562,7 +564,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               {styleConfig.proportionalScale && (
                 <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
                   <RangeControl
-                    label="整体缩放"
+                    label={dict.toolbar.masterScale}
                     value={styleConfig.scaleFactor ?? 1.0}
                     min={0.7}
                     max={1.3}
@@ -571,14 +573,14 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                     formatValue={(v) => `${v.toFixed(2)}x`}
                   />
                   <p className="text-[10px] text-muted-foreground/70">
-                    拖动此滑块将按比例调整下方所有样式参数
+                    {dict.toolbar.masterScaleTip}
                   </p>
                 </div>
               )}
 
               {/* 独立样式滑块 - 等比缩放开启时 disabled */}
               <RangeControl
-                label="字体大小 (倍率)"
+                label={dict.toolbar.fontSize}
                 value={styleConfig.fontSize}
                 min={0.7}
                 max={1.3}
@@ -589,7 +591,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               />
 
               <RangeControl
-                label="行间距"
+                label={dict.toolbar.lineHeight}
                 value={styleConfig.lineHeight}
                 min={0.8}
                 max={3.0}
@@ -600,7 +602,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               />
 
               <RangeControl
-                label="条目间距 (px)"
+                label={dict.toolbar.itemSpacing}
                 value={styleConfig.itemSpacing}
                 min={0}
                 max={48}
@@ -611,7 +613,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               />
 
               <RangeControl
-                label="区块间距 (px)"
+                label={dict.toolbar.sectionSpacing}
                 value={styleConfig.sectionSpacing}
                 min={0}
                 max={64}
@@ -622,7 +624,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               />
 
               <RangeControl
-                label="页面边距 (mm)"
+                label={dict.toolbar.pageMargin}
                 value={styleConfig.pageMargin}
                 min={5}
                 max={35}
@@ -644,7 +646,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
           onClick={() => setIsResetOpen(true)}
         >
           <RotateCcw className="h-4 w-4" />
-          <span className="hidden lg:inline">重置</span>
+          <span className="hidden lg:inline">{dict.toolbar.reset}</span>
         </Button>
 
         <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
@@ -658,17 +660,17 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
               className="gap-2 h-8 text-muted-foreground hover:text-foreground shrink-0 px-2"
             >
               <Download className="h-4 w-4" />
-              <span className="hidden lg:inline">导出</span>
+              <span className="hidden lg:inline">{dict.toolbar.export}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={handlePrint}>
               <FileText className="mr-2 h-4 w-4" />
-              <span>导出为 PDF</span>
+              <span>{dict.toolbar.exportPdf}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportMarkdown}>
               <FileJson className="mr-2 h-4 w-4" />
-              <span>导出为 Markdown</span>
+              <span>{dict.toolbar.exportMd}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -693,14 +695,14 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
         <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>确认重置简历？</DialogTitle>
+              <DialogTitle>{dict.toolbar.resetConfirm}</DialogTitle>
               <DialogDescription>
-                此操作将清除所有二次编辑的内容，恢复到AI生成的初始版本。此操作无法撤销。
+                {dict.toolbar.resetDesc}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsResetOpen(false)}>
-                取消
+                {dict.toolbar.cancel}
               </Button>
               <Button
                 className="bg-red-600/70 dark:bg-red-500/70 hover:bg-red-700 text-white"
@@ -709,7 +711,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
                   setIsResetOpen(false)
                 }}
               >
-                确认重置
+                {dict.toolbar.confirmReset}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -728,7 +730,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
           onClick={() => setAIPanelOpen(!isAIPanelOpen)}
         >
           <Sparkles className="h-4 w-4" />
-          <span>AI 建议</span>
+          <span>{dict.toolbar.aiSuggestions}</span>
         </Button>
 
         {/* Divider - Vertically centered */}

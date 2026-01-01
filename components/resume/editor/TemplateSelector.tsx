@@ -14,19 +14,26 @@ import { RESUME_TEMPLATES, TemplateId } from '../constants'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import Image from 'next/image'
+import { useResumeDict } from '../ResumeDictContext'
 
 export function TemplateSelector() {
   const { currentTemplate, setTemplate, setStatusMessage } = useResumeStore()
+  const dict = useResumeDict()
   const [isOpen, setIsOpen] = useState(false)
   const [hoveredTemplate, setHoveredTemplate] = useState<
     (typeof RESUME_TEMPLATES)[number] | null
   >(null)
 
+  // Helper to get template name/description from dictionary
+  const getTemplateInfo = (id: string) => {
+    return dict.templates[id] || { name: id, description: '' }
+  }
+
   const handleSelectTemplate = (id: TemplateId) => {
     setTemplate(id)
-    const templateName = RESUME_TEMPLATES.find((t) => t.id === id)?.name
+    const templateName = getTemplateInfo(id).name
     setStatusMessage({
-      text: `已切换到 ${templateName} 模板，已自动应用最佳字体与配色`,
+      text: `${templateName}`,
       type: 'success',
     })
     setIsOpen(false)
@@ -47,7 +54,7 @@ export function TemplateSelector() {
           className="h-8 gap-2 text-muted-foreground hover:text-foreground shrink-0 px-2"
         >
           <LayoutTemplate className="h-4 w-4" />
-          <span className="hidden lg:inline">模板</span>
+          <span className="hidden lg:inline">{dict.toolbar.template}</span>
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -64,9 +71,9 @@ export function TemplateSelector() {
         <div className="flex flex-col h-full">
           {/* Header - Fixed height */}
           <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-border/50">
-            <DialogTitle className="text-lg font-semibold">选择简历模板</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">{dict.editor.selectTemplate}</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              所有模板均支持 A4 打印与 PDF 导出，自动适配内容排版
+              {dict.editor.templateDesc}
             </p>
           </DialogHeader>
 
@@ -79,6 +86,7 @@ export function TemplateSelector() {
                   {RESUME_TEMPLATES.map((template) => {
                     const isActive = currentTemplate === template.id
                     const isHovered = hoveredTemplate?.id === template.id
+                    const templateInfo = getTemplateInfo(template.id)
                     return (
                       <div
                         key={template.id}
@@ -111,7 +119,7 @@ export function TemplateSelector() {
                           {template.thumbnail && (
                             <Image
                               src={template.thumbnail}
-                              alt={template.name}
+                              alt={templateInfo.name}
                               fill
                               placeholder="blur"
                               className="object-cover object-top"
@@ -137,10 +145,10 @@ export function TemplateSelector() {
                               isActive ? 'text-blue-700 dark:text-blue-400' : ''
                             )}
                           >
-                            {template.name}
+                            {templateInfo.name}
                           </span>
                           <p className="text-[10px] text-muted-foreground line-clamp-1">
-                            {template.description}
+                            {templateInfo.description}
                           </p>
                         </div>
                       </div>
@@ -175,7 +183,7 @@ export function TemplateSelector() {
                   >
                     <Image
                       src={previewTemplate.thumbnail}
-                      alt={previewTemplate.name}
+                      alt={getTemplateInfo(previewTemplate.id).name}
                       fill
                       placeholder="blur"
                       className="object-cover object-top"
@@ -186,9 +194,9 @@ export function TemplateSelector() {
 
                 {/* Preview Info */}
                 <div className="mt-4 text-center shrink-0">
-                  <h3 className="font-semibold text-sm">{previewTemplate?.name}</h3>
+                  <h3 className="font-semibold text-sm">{getTemplateInfo(previewTemplate?.id || 'standard').name}</h3>
                   <p className="text-xs text-muted-foreground mt-1 text-balance max-w-[240px]">
-                    {previewTemplate?.description}
+                    {getTemplateInfo(previewTemplate?.id || 'standard').description}
                   </p>
                 </div>
               </div>
@@ -199,3 +207,4 @@ export function TemplateSelector() {
     </Dialog>
   )
 }
+

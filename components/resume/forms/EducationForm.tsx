@@ -16,6 +16,7 @@ import {
 } from './styles'
 import { SECTION_TITLES } from '../section-titles'
 import { PageBreakSwitch } from './PageBreakSwitch'
+import { useResumeDict } from '../ResumeDictContext'
 
 export function EducationForm() {
   const {
@@ -27,6 +28,8 @@ export function EducationForm() {
     setActive,
     updateSectionTitle,
   } = useResumeStore()
+
+  const dict = useResumeDict()
 
   if (!resumeData) return null
 
@@ -49,12 +52,12 @@ export function EducationForm() {
             className="mb-2 -ml-2 text-muted-foreground md:flex hidden"
           >
             <ChevronDown className="h-4 w-4 rotate-90 mr-1" />
-            返回列表
+            {dict.forms.backToList}
           </Button>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>学校名称</Label>
+              <Label>{dict.forms.schoolName}</Label>
               <Input
                 value={activeItem.school || ''}
                 onChange={(e) =>
@@ -67,7 +70,7 @@ export function EducationForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>专业</Label>
+                <Label>{dict.forms.major}</Label>
                 <Input
                   value={activeItem.major || ''}
                   onChange={(e) =>
@@ -79,7 +82,7 @@ export function EducationForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>学历</Label>
+                <Label>{dict.forms.degree}</Label>
                 <Input
                   value={activeItem.degree || ''}
                   onChange={(e) =>
@@ -93,7 +96,7 @@ export function EducationForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>开始时间</Label>
+                <Label>{dict.forms.startDate}</Label>
                 <Input
                   value={activeItem.startDate || ''}
                   onChange={(e) =>
@@ -101,12 +104,12 @@ export function EducationForm() {
                       startDate: e.target.value,
                     })
                   }
-                  placeholder="YYYY-MM"
+                  placeholder={dict.forms.dateFormat}
                   className={formInputClass}
                 />
               </div>
               <div className="space-y-2">
-                <Label>结束时间</Label>
+                <Label>{dict.forms.endDate}</Label>
                 <Input
                   value={activeItem.endDate || ''}
                   onChange={(e) =>
@@ -114,13 +117,13 @@ export function EducationForm() {
                       endDate: e.target.value,
                     })
                   }
-                  placeholder="YYYY-MM"
+                  placeholder={dict.forms.dateFormat}
                   className={formInputClass}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>在校经历/奖项</Label>
+              <Label>{dict.forms.eduAchievements}</Label>
               <Textarea
                 value={activeItem.description || ''}
                 onChange={(e) =>
@@ -131,7 +134,7 @@ export function EducationForm() {
                 className={formTextareaClass}
               />
               <p className="text-xs text-muted-foreground">
-                💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
+                {dict.editor.markdownTip}
               </p>
             </div>
 
@@ -152,7 +155,7 @@ export function EducationForm() {
       {/* Section Title Editor */}
       <div className="space-y-2 border-b pb-4 mb-4">
         <Label className="text-xs font-medium text-gray-500">
-          自定义章节标题
+          {dict.editor.customSectionTitle}
         </Label>
         <Input
           value={currentTitle}
@@ -171,10 +174,10 @@ export function EducationForm() {
           <div className="flex items-center justify-between">
             <div>
               <div className={formCardTitleClass}>
-                {item.school || '新教育经历'}
+                {item.school || dict.forms.newEducation}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {item.major || '专业'}
+                {item.major || dict.forms.major}
                 {(item.startDate || item.endDate) &&
                   ` • ${item.startDate || ''} - ${item.endDate || ''}`}
               </div>
@@ -213,7 +216,8 @@ export function EducationForm() {
         className="w-full border-dashed h-12 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all"
         onClick={() => addSectionItem('educations')}
       >
-        <Plus className="mr-2 h-4 w-4" /> 添加教育经历
+        <Plus className="mr-2 h-4 w-4" />
+        {dict.forms.addEducation}
       </Button>
 
       <PageBreakSwitch sectionKey="educations" />

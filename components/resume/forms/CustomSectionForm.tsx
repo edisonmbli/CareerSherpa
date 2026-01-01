@@ -16,6 +16,7 @@ import {
 } from './styles'
 import { SECTION_TITLES } from '../section-titles'
 import { PageBreakSwitch } from './PageBreakSwitch'
+import { useResumeDict } from '../ResumeDictContext'
 
 export function CustomSectionForm() {
   const {
@@ -26,6 +27,8 @@ export function CustomSectionForm() {
     updateSectionTitle,
   } = useResumeStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const dict = useResumeDict()
 
   if (!resumeData) return null
 
@@ -44,7 +47,7 @@ export function CustomSectionForm() {
       {/* Section Title Editor */}
       <div className="space-y-2 border-b pb-4 mb-4">
         <Label className="text-xs font-medium text-gray-500">
-          自定义章节标题
+          {dict.editor.customSectionTitle}
         </Label>
         <Input
           value={currentTitle}
@@ -61,7 +64,7 @@ export function CustomSectionForm() {
               className={`${formCardTitleClass} truncate flex-1 cursor-pointer`}
               onClick={() => toggleExpand(item.id)}
             >
-              {item.title || '新自定义板块'}
+              {item.title || dict.forms.newCustom}
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -96,7 +99,7 @@ export function CustomSectionForm() {
           {expandedId === item.id && (
             <div className="space-y-3 mt-2 border-t pt-3">
               <div className="space-y-2">
-                <Label>板块标题</Label>
+                <Label>{dict.forms.sectionTitle}</Label>
                 <Input
                   value={item.title || ''}
                   onChange={(e) =>
@@ -104,12 +107,11 @@ export function CustomSectionForm() {
                       title: e.target.value,
                     })
                   }
-                  placeholder="e.g. 语言能力 / 志愿者经历"
                   className={formInputClass}
                 />
               </div>
               <div className="space-y-2">
-                <Label>内容描述</Label>
+                <Label>{dict.forms.sectionContent}</Label>
                 <Textarea
                   value={item.description || ''}
                   onChange={(e) =>
@@ -120,7 +122,7 @@ export function CustomSectionForm() {
                   className={formTextareaClass}
                 />
                 <p className="text-xs text-muted-foreground">
-                  💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
+                  {dict.editor.markdownTip}
                 </p>
               </div>
 
@@ -135,7 +137,8 @@ export function CustomSectionForm() {
         className={formAddButtonClass}
         onClick={() => addSectionItem('customSections')}
       >
-        <Plus className="mr-2 h-4 w-4" /> 添加自定义板块
+        <Plus className="mr-2 h-4 w-4" />
+        {dict.forms.addCustom}
       </Button>
 
       <PageBreakSwitch sectionKey="customSections" />

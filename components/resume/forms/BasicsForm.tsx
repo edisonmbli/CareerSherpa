@@ -34,10 +34,12 @@ import { SECTION_TITLES, SectionKey } from '../section-titles'
 import { SOCIAL_PLATFORMS } from '../social-config'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useResumeDict } from '../ResumeDictContext'
 
 export function BasicsForm() {
   const { resumeData, updateBasics, updateSectionTitle } = useResumeStore()
   const [isTitlesOpen, setIsTitlesOpen] = useState(false)
+  const dict = useResumeDict()
 
   if (!resumeData) return null
 
@@ -61,7 +63,7 @@ export function BasicsForm() {
 
     // Limit increased to 2MB
     if (file.size > 2 * 1024 * 1024) {
-      alert('图片大小不能超过 2MB')
+      alert(dict.forms.avatarSizeLimit)
       return
     }
 
@@ -85,7 +87,7 @@ export function BasicsForm() {
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
           <Languages className="w-4 h-4" />
-          标题语言
+          {dict.forms.titleLanguage}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
           <div className="space-y-2">
@@ -94,7 +96,7 @@ export function BasicsForm() {
               onValueChange={(v) => handleChange('lang', v as 'zh' | 'en')}
             >
               <SelectTrigger className={formInputClass}>
-                <SelectValue placeholder="选择语言" />
+                <SelectValue placeholder={dict.forms.selectLanguage} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="zh">中文 (Chinese)</SelectItem>
@@ -109,13 +111,13 @@ export function BasicsForm() {
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
           <User className="w-4 h-4" />
-          核心信息
+          {dict.forms.coreInfo}
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
           {/* Avatar and Name */}
           <div className="flex flex-col gap-3 items-center sm:items-start">
-            <Label className="text-xs font-medium text-gray-500">头像</Label>
+            <Label className="text-xs font-medium text-gray-500">{dict.forms.avatar}</Label>
             <div className="relative group">
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-100 bg-gray-50 dark:bg-secondary/50 dark:border-gray-800 flex items-center justify-center shadow-sm">
                 {basics.photoUrl ? (
@@ -132,7 +134,7 @@ export function BasicsForm() {
               <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer rounded-full backdrop-blur-[1px]">
                 <div className="flex flex-col items-center gap-1 text-white">
                   <Upload className="w-4 h-4" />
-                  <span className="text-[10px] font-medium">更换</span>
+                  <span className="text-[10px] font-medium">{dict.forms.changeAvatar}</span>
                 </div>
                 <input
                   type="file"
@@ -143,7 +145,7 @@ export function BasicsForm() {
               </label>
             </div>
             <p className="text-[10px] text-muted-foreground text-center sm:text-left w-24 leading-tight">
-              支持 jpg/png
+              {dict.forms.avatarHint}
               <br />
               Max 2MB
             </p>
@@ -153,25 +155,25 @@ export function BasicsForm() {
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5 text-gray-600">
                 <User className="w-3.5 h-3.5" />
-                姓名
+                {dict.forms.name}
               </Label>
               <Input
                 value={basics.name || ''}
                 onChange={(e) => handleChange('name', e.target.value)}
                 className={formInputClass}
-                placeholder="您的姓名"
+                placeholder={dict.forms.namePlaceholder}
               />
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5 text-gray-600">
                 <MapPin className="w-3.5 h-3.5" />
-                地址
+                {dict.forms.address}
               </Label>
               <Input
                 value={basics.address || ''}
                 onChange={(e) => handleChange('address', e.target.value)}
                 className={formInputClass}
-                placeholder="例如：北京市海淀区"
+                placeholder={dict.forms.addressPlaceholder}
               />
             </div>
           </div>
@@ -180,7 +182,7 @@ export function BasicsForm() {
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5 text-gray-600">
               <Phone className="w-3.5 h-3.5" />
-              手机
+              {dict.forms.phone}
             </Label>
             <Input
               value={basics.mobile || ''}
@@ -192,7 +194,7 @@ export function BasicsForm() {
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5 text-gray-600">
               <Mail className="w-3.5 h-3.5" />
-              邮箱
+              {dict.forms.email}
             </Label>
             <Input
               value={basics.email || ''}
@@ -208,7 +210,7 @@ export function BasicsForm() {
       <div className="space-y-4 pt-2">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 border-b pb-2">
           <Globe className="w-4 h-4" />
-          社交链接
+          {dict.forms.socialLinks}
         </h3>
 
         <div className="grid grid-cols-1 gap-y-5">

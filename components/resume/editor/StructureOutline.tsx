@@ -37,18 +37,10 @@ import {
 } from 'lucide-react'
 import { Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useResumeDict } from '../ResumeDictContext'
+// Section labels now come from ResumeDictContext via useResumeDict() hook
+// See dict.sections for localized labels
 
-const SECTION_LABELS: Record<string, string> = {
-  basics: '基本信息',
-  summary: '个人总结',
-  workExperiences: '工作经历',
-  projectExperiences: '项目经历',
-  educations: '教育经历',
-  skills: '技能特长',
-  certificates: '证书奖项',
-  hobbies: '兴趣爱好',
-  customSections: '自定义板块',
-}
 
 const SECTION_ICONS: Record<string, any> = {
   basics: User,
@@ -116,7 +108,7 @@ function SortableItem({
           ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
           : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300',
         isDragging &&
-          'opacity-50 bg-gray-50 dark:bg-zinc-800 ring-2 ring-blue-500/20 z-50 shadow-lg',
+        'opacity-50 bg-gray-50 dark:bg-zinc-800 ring-2 ring-blue-500/20 z-50 shadow-lg',
         isHidden && 'opacity-60 grayscale',
         hasPageBreak && 'border-l-2 border-orange-300'
       )}
@@ -276,6 +268,7 @@ interface StructureOutlineProps {
 }
 
 export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
+  const dict = useResumeDict()
   const {
     sectionConfig,
     reorderSection,
@@ -308,7 +301,7 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
       {!isMobile && (
         <div className="p-3 flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900 z-10 border-b border-transparent">
           <h3 className="font-medium text-sm text-muted-foreground pl-1">
-            简历结构
+            {dict.editor.structure}
           </h3>
           <Button
             variant="ghost"
@@ -330,7 +323,7 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
           {/* Fixed Basics Section */}
           <FixedItem
             id="basics"
-            label={SECTION_LABELS['basics'] || '基本信息'}
+            label={dict.sections['basics'] || 'Basic Info'}
             isActive={activeSectionKey === 'basics'}
             onClick={() => setActive('basics')}
             isMobile={!!isMobile}
@@ -350,7 +343,7 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
                   <SortableItem
                     key={sectionKey}
                     id={sectionKey}
-                    label={SECTION_LABELS[sectionKey] || sectionKey}
+                    label={dict.sections[sectionKey] || sectionKey}
                     isActive={activeSectionKey === sectionKey}
                     isHidden={sectionConfig.hidden.includes(sectionKey)}
                     onClick={() => setActive(sectionKey)}

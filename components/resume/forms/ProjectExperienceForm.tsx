@@ -16,6 +16,7 @@ import {
 } from './styles'
 import { SECTION_TITLES } from '../section-titles'
 import { PageBreakSwitch } from './PageBreakSwitch'
+import { useResumeDict } from '../ResumeDictContext'
 
 export function ProjectExperienceForm() {
   const {
@@ -28,6 +29,8 @@ export function ProjectExperienceForm() {
     updateSectionTitle,
   } = useResumeStore()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const dict = useResumeDict()
 
   if (!resumeData) return null
 
@@ -45,7 +48,7 @@ export function ProjectExperienceForm() {
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>项目名称</Label>
+              <Label>{dict.forms.projectName}</Label>
               <Input
                 value={activeItem.projectName || ''}
                 onChange={(e) =>
@@ -57,7 +60,7 @@ export function ProjectExperienceForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label>担任角色</Label>
+              <Label>{dict.forms.role}</Label>
               <Input
                 value={activeItem.role || ''}
                 onChange={(e) =>
@@ -69,7 +72,7 @@ export function ProjectExperienceForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label>GitHub 链接 (可选)</Label>
+              <Label>{dict.forms.githubLink}</Label>
               <Input
                 value={activeItem.githubUrl || ''}
                 onChange={(e) =>
@@ -82,7 +85,7 @@ export function ProjectExperienceForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label>作品/演示链接 (可选)</Label>
+              <Label>{dict.forms.demoLink}</Label>
               <Input
                 value={activeItem.demoUrl || ''}
                 onChange={(e) =>
@@ -96,7 +99,7 @@ export function ProjectExperienceForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>开始时间</Label>
+                <Label>{dict.forms.startDate}</Label>
                 <Input
                   value={activeItem.startDate || ''}
                   onChange={(e) =>
@@ -104,12 +107,12 @@ export function ProjectExperienceForm() {
                       startDate: e.target.value,
                     })
                   }
-                  placeholder="YYYY-MM"
+                  placeholder={dict.forms.dateFormat}
                   className={inputClass}
                 />
               </div>
               <div className="space-y-2">
-                <Label>结束时间</Label>
+                <Label>{dict.forms.endDate}</Label>
                 <Input
                   value={activeItem.endDate || ''}
                   onChange={(e) =>
@@ -117,13 +120,13 @@ export function ProjectExperienceForm() {
                       endDate: e.target.value,
                     })
                   }
-                  placeholder="至今 / YYYY-MM"
+                  placeholder={`${dict.forms.present} / ${dict.forms.dateFormat}`}
                   className={inputClass}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>项目描述</Label>
+              <Label>{dict.forms.projectDesc}</Label>
               <Textarea
                 value={activeItem.description || ''}
                 onChange={(e) =>
@@ -134,7 +137,7 @@ export function ProjectExperienceForm() {
                 className={textareaClass}
               />
               <p className="text-xs text-muted-foreground">
-                💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
+                {dict.editor.markdownTip}
               </p>
             </div>
 
@@ -155,7 +158,7 @@ export function ProjectExperienceForm() {
       {/* Section Title Editor */}
       <div className="space-y-2 border-b pb-4 mb-4">
         <Label className="text-xs font-medium text-gray-500">
-          自定义章节标题
+          {dict.editor.customSectionTitle}
         </Label>
         <Input
           value={currentTitle}
@@ -176,10 +179,10 @@ export function ProjectExperienceForm() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-semibold text-gray-900">
-                {item.projectName || '新项目经历'}
+                {item.projectName || dict.forms.newProject}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {item.role || '角色'}
+                {item.role || dict.forms.role}
                 {(item.startDate || item.endDate) &&
                   ` • ${item.startDate || ''} - ${item.endDate || ''}`}
               </div>
@@ -218,7 +221,8 @@ export function ProjectExperienceForm() {
         className="w-full border-dashed h-12 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:border-blue-700 dark:hover:text-blue-400 transition-all"
         onClick={() => addSectionItem('projectExperiences')}
       >
-        <Plus className="mr-2 h-4 w-4" /> 添加项目经历
+        <Plus className="mr-2 h-4 w-4" />
+        {dict.forms.addProject}
       </Button>
 
       <PageBreakSwitch sectionKey="projectExperiences" />

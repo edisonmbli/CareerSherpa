@@ -45,6 +45,7 @@ interface ResultCardProps {
     noGaps?: string
     tip?: string
     expertVerdict?: string
+    scrollHint?: string
   }
   className?: string
   actionButton?: React.ReactNode
@@ -62,16 +63,16 @@ export function ResultCard({
     typeof data?.score !== 'undefined'
       ? Number(data?.score)
       : typeof data?.match_score !== 'undefined'
-      ? Number(data?.match_score)
-      : 0
+        ? Number(data?.match_score)
+        : 0
 
   // New Logic: assessment label is strictly based on score or fallback labels
   const assessmentLabel =
     score >= 80
       ? labels?.highlyMatched || 'High Match'
       : score >= 60
-      ? labels?.goodFit || 'Medium Match'
-      : labels?.lowMatch || 'Challenging'
+        ? labels?.goodFit || 'Medium Match'
+        : labels?.lowMatch || 'Challenging'
 
   // Expert verdict is the long sentence
   const expertVerdict = data?.overall_assessment
@@ -81,7 +82,7 @@ export function ResultCard({
     Array.isArray(data?.highlights)
       ? data.highlights.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.strengths)
-      ? data.strengths.map((s: any) => {
+        ? data.strengths.map((s: any) => {
           if (typeof s === 'string') return { point: s, evidence: '' }
           // Fix: Handle both PascalCase (LLM sometimes returns this) and camelCase
           const point = s?.Point ?? s?.point ?? ''
@@ -94,7 +95,7 @@ export function ResultCard({
             section,
           }
         })
-      : []
+        : []
   ).slice(0, 6)
 
   // Parse weaknesses with evidence (previously suggestion)
@@ -102,7 +103,7 @@ export function ResultCard({
     Array.isArray(data?.gaps)
       ? data.gaps.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.weaknesses)
-      ? data.weaknesses.map((w: any) => {
+        ? data.weaknesses.map((w: any) => {
           if (typeof w === 'string') return { point: w, evidence: '', tip: '' }
           // Fix: Handle PascalCase/camelCase
           const point = w?.Point ?? w?.point ?? ''
@@ -115,7 +116,7 @@ export function ResultCard({
             tip: tip ? String(tip) : '',
           }
         })
-      : []
+        : []
   ).slice(0, 6)
 
   const recommendations = Array.isArray(data?.recommendations)
@@ -126,27 +127,24 @@ export function ResultCard({
     typeof data?.dm_script === 'string'
       ? data.dm_script
       : typeof data?.cover_letter_script === 'string'
-      ? data.cover_letter_script
-      : typeof data?.cover_letter_script === 'object' &&
-        data?.cover_letter_script !== null
-      ? // Fix: Check for nested .script property (used in some LLM responses)
-        typeof data.cover_letter_script.script === 'string'
-        ? data.cover_letter_script.script
-        : typeof data.cover_letter_script.H === 'string' // New standard (H/V/C)
-        ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${
-            data.cover_letter_script.V || ''
-          }\n\n【C】${data.cover_letter_script.C || ''}`
-        : typeof data.cover_letter_script.h === 'string' // Legacy lowercase
-        ? `【H】${data.cover_letter_script.h || ''}\n\n【V】${
-            data.cover_letter_script.v || ''
-          }\n\n【C】${data.cover_letter_script.c || ''}`
-        : // Legacy long names
-        typeof data.cover_letter_script.hook === 'string'
-        ? `【H】${data.cover_letter_script.hook || ''}\n\n【V】${
-            data.cover_letter_script.value || ''
-          }\n\n【C】${data.cover_letter_script.call_to_action || ''}`
-        : null
-      : null
+        ? data.cover_letter_script
+        : typeof data?.cover_letter_script === 'object' &&
+          data?.cover_letter_script !== null
+          ? // Fix: Check for nested .script property (used in some LLM responses)
+          typeof data.cover_letter_script.script === 'string'
+            ? data.cover_letter_script.script
+            : typeof data.cover_letter_script.H === 'string' // New standard (H/V/C)
+              ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${data.cover_letter_script.V || ''
+              }\n\n【C】${data.cover_letter_script.C || ''}`
+              : typeof data.cover_letter_script.h === 'string' // Legacy lowercase
+                ? `【H】${data.cover_letter_script.h || ''}\n\n【V】${data.cover_letter_script.v || ''
+                }\n\n【C】${data.cover_letter_script.c || ''}`
+                : // Legacy long names
+                typeof data.cover_letter_script.hook === 'string'
+                  ? `【H】${data.cover_letter_script.hook || ''}\n\n【V】${data.cover_letter_script.value || ''
+                  }\n\n【C】${data.cover_letter_script.call_to_action || ''}`
+                  : null
+          : null
 
   const markdown = typeof data?.markdown === 'string' ? data.markdown : null
 
@@ -231,8 +229,8 @@ export function ResultCard({
     score >= 80
       ? 'text-emerald-500'
       : score >= 60
-      ? 'text-amber-500'
-      : 'text-red-500'
+        ? 'text-amber-500'
+        : 'text-red-500'
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showScrollHint, setShowScrollHint] = useState(false)
@@ -296,8 +294,8 @@ export function ResultCard({
                 score >= 80
                   ? 'text-emerald-600/90 bg-emerald-50/80 dark:text-emerald-400 dark:bg-emerald-900/20'
                   : score >= 60
-                  ? 'text-amber-600/90 bg-amber-50/80 dark:text-amber-400 dark:bg-amber-900/20'
-                  : 'text-red-600/90 bg-red-50/80 dark:text-red-400 dark:bg-red-900/20'
+                    ? 'text-amber-600/90 bg-amber-50/80 dark:text-amber-400 dark:bg-amber-900/20'
+                    : 'text-red-600/90 bg-red-50/80 dark:text-red-400 dark:bg-red-900/20'
               )}
             >
               {assessmentLabel}
@@ -325,18 +323,18 @@ export function ResultCard({
               score >= 80
                 ? 'bg-emerald-50 dark:bg-emerald-900/20'
                 : score >= 60
-                ? 'bg-amber-50 dark:bg-amber-900/20'
-                : 'bg-red-50 dark:bg-red-900/20'
+                  ? 'bg-amber-50 dark:bg-amber-900/20'
+                  : 'bg-red-50 dark:bg-red-900/20'
             )}
           >
             <span
               className={cn(
-                'text-[10px] font-bold uppercase tracking-wider mb-0.5',
+                'text-[9px] font-bold uppercase tracking-wider mb-0.5 text-center',
                 score >= 80
                   ? 'text-emerald-600/90 dark:text-emerald-400'
                   : score >= 60
-                  ? 'text-amber-700/90 dark:text-amber-400'
-                  : 'text-red-700/90 dark:text-red-400'
+                    ? 'text-amber-700/90 dark:text-amber-400'
+                    : 'text-red-700/90 dark:text-red-400'
               )}
             >
               {assessmentLabel}
@@ -347,8 +345,8 @@ export function ResultCard({
                 score >= 80
                   ? 'text-emerald-500/90 dark:text-emerald-500'
                   : score >= 60
-                  ? 'text-amber-500/90 dark:text-amber-500'
-                  : 'text-red-500/90 dark:text-red-500'
+                    ? 'text-amber-500/90 dark:text-amber-500'
+                    : 'text-red-500/90 dark:text-red-500'
               )}
             >
               {score}
@@ -598,7 +596,7 @@ export function ResultCard({
               <ChevronDown className="w-4 h-4 text-primary" />
             </div>
             <span className="text-xs text-muted-foreground font-extralight">
-              向下滚动 查看更多
+              {labels?.scrollHint || 'Scroll down for more'}
             </span>
           </div>
         </>

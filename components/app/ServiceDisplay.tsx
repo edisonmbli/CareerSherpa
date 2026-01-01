@@ -102,8 +102,8 @@ export function ServiceDisplay({
       // OR if the new state is a terminal state (COMPLETED/FAILED) which should override pending states
       const currentStoreId = useWorkbenchStore.getState().currentServiceId
       const currentStatus = useWorkbenchStore.getState().status
-      
-      const isTerminalState = (s: WorkbenchStatus) => 
+
+      const isTerminalState = (s: WorkbenchStatus) =>
         s.endsWith('_COMPLETED') || s.endsWith('_FAILED') || s === 'COMPLETED' || s === 'FAILED'
 
       if (
@@ -178,7 +178,7 @@ export function ServiceDisplay({
       const clean = matchJson.replace(/```json\n?|\n?```/g, '').trim()
       matchParsed = JSON.parse(clean)
     }
-  } catch {}
+  } catch { }
 
   const lastUpdatedMatch = initialService?.match?.updatedAt
 
@@ -203,15 +203,15 @@ export function ServiceDisplay({
     serviceId,
     currentTaskId || '',
     status === 'COMPLETED' ||
-      status === 'MATCH_COMPLETED' ||
-      status === 'CUSTOMIZE_COMPLETED' ||
-      status === 'INTERVIEW_COMPLETED' ||
-      status === 'FAILED' ||
-      status === 'OCR_FAILED' ||
-      status === 'SUMMARY_FAILED' ||
-      status === 'MATCH_FAILED' ||
-      status === 'CUSTOMIZE_FAILED' ||
-      status === 'INTERVIEW_FAILED'
+    status === 'MATCH_COMPLETED' ||
+    status === 'CUSTOMIZE_COMPLETED' ||
+    status === 'INTERVIEW_COMPLETED' ||
+    status === 'FAILED' ||
+    status === 'OCR_FAILED' ||
+    status === 'SUMMARY_FAILED' ||
+    status === 'MATCH_FAILED' ||
+    status === 'CUSTOMIZE_FAILED' ||
+    status === 'INTERVIEW_FAILED'
   )
 
   // Handlers
@@ -236,7 +236,7 @@ export function ServiceDisplay({
         setIsStarting(false)
         toast.error(
           dict.workbench.customize.createFailed ||
-            'Failed to start customization'
+          'Failed to start customization'
         )
       }
     })
@@ -334,7 +334,7 @@ export function ServiceDisplay({
             setMatchLive(parsed)
           }
         }
-      } catch {}
+      } catch { }
     }
   }, [status, streamingResponse])
   const interviewJson = initialService?.interview?.interviewTipsJson || null
@@ -345,7 +345,7 @@ export function ServiceDisplay({
         ? JSON.parse(interviewJson)
         : interviewJson
       : null
-  } catch {}
+  } catch { }
 
   const { currentStep, maxUnlockedStep, cta, statusMessage, progressValue } =
     deriveStage(
@@ -394,7 +394,7 @@ export function ServiceDisplay({
         typeof jobSummary === 'string' ? JSON.parse(jobSummary) : jobSummary
       displayCompany = obj?.company || obj?.company_name || obj?.org || ''
       displayJob = obj?.jobTitle || obj?.job_title || obj?.title || ''
-    } catch {}
+    } catch { }
   }
 
   if (!displayCompany && !displayJob && initialService?.title) {
@@ -500,21 +500,21 @@ export function ServiceDisplay({
         <StatusConsole
           status={
             status === 'FAILED' ||
-            status === 'OCR_FAILED' ||
-            status === 'SUMMARY_FAILED' ||
-            status === 'MATCH_FAILED' ||
-            (tabValue === 'customize' && customizeStatus === 'FAILED')
+              status === 'OCR_FAILED' ||
+              status === 'SUMMARY_FAILED' ||
+              status === 'MATCH_FAILED' ||
+              (tabValue === 'customize' && customizeStatus === 'FAILED')
               ? 'error'
               : (status === 'COMPLETED' || status === 'MATCH_COMPLETED') &&
                 (tabValue !== 'customize' || customizeStatus === 'COMPLETED')
-              ? 'completed'
-              : status === 'MATCH_PENDING' ||
-                status === 'MATCH_STREAMING' ||
-                status === 'OCR_PENDING' ||
-                status === 'SUMMARY_PENDING' ||
-                customizeStatus === 'PENDING'
-              ? 'streaming'
-              : 'idle'
+                ? 'completed'
+                : status === 'MATCH_PENDING' ||
+                  status === 'MATCH_STREAMING' ||
+                  status === 'OCR_PENDING' ||
+                  status === 'SUMMARY_PENDING' ||
+                  customizeStatus === 'PENDING'
+                  ? 'streaming'
+                  : 'idle'
           }
           statusMessage={statusMessage}
           progress={progressValue}
@@ -541,38 +541,38 @@ export function ServiceDisplay({
             status === 'SUMMARY_COMPLETED' ||
             status === 'MATCH_PENDING' ||
             status === 'MATCH_STREAMING') && (
-            <div ref={streamRef}>
-              <StreamPanel
-                mode={
-                  status === 'OCR_PENDING' ||
-                  status === 'OCR_COMPLETED' ||
-                  status === 'SUMMARY_PENDING'
-                    ? 'ocr'
-                    : status === 'SUMMARY_COMPLETED'
-                    ? 'summary'
-                    : status === 'MATCH_PENDING'
-                    ? 'summary'
-                    : 'match'
-                }
-                ocrText={ocrResult || initialService?.job?.originalText}
-                summaryJson={
-                  summaryResult ||
-                  (initialService?.job?.jobSummaryJson
-                    ? typeof initialService.job.jobSummaryJson === 'string'
-                      ? JSON.parse(initialService.job.jobSummaryJson)
-                      : initialService.job.jobSummaryJson
-                    : null)
-                }
-                content={String(streamingResponse || '')}
-                timestamp={lastUpdatedMatch ? new Date(lastUpdatedMatch) : null}
-                dict={dict}
-                {...(errorMessage
-                  ? { errorMessage: String(errorMessage) }
-                  : {})}
-                onRetry={retryMatchAction}
-              />
-            </div>
-          )}
+              <div ref={streamRef}>
+                <StreamPanel
+                  mode={
+                    status === 'OCR_PENDING' ||
+                      status === 'OCR_COMPLETED' ||
+                      status === 'SUMMARY_PENDING'
+                      ? 'ocr'
+                      : status === 'SUMMARY_COMPLETED'
+                        ? 'summary'
+                        : status === 'MATCH_PENDING'
+                          ? 'summary'
+                          : 'match'
+                  }
+                  ocrText={ocrResult || initialService?.job?.originalText}
+                  summaryJson={
+                    summaryResult ||
+                    (initialService?.job?.jobSummaryJson
+                      ? typeof initialService.job.jobSummaryJson === 'string'
+                        ? JSON.parse(initialService.job.jobSummaryJson)
+                        : initialService.job.jobSummaryJson
+                      : null)
+                  }
+                  content={String(streamingResponse || '')}
+                  timestamp={lastUpdatedMatch ? new Date(lastUpdatedMatch) : null}
+                  dict={dict}
+                  {...(errorMessage
+                    ? { errorMessage: String(errorMessage) }
+                    : {})}
+                  onRetry={retryMatchAction}
+                />
+              </div>
+            )}
           {(status === 'COMPLETED' ||
             status === 'MATCH_COMPLETED' ||
             matchResult ||
@@ -619,23 +619,23 @@ export function ServiceDisplay({
             status === 'OCR_FAILED' ||
             status === 'SUMMARY_FAILED' ||
             status === 'MATCH_FAILED') && (
-            <div className="space-y-3">
-              <StreamPanel
-                mode="error"
-                content={
-                  errorMessage ||
-                  dict?.workbench?.streamPanel?.error ||
-                  'Task execution failed, please retry.'
-                }
-                locale={locale}
-              />
-            </div>
-          )}
+              <div className="space-y-3">
+                <StreamPanel
+                  mode="error"
+                  content={
+                    errorMessage ||
+                    dict?.workbench?.streamPanel?.error ||
+                    'Task execution failed, please retry.'
+                  }
+                  locale={locale}
+                />
+              </div>
+            )}
         </TabsContent>
 
         <TabsContent value="customize" className="flex-1 flex flex-col min-h-0">
           {customizeStatus === 'COMPLETED' &&
-          initialService?.customizedResume?.customizedResumeJson ? (
+            initialService?.customizedResume?.customizedResumeJson ? (
             <StepCustomize
               serviceId={initialService.id}
               initialData={
@@ -656,6 +656,7 @@ export function ServiceDisplay({
                 initialService.customizedResume.ops_json || undefined
               }
               ctaAction={ctaNode}
+              dict={dict.resume}
             />
           ) : (
             <>

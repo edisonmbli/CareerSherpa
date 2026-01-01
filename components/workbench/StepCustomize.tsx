@@ -6,6 +6,7 @@ import type { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
 import { ResumeEditorLayout } from '@/components/resume/editor/ResumeEditorLayout'
 import { useExitProtection } from '@/hooks/use-exit-protection'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
+import { ResumeDictProvider, type ResumeDict } from '@/components/resume/ResumeDictContext'
 
 interface StepCustomizeProps {
   serviceId: string
@@ -15,6 +16,7 @@ interface StepCustomizeProps {
   optimizeSuggestion?: string | null
   initialOpsJson?: any
   ctaAction?: React.ReactNode
+  dict?: ResumeDict
 }
 
 export function StepCustomize({
@@ -25,6 +27,7 @@ export function StepCustomize({
   optimizeSuggestion,
   initialOpsJson,
   ctaAction,
+  dict,
 }: StepCustomizeProps) {
   const { initStore } = useResumeStore()
 
@@ -56,13 +59,16 @@ export function StepCustomize({
   ])
 
   return (
-    <div className="h-full w-full relative">
-      <ResumeEditorLayout ctaAction={ctaAction} />
+    <ResumeDictProvider dict={dict}>
+      <div className="h-full w-full relative">
+        <ResumeEditorLayout ctaAction={ctaAction} />
 
-      {/* Mobile floating save button - hidden on desktop (toolbar has inline version) */}
-      <div className="md:hidden">
-        <SaveIndicator variant="floating" />
+        {/* Mobile floating save button - hidden on desktop (toolbar has inline version) */}
+        <div className="md:hidden">
+          <SaveIndicator variant="floating" />
+        </div>
       </div>
-    </div>
+    </ResumeDictProvider>
   )
 }
+

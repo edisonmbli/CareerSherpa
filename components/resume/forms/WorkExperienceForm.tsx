@@ -16,6 +16,7 @@ import {
 } from './styles'
 import { SECTION_TITLES } from '../section-titles'
 import { PageBreakSwitch } from './PageBreakSwitch'
+import { useResumeDict } from '../ResumeDictContext'
 
 export function WorkExperienceForm() {
   const {
@@ -27,6 +28,8 @@ export function WorkExperienceForm() {
     setActive,
     updateSectionTitle,
   } = useResumeStore()
+
+  const dict = useResumeDict()
 
   if (!resumeData) return null
 
@@ -44,7 +47,7 @@ export function WorkExperienceForm() {
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>公司名称</Label>
+              <Label>{dict.forms.companyName}</Label>
               <Input
                 value={activeItem.company || ''}
                 onChange={(e) =>
@@ -56,7 +59,7 @@ export function WorkExperienceForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label>职位</Label>
+              <Label>{dict.forms.position}</Label>
               <Input
                 value={activeItem.position || ''}
                 onChange={(e) =>
@@ -69,7 +72,7 @@ export function WorkExperienceForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>开始时间</Label>
+                <Label>{dict.forms.startDate}</Label>
                 <Input
                   value={activeItem.startDate || ''}
                   onChange={(e) =>
@@ -77,12 +80,12 @@ export function WorkExperienceForm() {
                       startDate: e.target.value,
                     })
                   }
-                  placeholder="YYYY-MM"
+                  placeholder={dict.forms.dateFormat}
                   className={formInputClass}
                 />
               </div>
               <div className="space-y-2">
-                <Label>结束时间</Label>
+                <Label>{dict.forms.endDate}</Label>
                 <Input
                   value={activeItem.endDate || ''}
                   onChange={(e) =>
@@ -90,13 +93,13 @@ export function WorkExperienceForm() {
                       endDate: e.target.value,
                     })
                   }
-                  placeholder="至今 / YYYY-MM"
+                  placeholder={`${dict.forms.present} / ${dict.forms.dateFormat}`}
                   className={formInputClass}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>工作内容</Label>
+              <Label>{dict.forms.workContent}</Label>
               <Textarea
                 value={activeItem.description || ''}
                 onChange={(e) =>
@@ -105,10 +108,10 @@ export function WorkExperienceForm() {
                   })
                 }
                 className={formTextareaClass}
-                placeholder="• 负责..."
+                placeholder="• ..."
               />
               <p className="text-xs text-muted-foreground">
-                💡支持加粗、斜体等基础 Markdown 格式，可智能生成列表
+                {dict.editor.markdownTip}
               </p>
             </div>
 
@@ -129,7 +132,7 @@ export function WorkExperienceForm() {
       {/* Section Title Editor */}
       <div className="space-y-2 border-b pb-4 mb-4">
         <Label className="text-xs font-medium text-gray-500">
-          自定义章节标题
+          {dict.editor.customSectionTitle}
         </Label>
         <Input
           value={currentTitle}
@@ -150,10 +153,10 @@ export function WorkExperienceForm() {
           <div className="flex items-center justify-between">
             <div>
               <div className={formCardTitleClass}>
-                {item.company || '新工作经历'}
+                {item.company || dict.forms.newWork}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {item.position || '职位'}
+                {item.position || dict.forms.position}
                 {(item.startDate || item.endDate) &&
                   ` • ${item.startDate || ''} - ${item.endDate || ''}`}
               </div>
@@ -193,7 +196,7 @@ export function WorkExperienceForm() {
         onClick={() => addSectionItem('workExperiences')}
       >
         <Plus className="h-4 w-4 mr-2" />
-        添加工作经历
+        {dict.forms.addWork}
       </Button>
 
       <PageBreakSwitch sectionKey="workExperiences" />

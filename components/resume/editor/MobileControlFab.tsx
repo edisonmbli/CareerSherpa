@@ -35,6 +35,7 @@ import { useReactToPrint } from 'react-to-print'
 import { generateMarkdown } from '@/lib/export-utils'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { useResumeDict } from '../ResumeDictContext'
 
 interface MobileControlFabProps {
   printRef?: React.RefObject<HTMLDivElement> | React.RefObject<any>
@@ -66,6 +67,13 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
     resumeData,
   } = useResumeStore()
 
+  const dict = useResumeDict()
+
+  // Helper to get template info from dictionary
+  const getTemplateInfo = (id: string) => {
+    return dict.templates[id] || { name: id, description: '' }
+  }
+
   const SubmenuHeader = ({
     title,
     onBack,
@@ -83,7 +91,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
         className="h-8 px-2 gap-1 text-sm text-gray-400 hover:text-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
       >
         <ChevronLeft className="h-4 w-4" />
-        <span>返回菜单</span>
+        <span>{dict.toolbar.backToMenu}</span>
       </Button>
       {/* Title is intentionally omitted or minimal based on design */}
       {title && <span className="font-semibold text-sm">{title}</span>}
@@ -152,32 +160,30 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 2000)
     } catch (err) {
-      toast.error('复制失败，请手动复制')
+      toast.error(dict.toolbar.copyFailed)
     }
   }
 
   const menuItems = [
     {
       id: 'chapters',
-      label: '内容编辑',
+      label: dict.toolbar.editContent,
       icon: PanelLeft,
-      // Default style
     },
     {
       id: 'templates',
-      label: '切换模板',
+      label: dict.toolbar.switchTemplate,
       icon: LayoutTemplate,
     },
     {
       id: 'export',
-      label: '导出简历',
+      label: dict.toolbar.exportResume,
       icon: Download,
     },
     {
       id: 'reset',
-      label: '重置内容',
+      label: dict.toolbar.resetContent,
       icon: RotateCcw,
-      // Removed danger style to match others
       onClick: () => setActiveView('reset-confirm'),
     },
   ]
@@ -217,10 +223,10 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
             <div className="p-4 space-y-4">
               <DrawerHeader className="p-0 text-left">
                 <DrawerTitle className="text-base font-bold">
-                  编辑器菜单
+                  {dict.toolbar.menuTitle}
                 </DrawerTitle>
                 <DrawerDescription className="text-xs">
-                  选择操作以调整简历
+                  {dict.toolbar.menuDesc}
                 </DrawerDescription>
               </DrawerHeader>
 
@@ -232,10 +238,10 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                 <div className="relative z-10 flex items-center justify-between">
                   <div>
                     <div className="font-bold text-base mb-1 flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                      AI 优化建议
+                      {dict.toolbar.aiSuggestions}
                     </div>
                     <div className="text-blue-600/80 dark:text-blue-400/80 text-xs font-medium">
-                      获取针对性的修改建议与优化方案
+                      {dict.toolbar.aiDesc}
                     </div>
                   </div>
                   <div className="bg-white/50 dark:bg-blue-300/90 p-2 rounded-full backdrop-blur-sm group-hover:bg-white/60 transition-colors">
@@ -347,7 +353,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                         {t.thumbnail && (
                           <Image
                             src={t.thumbnail}
-                            alt={t.name}
+                            alt={getTemplateInfo(t.id).name}
                             fill
                             placeholder="blur"
                             className="object-cover object-top"
@@ -355,7 +361,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                           />
                         )}
                       </div>
-                      <span className="text-sm font-medium">{t.name}</span>
+                      <span className="text-sm font-medium">{getTemplateInfo(t.id).name}</span>
                     </div>
                   ))}
                 </div>
@@ -373,10 +379,10 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
               <div className="px-4 py-4 space-y-4">
                 <DrawerHeader className="p-0 text-left hidden">
                   <DrawerTitle className="text-base font-bold hidden">
-                    导出简历
+                    {dict.toolbar.exportResume}
                   </DrawerTitle>
                   <DrawerDescription className="text-xs">
-                    选择导出格式
+                    {dict.toolbar.selectExportFormat}
                   </DrawerDescription>
                 </DrawerHeader>
 
@@ -391,9 +397,9 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                   >
                     <FileText className="mr-3 h-5 w-5 text-blue-500" />
                     <div className="text-left">
-                      <div className="text-sm font-normal">导出为 PDF</div>
+                      <div className="text-sm font-normal">{dict.toolbar.exportPdf}</div>
                       <div className="text-xs font-normal text-muted-foreground">
-                        适合打印和投递
+                        {dict.toolbar.exportPdfDesc}
                       </div>
                     </div>
                   </Button>
@@ -406,14 +412,14 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                   >
                     <FileJson className="mr-3 h-5 w-5 text-blue-500" />
                     <div className="text-left">
-                      <div className="text-sm font-normal">导出为 Markdown</div>
+                      <div className="text-sm font-normal">{dict.toolbar.exportMd}</div>
                       <div className="text-xs font-normal text-muted-foreground">
-                        点击复制内容
+                        {dict.toolbar.exportMdDesc}
                       </div>
                     </div>
                     {isCopied && (
                       <span className="absolute right-4 text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full animate-in fade-in zoom-in duration-200 flex items-center gap-1 border border-green-100">
-                        已复制 ✅
+                        {dict.toolbar.copied}
                       </span>
                     )}
                   </Button>
@@ -437,13 +443,9 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-bold text-lg">确定要重置所有内容吗？</h3>
+                <h3 className="font-bold text-lg">{dict.toolbar.resetConfirm}</h3>
                 <p className="text-sm text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
-                  将清除所有二次编辑的信息并恢复到AI生成的初始版本。此操作
-                  <span className="text-red-600/70 dark:text-red-500/70 font-medium">
-                    无法撤销
-                  </span>
-                  。
+                  {dict.toolbar.resetDesc}
                 </p>
               </div>
 
@@ -457,7 +459,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                     handleClose()
                   }}
                 >
-                  确认重置
+                  {dict.toolbar.confirmReset}
                 </Button>
                 <Button
                   variant="outline"
@@ -465,7 +467,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
                   className="w-full h-12"
                   onClick={() => setActiveView('menu')}
                 >
-                  取消
+                  {dict.toolbar.cancel}
                 </Button>
               </div>
             </div>
