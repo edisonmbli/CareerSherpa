@@ -63,7 +63,9 @@ export const customizeStrategy: WorkerStrategy = {
     if (!matchAnalysis) throw new Error('Match Analysis is missing')
 
     // 2. Get RAG Context (Resume Customization Tips)
-    const jobTitle = (jobSummary as any)?.jobTitle || 'General Job'
+    // Type guard: jobSummary is unknown object from DB, safely access jobTitle
+    const jobSummaryObj = jobSummary as Record<string, unknown> | null
+    const jobTitle = String(jobSummaryObj?.['jobTitle'] || 'General Job')
     let ragContext = ''
     try {
       ragContext = await retrieveCustomizeContext(jobTitle, locale)
@@ -179,7 +181,7 @@ export const customizeStrategy: WorkerStrategy = {
       if (!resultJson) {
         throw new Error(
           'Failed to parse LLM response: ' +
-            (validation.error || 'Unknown error')
+          (validation.error || 'Unknown error')
         )
       }
 

@@ -195,7 +195,7 @@ const debouncedSave = debounce(
         set((state: ResumeState) => {
           state.isSaving = false
         })
-        console.error('Auto-save failed:', (res as any).error)
+        console.error('Auto-save failed:', 'error' in res ? res.error : 'Unknown error')
       }
     } catch (e) {
       set((state: ResumeState) => {
@@ -284,7 +284,9 @@ const createResumeSlice = (
           if (cachedAvatar) {
             state.resumeData!.basics.photoUrl = cachedAvatar
           }
-        } catch { }
+        } catch {
+          // non-fatal: localStorage may be blocked in incognito mode
+        }
       }
 
       state.originalData = originalData || data // Fallback to current if original missing
@@ -340,7 +342,7 @@ const createResumeSlice = (
   updateSectionItem: (sectionKey, itemId, data) => {
     set((state) => {
       if (state.resumeData && Array.isArray(state.resumeData[sectionKey])) {
-        const arr = state.resumeData[sectionKey] as any[]
+        const arr = state.resumeData[sectionKey] as Array<{ id: string }>
         const index = arr.findIndex((item) => item.id === itemId)
         if (index !== -1) {
           arr[index] = { ...arr[index], ...data }
@@ -354,12 +356,12 @@ const createResumeSlice = (
     const id = crypto.randomUUID()
     set((state) => {
       if (state.resumeData && Array.isArray(state.resumeData[sectionKey])) {
-        const arr = state.resumeData[sectionKey] as any[]
+        const arr = state.resumeData[sectionKey] as Array<{ id: string }>
         // Add basic empty item with ID
         if (sectionKey === 'customSections') {
-          arr.push({ id, title: 'New Section', description: '' })
+          arr.push({ id, title: 'New Section', description: '' } as { id: string })
         } else {
-          arr.push({ id, description: '' })
+          arr.push({ id, description: '' } as { id: string })
         }
       }
     })
@@ -370,7 +372,7 @@ const createResumeSlice = (
   removeSectionItem: (sectionKey, itemId) => {
     set((state) => {
       if (state.resumeData && Array.isArray(state.resumeData[sectionKey])) {
-        const arr = state.resumeData[sectionKey] as any[]
+        const arr = state.resumeData[sectionKey] as Array<{ id: string }>
         const index = arr.findIndex((item) => item.id === itemId)
         if (index !== -1) {
           arr.splice(index, 1)
@@ -598,7 +600,7 @@ const createResumeSlice = (
         set((state) => {
           state.isSaving = false
         })
-        return { ok: false, error: (res as any).error || 'Save failed' }
+        return { ok: false, error: 'error' in res ? String(res.error) : 'Save failed' }
       }
     } catch (e) {
       set((state) => {
@@ -610,8 +612,8 @@ const createResumeSlice = (
   },
 })
 
-// Use 'as any' for the immer middleware to bypass the broken StoreMutatorIdentifier constraint check
-// in the current environment, while ensuring the slice implementation above is fully type-safe.
+// Note: immer middleware requires 'as any' due to zustand v5 StateCreator type constraints.
+// The slice implementation above remains fully type-safe; this is a known middleware compatibility issue.
 export const useResumeStore = create<ResumeState>()(
   (immer as any)(createResumeSlice)
 )

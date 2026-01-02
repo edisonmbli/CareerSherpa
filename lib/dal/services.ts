@@ -352,19 +352,19 @@ export async function txMarkSummaryCompleted(serviceId: string) {
   return prisma.$transaction([
     prisma.job.update({
       where: { serviceId },
-      data: { status: 'COMPLETED' as any },
+      data: { status: AsyncTaskStatus.COMPLETED },
     }),
     prisma.service.update({
       where: { id: serviceId },
       data: {
-        currentStatus: 'SUMMARY_COMPLETED' as any,
+        currentStatus: ExecutionStatus.SUMMARY_COMPLETED,
         lastUpdatedAt: new Date(),
         failureCode: null,
       },
     }),
     prisma.match.update({
       where: { serviceId },
-      data: { status: 'PENDING' as any },
+      data: { status: AsyncTaskStatus.PENDING },
     }),
   ])
 }
@@ -377,19 +377,19 @@ export async function txMarkSummaryFailed(
   const validFailureCode =
     failureCode && Object.values(FailureCode).includes(failureCode)
       ? failureCode
-      : failureCode === ('llm_error' as any)
+      : String(failureCode) === 'llm_error'
         ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
         : null
 
   return prisma.$transaction([
     prisma.job.update({
       where: { serviceId },
-      data: { status: 'FAILED' as any },
+      data: { status: AsyncTaskStatus.FAILED },
     }),
     prisma.service.update({
       where: { id: serviceId },
       data: {
-        currentStatus: 'SUMMARY_FAILED' as any,
+        currentStatus: ExecutionStatus.SUMMARY_FAILED,
         lastUpdatedAt: new Date(),
         failureCode: validFailureCode,
       },
@@ -401,12 +401,12 @@ export async function txMarkMatchPending(serviceId: string) {
   return prisma.$transaction([
     prisma.match.update({
       where: { serviceId },
-      data: { status: 'PENDING' as any },
+      data: { status: AsyncTaskStatus.PENDING },
     }),
     prisma.service.update({
       where: { id: serviceId },
       data: {
-        currentStatus: 'MATCH_PENDING' as any,
+        currentStatus: ExecutionStatus.MATCH_PENDING,
         lastUpdatedAt: new Date(),
         failureCode: null,
       },
@@ -418,7 +418,7 @@ export async function txMarkMatchStreaming(serviceId: string) {
   return prisma.service.update({
     where: { id: serviceId },
     data: {
-      currentStatus: 'MATCH_STREAMING' as any,
+      currentStatus: ExecutionStatus.MATCH_STREAMING,
       lastUpdatedAt: new Date(),
     },
   })
@@ -432,14 +432,14 @@ export async function txMarkMatchCompleted(
     prisma.match.update({
       where: { serviceId },
       data: {
-        status: 'COMPLETED' as any,
+        status: AsyncTaskStatus.COMPLETED,
         ...(matchSummaryJson ? { matchSummaryJson } : {}),
       },
     }),
     prisma.service.update({
       where: { id: serviceId },
       data: {
-        currentStatus: 'MATCH_COMPLETED' as any,
+        currentStatus: ExecutionStatus.MATCH_COMPLETED,
         lastUpdatedAt: new Date(),
         failureCode: null,
       },
@@ -455,7 +455,7 @@ export async function txMarkMatchFailed(
   const validFailureCode =
     failureCode && Object.values(FailureCode).includes(failureCode)
       ? failureCode
-      : failureCode === ('llm_error' as any)
+      : String(failureCode) === 'llm_error'
         ? FailureCode.JSON_PARSE_FAILED // Map legacy 'llm_error' to a valid enum
         : null
 

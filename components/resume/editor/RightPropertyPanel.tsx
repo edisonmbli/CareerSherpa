@@ -60,7 +60,7 @@ export function RightPropertyPanel({
         return (
           <SimpleSectionForm
             sectionKey="skills"
-            label={dict.sections.skills}
+            label={dict.sections['skills'] || 'Skills'}
             placeholder={dict.forms.skillsPlaceholder}
           />
         )
@@ -68,7 +68,7 @@ export function RightPropertyPanel({
         return (
           <SimpleSectionForm
             sectionKey="certificates"
-            label={dict.sections.certificates}
+            label={dict.sections['certificates'] || 'Certifications'}
             placeholder={dict.forms.certificatesPlaceholder}
           />
         )
@@ -76,7 +76,7 @@ export function RightPropertyPanel({
         return (
           <SimpleSectionForm
             sectionKey="hobbies"
-            label={dict.sections.hobbies}
+            label={dict.sections['hobbies'] || 'Interests'}
             placeholder={dict.forms.hobbiesPlaceholder}
           />
         )

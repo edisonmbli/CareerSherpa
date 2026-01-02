@@ -10,7 +10,11 @@ export function logAudit(
   entityId: string,
   payload?: Record<string, any>
 ) {
-  try { auditUserAction(userId, action, entity, entityId, payload || {}) } catch {}
+  try {
+    auditUserAction(userId, action, entity, entityId, payload || {})
+  } catch {
+    // non-fatal: audit logging should not block main flow
+  }
 }
 
 export function logEvent(
@@ -25,5 +29,7 @@ export function logEvent(
       ...(ctx.taskId ? { taskId: ctx.taskId } : {}),
       payload: payload || {},
     })
-  } catch {}
+  } catch {
+    // non-fatal: analytics tracking should not block main flow
+  }
 }

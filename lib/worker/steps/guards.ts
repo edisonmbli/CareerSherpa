@@ -12,7 +12,7 @@ export async function guardUser(
   const gate = await enterUserConcurrency(userId, kind, ttlSec)
   if (!gate.ok) {
     const retryAfter = gate.response.headers.get('Retry-After')
-    await guardBlocked(channel, userId, 'user_concurrency' as any, 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
+    await guardBlocked(channel, userId, 'user_concurrency', 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
     return { ok: false, reason: 'user_concurrency' as const, retryAfter: retryAfter ? Number(retryAfter) : undefined }
   }
   return { ok: true as const }
@@ -29,7 +29,7 @@ export async function guardModel(
   const gate = await enterModelConcurrency(modelId, queueId, ttlSec)
   if (!gate.ok) {
     const retryAfter = gate.response.headers.get('Retry-After')
-    await guardBlocked(channel, userIdFromChannel(channel), 'model_concurrency' as any, 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
+    await guardBlocked(channel, userIdFromChannel(channel), 'model_concurrency', 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
     return { ok: false, reason: 'model_concurrency' as const, retryAfter: retryAfter ? Number(retryAfter) : undefined }
   }
   return { ok: true as const }
@@ -50,7 +50,8 @@ export async function guardQueue(
     const msg = await safeText(gate.response)
     const retryAfter = gate.response.headers.get('Retry-After')
     const code = msg === 'concurrency_locked' ? 'concurrency_locked' : msg === 'backpressure' ? 'backpressure' : 'guards_failed'
-    await guardBlocked(channel, userId, code as any, 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
+    // Note: code is already the union type, cast ensures type narrowing
+    await guardBlocked(channel, userId, code as 'concurrency_locked' | 'backpressure' | 'guards_failed', 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
     return { ok: false as const, reason: code as 'concurrency_locked' | 'backpressure' | 'guards_failed', retryAfter: retryAfter ? Number(retryAfter) : undefined }
   }
   return { ok: true as const }

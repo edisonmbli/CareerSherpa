@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
-import { Prisma } from '@prisma/client'
+import { Prisma, CoinTxnType, CoinTxnStatus } from '@prisma/client'
 
 // 初始赠送金币（可通过环境变量配置，默认 8）
 const INITIAL_FREE_QUOTA = parseInt(
@@ -24,8 +24,8 @@ export async function getOrCreateQuota(userId: string) {
         await client.coinTransaction.create({
           data: {
             userId,
-            type: 'SIGNUP_BONUS' as any,
-            status: 'SUCCESS' as any,
+            type: CoinTxnType.SIGNUP_BONUS,
+            status: CoinTxnStatus.SUCCESS,
             delta: INITIAL_FREE_QUOTA,
             balanceAfter: created.balance,
           },

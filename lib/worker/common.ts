@@ -22,6 +22,37 @@ export type WorkerKind = 'stream' | 'batch'
 
 export type { WorkerBody }
 
+// --- Type-safe event helpers ---
+/**
+ * StreamEvent represents worker pubsub events with optional fields.
+ * Using this interface avoids `as any` for event property access.
+ */
+interface StreamEvent {
+  type?: string
+  text?: string
+  requestId?: string
+  traceId?: string
+  status?: string
+  code?: string
+  taskId?: string
+  [key: string]: unknown // Allow other properties
+}
+
+/** Type guard to safely access event properties */
+function getEventType(event: Record<string, unknown>): string {
+  return String((event as StreamEvent).type || '').toLowerCase()
+}
+
+function getEventText(event: Record<string, unknown>): string {
+  return String((event as StreamEvent).text ?? '')
+}
+
+// --- Token batcher global singleton type ---
+declare global {
+  // eslint-disable-next-line no-var
+  var __cs_token_batchers__: Map<string, { tokens: string[]; timer?: ReturnType<typeof setTimeout>; startedAt: number }> | undefined
+}
+
 export async function parseWorkerBody(
   req: Request
 ): Promise<{ ok: true; body: WorkerBody } | { ok: false; response: Response }> {
@@ -208,8 +239,7 @@ export async function publishEvent(
   const redis = getRedis()
 
   // 在生产环境抑制调试事件采样：不发布、不入流
-  const isDebugEvent =
-    String((event as any)?.type || '').toLowerCase() === 'debug'
+  const isDebugEvent = getEventType(event) === 'debug'
   if (process.env.NODE_ENV === 'production' && isDebugEvent) {
     return
   }
@@ -220,13 +250,11 @@ export async function publishEvent(
     timer?: ReturnType<typeof setTimeout>
     startedAt: number
   }
-  const batchers = (globalThis as any).__cs_token_batchers__ as
-    | Map<string, Batcher>
-    | undefined
+  const batchers = globalThis.__cs_token_batchers__
   const tokenBatchers: Map<string, Batcher> =
     batchers ?? new Map<string, Batcher>()
-  if (!(globalThis as any).__cs_token_batchers__) {
-    ;(globalThis as any).__cs_token_batchers__ = tokenBatchers
+  if (!globalThis.__cs_token_batchers__) {
+    globalThis.__cs_token_batchers__ = tokenBatchers
   }
 
   const flush = async (ch: string) => {
@@ -252,18 +280,18 @@ export async function publishEvent(
     }
     try {
       const streamKey = `${ch}:stream`
+      // Note: Upstash Redis xadd requires object values; 'as any' is needed for string field type
       await redis.xadd(streamKey, '*', { event: payloadStr as any })
     } catch {
-      // 忽略缓冲写入错误
+      // non-fatal: stream buffer write error, does not affect main pubsub
     }
     if (buf.timer) clearTimeout(buf.timer)
     tokenBatchers.delete(ch)
   }
 
-  const isTokenEvent =
-    String((event as any)?.type || '').toLowerCase() === 'token'
+  const isTokenEvent = getEventType(event) === 'token'
   if (isTokenEvent) {
-    const text = String((event as any)?.text ?? '')
+    const text = getEventText(event)
     let buf = tokenBatchers.get(channel)
     if (!buf) {
       buf = { tokens: [], startedAt: Date.now() }
@@ -296,7 +324,7 @@ export async function publishEvent(
   // Audit event dispatch for observability（降低频次：仅记录关键事件，跳过 token/token_batch/debug）
   try {
     const parts = channel.split(':')
-    const t = String((event as any)?.type || '').toLowerCase()
+    const t = getEventType(event)
     const shouldAudit = t === 'start' || t === 'done' || t === 'error'
     if (shouldAudit) {
       // Expected format: cs:events:{userId}:{serviceId}:{taskId}
@@ -308,14 +336,8 @@ export async function publishEvent(
           serviceId,
           channel,
           ...(event && event['type'] && { eventType: event['type'] as string }),
-          ...(event &&
-            (event as any)['requestId'] && {
-              reqId: (event as any)['requestId'] as string,
-            }),
-          ...(event &&
-            (event as any)['traceId'] && {
-              traceId: (event as any)['traceId'] as string,
-            }),
+          ...(event['requestId'] && { reqId: event['requestId'] as string }),
+          ...(event['traceId'] && { traceId: event['traceId'] as string }),
         })
       }
     }
@@ -326,8 +348,9 @@ export async function publishEvent(
   // 同步写入 Redis Streams 作为 SSE 的后备缓冲；终止事件时追加 TTL/修剪
   try {
     const streamKey = `${channel}:stream`
-    const t = String((event as any)?.type || '').toLowerCase()
+    const t = getEventType(event)
     const isTerminal = t === 'done' || t === 'error'
+    // Note: Upstash Redis xadd requires object values; 'as any' is needed for string field type
     await redis.xadd(streamKey, '*', { event: payload as any })
     if (isTerminal) {
       const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
@@ -335,16 +358,21 @@ export async function publishEvent(
       if (ttl > 0) {
         try {
           await redis.expire(streamKey, ttl)
-        } catch {}
+        } catch {
+          // non-fatal: TTL set error
+        }
       }
       if (maxlen > 0) {
         try {
+          // Note: Upstash Redis xtrim options type mismatch, 'as any' is required
           await redis.xtrim(streamKey, {
             strategy: 'maxlen',
             threshold: maxlen,
             approximate: true,
           } as any)
-        } catch {}
+        } catch {
+          // non-fatal: stream trim error
+        }
       }
     }
   } catch (err) {

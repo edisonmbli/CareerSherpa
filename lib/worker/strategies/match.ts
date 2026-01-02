@@ -13,6 +13,7 @@ import {
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
+import { FailureCode } from '@prisma/client'
 
 import { retrieveMatchContext } from '@/lib/rag/retriever'
 import { validateJson } from '@/lib/llm/json-validator'
@@ -214,7 +215,7 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       } catch (e) {
         /* best effort */
       }
-      await txMarkMatchFailed(serviceId, 'JSON_PARSE_FAILED' as any) // simplified code
+      await txMarkMatchFailed(serviceId, FailureCode.JSON_PARSE_FAILED)
       await handleRefunds(execResult, variables, serviceId, userId)
       return
     }
@@ -302,7 +303,7 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
         /* best effort */
       }
 
-      await txMarkMatchFailed(serviceId, 'JSON_PARSE_FAILED' as any)
+      await txMarkMatchFailed(serviceId, FailureCode.JSON_PARSE_FAILED)
       await handleRefunds(execResult, variables, serviceId, userId)
       return
     }

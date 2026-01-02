@@ -178,7 +178,9 @@ export function ServiceDisplay({
       const clean = matchJson.replace(/```json\n?|\n?```/g, '').trim()
       matchParsed = JSON.parse(clean)
     }
-  } catch { }
+  } catch {
+    // non-fatal: malformed matchJson should not crash render
+  }
 
   const lastUpdatedMatch = initialService?.match?.updatedAt
 
@@ -334,7 +336,9 @@ export function ServiceDisplay({
             setMatchLive(parsed)
           }
         }
-      } catch { }
+      } catch {
+        // non-fatal: malformed streaming JSON should not crash
+      }
     }
   }, [status, streamingResponse])
   const interviewJson = initialService?.interview?.interviewTipsJson || null
@@ -345,7 +349,9 @@ export function ServiceDisplay({
         ? JSON.parse(interviewJson)
         : interviewJson
       : null
-  } catch { }
+  } catch {
+    // non-fatal: malformed interviewJson should not crash render
+  }
 
   const { currentStep, maxUnlockedStep, cta, statusMessage, progressValue } =
     deriveStage(
@@ -394,7 +400,9 @@ export function ServiceDisplay({
         typeof jobSummary === 'string' ? JSON.parse(jobSummary) : jobSummary
       displayCompany = obj?.company || obj?.company_name || obj?.org || ''
       displayJob = obj?.jobTitle || obj?.job_title || obj?.title || ''
-    } catch { }
+    } catch {
+      // non-fatal: malformed jobSummary should not crash render
+    }
   }
 
   if (!displayCompany && !displayJob && initialService?.title) {

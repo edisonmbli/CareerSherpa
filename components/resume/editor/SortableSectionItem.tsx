@@ -40,9 +40,9 @@ export function SortableSectionItem({ id }: { id: string }) {
       case 'workExperiences': return <WorkExperienceForm />
       case 'projectExperiences': return <ProjectExperienceForm />
       case 'educations': return <EducationForm />
-      case 'skills': return <SimpleSectionForm sectionKey="skills" label={dict.sections.skills} placeholder={dict.forms.skillsPlaceholder} />
-      case 'certificates': return <SimpleSectionForm sectionKey="certificates" label={dict.sections.certificates} placeholder={dict.forms.certificatesPlaceholder} />
-      case 'hobbies': return <SimpleSectionForm sectionKey="hobbies" label={dict.sections.hobbies} placeholder={dict.forms.hobbiesPlaceholder} />
+      case 'skills': return <SimpleSectionForm sectionKey="skills" label={dict.sections['skills'] || 'Skills'} placeholder={dict.forms.skillsPlaceholder} />
+      case 'certificates': return <SimpleSectionForm sectionKey="certificates" label={dict.sections['certificates'] || 'Certifications'} placeholder={dict.forms.certificatesPlaceholder} />
+      case 'hobbies': return <SimpleSectionForm sectionKey="hobbies" label={dict.sections['hobbies'] || 'Interests'} placeholder={dict.forms.hobbiesPlaceholder} />
       case 'customSections': return <CustomSectionForm />
       default: return <div className="p-4 text-sm text-muted-foreground">{dict.forms.editContent}</div>
     }

@@ -24,7 +24,7 @@ export async function publishStart(
     requestId,
     traceId,
     kind,
-  } as any)
+  })
 }
 
 export async function guardBlocked(

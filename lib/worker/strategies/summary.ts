@@ -34,7 +34,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       | 'job_summary'
       | 'resume_summary'
       | 'detailed_resume_summary'
-  ) {}
+  ) { }
 
   /**
    * Fetches original text if not provided in variables.
@@ -117,7 +117,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await setResumeSummaryJson(
             resumeId,
             execResult.ok ? execResult.data : undefined,
-            execResult.ok ? ('COMPLETED' as any) : ('FAILED' as any)
+            execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
           )
         }
       } else if (this.templateId === 'detailed_resume_summary') {
@@ -126,7 +126,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await setDetailedResumeSummaryJson(
             detailedId,
             execResult.ok ? execResult.data : undefined,
-            execResult.ok ? ('COMPLETED' as any) : ('FAILED' as any)
+            execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
           )
         }
       } else if (this.templateId === 'job_summary') {
@@ -295,7 +295,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       serviceId,
       taskId: matchTaskId,
       userId,
-      locale: locale as any,
+      locale: locale as 'en' | 'zh',
       templateId: 'job_match',
       variables: {
         rag_context: '',

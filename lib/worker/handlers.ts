@@ -23,6 +23,16 @@ import { getProvider } from '@/lib/llm/utils'
 
 type Body = import('@/lib/worker/types').WorkerBody
 
+// Helper to safely extract common billing fields from any variables union
+type PaidTier = 'paid' | 'free' | undefined
+interface BillingVars { tierOverride?: PaidTier; wasPaid?: boolean }
+function extractBillingVars(vars: Record<string, unknown>): BillingVars {
+  return {
+    tierOverride: (vars['tierOverride'] as PaidTier),
+    wasPaid: Boolean(vars['wasPaid']),
+  }
+}
+
 // Token handler for SSE
 export async function onToken(
   channel: string,
@@ -74,16 +84,15 @@ export async function handleStream(
         traceId,
       })
 
-      const tierOverride = (variables as any)?.tierOverride
-      const wasPaid = (variables as any)?.wasPaid === true
+      const { tierOverride, wasPaid } = extractBillingVars(variables as Record<string, unknown>)
       const userHasQuota =
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
-          ? false
-          : wasPaid
-          ? true
-          : await getUserHasQuota(userId)
+            ? false
+            : wasPaid
+              ? true
+              : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
       logEvent(
@@ -291,16 +300,15 @@ export async function handleBatch(
         traceId,
       })
 
-      const tierOverride = (variables as any)?.tierOverride
-      const wasPaid = (variables as any)?.wasPaid === true
+      const { tierOverride, wasPaid } = extractBillingVars(variables as Record<string, unknown>)
       const userHasQuota =
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
-          ? false
-          : wasPaid
-          ? true
-          : await getUserHasQuota(userId)
+            ? false
+            : wasPaid
+              ? true
+              : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
       const ttlSec = getTtlSec()

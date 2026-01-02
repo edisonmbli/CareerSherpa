@@ -29,7 +29,9 @@ export function useSseStream(
         }),
         keepalive: true,
       })
-    } catch {}
+    } catch {
+      // non-fatal: timeline logging should not block SSE connection
+    }
     const url = `/api/sse-stream?userId=${encodeURIComponent(
       userId
     )}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(
@@ -50,8 +52,8 @@ export function useSseStream(
               typeof (msg as any)?.text === 'string'
                 ? (msg as any).text.length
                 : typeof (msg as any)?.data === 'string'
-                ? (msg as any).data.length
-                : 0
+                  ? (msg as any).data.length
+                  : 0
             console.info('sse_event', {
               type: String((msg as any)?.type || ''),
               status: (msg as any)?.status,
@@ -60,7 +62,9 @@ export function useSseStream(
               len,
             })
           }
-        } catch {}
+        } catch {
+          // non-fatal: debug logging may fail
+        }
         ingestEvent(msg)
         const status = String(msg?.status || '')
         const code = String(msg?.code || '')
@@ -72,12 +76,16 @@ export function useSseStream(
         if (summaryDone && nextTid && nextTid !== taskRef.current) {
           try {
             esRef.current?.close()
-          } catch {}
+          } catch {
+            // non-fatal: close may fail if already closed
+          }
           try {
             if (process.env.NODE_ENV !== 'production') {
               console.info('sse_switch', { from: taskRef.current, to: nextTid })
             }
-          } catch {}
+          } catch {
+            // non-fatal: debug logging may fail
+          }
           try {
             fetch('/api/timeline', {
               method: 'POST',
@@ -89,7 +97,9 @@ export function useSseStream(
               }),
               keepalive: true,
             })
-          } catch {}
+          } catch {
+            // non-fatal: timeline logging should not block task switch
+          }
           taskRef.current = nextTid
           const nextUrl = `/api/sse-stream?userId=${encodeURIComponent(
             userId
@@ -101,7 +111,9 @@ export function useSseStream(
           nextEs.onmessage = es.onmessage
           nextEs.onerror = es.onerror as any
         }
-      } catch {}
+      } catch {
+        // non-fatal: message parse errors should not crash the stream
+      }
     }
     es.onerror = () => {
       ingestEvent({ type: 'error', message: 'stream_connection_error' })

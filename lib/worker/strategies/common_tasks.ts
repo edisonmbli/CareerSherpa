@@ -122,7 +122,7 @@ async function handleRefunds(
         amount: cost,
         relatedId: debitId,
         serviceId,
-        templateId: templateId as any,
+        templateId,  // templateId is already string type
       })
     } catch (e) {
       /* best effort */

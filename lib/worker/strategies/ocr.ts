@@ -12,7 +12,7 @@ import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
 import { acquireLock } from '@/lib/redis/lock'
 import { pushTask } from '@/lib/queue/producer'
 import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
-import { ExecutionStatus, AsyncTaskStatus } from '@prisma/client'
+import { ExecutionStatus, AsyncTaskStatus, FailureCode } from '@prisma/client'
 import { ENV } from '@/lib/env'
 import { logError } from '@/lib/logger'
 
@@ -125,7 +125,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
     // Handle Failure
     if (!execResult.ok || !text) {
       try {
-        await txMarkSummaryFailed(serviceId, 'PREVIOUS_OCR_FAILED' as any)
+        await txMarkSummaryFailed(serviceId, FailureCode.PREVIOUS_OCR_FAILED)
         const sessionId = String(variables.executionSessionId || '')
         const matchTaskId = buildMatchTaskId(serviceId, sessionId)
         const matchChannel = getChannel(userId, serviceId, matchTaskId)
@@ -284,7 +284,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           serviceId,
           taskId: `job_${serviceId}_${sessionId}`,
           userId,
-          locale: locale as any,
+          locale: locale as 'en' | 'zh',
           templateId: 'job_summary',
           variables: {
             jobId: String(variables.jobId || ''),

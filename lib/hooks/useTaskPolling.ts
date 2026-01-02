@@ -55,8 +55,10 @@ export function useTaskPolling({
                 keepalive: true,
               })
             }
-          } catch {}
-          
+          } catch {
+            // non-fatal: timeline logging should not block polling
+          }
+
           if (newStatus === 'COMPLETED') {
             try {
               fetch('/api/timeline', {
@@ -65,7 +67,9 @@ export function useTaskPolling({
                 body: JSON.stringify({ serviceId: String(taskId), phase: 'poll_completed', meta: { taskType } }),
                 keepalive: true,
               })
-            } catch {}
+            } catch {
+              // non-fatal: timeline logging should not block success callback
+            }
             onSuccess()
             return
           }
@@ -77,12 +81,16 @@ export function useTaskPolling({
                 body: JSON.stringify({ serviceId: String(taskId), phase: 'poll_failed', meta: { taskType } }),
                 keepalive: true,
               })
-            } catch {}
+            } catch {
+              // non-fatal: timeline logging should not block error callback
+            }
             onError()
             return
           }
         }
-      } catch {}
+      } catch {
+        // non-fatal: polling fetch errors should trigger retry, not crash
+      }
       setAttempts((p) => p + 1)
       const delay = schedule.current[Math.min(step, schedule.current.length - 1)]
       timerRef.current = window.setTimeout(() => run(step + 1), delay)
