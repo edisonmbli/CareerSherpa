@@ -211,6 +211,7 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
           >
             {basics.photoUrl && (
               <div className="shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element -- Print/PDF export requires native img */}
                 <img
                   src={basics.photoUrl}
                   alt={basics.name}

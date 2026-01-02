@@ -35,28 +35,29 @@ import { nanoid } from 'nanoid'
 
 export type CustomizeResumeActionResult =
   | {
-      ok: true
-      taskId: string
-      taskType: 'customize'
-      isFree: boolean
-      executionSessionId: string
-    }
+    ok: true
+    taskId: string
+    taskType: 'customize'
+    isFree: boolean
+    executionSessionId: string
+  }
   | { ok: false; error: string }
 
 export type GenerateInterviewTipsActionResult =
   | {
-      ok: true
-      taskId: string
-      taskType: 'interview'
-      isFree: boolean
-      stream: true
-      executionSessionId: string
-    }
+    ok: true
+    taskId: string
+    taskType: 'interview'
+    isFree: boolean
+    stream: true
+    executionSessionId: string
+  }
   | { ok: false; error: string }
 
 export type SaveCustomizedResumeActionResult = { ok: true }
 
 import { uploadFile } from '@/lib/storage/upload'
+import { uploadJobImage } from './helpers/uploadJobImage'
 
 /**
  * 创建服务（Service）并初始化相关任务（Job, Match等）
@@ -80,44 +81,11 @@ export const createServiceAction = withServerActionAuthWrite(
     let imageUrl: string | undefined
     // If jobImage provided (base64), upload it
     if (params.jobImage) {
-      try {
-        const dataUrl = String(params.jobImage)
-        const comma = dataUrl.indexOf(',')
-        const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl
-        const buffer = Buffer.from(base64, 'base64')
-        const sizeBytes = buffer.length
-        if (sizeBytes > MAX_IMAGE_BYTES) {
-          return { ok: false, error: 'image_too_large' }
-        }
-
-        // Create a File-like object or just pass buffer if uploadFile supports it?
-        // uploadFile expects File. In Node environment (Server Action), File might not be available or polyfilled.
-        // Let's check uploadFile implementation. It uses file.arrayBuffer().
-        // We can create a simple object that mimics File interface for uploadFile.
-        const filename = `job_${Date.now()}_${Math.random()
-          .toString(36)
-          .slice(2)}.png` // Assume png or detect?
-        // Basic detection from header if present
-        const mimeMatch = dataUrl.match(/^data:(image\/[a-z]+);base64,/)
-        const mimeType = mimeMatch ? mimeMatch[1] : 'image/png'
-        const ext = mimeType ? mimeType.split('/')[1] : 'png'
-        const finalFilename = `job_${Date.now()}_${Math.random()
-          .toString(36)
-          .slice(2)}.${ext}`
-
-        const fileMock = {
-          name: finalFilename,
-          type: mimeType,
-          size: sizeBytes,
-          arrayBuffer: async () => {
-            return new Uint8Array(buffer).buffer
-          },
-        } as unknown as File
-
-        imageUrl = await uploadFile(fileMock, finalFilename)
-      } catch (e) {
-        return { ok: false, error: 'image_upload_failed' }
+      const uploadResult = await uploadJobImage(params.jobImage)
+      if (!uploadResult.ok) {
+        return { ok: false, error: uploadResult.error }
       }
+      imageUrl = uploadResult.imageUrl
     }
 
     // 1. 获取最新简历
@@ -446,21 +414,21 @@ export const saveCustomizedResumeAction = withServerActionAuthWrite<
 export const retryMatchAction = withServerActionAuthWrite<
   { locale: Locale; serviceId: string },
   | {
-      ok: true
-      isFree: boolean
-      step: 'summary' | 'match'
-      stream: boolean
-      executionSessionId: string
-    }
+    ok: true
+    isFree: boolean
+    step: 'summary' | 'match'
+    stream: boolean
+    executionSessionId: string
+  }
   | {
-      ok: false
-      error:
-        | 'job_summary_missing'
-        | 'previous_ocr_failed'
-        | 'previous_summary_failed'
-        | 'previous_model_limit'
-        | 'enqueue_failed'
-    }
+    ok: false
+    error:
+    | 'job_summary_missing'
+    | 'previous_ocr_failed'
+    | 'previous_summary_failed'
+    | 'previous_model_limit'
+    | 'enqueue_failed'
+  }
 >(
   'retryMatchAction',
   async (params: { locale: Locale; serviceId: string }, ctx) => {

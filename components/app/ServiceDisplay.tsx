@@ -35,6 +35,9 @@ import { Progress } from '@/components/ui/progress'
 
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
+import { deriveStage } from '@/lib/utils/workbench-stage'
+import { useServiceStatus, isTerminalStatus } from '@/lib/hooks/useServiceStatus'
+import { CtaButton } from '@/components/workbench/CtaButton'
 
 export function ServiceDisplay({
   initialService,
@@ -68,77 +71,13 @@ export function ServiceDisplay({
     matchResult,
   } = useWorkbenchStore()
 
-  // Auto-refresh when COMPLETED to sync server state
-  useEffect(() => {
-    if (storeStatus === 'COMPLETED' || storeStatus === 'MATCH_COMPLETED') {
-      router.refresh()
-    }
-  }, [storeStatus, router])
+  // Use centralized status hook for server→store sync
+  const { status: syncedStatus, serviceId } = useServiceStatus({
+    initialService,
+    dict,
+  })
 
-  // Initialize store status from server state to ensure UI consistency
-  useEffect(() => {
-    if (initialService?.currentStatus) {
-      const is = initialService.currentStatus.toUpperCase()
-      let mapped: WorkbenchStatus = 'IDLE'
-
-      if (is === 'OCR_PENDING') mapped = 'OCR_PENDING'
-      else if (is === 'OCR_COMPLETED') mapped = 'OCR_COMPLETED'
-      else if (is === 'SUMMARY_PENDING') mapped = 'SUMMARY_PENDING'
-      else if (is === 'SUMMARY_COMPLETED') mapped = 'SUMMARY_COMPLETED'
-      else if (is === 'MATCH_PENDING') mapped = 'MATCH_PENDING'
-      else if (is === 'MATCH_STREAMING') mapped = 'MATCH_STREAMING'
-      else if (is === 'MATCH_COMPLETED') mapped = 'MATCH_COMPLETED'
-      else if (is === 'MATCH_FAILED') mapped = 'MATCH_FAILED'
-      else if (is === 'SUMMARY_FAILED') mapped = 'SUMMARY_FAILED'
-      else if (is === 'OCR_FAILED') mapped = 'OCR_FAILED'
-      else if (is === 'CUSTOMIZE_PENDING') mapped = 'CUSTOMIZE_PENDING'
-      else if (is === 'CUSTOMIZE_FAILED') mapped = 'CUSTOMIZE_FAILED'
-      else if (is === 'CUSTOMIZE_COMPLETED') mapped = 'CUSTOMIZE_COMPLETED'
-      else if (is === 'INTERVIEW_PENDING') mapped = 'INTERVIEW_PENDING'
-      else if (is === 'INTERVIEW_FAILED') mapped = 'INTERVIEW_FAILED'
-      else if (is === 'INTERVIEW_COMPLETED') mapped = 'INTERVIEW_COMPLETED'
-
-      // Only update if store is IDLE or service changed, to avoid overwriting active state
-      // OR if the new state is a terminal state (COMPLETED/FAILED) which should override pending states
-      const currentStoreId = useWorkbenchStore.getState().currentServiceId
-      const currentStatus = useWorkbenchStore.getState().status
-
-      const isTerminalState = (s: WorkbenchStatus) =>
-        s.endsWith('_COMPLETED') || s.endsWith('_FAILED') || s === 'COMPLETED' || s === 'FAILED'
-
-      if (
-        currentStoreId !== initialService.id ||
-        currentStatus === 'IDLE' ||
-        (isTerminalState(mapped) && mapped !== currentStatus)
-      ) {
-        if (mapped !== 'IDLE') {
-          startTask(initialService.id, mapped)
-          // Sync error message from server state if failed
-          if (
-            mapped === 'MATCH_FAILED' ||
-            mapped === 'SUMMARY_FAILED' ||
-            mapped === 'OCR_FAILED'
-          ) {
-            let resolvedError =
-              initialService.match?.error || initialService.job?.error
-
-            // Use failureCode to derive a localized error message
-            if (initialService.failureCode) {
-              const codeKey = String(initialService.failureCode).toLowerCase()
-              const dictMsg = dict.workbench?.statusText?.[codeKey]
-              if (dictMsg) {
-                resolvedError = dictMsg
-              }
-            }
-
-            if (resolvedError) {
-              useWorkbenchStore.getState().setError(resolvedError)
-            }
-          }
-        }
-      }
-    }
-  }, [initialService, startTask, dict?.workbench?.statusText])
+  // Auto-refresh when COMPLETED to sync server state is now handled by hook
 
   // Local state
   const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
@@ -148,8 +87,7 @@ export function ServiceDisplay({
   const [isStarting, setIsStarting] = useState(false)
   const streamRef = useRef<HTMLDivElement>(null)
 
-  // Derived state
-  const serviceId = initialService?.id
+  // Derived state - serviceId now comes from useServiceStatus hook
 
   // Use store status or isStarting to prevent flashing "Ready" state
   const customizeStatus =
@@ -202,7 +140,7 @@ export function ServiceDisplay({
 
   useSseStream(
     userId,
-    serviceId,
+    serviceId || '',
     currentTaskId || '',
     status === 'COMPLETED' ||
     status === 'MATCH_COMPLETED' ||
@@ -220,7 +158,7 @@ export function ServiceDisplay({
   const onCustomize = () => {
     setIsStarting(true)
     startTransition(async () => {
-      const res = await customizeResumeAction({ serviceId, locale })
+      const res = await customizeResumeAction({ serviceId: serviceId!, locale })
       console.log('[Frontend] customizeResumeAction result:', res)
       if (res?.ok) {
         if (res.executionSessionId) {
@@ -246,7 +184,7 @@ export function ServiceDisplay({
 
   const onInterview = () => {
     startTransition(async () => {
-      const res = await generateInterviewTipsAction({ serviceId, locale })
+      const res = await generateInterviewTipsAction({ serviceId: serviceId!, locale })
       if (res?.ok) {
         if (res.executionSessionId) {
           const newTaskId = `match_${serviceId}_${String(
@@ -269,7 +207,7 @@ export function ServiceDisplay({
       const { retryMatchAction: serverRetry } = await import(
         '@/lib/actions/service.actions'
       )
-      const res = await serverRetry({ locale, serviceId })
+      const res = await serverRetry({ locale, serviceId: serviceId! })
       if (res?.ok) {
         if (res.executionSessionId) {
           setMatchTaskId(`match_${serviceId}_${String(res.executionSessionId)}`)
@@ -447,39 +385,17 @@ export function ServiceDisplay({
     // No timer needed with useLayoutEffect as it blocks paint
   }, [tabValue])
 
-  // CTA Node for Desktop Headers
+  // CTA Node for Desktop Headers - now uses extracted component
   const ctaNode = (
-    <div className="flex items-center gap-2">
-      {cta && (
-        <Button
-          onClick={() => {
-            if (cta.action === 'customize') onCustomize()
-            else if (cta.action === 'interview') {
-              setTabValue('interview')
-              onInterview()
-            } else if (cta.action === 'retry_match') retryMatchAction()
-          }}
-          disabled={cta.disabled}
-          aria-label={cta.label}
-          size="sm"
-          className="font-semibold shadow-sm h-8 px-4 gap-2"
-        >
-          {cta.label}
-          <div className="h-3 w-px bg-white/20 mx-1" />
-          <div className="flex items-center gap-1 opacity-90">
-            <Coins className="w-3.5 h-3.5 text-yellow-500" />
-            <span className="text-xs font-mono">
-              {getTaskCost(
-                tabValue === 'interview' ||
-                  (tabValue === 'customize' && customizeStatus === 'COMPLETED')
-                  ? 'interview_prep'
-                  : 'resume_customize'
-              )}
-            </span>
-          </div>
-        </Button>
-      )}
-    </div>
+    <CtaButton
+      cta={cta}
+      tabValue={tabValue}
+      customizeStatus={customizeStatus}
+      onCustomize={onCustomize}
+      onInterview={onInterview}
+      onRetryMatch={retryMatchAction}
+      setTabValue={setTabValue}
+    />
   )
 
   return (
@@ -840,286 +756,3 @@ export function ServiceDisplay({
   )
 }
 
-function deriveStage(
-  status: WorkbenchStatus,
-  customizeStatus: string,
-  interviewStatus: string,
-  dict: any,
-  isPending: boolean,
-  tabValue: string,
-  statusDetail: string | null,
-  errorMessage: string | null
-): {
-  currentStep: StepId
-  maxUnlockedStep: StepId
-  cta: {
-    show: boolean
-    label: string
-    action: 'customize' | 'interview' | 'retry_match' | 'none'
-    disabled: boolean
-  } | null
-  statusMessage: string
-  progressValue: number
-} {
-  let currentStep: StepId = 1
-  let maxUnlockedStep: StepId = 1
-  let cta: {
-    show: boolean
-    label: string
-    action: 'customize' | 'interview' | 'retry_match' | 'none'
-    disabled: boolean
-  } | null = null
-
-  // 1. Status Normalization
-  // ------------------------------------------------------------------
-  const isMatchDone = status === 'COMPLETED' || status === 'MATCH_COMPLETED'
-  const isMatchFailed =
-    status === 'FAILED' ||
-    status === 'MATCH_FAILED' ||
-    status === 'OCR_FAILED' ||
-    status === 'SUMMARY_FAILED'
-
-  // Mapping Table Note: "PENDING" in DB covers both "Wait to start" and "Doing"
-  const isCustomizePending = customizeStatus === 'PENDING'
-  const isCustomizeDone = customizeStatus === 'COMPLETED'
-  const isCustomizeFailed = customizeStatus === 'FAILED'
-  const isCustomizeIdle = customizeStatus === 'IDLE'
-
-  // Mapping Table Note: "PENDING" in DB covers both "Wait to start" and "Doing"
-  const isInterviewPending = interviewStatus === 'PENDING'
-  const isInterviewDone = interviewStatus === 'COMPLETED'
-  const isInterviewFailed = interviewStatus === 'FAILED'
-  const isInterviewIdle = interviewStatus === 'IDLE'
-
-  // 2. Step Calculation (Status Driven)
-  // ------------------------------------------------------------------
-  // Logic aligns with Mapping Table: "所在 Stage" column
-  if (!isInterviewIdle) {
-    currentStep = 3
-  } else if (!isCustomizeIdle) {
-    currentStep = 2
-  } else if (isMatchDone) {
-    currentStep = 2 // Transitioning to Step 2
-  } else {
-    currentStep = 1
-  }
-
-  // Override: If user manually selected a tab, we might want to respect it for *viewing*
-  // but the Stepper's "active ring" usually indicates the *process* stage.
-  // However, the previous requirement was "Status Driven".
-  // If we want the Stepper ring to follow the Tab (as user navigation), we use tabValue.
-  // Based on "ServiceDisplay.tsx" L339 (previous), currentStep was derived from tabValue.
-  // Let's stick to the Tab Value for visual consistency with the content area,
-  // BUT the *Unlock* status is driven by execution status.
-  if (tabValue === 'interview') currentStep = 3
-  else if (tabValue === 'customize') currentStep = 2
-  else currentStep = 1
-
-  // 3. Max Unlocked Calculation (Locking Logic)
-  // ------------------------------------------------------------------
-  if (isInterviewPending || isInterviewDone || isInterviewFailed) {
-    maxUnlockedStep = 3
-  } else if (isCustomizeDone && isInterviewIdle) {
-    // Gap Analysis: Mapping table says Step 3 is "visible" in INTERVIEW_PENDING.
-    // Here we lock Step 3 if Interview hasn't started (IDLE), even if Customize is done.
-    // This matches the "Unlock on Action" pattern requested by user.
-    maxUnlockedStep = 2
-  } else if (
-    isCustomizePending ||
-    isCustomizeDone ||
-    isCustomizeFailed ||
-    isMatchDone
-  ) {
-    maxUnlockedStep = 2
-  } else {
-    maxUnlockedStep = 1
-  }
-
-  // 4. CTA Calculation
-  // ------------------------------------------------------------------
-  // Logic aligns with Mapping Table: "CTA Button" column
-
-  if (isMatchFailed) {
-    // MATCH_FAILED -> Retry
-    cta = {
-      show: true,
-      label: dict.workbench?.statusText?.retryMatch || 'Retry Match',
-      action: 'retry_match',
-      disabled: isPending,
-    }
-  } else if (isMatchDone && isCustomizeIdle) {
-    // MATCH_COMPLETED -> Start Customize
-    cta = {
-      show: true,
-      label: dict.workbench?.customize?.start || 'Start Customization',
-      action: 'customize',
-      disabled: isPending,
-    }
-  } else if (isCustomizePending) {
-    // CUSTOMIZE_PENDING/DOING -> Show Progress (Disabled CTA)
-    // Gap: Mapping table says "Hidden" for DOING. We use "Disabled" for better UX.
-    cta = {
-      show: true,
-      label: dict.workbench?.statusConsole?.customizing || 'Customizing...',
-      action: 'none',
-      disabled: true,
-    }
-  } else if (isCustomizeFailed) {
-    // CUSTOMIZE_FAILED -> Retry
-    cta = {
-      show: true,
-      label: dict.workbench?.customize?.start || 'Retry Customization',
-      action: 'customize',
-      disabled: isPending,
-    }
-  } else if (isCustomizeDone && isInterviewIdle) {
-    // CUSTOMIZE_COMPLETED -> Generate Tips
-    cta = {
-      show: true,
-      label: dict.workbench?.interviewUi?.start || 'Generate Interview Tips',
-      action: 'interview',
-      disabled: isPending,
-    }
-  } else if (isInterviewPending) {
-    // INTERVIEW_PENDING/DOING -> Show Progress (Disabled CTA)
-    cta = {
-      show: true,
-      label: 'Generating Tips...',
-      action: 'none',
-      disabled: true,
-    }
-  } else if (isInterviewFailed) {
-    // INTERVIEW_FAILED -> Retry
-    cta = {
-      show: true,
-      label: dict.workbench?.interviewUi?.start || 'Retry Generation',
-      action: 'interview',
-      disabled: isPending,
-    }
-  } else if (isInterviewDone) {
-    // INTERVIEW_COMPLETED -> Hidden (or View Results which is default UI)
-    cta = null
-  }
-
-  // 5. Status Message & Progress
-  // ------------------------------------------------------------------
-  let statusMessage = ''
-  let progressValue = 0
-
-  // ... (Logic from previous statusMessage/progressValue)
-
-  if (tabValue === 'customize') {
-    if (isCustomizePending) {
-      statusMessage =
-        dict.workbench?.statusConsole?.customizing || 'AI is customizing...'
-      progressValue = 66
-    } else if (isCustomizeFailed) {
-      statusMessage =
-        dict.workbench?.statusConsole?.customizeFailed || 'Customization Failed'
-      progressValue = 0
-    } else if (isCustomizeDone) {
-      statusMessage =
-        dict.workbench?.statusConsole?.customizeCompleted ||
-        'Customization Completed'
-      progressValue = 100
-    }
-  } else if (tabValue === 'interview') {
-    if (isInterviewPending) {
-      statusMessage = 'Generating Interview Tips...'
-      progressValue = 66
-    } else if (isInterviewDone) {
-      statusMessage = 'Interview Tips Generated'
-      progressValue = 100
-    }
-  }
-
-  if (!statusMessage) {
-    // Fallback to global status
-    const stext = dict.workbench?.statusText || {}
-    if (statusDetail) {
-      const key = String(statusDetail)
-      const mapped = (dict.workbench?.statusText?.[key] as any) || null
-      if (mapped) statusMessage = String(mapped)
-    }
-
-    if (!statusMessage) {
-      // e.g. ocrPending
-      const camelKey = (status || '')
-        .toLowerCase()
-        .replace(/_([a-z])/g, (g) => (g[1] || '').toUpperCase())
-        .replace(/_/, '')
-
-      // Try to find in statusConsole first (new standard)
-      const statusConsole = dict.workbench?.statusConsole as any
-      const consoleMsg = statusConsole?.[camelKey as any]
-      if (consoleMsg) statusMessage = String(consoleMsg)
-
-      if (!statusMessage) {
-        const statusText = dict.workbench?.statusText as any
-        const textMsg = statusText?.[camelKey as any]
-        if (textMsg) statusMessage = String(textMsg)
-      }
-    }
-
-    if (!statusMessage) {
-      if (status === 'MATCH_PENDING')
-        statusMessage =
-          dict.workbench?.statusConsole?.matchPending ||
-          'Analyzing match degree...'
-      else if (status === 'MATCH_STREAMING')
-        statusMessage =
-          dict.workbench?.statusConsole?.matchStreaming ||
-          'Streaming analysis results...'
-      else if (status === 'SUMMARY_PENDING')
-        statusMessage =
-          dict.workbench?.statusConsole?.summaryPending ||
-          'Extracting job details...'
-      else if (status === 'SUMMARY_COMPLETED')
-        statusMessage =
-          dict.workbench?.statusConsole?.summaryCompleted ||
-          'Job Details Extracted'
-      else if (status === 'OCR_PENDING')
-        statusMessage =
-          dict.workbench?.statusConsole?.ocrPending ||
-          'Extracting text from image...'
-      else if (status === 'OCR_COMPLETED')
-        statusMessage =
-          dict.workbench?.statusConsole?.ocrCompleted ||
-          'OCR Extraction Completed'
-      else if (status === 'COMPLETED' || status === 'MATCH_COMPLETED')
-        statusMessage =
-          dict.workbench?.statusConsole?.matchCompleted ||
-          'Match Analysis Completed'
-      else if (status === 'OCR_FAILED')
-        statusMessage =
-          dict.workbench?.statusConsole?.ocrFailed || 'OCR Extraction Failed'
-      else if (status === 'SUMMARY_FAILED')
-        statusMessage =
-          dict.workbench?.statusConsole?.summaryFailed ||
-          'Job Summary Extraction Failed'
-      else if (status === 'MATCH_FAILED')
-        statusMessage =
-          dict.workbench?.statusConsole?.matchFailed || 'Match Analysis Failed'
-      else if (status === 'FAILED') statusMessage = stext.failed || 'Failed'
-      else statusMessage = stext.idle || 'Ready'
-    }
-
-    // Progress for match
-    if (status === 'OCR_PENDING') progressValue = 33
-    else if (status === 'OCR_COMPLETED') progressValue = 33
-    else if (status === 'SUMMARY_PENDING') progressValue = 66
-    else if (status === 'SUMMARY_COMPLETED') progressValue = 66
-    else if (status === 'MATCH_PENDING' || status === 'MATCH_STREAMING')
-      progressValue = 80
-    else if (status === 'COMPLETED' || status === 'MATCH_COMPLETED')
-      progressValue = 100
-  }
-
-  return {
-    currentStep,
-    maxUnlockedStep,
-    cta,
-    statusMessage,
-    progressValue,
-  }
-}

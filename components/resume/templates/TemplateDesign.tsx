@@ -584,6 +584,7 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
             <div className="shrink-0 flex justify-center">
               {basics.photoUrl ? (
                 <div className="w-32 h-32 rounded-[2rem] bg-white shadow-2xl overflow-hidden border-[6px] border-white rotate-0 hover:rotate-3 transition-transform duration-500 relative z-10 print:shadow-none">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Print/PDF export requires native img */}
                   <img
                     src={basics.photoUrl}
                     alt={basics.name}

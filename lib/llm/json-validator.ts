@@ -2,19 +2,21 @@ const logInfo = (payload: any) => {
   try {
     const entry = { level: 'info', ts: new Date().toISOString(), ...payload }
     console.log(JSON.stringify(entry))
-  } catch {}
+  } catch { }
 }
 const logError = (payload: any) => {
   try {
     const entry = { level: 'error', ts: new Date().toISOString(), ...payload }
     console.error(JSON.stringify(entry))
-  } catch {}
+  } catch { }
 }
 
 /**
  * Unified JSON validation and error handling for LLM responses
  * This module provides robust JSON parsing with multiple fallback strategies
  */
+
+import { executeStrategies } from './json-strategies'
 
 export interface ValidationResult<T = any> {
   success: boolean
@@ -39,7 +41,7 @@ export interface ValidationOptions {
 /**
  * Clean and normalize JSON text before parsing
  */
-function cleanJsonText(text: string): string {
+export function cleanJsonText(text: string): string {
   let cleaned = text.trim()
 
   // Remove all markdown code fences (more aggressive approach)
@@ -77,7 +79,7 @@ function cleanJsonText(text: string): string {
 /**
  * Extract JSON from mixed content using bracket matching
  */
-function extractJsonFromText(text: string): string {
+export function extractJsonFromText(text: string): string {
   let firstBrace = -1
 
   // Find first opening bracket
@@ -145,7 +147,7 @@ function extractJsonFromText(text: string): string {
  * Replaces smart quotes/single quotes with double quotes for structure
  * Escapes quotes that appear to be content
  */
-function fixQuotesInStrings(text: string): string {
+export function fixQuotesInStrings(text: string): string {
   let result = ''
   let inString = false
   let escaped = false
@@ -209,7 +211,7 @@ function fixQuotesInStrings(text: string): string {
   return result
 }
 
-function escapeControlCharsInStrings(text: string): string {
+export function escapeControlCharsInStrings(text: string): string {
   let result = ''
   let inString = false
   let escaped = false
@@ -255,7 +257,7 @@ function escapeControlCharsInStrings(text: string): string {
   return result
 }
 
-function fixJsonSyntax(text: string): string {
+export function fixJsonSyntax(text: string): string {
   let fixed = text
 
   // Normalize Chinese punctuation to standard punctuation
@@ -359,20 +361,20 @@ function fixJsonSyntax(text: string): string {
 
 /**
  * Validate and parse JSON with multiple strategies
+ *
+ * Delegates to executeStrategies() which implements 4 parsing strategies:
+ * 1. Direct - Parse as-is
+ * 2. Clean - Remove markdown, normalize quotes
+ * 3. Extract - Find JSON in mixed content
+ * 4. Repair - Fix common syntax errors
  */
 export function validateJson<T = any>(
   content: string,
   options: ValidationOptions = {}
 ): ValidationResult<T> {
-  const {
-    debug,
-    enableFallback = true,
-    maxAttempts = 4,
-    strictMode = false,
-  } = options
-  const warnings: string[] = []
-  let parseAttempts = 0
+  const { debug } = options
 
+  // Entry logging for observability
   if (debug) {
     logInfo({
       reqId: debug.reqId ?? 'unknown',
@@ -380,331 +382,45 @@ export function validateJson<T = any>(
       userKey: debug.userKey ?? 'unknown',
       phase: 'validation_start',
       contentLength: content.length,
-      strictMode,
+      strictMode: options.strictMode ?? false,
       contentPreview: content.slice(0, 200),
-      contentSample: content.slice(0, 500), // 增加更多内容样本
       hasMarkdownCodeBlock: content.includes('```'),
       hasJsonKeywords: content.includes('{') && content.includes('}'),
-      originalContent: content, // 记录完整的原始内容
     })
   }
 
-  // 智能检测：如果内容包含markdown代码块，直接跳过直接解析
-  const hasMarkdownCodeBlock = content.includes('```')
+  // Delegate to strategy executor
+  const result = executeStrategies<T>(
+    content,
+    cleanJsonText,
+    extractJsonFromText,
+    fixJsonSyntax,
+    options
+  )
 
-  // Strategy 1: Direct parsing (只在没有markdown代码块时执行)
-  if (!hasMarkdownCodeBlock) {
-    parseAttempts++
-    try {
-      const parsed = JSON.parse(content)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'direct_parse_success',
-          parseAttempts,
-          dataType: typeof parsed,
-          isArray: Array.isArray(parsed),
-          objectKeys:
-            typeof parsed === 'object' && parsed !== null
-              ? Object.keys(parsed)
-              : undefined,
-        })
-      }
-
-      const result: ValidationResult<T> = {
-        success: true,
-        data: parsed,
-        parseAttempts,
-      }
-
-      if (warnings.length > 0) {
-        result.warnings = warnings
-      }
-
-      return result
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'direct_parse_failed',
-          error: errorMessage,
-          parseAttempts,
-          contentLength: content.length,
-          contentPreview: content.slice(0, 300), // 增加错误时的内容预览
-          // 尝试提取错误位置信息
-          errorPosition: errorMessage.match(/position (\d+)/)?.[1],
-          errorLine: errorMessage.match(/line (\d+)/)?.[1],
-        })
-      }
-
-      if (strictMode) {
-        return {
-          success: false,
-          error: `Strict mode: ${errorMessage}`,
-          parseAttempts,
-        }
-      }
-
-      warnings.push(`Direct parse failed: ${errorMessage}`)
-    }
-  } else if (debug) {
-    logInfo({
-      reqId: debug.reqId ?? 'unknown',
-      route: debug.route ?? 'json-validator',
-      userKey: debug.userKey ?? 'unknown',
-      phase: 'markdown_detected_skip_direct_parse',
-    })
-  }
-
-  // Strategy 2: Clean and parse
-  if (parseAttempts < maxAttempts) {
-    parseAttempts++
-    try {
-      const cleaned = cleanJsonText(content)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'cleaned_parse_attempt',
-          parseAttempts,
-          originalLength: content.length,
-          cleanedLength: cleaned.length,
-          cleanedPreview: cleaned.slice(0, 300),
-        })
-      }
-
-      const parsed = JSON.parse(cleaned)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'cleaned_parse_success',
-          parseAttempts,
-          cleanedLength: cleaned.length,
-        })
-      }
-
-      const result: ValidationResult<T> = {
-        success: true,
-        data: parsed,
-        parseAttempts,
-      }
-
-      if (warnings.length > 0) {
-        result.warnings = warnings
-      }
-
-      return result
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'cleaned_parse_failed',
-          error: errorMessage,
-          parseAttempts,
-          cleanedContent: cleanJsonText(content).slice(0, 500), // 记录清理后的内容
-          errorPosition: errorMessage.match(/position (\d+)/)?.[1],
-        })
-      }
-
-      warnings.push(`Cleaned parse failed: ${errorMessage}`)
-    }
-  }
-
-  // Strategy 3: Extract and parse
-  if (parseAttempts < maxAttempts) {
-    parseAttempts++
-    try {
-      const cleaned = cleanJsonText(content)
-      const extracted = extractJsonFromText(cleaned)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'extracted_parse_attempt',
-          parseAttempts,
-          extractedContent: extracted ? extracted.slice(0, 500) : 'null',
-          extractedLength: extracted ? extracted.length : 0,
-          hasExtracted: !!extracted,
-        })
-      }
-
-      if (extracted) {
-        const parsed = JSON.parse(extracted)
-
-        if (debug) {
-          logInfo({
-            reqId: debug.reqId ?? 'unknown',
-            route: debug.route ?? 'json-validator',
-            userKey: debug.userKey ?? 'unknown',
-            phase: 'extracted_parse_success',
-            parseAttempts,
-            extractedLength: extracted.length,
-          })
-        }
-
-        const result: ValidationResult<T> = {
-          success: true,
-          data: parsed,
-          parseAttempts,
-        }
-
-        if (warnings.length > 0) {
-          result.warnings = warnings
-        }
-
-        return result
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'extracted_parse_failed',
-          error: errorMessage,
-          parseAttempts,
-          extractedContent:
-            extractJsonFromText(cleanJsonText(content))?.slice(0, 500) ||
-            'null',
-          errorPosition: errorMessage.match(/position (\d+)/)?.[1],
-        })
-      }
-
-      warnings.push(`Extracted parse failed: ${errorMessage}`)
-    }
-  }
-
-  // Strategy 4: Fix syntax and parse
-  if (parseAttempts < maxAttempts && enableFallback) {
-    parseAttempts++
-    try {
-      const cleaned = cleanJsonText(content)
-      const extracted = extractJsonFromText(cleaned) || cleaned
-      const fixed = fixJsonSyntax(extracted)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'fixed_parse_attempt',
-          parseAttempts,
-          originalLength: content.length,
-          cleanedLength: cleaned.length,
-          extractedLength: extracted.length,
-          fixedLength: fixed.length,
-          fixedContent: fixed.slice(0, 500), // 记录修复后的内容
-        })
-      }
-
-      const parsed = JSON.parse(fixed)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'fixed_parse_success',
-          parseAttempts,
-          fixedLength: fixed.length,
-        })
-      }
-
-      const result: ValidationResult<T> = {
-        success: true,
-        data: parsed,
-        fallbackUsed: true,
-        parseAttempts,
-      }
-
-      if (warnings.length > 0) {
-        result.warnings = warnings
-      }
-
-      return result
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error)
-
-      if (debug) {
-        logInfo({
-          reqId: debug.reqId ?? 'unknown',
-          route: debug.route ?? 'json-validator',
-          userKey: debug.userKey ?? 'unknown',
-          phase: 'fixed_parse_failed',
-          error: errorMessage,
-          parseAttempts,
-          fixedContent: fixJsonSyntax(
-            extractJsonFromText(cleanJsonText(content)) ||
-              cleanJsonText(content)
-          ).slice(0, 500),
-          errorPosition: errorMessage.match(/position (\d+)/)?.[1],
-        })
-      }
-
-      warnings.push(`Fixed parse failed: ${errorMessage}`)
-    }
-  }
-
-  // All strategies failed
-  const errorMessage = `All parsing strategies failed after ${parseAttempts} attempts. Warnings: ${warnings.join(
-    '; '
-  )}`
-
+  // Exit logging
   if (debug) {
-    logError({
-      reqId: debug.reqId ?? 'unknown',
-      route: debug.route ?? 'json-validator',
-      userKey: debug.userKey ?? 'unknown',
-      phase: 'all_strategies_failed',
-      parseAttempts,
-      warnings: warnings.join('; '),
-      contentSample: content.slice(0, 200),
-      contentLength: content.length,
-      hasMarkdownCodeBlock,
-      enableFallback,
-      strictMode,
-      // 添加所有处理步骤的内容样本
-      processedSamples: {
-        cleaned: cleanJsonText(content).slice(0, 300),
-        extracted:
-          extractJsonFromText(cleanJsonText(content))?.slice(0, 300) || 'null',
-        fixed: fixJsonSyntax(
-          extractJsonFromText(cleanJsonText(content)) || cleanJsonText(content)
-        ).slice(0, 300),
-      },
-    })
+    if (result.success) {
+      logInfo({
+        reqId: debug.reqId ?? 'unknown',
+        route: debug.route ?? 'json-validator',
+        phase: 'validation_success',
+        parseAttempts: result.parseAttempts,
+        fallbackUsed: result.fallbackUsed ?? false,
+      })
+    } else {
+      logError({
+        reqId: debug.reqId ?? 'unknown',
+        route: debug.route ?? 'json-validator',
+        phase: 'validation_failed',
+        error: result.error,
+        parseAttempts: result.parseAttempts,
+        warnings: result.warnings?.join('; '),
+      })
+    }
   }
 
-  return {
-    success: false,
-    error: errorMessage,
-    warnings,
-    parseAttempts,
-  }
+  return result
 }
 
 /**

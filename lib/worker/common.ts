@@ -49,7 +49,6 @@ function getEventText(event: Record<string, unknown>): string {
 
 // --- Token batcher global singleton type ---
 declare global {
-  // eslint-disable-next-line no-var
   var __cs_token_batchers__: Map<string, { tokens: string[]; timer?: ReturnType<typeof setTimeout>; startedAt: number }> | undefined
 }
 

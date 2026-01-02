@@ -425,6 +425,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
           {/* Avatar - Displayed if photoUrl exists */}
           {basics.photoUrl && (
             <div className="shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element -- Print/PDF export requires native img */}
               <img
                 src={basics.photoUrl}
                 alt={basics.name}
