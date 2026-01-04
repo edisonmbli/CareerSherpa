@@ -66,8 +66,23 @@ describe('llm/service: structured + streaming', () => {
   })
 
   it('runStructuredLlmTask returns parsed data and logs usage (success)', async () => {
-    // Prepare structured model
-    const json = JSON.stringify({ markdown: '# Title' })
+    // Prepare structured model with valid resume_customize schema
+    const validResumeCustomize = {
+      fact_check: {
+        extracted_name: 'Test User',
+        extracted_company: 'Test Company',
+        verification_status: 'PASS',
+      },
+      optimizeSuggestion: '# Key Changes\n- Improved summary',
+      resumeData: {
+        basics: { name: 'Test User' },
+        educations: [],
+        workExperiences: [],
+        projectExperiences: [],
+        customSections: [],
+      },
+    }
+    const json = JSON.stringify(validResumeCustomize)
     currentModel = {
       invoke: structuredInvoke.mockResolvedValue({
         content: json,
@@ -200,12 +215,27 @@ describe('llm/service: runLlmTask integration with router', () => {
   })
 
   it('respects free tier routing (glm flash)', async () => {
+    const validResumeCustomize = {
+      fact_check: {
+        extracted_name: 'Test User',
+        extracted_company: 'Test Company',
+        verification_status: 'PASS',
+      },
+      optimizeSuggestion: '# Key Changes\n- Improved summary',
+      resumeData: {
+        basics: { name: 'Test User' },
+        educations: [],
+        workExperiences: [],
+        projectExperiences: [],
+        customSections: [],
+      },
+    }
     currentModel = {
       stream: streamingStream.mockResolvedValue((async function* () {
         yield { content: 'C' }
       })()),
       lc_serializable: { tokenUsage: { promptTokens: 2, completionTokens: 3 } },
-      invoke: structuredInvoke.mockResolvedValue({ content: JSON.stringify({ markdown: '# Y' }) }),
+      invoke: structuredInvoke.mockResolvedValue({ content: JSON.stringify(validResumeCustomize) }),
     }
     const freeRes = await runLlmTask('resume_customize', 'en', { rag_context: 'x', resume_text: 'y', job_summary_json: '{}', match_analysis_json: '{}' }, { tier: 'free' })
     expect(freeRes.ok).toBe(true)

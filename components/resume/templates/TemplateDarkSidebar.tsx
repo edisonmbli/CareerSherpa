@@ -207,15 +207,44 @@ export function TemplateDarkSidebar({
                 sectionTitles?.['skills']
               )}
             />
-            <div className="flex flex-wrap gap-2 justify-center md:justify-start print:justify-start">
-              {skills.split('\n').map((skill, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 bg-white/10 border border-white/10 rounded-[4px] text-[0.85em] text-white/90 backdrop-blur-sm"
-                >
-                  {skill.trim().replace(/^[-•]\s*/, '')}
-                </span>
-              ))}
+            <div className="space-y-4">
+              {skills.split('\n').map((line, i) => {
+                const trimmed = line.trim()
+                if (!trimmed) return null
+                // Detect colon for label:content format
+                const colonIndex = trimmed.indexOf('：') !== -1
+                  ? trimmed.indexOf('：')
+                  : trimmed.indexOf(':')
+                if (colonIndex > 0) {
+                  const label = trimmed.slice(0, colonIndex)
+                  const content = trimmed.slice(colonIndex + 1).trim()
+                  return (
+                    <div key={i} className="flex flex-col gap-1.5">
+                      <span className="text-[0.75em] font-bold text-white/50 uppercase tracking-wider">
+                        {label}
+                      </span>
+                      <span className="text-[0.9em] text-white/90 leading-relaxed">
+                        {content}
+                      </span>
+                    </div>
+                  )
+                }
+                // Fallback: plain line
+                return (
+                  <span
+                    key={i}
+                    className="text-[0.9em] text-white/90"
+                  >
+                    {trimmed.replace(/^[-•]\s*/, '')}
+                  </span>
+                )
+              })}
+              {/* Decorative progress bar at bottom */}
+              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full w-3/4 bg-white/30"
+                />
+              </div>
             </div>
           </InteractiveSection>
         </div>

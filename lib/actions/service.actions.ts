@@ -20,6 +20,7 @@ import {
   getServiceWithContext,
   updateMatchStatus,
   updateCustomizedResumeEditedData,
+  updateCustomizedResumeStatus,
   updateServiceExecutionStatus,
 } from '@/lib/dal/services'
 import { pushTask } from '@/lib/queue/producer'
@@ -279,8 +280,15 @@ export const customizeResumeAction = withServerActionAuthWrite<
     })
     const hasQuota = debit2.ok
 
-    // Push to QStash (New Async Logic)
+    // Set PENDING before enqueue (matches generateInterviewTipsAction pattern)
     const executionSessionId = nanoid()
+    await updateServiceExecutionStatus(
+      params.serviceId,
+      ExecutionStatus.CUSTOMIZE_PENDING,
+      { executionSessionId }
+    )
+
+    // Push to QStash (New Async Logic)
     const enq = await ensureEnqueued({
       kind: 'batch',
       serviceId: params.serviceId,
@@ -297,7 +305,24 @@ export const customizeResumeAction = withServerActionAuthWrite<
       } as any,
     })
 
-    if (!enq.ok) return { ok: false, error: enq.error }
+    if (!enq.ok) {
+      // Set FAILED status on customize_resumes record
+      await updateCustomizedResumeStatus(
+        params.serviceId,
+        AsyncTaskStatus.FAILED
+      )
+      // Set FAILED status on service execution
+      await updateServiceExecutionStatus(
+        params.serviceId,
+        ExecutionStatus.CUSTOMIZE_FAILED,
+        { executionSessionId }
+      )
+      // Mark debit as FAILED to ensure ledger consistency
+      if (hasQuota) {
+        await markDebitFailed(debit2.id)
+      }
+      return { ok: false, error: enq.error }
+    }
 
     trackEvent('TASK_ENQUEUED', {
       userId,

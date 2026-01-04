@@ -81,15 +81,50 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             )}
           />
           <div
-            className="text-gray-700 leading-relaxed px-3 py-2 bg-slate-50 rounded-sm"
+            className="text-gray-700 leading-relaxed"
             style={{ fontSize: '0.93em' }}
           >
-            {/* 将技能以平铺方式展示，节省空间且整洁 */}
-            {skills.split('\n').map((skill, i) => (
-              <span key={i} className="inline-block mr-4 mb-1">
-                {skill.trim().replace(/^[-•]\s*/, '')}
-              </span>
-            ))}
+            {/* Detect 2-group format: 核心能力/工具技术 or Core Competencies/Tools */}
+            {skills.includes('核心能力') || skills.includes('工具技术') ||
+              skills.includes('Core Competencies') || skills.includes('Tools') ? (
+              // New 2-group format: render as labeled rows
+              <div className="space-y-1.5">
+                {skills.split('\n').map((line, i) => {
+                  const trimmed = line.trim()
+                  if (!trimmed) return null
+                  // Extract label and content
+                  const colonIndex = trimmed.indexOf('：') !== -1
+                    ? trimmed.indexOf('：')
+                    : trimmed.indexOf(':')
+                  if (colonIndex > 0) {
+                    const label = trimmed.slice(0, colonIndex)
+                    const content = trimmed.slice(colonIndex + 1).trim()
+                    return (
+                      <div key={i}>
+                        <span
+                          className="font-medium mr-2"
+                          style={{ color: theme.themeColor }}
+                        >
+                          {label}
+                        </span>
+                        <span className="text-gray-600">{content}</span>
+                      </div>
+                    )
+                  }
+                  // Fallback for lines without colon
+                  return <div key={i}>{trimmed}</div>
+                })}
+              </div>
+            ) : (
+              // Legacy format: inline spans in gray background
+              <div className="px-3 py-2 bg-slate-50 rounded-sm">
+                {skills.split('\n').map((skill, i) => (
+                  <span key={i} className="inline-block mr-4 mb-1">
+                    {skill.trim().replace(/^[-•]\s*/, '')}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </InteractiveSection>
       </section>

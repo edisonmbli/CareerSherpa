@@ -8,6 +8,7 @@ interface BatchProgressPanelProps {
   mode?: 'processing' | 'error'
   onRetry?: () => void
   isRetryLoading?: boolean
+  retryLabel?: string
 }
 
 export function BatchProgressPanel({
@@ -17,6 +18,7 @@ export function BatchProgressPanel({
   mode = 'processing',
   onRetry,
   isRetryLoading = false,
+  retryLabel = '重试',
 }: BatchProgressPanelProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
@@ -32,11 +34,11 @@ export function BatchProgressPanel({
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
         <p className="text-sm text-muted-foreground">{description}</p>
-        
+
         {mode === 'error' && onRetry && (
           <div className="pt-2">
-            <Button 
-              onClick={onRetry} 
+            <Button
+              onClick={onRetry}
               disabled={isRetryLoading}
               variant="outline"
               className="gap-2"
@@ -46,7 +48,7 @@ export function BatchProgressPanel({
               ) : (
                 <RefreshCcw className="h-4 w-4" />
               )}
-              Retry
+              {retryLabel}
             </Button>
           </div>
         )}
@@ -54,3 +56,4 @@ export function BatchProgressPanel({
     </div>
   )
 }
+

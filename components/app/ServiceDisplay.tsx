@@ -90,10 +90,13 @@ export function ServiceDisplay({
   // Derived state - serviceId now comes from useServiceStatus hook
 
   // Use store status or isStarting to prevent flashing "Ready" state
+  // Also handle CUSTOMIZE_COMPLETED from store to prevent brief IDLE flash before router.refresh
   const customizeStatus =
     storeStatus === 'CUSTOMIZE_PENDING' || isStarting
       ? 'PENDING'
-      : initialService?.customizedResume?.status || 'IDLE'
+      : storeStatus === 'CUSTOMIZE_COMPLETED'
+        ? 'COMPLETED'
+        : initialService?.customizedResume?.status || 'IDLE'
 
   const interviewStatus = initialService?.interview?.status || 'IDLE'
 
@@ -598,18 +601,20 @@ export function ServiceDisplay({
                 />
               ) : customizeStatus === 'CUSTOMIZE_FAILED' ||
                 customizeStatus === 'FAILED' ? (
-                <div className="space-y-3">
-                  <StreamPanel
-                    mode="error"
-                    content={
-                      errorMessage ||
-                      dict?.workbench?.streamPanel?.error ||
-                      'Task execution failed, please retry.'
-                    }
-                    locale={locale}
-                    onRetry={onCustomize}
-                  />
-                </div>
+                <BatchProgressPanel
+                  mode="error"
+                  title={
+                    dict.workbench?.statusConsole?.customizeFailed ||
+                    '简历定制失败'
+                  }
+                  description={
+                    dict?.workbench?.statusConsole?.customizeRefunded ||
+                    'Coins refunded, please retry.'
+                  }
+                  onRetry={onCustomize}
+                  isRetryLoading={isStarting || isPending}
+                  retryLabel={dict.workbench?.customize?.start || '定制简历'}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
                   <div className="text-center space-y-2">

@@ -237,24 +237,68 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
             )}
             icon={Zap}
           />
-          <div className="flex flex-wrap gap-3">
-            {skills.split(/[\n,，]/).map((skill, idx) => {
-              const trimmed = skill.trim()
-              if (!trimmed) return null
-              return (
-                <div
-                  key={idx}
-                  className="px-4 py-1.5 rounded-lg border text-[0.85em] font-bold text-gray-700 bg-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 print:shadow-none"
-                  style={{
-                    borderColor: secondaryBorder,
-                    borderLeftWidth: '3px',
-                    borderLeftColor: secondaryColor,
-                  }}
-                >
-                  {trimmed}
-                </div>
-              )
-            })}
+          <div className="space-y-4">
+            {/* Detect 2-group format */}
+            {skills.includes('核心能力') || skills.includes('工具技术') ||
+              skills.includes('Core Competencies') || skills.includes('Tools') ? (
+              // New 2-group format: render as labeled sections
+              skills.split('\n').map((line, idx) => {
+                const trimmed = line.trim()
+                if (!trimmed) return null
+                const colonIndex = trimmed.indexOf('：') !== -1
+                  ? trimmed.indexOf('：')
+                  : trimmed.indexOf(':')
+                if (colonIndex > 0) {
+                  const label = trimmed.slice(0, colonIndex)
+                  const content = trimmed.slice(colonIndex + 1).trim()
+                  // Split content by | or , for tags
+                  const items = content.split(/[|,，]/).filter(s => s.trim())
+                  return (
+                    <div key={idx}>
+                      <div
+                        className="font-bold uppercase tracking-wider mb-2"
+                        style={{ color: theme.themeColor, fontSize: '0.8em' }}
+                      >
+                        {label}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {items.map((item, i) => (
+                          <div
+                            key={i}
+                            className="px-3 py-1 rounded-lg border text-[0.85em] font-medium text-gray-700 bg-white shadow-sm print:shadow-none"
+                            style={{ borderColor: secondaryBorder }}
+                          >
+                            {item.trim()}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              })
+            ) : (
+              // Legacy format: inline tags
+              <div className="flex flex-wrap gap-3">
+                {skills.split(/[\n,，]/).map((skill, idx) => {
+                  const trimmed = skill.trim()
+                  if (!trimmed) return null
+                  return (
+                    <div
+                      key={idx}
+                      className="px-4 py-1.5 rounded-lg border text-[0.85em] font-bold text-gray-700 bg-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 print:shadow-none"
+                      style={{
+                        borderColor: secondaryBorder,
+                        borderLeftWidth: '3px',
+                        borderLeftColor: secondaryColor,
+                      }}
+                    >
+                      {trimmed}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </InteractiveSection>
       </section>

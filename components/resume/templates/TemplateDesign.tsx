@@ -200,31 +200,42 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
             )}
             sectionKey="skills"
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8 pl-8">
+          <div className="space-y-6 pl-8">
             {skills.split('\n').map((skillLine, idx) => {
-              const [cat, items] = skillLine.includes(':')
-                ? skillLine.split(':')
-                : ['', skillLine]
+              const trimmed = skillLine.trim()
+              if (!trimmed) return null
+              // Detect colon for label:content format
+              const colonIndex = trimmed.indexOf('：') !== -1
+                ? trimmed.indexOf('：')
+                : trimmed.indexOf(':')
+              const label = colonIndex > 0 ? trimmed.slice(0, colonIndex) : ''
+              const items = colonIndex > 0
+                ? trimmed.slice(colonIndex + 1)
+                : trimmed
               return (
                 <div key={idx} className="flex flex-col gap-3">
-                  {cat && (
+                  {label && (
                     <span
                       className="font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2"
                       style={{ fontSize: '0.75em' }}
                     >
-                      {cat}
+                      {label}
                     </span>
                   )}
                   <div className="flex flex-wrap gap-2">
-                    {(items || '').split(/[,，]/).map((item, i) => (
-                      <span
-                        key={i}
-                        className="px-3 py-1 rounded-full bg-slate-50 text-gray-700 font-medium hover:bg-slate-100 transition-colors print-bg-reset"
-                        style={{ fontSize: '0.85em' }}
-                      >
-                        {item.trim()}
-                      </span>
-                    ))}
+                    {(items || '').split(/[,，|]/).map((item, i) => {
+                      const t = item.trim()
+                      if (!t) return null
+                      return (
+                        <span
+                          key={i}
+                          className="px-3 py-1 rounded-full bg-slate-50 text-gray-700 font-medium hover:bg-slate-100 transition-colors print-bg-reset"
+                          style={{ fontSize: '0.85em' }}
+                        >
+                          {t}
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               )

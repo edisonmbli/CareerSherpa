@@ -276,26 +276,55 @@ export function TemplateProfessional({
             sectionTitles?.['skills']
           )}
         >
-          <div className="flex flex-col gap-3">
-            {skills.split('\n').map((skill, idx) => (
-              <div key={idx} className="flex flex-col gap-1">
+          <div className="flex flex-col gap-4">
+            {skills.split('\n').map((line, idx) => {
+              const trimmed = line.trim()
+              if (!trimmed) return null
+              // Detect colon for label:content format
+              const colonIndex = trimmed.indexOf('：') !== -1
+                ? trimmed.indexOf('：')
+                : trimmed.indexOf(':')
+              if (colonIndex > 0) {
+                const label = trimmed.slice(0, colonIndex)
+                const content = trimmed.slice(colonIndex + 1).trim()
+                return (
+                  <div key={idx} className="flex flex-col gap-1.5">
+                    <span
+                      className="font-bold uppercase tracking-wider"
+                      style={{ color: theme.themeColor, fontSize: '0.75em' }}
+                    >
+                      {label}
+                    </span>
+                    <span
+                      className="font-normal text-gray-700 leading-relaxed"
+                      style={{ fontSize: '0.9em' }}
+                    >
+                      {content}
+                    </span>
+                  </div>
+                )
+              }
+              // Fallback: plain line
+              return (
                 <span
+                  key={idx}
                   className="font-normal text-gray-700"
                   style={{ fontSize: '0.9em' }}
                 >
-                  {skill.trim().replace(/^[-•]\s*/, '')}
+                  {trimmed.replace(/^[-•]\s*/, '')}
                 </span>
-                <div className="w-full h-1 bg-gray-200/50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gray-500 w-3/4"
-                    style={{
-                      backgroundColor: theme.themeColor,
-                      opacity: 0.8,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+              )
+            })}
+            {/* Decorative progress bar at bottom */}
+            <div className="w-full h-1 bg-gray-200/50 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full w-3/4"
+                style={{
+                  backgroundColor: theme.themeColor,
+                  opacity: 0.8,
+                }}
+              />
+            </div>
           </div>
         </SidebarSection>
       </InteractiveSection>

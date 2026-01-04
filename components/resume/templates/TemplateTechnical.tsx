@@ -131,14 +131,14 @@ export function TemplateTechnical({
                 <div key={idx} className="flex items-baseline gap-3">
                   {category && (
                     <span
-                      className="font-bold text-gray-800 min-w-[80px] text-right uppercase tracking-tight"
+                      className="font-bold text-gray-800 uppercase tracking-tight shrink-0"
                       style={{ fontSize: '0.9em' }}
                     >
                       {category.trim()}
                     </span>
                   )}
                   <div className="flex flex-wrap gap-1.5 flex-1">
-                    {items.split(/[，,]/).map((item, i) => {
+                    {items.split(/[，,、|]/).map((item, i) => {
                       const trimmed = item.trim()
                       if (!trimmed) return null
                       return (

@@ -177,6 +177,117 @@ body {
   }
 }
 
+/* AI Suggestion Panel - Structure-based styling */
+
+/* Main list item (ol > li) - counter increment, number prefix, gradient container */
+.ai-main-list>.ai-list-item {
+  counter-increment: suggestion-counter;
+  /* Only main items increment counter */
+  padding-left: 0.4rem;
+  /* Reduced from 1.25rem - minimal space for number */
+  margin-bottom: 0.75rem;
+}
+
+/* Number container - positioned at left edge */
+.ai-main-list>.ai-list-item>.ai-suggestion-number {
+  position: absolute;
+  left: -0.25rem;
+  /* Slight offset left */
+  top: 0.5rem;
+  width: 0.75rem;
+  height: 1rem;
+}
+
+/* Decorative slanted parallelogram behind number - per reference design */
+.ai-main-list>.ai-list-item>.ai-suggestion-number::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -8px;
+  width: 8px;
+  height: 18px;
+  background: oklch(0.92 0.01 250 / 0.8);
+  /* light gray */
+  transform: skewX(-12deg);
+  /* Parallelogram shape */
+  z-index: 0;
+}
+
+/* Number itself - positioned on top of parallelogram */
+.ai-main-list>.ai-list-item>.ai-suggestion-number::after {
+  content: counter(suggestion-counter);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: oklch(0.546 0.245 262.881);
+  /* blue-600 */
+  z-index: 1;
+}
+
+/* Main item content - gradient container + blue text */
+.ai-main-list>.ai-list-item>.ai-item-content {
+  padding: 0.5rem 0.625rem;
+  /* Reduced padding */
+  border-radius: 0.375rem;
+  background: linear-gradient(to bottom,
+      oklch(0.97 0.02 250 / 0.5),
+      oklch(0.97 0.02 250 / 0.2),
+      transparent);
+  font-size: 0.75rem;
+  line-height: 1.625;
+  color: oklch(0.546 0.245 262.881);
+  /* blue-600 */
+  font-weight: 500;
+}
+
+/* Sub-list item (ul > li) - plain styling, no numbers */
+.ai-sub-list>.ai-list-item {
+  padding-left: 0;
+}
+
+.ai-sub-list>.ai-list-item>.ai-suggestion-number {
+  display: none;
+  /* Hide number for sub-items */
+}
+
+.ai-sub-list>.ai-list-item>.ai-item-content {
+  font-size: 0.75rem;
+  line-height: 1.625;
+  color: oklch(0.556 0 0);
+  /* zinc-600 */
+  font-weight: 400;
+  /* Normal weight for sub-items */
+}
+
+/* Dark mode overrides */
+.dark .ai-main-list>.ai-list-item>.ai-suggestion-number::before {
+  background: oklch(0.3 0.05 260 / 0.4);
+  /* darker gray-blue */
+}
+
+.dark .ai-main-list>.ai-list-item>.ai-suggestion-number::after {
+  color: oklch(0.707 0.165 254.624);
+  /* blue-400 */
+}
+
+.dark .ai-main-list>.ai-list-item>.ai-item-content {
+  background: linear-gradient(to bottom,
+      oklch(0.25 0.05 260 / 0.4),
+      /* blue-950/40 */
+      oklch(0.25 0.05 260 / 0.15),
+      /* blue-950/15 */
+      transparent);
+  color: oklch(0.707 0.165 254.624);
+  /* blue-400 */
+}
+
+.dark .ai-sub-list>.ai-list-item>.ai-item-content {
+  color: oklch(0.708 0 0);
+  /* zinc-400 */
+}
+
 /* Resume export templates */
 .resume-classic {
   font-family: var(--font-sans), system-ui, sans-serif;

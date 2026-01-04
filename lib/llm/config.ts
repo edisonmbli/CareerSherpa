@@ -7,7 +7,7 @@ export const TASK_LIMITS: Record<string, TaskLimits> = {
   detailed_resume_summary: { maxTokens: 15000 },
   job_summary: { maxTokens: 8000 },
   job_match: { maxTokens: 15000 },
-  resume_customize: { maxTokens: 8000 },
+  resume_customize: { maxTokens: 15000 },
   interview_prep: { maxTokens: 8000 },
 }
 

@@ -238,13 +238,13 @@ export function ResumeEditorLayout({
               setAIPanelOpen,
               setActive,
             } = useResumeStore.getState()
-            
+
             // If sidebars are open, close them
             if (isStructureOpen || isAIPanelOpen) {
               if (isStructureOpen) setStructureOpen(false)
               if (isAIPanelOpen) setAIPanelOpen(false)
             }
-            
+
             // Also deselect any active item/section
             setActive(null)
           }}
@@ -269,8 +269,8 @@ export function ResumeEditorLayout({
               height: isMobileView
                 ? 'auto'
                 : contentHeight
-                ? `${contentHeight * scale + 50}px`
-                : 'auto',
+                  ? `${contentHeight * scale + 50}px`
+                  : 'auto',
             }}
           >
             <ResumePreview
@@ -286,7 +286,7 @@ export function ResumeEditorLayout({
         {!isDrawerMode && (
           <div
             className={cn(
-              'bg-white dark:bg-zinc-900 border-l dark:border-zinc-800 z-20 shadow-sm transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
+              'bg-white dark:bg-zinc-900 shadow-2xs dark:border-zinc-800 z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
               isAIPanelOpen
                 ? 'w-[350px] translate-x-0 opacity-100'
                 : 'w-0 translate-x-full opacity-0 border-none'
@@ -302,7 +302,7 @@ export function ResumeEditorLayout({
         {isDrawerMode && (
           <div
             className={cn(
-              'absolute right-0 top-0 bottom-0 z-50 bg-white dark:bg-zinc-900 shadow-2xl border-l dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
+              'absolute right-0 top-0 bottom-0 z-50 bg-white dark:bg-zinc-900 shadow-xs border-l dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
               isAIPanelOpen ? 'translate-x-0' : 'translate-x-full'
             )}
             style={{ width: '350px' }}

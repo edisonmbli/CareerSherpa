@@ -44,12 +44,12 @@ export interface ValidationOptions {
 export function cleanJsonText(text: string): string {
   let cleaned = text.trim()
 
-  // Remove all markdown code fences (more aggressive approach)
-  // Handle various code fence patterns
-  cleaned = cleaned.replace(/^```(?:json|javascript|js)?\s*/gim, '')
-  cleaned = cleaned.replace(/\s*```\s*$/gm, '')
-  cleaned = cleaned.replace(/```(?:json|javascript|js)?\s*/gim, '')
-  cleaned = cleaned.replace(/\s*```/gm, '')
+  // Remove all markdown code fences (iterative for nested cases)
+  // Handles double-wrapped output like: ``` ```json {...} ``` ```
+  while (cleaned.includes('```')) {
+    cleaned = cleaned.replace(/```(?:json|javascript|js)?\s*/gi, '')
+    cleaned = cleaned.replace(/\s*```/g, '')
+  }
 
   // Remove any remaining backticks at start/end
   cleaned = cleaned.replace(/^`+/, '').replace(/`+$/, '')

@@ -119,23 +119,48 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
                 sectionTitles?.['skills']
               )}
             />
-            <div
-              className="flex flex-wrap justify-center gap-x-6 gap-y-3 leading-relaxed text-gray-600 italic text-center"
-              style={theme.text}
-            >
-              {skills.split('\n').map((skill, idx) => (
-                <span key={idx} className="flex items-center gap-2">
-                  {idx !== 0 && (
-                    <span
-                      style={{ color: theme.themeColor, opacity: 0.3 }}
-                      className="font-light"
-                    >
-                      ·
+            <div className="space-y-4">
+              {skills.split('\n').map((line, idx) => {
+                const trimmed = line.trim()
+                if (!trimmed) return null
+                // Detect colon for label:content format
+                const colonIndex = trimmed.indexOf('：') !== -1
+                  ? trimmed.indexOf('：')
+                  : trimmed.indexOf(':')
+                if (colonIndex > 0) {
+                  const label = trimmed.slice(0, colonIndex)
+                  const content = trimmed.slice(colonIndex + 1).trim()
+                  return (
+                    <div key={idx} className="text-center">
+                      <span
+                        className="font-serif font-medium mr-2"
+                        style={{ color: theme.themeColor }}
+                      >
+                        {label}
+                      </span>
+                      <span className="text-gray-600 italic" style={theme.text}>
+                        {content}
+                      </span>
+                    </div>
+                  )
+                }
+                // Fallback: inline with separator
+                return (
+                  <span key={idx} className="flex items-center gap-2 justify-center">
+                    {idx !== 0 && (
+                      <span
+                        style={{ color: theme.themeColor, opacity: 0.3 }}
+                        className="font-light"
+                      >
+                        ·
+                      </span>
+                    )}
+                    <span className="text-gray-600 italic" style={theme.text}>
+                      {trimmed.replace(/^[-•]\s*/, '')}
                     </span>
-                  )}
-                  {skill.trim().replace(/^[-•]\s*/, '')}
-                </span>
-              ))}
+                  </span>
+                )
+              })}
             </div>
           </div>
         </InteractiveSection>

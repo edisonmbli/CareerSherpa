@@ -71,6 +71,7 @@ export interface ResumeDict {
         pageBreakDesc: string
         certificatesPlaceholder: string
         hobbiesPlaceholder: string
+        aiSuggestionTitle: string
         aiSuggestionIntro: string
         noSuggestions: string
         editContent: string
@@ -212,6 +213,7 @@ const defaultDict: ResumeDict = {
         pageBreakDesc: 'Force new page after this content',
         certificatesPlaceholder: 'List your certificates or awards...',
         hobbiesPlaceholder: 'List your hobbies and interests...',
+        aiSuggestionTitle: 'Optimization Suggestions',
         aiSuggestionIntro: 'Based on your resume analysis, here are optimization suggestions.',
         noSuggestions: 'No suggestions yet, please generate resume first',
         editContent: 'Edit Content',

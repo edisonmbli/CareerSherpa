@@ -92,14 +92,36 @@ export function TemplateCorporate({
               sectionTitles?.['skills']
             )}
           />
-          <div className="px-1">
-            <div className="text-gray-700 leading-relaxed" style={theme.text}>
-              {skills.split('\n').map((skill, idx) => (
-                <div key={idx} className="mb-1">
-                  {skill.trim().replace(/^[-•]\s*/, '')}
+          <div className="px-1 space-y-3">
+            {skills.split('\n').map((line, idx) => {
+              const trimmed = line.trim()
+              if (!trimmed) return null
+              // Detect colon for label:content format
+              const colonIndex = trimmed.indexOf('：') !== -1
+                ? trimmed.indexOf('：')
+                : trimmed.indexOf(':')
+              if (colonIndex > 0) {
+                const label = trimmed.slice(0, colonIndex)
+                const content = trimmed.slice(colonIndex + 1).trim()
+                return (
+                  <div key={idx} className="text-gray-700" style={theme.text}>
+                    <span
+                      className="font-bold mr-2"
+                      style={{ color: theme.themeColor }}
+                    >
+                      {label}
+                    </span>
+                    <span>{content}</span>
+                  </div>
+                )
+              }
+              // Fallback: plain line
+              return (
+                <div key={idx} className="text-gray-700" style={theme.text}>
+                  {trimmed.replace(/^[-•]\s*/, '')}
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
         </section>
       </InteractiveSection>
