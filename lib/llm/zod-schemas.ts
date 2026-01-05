@@ -91,11 +91,11 @@ const resumeSummarySchema = z
       (Array.isArray(d.education) && d.education.length > 0) ||
       Boolean(
         d.skills &&
-          (Array.isArray(d.skills)
-            ? d.skills.length > 0
-            : (d.skills as any).technical?.length ||
-              (d.skills as any).soft?.length ||
-              (d.skills as any).tools?.length)
+        (Array.isArray(d.skills)
+          ? d.skills.length > 0
+          : (d.skills as any).technical?.length ||
+          (d.skills as any).soft?.length ||
+          (d.skills as any).tools?.length)
       ),
     { message: 'empty_resume_summary' }
   )
@@ -179,11 +179,11 @@ const detailedResumeV3Schema = z
       (Array.isArray(d.education) && d.education.length > 0) ||
       Boolean(
         d.skills &&
-          (Array.isArray(d.skills)
-            ? d.skills.length > 0
-            : (d.skills as any).technical?.length ||
-              (d.skills as any).soft?.length ||
-              (d.skills as any).tools?.length)
+        (Array.isArray(d.skills)
+          ? d.skills.length > 0
+          : (d.skills as any).technical?.length ||
+          (d.skills as any).soft?.length ||
+          (d.skills as any).tools?.length)
       ),
     { message: 'empty_detailed_resume_summary' }
   )
@@ -268,6 +268,7 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   job_summary: jobSummarySchema,
   job_match: jobMatchSchema,
   resume_customize: resumeCustomizeSchema,
+  resume_customize_lite: resumeCustomizeSchema, // Same schema as full customize
   interview_prep: interviewPrepSchema,
   ocr_extract: ocrExtractSchema,
   // 非生成型任务（嵌入/RAG流水线）占位

@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
           // if (process.env.NODE_ENV !== 'production') {
           //   console.info('sse_start', { channel, streamKey })
           // }
-        } catch {}
+        } catch { }
 
         let lastId: string | null = null
         let closed = false
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
               //     entries: entries.length,
               //   })
               // }
-            } catch {}
+            } catch { }
             if (entries.length === 0) {
               consecutiveIdle = Math.min(consecutiveIdle + 1, 5)
             } else {
@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
                   //     )
                   //   } catch {}
                   // }
-                } catch {}
+                } catch { }
 
                 // 若收到终止事件或终止状态，主动关闭连接，减少后续读取
                 const isTerminal =
@@ -194,6 +194,10 @@ export async function GET(req: NextRequest) {
                       'MATCH_COMPLETED',
                       'MATCH_FAILED',
                       'SUMMARY_FAILED',
+                      'CUSTOMIZE_COMPLETED',
+                      'CUSTOMIZE_FAILED',
+                      'INTERVIEW_COMPLETED',
+                      'INTERVIEW_FAILED',
                     ].includes(String(data?.status))) ||
                   (data?.type === 'error' &&
                     ['invoke_or_stream', 'invoke', 'guards'].includes(

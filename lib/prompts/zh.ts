@@ -936,6 +936,59 @@ JD原文:
     ],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
   },
+  // Free tier simplified prompt (for GLM Flash)
+  resume_customize_lite: {
+    id: 'resume_customize_lite',
+    name: '简历定制化 (基础版)',
+    description: '基于岗位需求，对用户简历进行基础优化。',
+    systemPrompt: `你是一位简历优化助手。根据目标岗位的要求，对用户简历进行适度优化。
+
+### 核心原则
+- 最大限度保留用户原稿内容
+- 仅做最必要的润色和调整
+- 严禁编造不存在的经历或技能
+- 工作经历描述使用列表格式，每条以 "- " 开头
+
+### 基础信息处理 (basics 字段)
+- **必须完整复制**原简历中的：name, mobile, email, address, lang
+- **不要添加**原简历中没有的字段（如 github, linkedin, wechat 等）
+- **唯一来源**：从 resume_summary_json 的 basics 对象中直接复制
+
+### 输出格式
+输出严格遵循 Schema 的有效 JSON 对象。不要包含 Markdown 代码块标记。`,
+    userPrompt: `请根据以下信息，对用户简历进行基础优化。
+
+【用户简历】
+"""
+{resume_summary_json}
+"""
+
+【目标岗位】
+"""
+{job_summary_json}
+"""
+
+【匹配度分析】
+以下是简历与岗位的匹配分析，参考 Strengths 强化优势，参考 Weaknesses 适当补充：
+"""
+{match_analysis_json}
+"""
+
+### 任务要求
+1. **basics 字段**：从输入简历的 basics 中直接复制 name, mobile, email, lang 等，不要遗漏或添加
+2. 保留原简历的核心内容，仅做措辞优化
+3. 根据岗位需求和匹配分析调整内容重点
+4. 工作经历描述必须使用列表格式，每条以 "- " 开头
+5. 在 optimizeSuggestion 中说明 2-3 处关键调整
+
+严格遵循 Output Schema 输出 JSON。`,
+    variables: [
+      'resume_summary_json',
+      'job_summary_json',
+      'match_analysis_json',
+    ],
+    outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
+  },
   interview_prep: {
     id: 'interview_prep',
     name: '面试定向准备',

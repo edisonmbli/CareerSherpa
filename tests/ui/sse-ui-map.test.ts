@@ -14,19 +14,19 @@ describe('sse-ui-map: resolveUiFromEvent', () => {
     expect(r.status).toBe('COMPLETED')
   })
 
-  it('maps SUMMARY_FAILED without failureCode to summary_failed', () => {
+  it('maps SUMMARY_FAILED without failureCode to SUMMARY_FAILED', () => {
     const r = resolveUiFromEvent({ type: 'status', status: 'SUMMARY_FAILED' })
-    expect(r.status).toBe('FAILED')
+    expect(r.status).toBe('SUMMARY_FAILED')
     expect(r.errorKey).toBe('summary_failed')
   })
 
-  it('maps SUMMARY_FAILED with PREVIOUS_OCR_FAILED to previous_ocr_failed', () => {
+  it('maps SUMMARY_FAILED with PREVIOUS_OCR_FAILED to OCR_FAILED', () => {
     const r = resolveUiFromEvent({
       type: 'status',
       status: 'SUMMARY_FAILED',
       failureCode: 'PREVIOUS_OCR_FAILED',
     })
-    expect(r.status).toBe('FAILED')
+    expect(r.status).toBe('OCR_FAILED')
     expect(r.errorKey).toBe('previous_ocr_failed')
   })
 

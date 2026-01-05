@@ -238,8 +238,7 @@ export async function handleStream(
           taskId,
           code: 'llm_error',
           error: error instanceof Error ? error.message : String(error),
-          provider: getProvider(decision.modelId),
-          modelId: decision.modelId,
+          // NOTE: modelId and provider are intentionally omitted for security
           stage: 'invoke_or_stream',
           requestId,
           traceId,

@@ -56,6 +56,13 @@ export function resolveUiFromEvent(msg: any): {
       return { status: 'CUSTOMIZE_COMPLETED' }
     if (s === 'CUSTOMIZE_FAILED' || c === 'customize_failed')
       return { status: 'CUSTOMIZE_FAILED', errorKey: 'customize_failed', errorMessage: em }
+    // Interview task statuses
+    if (s === 'INTERVIEW_PENDING' || c === 'interview_pending')
+      return { status: 'INTERVIEW_PENDING' }
+    if (s === 'INTERVIEW_COMPLETED' || c === 'interview_completed')
+      return { status: 'INTERVIEW_COMPLETED' }
+    if (s === 'INTERVIEW_FAILED' || c === 'interview_failed')
+      return { status: 'INTERVIEW_FAILED', errorKey: 'interview_failed', errorMessage: em }
   }
   if (t === 'info') {
     if (c === 'stream_idle') return { status: 'MATCH_STREAMING' }

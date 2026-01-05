@@ -109,6 +109,14 @@ export function buildMatchTaskId(serviceId: string, sessionId?: string) {
   return sessionId ? `match_${serviceId}_${sessionId}` : `match_${serviceId}`
 }
 
+export function buildCustomizeTaskId(serviceId: string, sessionId: string) {
+  return `customize_${serviceId}_${sessionId}`
+}
+
+export function buildInterviewTaskId(serviceId: string, sessionId: string) {
+  return `interview_${serviceId}_${sessionId}`
+}
+
 export function getMaxTotalWaitMs(kind: WorkerKind): number {
   const perf = getPerformanceConfig()
   return kind === 'stream'

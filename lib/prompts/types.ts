@@ -28,6 +28,7 @@ export type TaskTemplateId =
   | 'job_summary'
   | 'job_match'
   | 'resume_customize'
+  | 'resume_customize_lite' // Free tier simplified prompt
   | 'interview_prep'
   | 'ocr_extract'
   // 非对话/非生成型任务的统一日志标识（用于嵌入生成、RAG流水线）
@@ -123,6 +124,8 @@ export type VariablesFor<T extends TaskTemplateId> = T extends 'resume_summary'
   ? JobMatchVars
   : T extends 'resume_customize'
   ? ResumeCustomizeVars
+  : T extends 'resume_customize_lite'
+  ? ResumeCustomizeVars // Same vars as full customize
   : T extends 'interview_prep'
   ? InterviewPrepVars
   : T extends 'ocr_extract'

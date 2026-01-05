@@ -18,6 +18,7 @@ interface TaskRouting {
   modelId: ModelIdType
   queueId: QueueId
   isStream: boolean // 标记此任务是否应流式
+  promptId?: TaskTemplateId // Optional: use different prompt for this route
 }
 
 const ROUTING_TABLE: Partial<
@@ -99,6 +100,7 @@ const ROUTING_TABLE: Partial<
       modelId: MODEL.GLM_45_FLASH,
       queueId: QueueId.FREE_BATCH,
       isStream: false,
+      promptId: 'resume_customize_lite', // Use simplified prompt for free tier
     },
   },
   ocr_extract: {
@@ -131,15 +133,15 @@ export const getTaskRouting = (
 export const getJobVisionTaskRouting = (hasQuota: boolean): TaskRouting => {
   return hasQuota
     ? {
-        modelId: MODEL.GLM_VISION_THINKING_FLASH,
-        queueId: QueueId.PAID_VISION,
-        isStream: false,
-      }
+      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      queueId: QueueId.PAID_VISION,
+      isStream: false,
+    }
     : {
-        modelId: MODEL.GLM_VISION_THINKING_FLASH,
-        queueId: QueueId.FREE_VISION,
-        isStream: false,
-      }
+      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      queueId: QueueId.FREE_VISION,
+      isStream: false,
+    }
 }
 
 export const isServiceScoped = (t: TaskTemplateId): boolean => {

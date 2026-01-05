@@ -292,7 +292,8 @@ export const customizeResumeAction = withServerActionAuthWrite<
     const enq = await ensureEnqueued({
       kind: 'batch',
       serviceId: params.serviceId,
-      taskId: `customize_${params.serviceId}_${Date.now()}`,
+      // Use consistent taskId format: customize_{serviceId}_{sessionId}
+      taskId: `customize_${params.serviceId}_${executionSessionId}`,
       userId,
       locale: params.locale,
       templateId: 'resume_customize',

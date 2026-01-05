@@ -50,6 +50,9 @@ const sseEventSchema = z.discriminatedUnion('type', [
         'CUSTOMIZE_PENDING',
         'CUSTOMIZE_COMPLETED',
         'CUSTOMIZE_FAILED',
+        'INTERVIEW_PENDING',
+        'INTERVIEW_COMPLETED',
+        'INTERVIEW_FAILED',
       ])
       .optional(),
     code: z
@@ -63,6 +66,9 @@ const sseEventSchema = z.discriminatedUnion('type', [
         'customize_pending',
         'customize_completed',
         'customize_failed',
+        'interview_pending',
+        'interview_completed',
+        'interview_failed',
       ])
       .optional(),
     failureCode: z.string().optional(),
@@ -75,6 +81,27 @@ const sseEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('match_result'), json: z.any().optional() }),
 ])
 
+// Task type from task-context (inline to avoid circular dependency)
+type TaskType = 'match' | 'customize' | 'interview'
+
+interface CurrentTaskContext {
+  type: TaskType | null
+  sessionId: string | null
+  startedAt: number | null
+}
+
+// Progress simulation for batch tasks (customize/interview)
+interface ProgressSimulation {
+  isActive: boolean
+  startedAt: number | null
+  estimatedDurationMs: number
+  currentProgress: number
+}
+
+const DEFAULT_ESTIMATED_DURATION_MS = 180_000 // 3 minutes for smoother progress
+const MIN_PROGRESS = 10
+const MAX_SIMULATED_PROGRESS = 95
+
 interface WorkbenchState {
   currentServiceId: string | null
   status: WorkbenchStatus
@@ -85,7 +112,13 @@ interface WorkbenchState {
   summaryResult: any | null
   matchResult: any | null
   isConnected: boolean
+  // Task context for tracking current task lifecycle
+  currentTask: CurrentTaskContext
+  // Progress simulation for batch tasks
+  progressSimulation: ProgressSimulation
   startTask: (serviceId: string, initialStatus: WorkbenchStatus) => void
+  // Start a new task context (called before SSE connection)
+  startTaskContext: (type: TaskType, sessionId: string) => void
   setStatus: (status: WorkbenchStatus) => void
   appendStreamToken: (token: string) => void
   completeStream: () => void
@@ -93,6 +126,12 @@ interface WorkbenchState {
   reset: () => void
   setConnectionStatus: (connected: boolean) => void
   ingestEvent: (msg: any) => void
+  // Progress simulation methods
+  startProgressSimulation: (estimatedDurationMs?: number) => void
+  updateSimulatedProgress: () => void
+  stopProgressSimulation: (finalProgress: number) => void
+  // Combined method to set status and start progress atomically (prevents 0% flash)
+  setStatusAndStartProgress: (status: WorkbenchStatus, estimatedDurationMs?: number) => void
 }
 
 let __buffer = ''
@@ -108,6 +147,17 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   ocrResult: null,
   summaryResult: null,
   matchResult: null,
+  currentTask: {
+    type: null,
+    sessionId: null,
+    startedAt: null,
+  },
+  progressSimulation: {
+    isActive: false,
+    startedAt: null,
+    estimatedDurationMs: DEFAULT_ESTIMATED_DURATION_MS,
+    currentProgress: 0,
+  },
   isConnected: false,
   startTask: (serviceId, initialStatus) =>
     set({
@@ -120,6 +170,20 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       summaryResult: null,
       matchResult: null,
       isConnected: true,
+      // Reset task context when starting via server status
+      currentTask: {
+        type: null,
+        sessionId: null,
+        startedAt: null,
+      },
+    }),
+  startTaskContext: (type, sessionId) =>
+    set({
+      currentTask: {
+        type,
+        sessionId,
+        startedAt: Date.now(),
+      },
     }),
   setStatus: (status) => set({ status }),
   appendStreamToken: (token) =>
@@ -152,8 +216,74 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       summaryResult: null,
       matchResult: null,
       isConnected: false,
+      currentTask: {
+        type: null,
+        sessionId: null,
+        startedAt: null,
+      },
+      progressSimulation: {
+        isActive: false,
+        startedAt: null,
+        estimatedDurationMs: DEFAULT_ESTIMATED_DURATION_MS,
+        currentProgress: 0,
+      },
     }),
   setConnectionStatus: (connected) => set({ isConnected: connected }),
+
+  // Progress simulation methods for batch tasks
+  startProgressSimulation: (estimatedDurationMs = DEFAULT_ESTIMATED_DURATION_MS) =>
+    set((s) => {
+      // Idempotent: don't restart if already active (prevents SSE from resetting frontend-started simulation)
+      if (s.progressSimulation.isActive) {
+        return {}
+      }
+      return {
+        progressSimulation: {
+          isActive: true,
+          startedAt: Date.now(),
+          estimatedDurationMs,
+          currentProgress: MIN_PROGRESS,
+        },
+      }
+    }),
+
+  updateSimulatedProgress: () =>
+    set((s) => {
+      const { progressSimulation } = s
+      if (!progressSimulation.isActive || !progressSimulation.startedAt) {
+        return {}
+      }
+      const elapsed = Date.now() - progressSimulation.startedAt
+      const ratio = elapsed / progressSimulation.estimatedDurationMs
+      const linearProgress = MIN_PROGRESS + (MAX_SIMULATED_PROGRESS - MIN_PROGRESS) * ratio
+      const cappedProgress = Math.min(MAX_SIMULATED_PROGRESS, Math.floor(linearProgress))
+      return {
+        progressSimulation: {
+          ...progressSimulation,
+          currentProgress: cappedProgress,
+        },
+      }
+    }),
+
+  stopProgressSimulation: (finalProgress) =>
+    set((s) => ({
+      progressSimulation: {
+        ...s.progressSimulation,
+        isActive: false,
+        currentProgress: finalProgress,
+      },
+    })),
+  // Combined method to set status and start progress atomically (prevents 0% flash)
+  setStatusAndStartProgress: (status, estimatedDurationMs = DEFAULT_ESTIMATED_DURATION_MS) =>
+    set({
+      status,
+      progressSimulation: {
+        isActive: true,
+        startedAt: Date.now(),
+        estimatedDurationMs,
+        currentProgress: MIN_PROGRESS,
+      },
+    }),
   ingestEvent: (msg: any) => {
     const parsed = sseEventSchema.safeParse(msg)
     if (!parsed.success) return
@@ -218,9 +348,32 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         else if (s === 'OCR_PENDING') nextStatus = 'OCR_PENDING'
         else if (s === 'OCR_COMPLETED') nextStatus = 'OCR_COMPLETED'
         else if (s === 'MATCH_PENDING') nextStatus = 'MATCH_PENDING'
-        else if (s === 'CUSTOMIZE_PENDING') nextStatus = 'CUSTOMIZE_PENDING'
-        else if (s === 'CUSTOMIZE_COMPLETED') nextStatus = 'CUSTOMIZE_COMPLETED'
-        else if (s === 'CUSTOMIZE_FAILED') nextStatus = 'CUSTOMIZE_FAILED'
+        else if (s === 'CUSTOMIZE_PENDING') {
+          nextStatus = 'CUSTOMIZE_PENDING'
+          // Start progress simulation for batch task
+          get().startProgressSimulation()
+        }
+        else if (s === 'CUSTOMIZE_COMPLETED') {
+          nextStatus = 'CUSTOMIZE_COMPLETED'
+          // Stop progress simulation and set to 100%
+          get().stopProgressSimulation(100)
+        }
+        else if (s === 'CUSTOMIZE_FAILED') {
+          nextStatus = 'CUSTOMIZE_FAILED'
+          get().stopProgressSimulation(0)
+        }
+        else if (s === 'INTERVIEW_PENDING') {
+          nextStatus = 'INTERVIEW_PENDING'
+          get().startProgressSimulation()
+        }
+        else if (s === 'INTERVIEW_COMPLETED') {
+          nextStatus = 'INTERVIEW_COMPLETED'
+          get().stopProgressSimulation(100)
+        }
+        else if (s === 'INTERVIEW_FAILED') {
+          nextStatus = 'INTERVIEW_FAILED'
+          get().stopProgressSimulation(0)
+        }
 
         if (nextStatus) {
           set({ status: nextStatus, statusDetail: e.code })
@@ -269,8 +422,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         typeof e.text === 'string'
           ? e.text
           : typeof e.data === 'string'
-          ? e.data
-          : ''
+            ? e.data
+            : ''
       if (text) {
         __buffer += String(text)
         if (!__timer) {
@@ -341,7 +494,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         if (process.env.NODE_ENV !== 'production') {
           console.info('store_status', { status: 'MATCH_STREAMING' })
         }
-      } catch {}
+      } catch { }
       set({ status: 'MATCH_STREAMING' })
       return
     }
@@ -354,7 +507,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         if (process.env.NODE_ENV !== 'production') {
           console.info('store_status', { status: 'MATCH_PENDING' })
         }
-      } catch {}
+      } catch { }
       __buffer = ''
       if (__timer) {
         clearTimeout(__timer)

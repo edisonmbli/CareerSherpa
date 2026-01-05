@@ -119,6 +119,16 @@ export function useServiceStatus(options: UseServiceStatusOptions) {
 
         const currentStatus = useWorkbenchStore.getState().status
 
+        // Guard: Don't overwrite customize/interview pending states
+        // These are set optimistically and should persist until SSE confirms
+        const isCustomizeOrInterviewPending =
+            currentStatus === 'CUSTOMIZE_PENDING' ||
+            currentStatus === 'INTERVIEW_PENDING'
+
+        if (isCustomizeOrInterviewPending) {
+            return // Don't overwrite - let SSE handle updates
+        }
+
         // Update conditions:
         // 1. Service changed
         // 2. Store is IDLE

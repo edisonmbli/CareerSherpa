@@ -68,7 +68,7 @@ export function CtaButton({
                 disabled={cta.disabled}
                 aria-label={cta.label}
                 size="sm"
-                className="font-semibold shadow-sm h-8 px-4 gap-2"
+                className="font-semibold shadow-sm h-8 px-4 gap-2 cursor-pointer"
             >
                 {cta.label}
                 <div className="h-3 w-px bg-white/20 mx-1" />

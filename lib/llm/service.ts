@@ -82,10 +82,13 @@ export async function runLlmTask<T extends TaskTemplateId>(
     ? getJobVisionTaskRouting(userHasQuota)
     : getTaskRouting(taskId, userHasQuota)
 
+  // Use promptId override if specified (e.g., resume_customize_lite for free tier)
+  const effectiveTemplateId = decision.promptId ?? taskId
+
   if (decision.isStream) {
     return runStreamingLlmTask(
       decision.modelId,
-      taskId,
+      effectiveTemplateId,
       locale,
       variables,
       {}
@@ -93,7 +96,7 @@ export async function runLlmTask<T extends TaskTemplateId>(
   }
   return runStructuredLlmTask(
     decision.modelId,
-    taskId,
+    effectiveTemplateId,
     locale,
     variables,
     {},
@@ -331,26 +334,26 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       variables['image']
     const aiMessage: any = hasVisionImage
       ? await model.invoke([
-          new SystemMessage(template.systemPrompt),
-          new SystemMessage(
-            `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`
-          ),
-          new HumanMessage({
-            content: [
-              {
-                type: 'text',
-                text: renderVariables((template as any).userPrompt, {
-                  ...variables,
-                  image: '[attached]',
-                }),
-              },
-              {
-                type: 'image_url',
-                image_url: { url: String(variables['image']) },
-              },
-            ],
-          }),
-        ])
+        new SystemMessage(template.systemPrompt),
+        new SystemMessage(
+          `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`
+        ),
+        new HumanMessage({
+          content: [
+            {
+              type: 'text',
+              text: renderVariables((template as any).userPrompt, {
+                ...variables,
+                image: '[attached]',
+              }),
+            },
+            {
+              type: 'image_url',
+              image_url: { url: String(variables['image']) },
+            },
+          ],
+        }),
+      ])
       : await chain.invoke(variables)
     const { inputTokens, outputTokens } =
       extractTokenUsageFromMessage(aiMessage)
@@ -550,7 +553,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       const estOut = Math.ceil(fullText.length / 4)
       inputTokens = estIn
       outputTokens = estOut
-    } catch {}
+    } catch { }
   }
 
   const log = await createLlmUsageLogDetailed({

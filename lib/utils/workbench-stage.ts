@@ -55,6 +55,7 @@ export interface WorkbenchDict {
  * @param tabValue - Currently selected tab ('match' | 'customize' | 'interview')
  * @param statusDetail - Optional status detail code for message lookup
  * @param errorMessage - Optional error message (currently unused but reserved)
+ * @param simulatedProgress - Current simulated progress (0-100) from time-based simulation
  * @returns Derived stage information for UI rendering
  */
 export function deriveStage(
@@ -65,7 +66,8 @@ export function deriveStage(
     isPending: boolean,
     tabValue: string,
     statusDetail: string | null,
-    _errorMessage: string | null  // Reserved for future use
+    _errorMessage: string | null,  // Reserved for future use
+    simulatedProgress: number = 0  // Time-based simulated progress
 ): DerivedStage {
     let currentStep: StepId = 1
     let maxUnlockedStep: StepId = 1
@@ -133,6 +135,7 @@ export function deriveStage(
         isInterviewPending,
         isInterviewDone,
         dict,
+        simulatedProgress,
     })
 
     return {
@@ -166,7 +169,8 @@ function calculateMaxUnlockedStep(params: UnlockParams): StepId {
         isCustomizePending,
         isCustomizeFailed,
         isInterviewIdle,
-        isMatchDone,
+        // isMatchDone is intentionally not used for unlocking Step 2
+        // Users must click the CTA button to start customization
     } = params
 
     if (isInterviewPending || isInterviewDone || isInterviewFailed) {
@@ -175,7 +179,9 @@ function calculateMaxUnlockedStep(params: UnlockParams): StepId {
     if (isCustomizeDone && isInterviewIdle) {
         return 2
     }
-    if (isCustomizePending || isCustomizeDone || isCustomizeFailed || isMatchDone) {
+    // Only unlock Step 2 if customize has actually been started
+    // Match being done does NOT unlock Step 2 - users must use the CTA button
+    if (isCustomizePending || isCustomizeDone || isCustomizeFailed) {
         return 2
     }
     return 1
@@ -292,6 +298,7 @@ interface StatusParams {
     isInterviewPending: boolean
     isInterviewDone: boolean
     dict: WorkbenchDict
+    simulatedProgress: number  // Time-based simulated progress (0-100)
 }
 
 function calculateStatusAndProgress(params: StatusParams): {
@@ -308,6 +315,7 @@ function calculateStatusAndProgress(params: StatusParams): {
         isInterviewPending,
         isInterviewDone,
         dict,
+        simulatedProgress,
     } = params
 
     let statusMessage = ''
@@ -318,7 +326,8 @@ function calculateStatusAndProgress(params: StatusParams): {
         if (isCustomizePending) {
             statusMessage =
                 dict.workbench?.statusConsole?.['customizing'] || 'AI is customizing...'
-            progressValue = 66
+            // Use time-based simulated progress (updated every 5s by timer)
+            progressValue = simulatedProgress || 10  // Fallback to 10% if not started
         } else if (isCustomizeFailed) {
             statusMessage =
                 dict.workbench?.statusConsole?.['customizeFailed'] || 'Customization Failed'
@@ -332,7 +341,8 @@ function calculateStatusAndProgress(params: StatusParams): {
     } else if (tabValue === 'interview') {
         if (isInterviewPending) {
             statusMessage = 'Generating Interview Tips...'
-            progressValue = 66
+            // Use time-based simulated progress
+            progressValue = simulatedProgress || 10
         } else if (isInterviewDone) {
             statusMessage = 'Interview Tips Generated'
             progressValue = 100

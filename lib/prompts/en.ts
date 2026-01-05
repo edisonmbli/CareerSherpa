@@ -866,6 +866,59 @@ Strictly follow Output Schema for JSON output.`,
     ],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
   },
+  // Free tier simplified prompt (for GLM Flash)
+  resume_customize_lite: {
+    id: 'resume_customize_lite',
+    name: 'Resume Customization (Basic)',
+    description: 'Basic resume optimization based on job requirements.',
+    systemPrompt: `You are a resume optimization assistant. Optimize the user's resume based on the target job requirements.
+
+### Core Principles
+- Preserve the user's original content as much as possible
+- Make only necessary refinements and adjustments
+- Never fabricate experiences or skills
+- Use list format for work experience descriptions, each line starting with "- "
+
+### Basics Field Handling
+- **Must copy exactly** from original resume: name, mobile, email, address, lang
+- **Do not add** fields not in the original (such as github, linkedin, wechat)
+- **Only source**: copy directly from the basics object in resume_summary_json
+
+### Output Format
+Output strictly follows the Schema as a valid JSON object. Do not include Markdown code block markers.`,
+    userPrompt: `Please optimize the user's resume based on the following information.
+
+【User Resume】
+"""
+{resume_summary_json}
+"""
+
+【Target Position】
+"""
+{job_summary_json}
+"""
+
+【Match Analysis】
+Reference Strengths to emphasize advantages, reference Weaknesses to supplement:
+"""
+{match_analysis_json}
+"""
+
+### Task Requirements
+1. **basics field**: Copy name, mobile, email, lang directly from input resume's basics, don't skip or add fields
+2. Preserve the core content, only refine wording
+3. Adjust emphasis based on job requirements and match analysis
+4. Work experience descriptions must use list format, each line starting with "- "
+5. Explain 2-3 key adjustments in optimizeSuggestion
+
+Strictly follow the Output Schema and output JSON.`,
+    variables: [
+      'resume_summary_json',
+      'job_summary_json',
+      'match_analysis_json',
+    ],
+    outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
+  },
   interview_prep: {
     id: 'interview_prep',
     name: 'Interview Preparation',

@@ -6,7 +6,7 @@ import type { ModelId } from '@/lib/llm/providers'
 export async function publishStart(
   channel: string,
   taskId: string,
-  modelId: ModelId,
+  _modelId: string, // Not exposed to frontend for security
   queueId: string,
   stage: string,
   requestId: string,
@@ -16,8 +16,7 @@ export async function publishStart(
   await publishEvent(channel, {
     type: 'start',
     taskId,
-    provider: getProvider(modelId),
-    modelId,
+    // NOTE: modelId and provider are intentionally omitted for security
     queueId,
     stage,
     timeoutSec: Math.ceil(ENV.WORKER_TIMEOUT_MS / 1000),
@@ -51,7 +50,7 @@ export async function guardBlocked(
 export async function emitStreamIdle(
   channel: string,
   taskId: string,
-  modelId: ModelId,
+  _modelId: string, // Not exposed to frontend for security
   requestId: string,
   traceId: string
 ) {
@@ -60,8 +59,7 @@ export async function emitStreamIdle(
     taskId,
     code: 'stream_idle',
     stage: 'stream',
-    provider: getProvider(modelId),
-    modelId,
+    // NOTE: modelId and provider are intentionally omitted for security
     requestId,
     traceId,
   })

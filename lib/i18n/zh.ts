@@ -187,7 +187,7 @@ const dict = {
     statusText: {
       analyzing: 'AI 正在分析...',
       analyzingDesc:
-        '正在比对您的履历与岗位要求，并应用专业的简历写作策略。此过程通常需要 30-60 秒。',
+        '正在比对您的履历与岗位要求，并应用专业的简历写作策略。此过程通常需要1～2分钟。',
       failed: '任务执行失败',
       retryMatch: '重试匹配',
       summaryCompletedToast: '岗位要点提炼完成',
@@ -228,11 +228,19 @@ const dict = {
       ocrFailed: '识别岗位截图失败',
       summaryFailed: '提取岗位要点失败',
       matchFailed: '匹配度分析失败',
+      customizeStarting: '正在启动定制服务...',
       customizePending: '正在定制简历...',
       customizing: '正在定制简历...',
       customizeCompleted: '简历定制完成',
       customizeFailed: '简历定制失败',
       customizeRefunded: '金币已自动返还，请点击重试',
+      customizeFailedFree: '免费模型暂时繁忙，请稍后重试',
+    },
+    freeTierDialog: {
+      title: '免费体验模式',
+      description: '当前使用免费模型，建议充值获得更深入的定制服务',
+      cancel: '取消',
+      continue: '继续',
     },
     costTooltip: '使用该服务，将扣减 {cost} 金币',
   },

@@ -33,7 +33,9 @@ export function BatchProgressPanel({
           )}
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm text-muted-foreground max-w-[85%] mx-auto [text-wrap:balance] leading-relaxed">
+          {description}
+        </p>
 
         {mode === 'error' && onRetry && (
           <div className="pt-2">

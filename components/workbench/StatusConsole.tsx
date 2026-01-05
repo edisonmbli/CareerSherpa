@@ -22,7 +22,7 @@ interface StatusConsoleProps {
   progress: number
   statusMessage: string
   cost?: number
-  tier?: 'free' | 'paid'
+  tier?: 'free' | 'paid' | undefined
   errorMessage?: string | undefined
   lastUpdated?: Date | null
   isConnected?: boolean

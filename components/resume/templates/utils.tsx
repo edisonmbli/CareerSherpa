@@ -30,7 +30,27 @@ export function renderDescription(
 ) {
   if (!description) return null
 
-  const lines = description.split('\n').filter((line) => line.trim() !== '')
+  // Primary split by newlines
+  let lines = description.split('\n').filter((line) => line.trim() !== '')
+
+  // Fallback: if there are few lines but content has "；" separators, split those too
+  // This handles GLM Flash output that uses Chinese semicolons instead of newlines
+  if (lines.length <= 2) {
+    const expandedLines: string[] = []
+    for (const line of lines) {
+      // If line contains "；" and no explicit bullet marker, treat "；" as separator
+      const trimmed = line.trim()
+      const hasBulletMarker = /^[-•]/.test(trimmed)
+      if (!hasBulletMarker && trimmed.includes('；')) {
+        // Split by Chinese semicolon and filter empty
+        const subLines = trimmed.split('；').filter((s) => s.trim() !== '')
+        expandedLines.push(...subLines)
+      } else {
+        expandedLines.push(line)
+      }
+    }
+    lines = expandedLines
+  }
 
   if (lines.length === 0) return null
 

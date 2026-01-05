@@ -17,7 +17,7 @@ import {
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
-import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
+import { getChannel, publishEvent, buildCustomizeTaskId } from '@/lib/worker/common'
 
 // Helper for debug logging (M9 pattern)
 function logDebugFile(filename: string, content: string) {
@@ -105,6 +105,27 @@ export const customizeStrategy: WorkerStrategy = {
     }
   },
 
+  // Emit CUSTOMIZE_PENDING status at the start of the task
+  async onStart(variables: any, ctx: StrategyContext) {
+    const { serviceId, userId, requestId } = ctx
+    const sessionId = String(variables.executionSessionId || '')
+    const customizeTaskId = buildCustomizeTaskId(serviceId, sessionId)
+    const channel = getChannel(userId, serviceId, customizeTaskId)
+
+    try {
+      await publishEvent(channel, {
+        type: 'status',
+        taskId: customizeTaskId,
+        code: 'customize_pending',
+        status: 'CUSTOMIZE_PENDING',
+        lastUpdatedAt: new Date().toISOString(),
+        requestId,
+      })
+    } catch (e) {
+      console.error('Failed to publish customize_pending event', e)
+    }
+  },
+
   async writeResults(
     execResult: ExecutionResult,
     variables: any,
@@ -113,8 +134,8 @@ export const customizeStrategy: WorkerStrategy = {
     const { serviceId, userId, requestId } = ctx
     const result = execResult.data
     const sessionId = String(variables.executionSessionId || '')
-    const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-    const channel = getChannel(userId, serviceId, matchTaskId)
+    const customizeTaskId = buildCustomizeTaskId(serviceId, sessionId)
+    const channel = getChannel(userId, serviceId, customizeTaskId)
 
     // if (process.env.NODE_ENV !== 'production') {
     //   console.log('[Worker] customizeStrategy.writeResults', {
@@ -150,7 +171,7 @@ export const customizeStrategy: WorkerStrategy = {
       try {
         await publishEvent(channel, {
           type: 'status',
-          taskId: matchTaskId,
+          taskId: customizeTaskId,
           code: 'customize_failed',
           status: 'CUSTOMIZE_FAILED',
           lastUpdatedAt: new Date().toISOString(),
@@ -207,7 +228,7 @@ export const customizeStrategy: WorkerStrategy = {
       try {
         await publishEvent(channel, {
           type: 'status',
-          taskId: matchTaskId,
+          taskId: customizeTaskId,
           code: 'customize_completed',
           status: 'CUSTOMIZE_COMPLETED',
           lastUpdatedAt: new Date().toISOString(),
@@ -246,7 +267,7 @@ export const customizeStrategy: WorkerStrategy = {
       try {
         await publishEvent(channel, {
           type: 'status',
-          taskId: matchTaskId,
+          taskId: customizeTaskId,
           code: 'customize_failed',
           status: 'CUSTOMIZE_FAILED',
           lastUpdatedAt: new Date().toISOString(),
