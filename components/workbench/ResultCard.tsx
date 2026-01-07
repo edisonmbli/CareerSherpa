@@ -108,12 +108,19 @@ export function ResultCard({
           // Fix: Handle PascalCase/camelCase
           const point = w?.Point ?? w?.point ?? ''
           const evidence = w?.Evidence ?? w?.evidence ?? w?.suggestion ?? ''
-          const tip = w?.Tip ?? w?.tip ?? ''
+          const tip = w?.Tip ?? w?.tip ?? null
+
+          // Handle both string (legacy) and object (new) tip formats
+          const tipObj = typeof tip === 'object' && tip !== null
+            ? { interview: tip.interview ?? '', resume: tip.resume ?? '' }
+            : typeof tip === 'string'
+              ? { interview: tip, resume: '' }
+              : { interview: '', resume: '' }
 
           return {
             point: String(point),
             evidence: evidence ? String(evidence) : '',
-            tip: tip ? String(tip) : '',
+            tip: tipObj,
           }
         })
         : []
@@ -478,15 +485,29 @@ export function ResultCard({
                     </div>
                   )}
 
-                  {/* Tip Block - Integrated elegantly */}
-                  {item.tip && (
-                    <div className="mt-2 inline-flex items-start gap-2 py-1.5 px-3 rounded-md bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100/50 dark:border-amber-900/20 max-w-full">
-                      <span className="shrink-0 text-[10px] font-bold uppercase text-amber-600/60 tracking-wider mt-0.5">
-                        TIP
-                      </span>
-                      <div className="text-xs text-muted-foreground/90 leading-relaxed">
-                        {item.tip}
-                      </div>
+                  {/* Tip Block - Structured with interview and resume */}
+                  {(item.tip?.interview || item.tip?.resume) && (
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      {item.tip.interview && (
+                        <div className="inline-flex items-start gap-2 py-1.5 px-3 rounded-md bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-900/20 max-w-full">
+                          <span className="shrink-0 text-[10px] font-bold uppercase text-blue-600/70 tracking-wider mt-0.5">
+                            面试应对
+                          </span>
+                          <div className="text-xs text-muted-foreground/90 leading-relaxed">
+                            {item.tip.interview}
+                          </div>
+                        </div>
+                      )}
+                      {item.tip.resume && (
+                        <div className="inline-flex items-start gap-2 py-1.5 px-3 rounded-md bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100/50 dark:border-amber-900/20 max-w-full">
+                          <span className="shrink-0 text-[10px] font-bold uppercase text-amber-600/70 tracking-wider mt-0.5">
+                            简历微调
+                          </span>
+                          <div className="text-xs text-muted-foreground/90 leading-relaxed">
+                            {item.tip.resume}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

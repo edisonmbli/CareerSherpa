@@ -95,7 +95,12 @@ export async function createLlmUsageLogDetailed(
     return created
   } catch (error) {
     // 记录失败不应阻塞主流程，但不进行原生 SQL 降级
-    console.warn('[DAL] Failed to create LlmUsageLog via Prisma:', error)
+    console.error('[DAL] Failed to create LlmUsageLog via Prisma:', {
+      error: error instanceof Error ? error.message : String(error),
+      taskTemplateId: params.taskTemplateId,
+      isSuccess: params.isSuccess,
+      serviceId: params.serviceId,
+    })
     return null
   }
 }

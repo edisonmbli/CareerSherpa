@@ -514,73 +514,114 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     meta: { modelId },
   })
 
-  const prompt = ChatPromptTemplate.fromMessages([
-    SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
-    HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
-  ])
-  const limits = getTaskLimits(String(templateId))
-  const model = getModel(modelId, {
-    temperature: 0.3,
-    timeoutMs: ENV.WORKER_TIMEOUT_MS,
-    maxTokens: limits.maxTokens,
-  })
-  const chain = prompt.pipe(model)
+  try {
+    const prompt = ChatPromptTemplate.fromMessages([
+      SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
+      HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
+    ])
+    const limits = getTaskLimits(String(templateId))
+    const model = getModel(modelId, {
+      temperature: 0.3,
+      timeoutMs: ENV.WORKER_TIMEOUT_MS,
+      maxTokens: limits.maxTokens,
+    })
+    const chain = prompt.pipe(model)
 
-  // Stream tokens to consumer; when finished, log usage
-  const stream = await chain.stream(variables)
-  let fullText = ''
-  for await (const chunk of stream) {
-    const text = (chunk as any)?.content ?? (chunk as any)?.text ?? ''
-    fullText += text
-    if (text && onToken) {
-      await onToken(text)
+    // Stream tokens to consumer; when finished, log usage
+    const stream = await chain.stream(variables)
+    let fullText = ''
+    for await (const chunk of stream) {
+      const text = (chunk as any)?.content ?? (chunk as any)?.text ?? ''
+      fullText += text
+      if (text && onToken) {
+        await onToken(text)
+      }
     }
-  }
-  const end = Date.now()
+    const end = Date.now()
 
-  // Debug Log: Output (Streaming)
-  logDebugData(`${String(templateId)}_stream_output`, {
-    output: fullText,
-    latencyMs: end - start,
-    meta: { len: fullText.length },
-  })
+    // Debug Log: Output (Streaming)
+    logDebugData(`${String(templateId)}_stream_output`, {
+      output: fullText,
+      latencyMs: end - start,
+      meta: { len: fullText.length },
+    })
 
-  // token usage may be available on model after stream; best-effort
-  let { inputTokens, outputTokens } = extractTokenUsageFromModel(model)
-  if (!inputTokens && !outputTokens) {
-    try {
-      const estIn = Math.ceil(JSON.stringify(variables).length / 4)
-      const estOut = Math.ceil(fullText.length / 4)
-      inputTokens = estIn
-      outputTokens = estOut
-    } catch { }
-  }
+    // token usage may be available on model after stream; best-effort
+    let { inputTokens, outputTokens } = extractTokenUsageFromModel(model)
+    if (!inputTokens && !outputTokens) {
+      try {
+        const estIn = Math.ceil(JSON.stringify(variables).length / 4)
+        const estOut = Math.ceil(fullText.length / 4)
+        inputTokens = estIn
+        outputTokens = estOut
+      } catch { }
+    }
 
-  const log = await createLlmUsageLogDetailed({
-    taskTemplateId: templateId,
-    provider: getProvider(modelId),
-    modelId,
-    inputTokens,
-    outputTokens,
-    latencyMs: end - start,
-    cost: getCost(modelId, inputTokens, outputTokens),
-    isStream: true,
-    isSuccess: true,
-    ...(context.userId ? { userId: context.userId } : {}),
-    ...(context.serviceId ? { serviceId: context.serviceId } : {}),
-  })
-
-  return {
-    ok: true,
-    raw: fullText,
-    usage: {
+    const log = await createLlmUsageLogDetailed({
+      taskTemplateId: templateId,
+      provider: getProvider(modelId),
+      modelId,
       inputTokens,
       outputTokens,
-      totalTokens: inputTokens + outputTokens,
+      latencyMs: end - start,
       cost: getCost(modelId, inputTokens, outputTokens),
-      model: modelId,
+      isStream: true,
+      isSuccess: true,
+      ...(context.userId ? { userId: context.userId } : {}),
+      ...(context.serviceId ? { serviceId: context.serviceId } : {}),
+    })
+
+    return {
+      ok: true,
+      raw: fullText,
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        cost: getCost(modelId, inputTokens, outputTokens),
+        model: modelId,
+        provider: getProvider(modelId),
+      },
+      usageLogId: (log as any)?.id,
+    } as RunLlmTaskResult<T>
+  } catch (error) {
+    const end = Date.now()
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    // Fail-safe Debug Log: Capture error details
+    logDebugData(`${String(templateId)}_stream_output`, {
+      output: '',
+      latencyMs: end - start,
+      meta: { len: 0, error: errorMessage },
+    })
+
+    // Fail-safe Usage Log: Record failure in llm_usage_logs
+    const log = await createLlmUsageLogDetailed({
+      taskTemplateId: templateId,
       provider: getProvider(modelId),
-    },
-    usageLogId: (log as any)?.id,
-  } as RunLlmTaskResult<T>
+      modelId,
+      inputTokens: 0,
+      outputTokens: 0,
+      latencyMs: end - start,
+      isStream: true,
+      isSuccess: false,
+      errorMessage,
+      ...(context.userId ? { userId: context.userId } : {}),
+      ...(context.serviceId ? { serviceId: context.serviceId } : {}),
+    })
+
+    console.error('Streaming LLM error', {
+      templateId,
+      modelId,
+      error: errorMessage,
+      latencyMs: end - start,
+    })
+
+    return {
+      ok: false,
+      raw: '',
+      error: errorMessage,
+      usageLogId: (log as any)?.id,
+    } as RunLlmTaskResult<T>
+  }
 }

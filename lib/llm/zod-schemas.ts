@@ -216,7 +216,10 @@ const jobMatchSchema = z.object({
       z.object({
         point: z.string(),
         evidence: z.string(),
-        tip: z.string(), // actionable advice
+        tip: z.object({
+          interview: z.string(), // 面试应对
+          resume: z.string(),    // 简历微调
+        }),
         section: z.string().optional(),
       })
     )

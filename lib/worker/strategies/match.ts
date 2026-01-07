@@ -227,6 +227,10 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     const validation = validateJson(execResult.raw || '', {
       enableFallback: true, // Allow extract/repair strategies
       strictMode: false,
+      debug: {
+        reqId: requestId,
+        route: 'worker/match/writeResults',
+      },
     })
 
     if (validation.success && validation.data) {
@@ -234,6 +238,19 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     } else if (execResult.data && typeof execResult.data === 'object') {
       // Fallback to structured output if available and validation failed (unlikely if raw exists)
       matchJson = execResult.data
+    }
+
+    // Log validation result for observability
+    if (!matchJson) {
+      logError({
+        reqId: requestId,
+        route: 'worker/match',
+        error: validation.error || 'No JSON extracted',
+        phase: 'json_parse',
+        serviceId,
+        rawLength: (execResult.raw || '').length,
+        rawPreview: (execResult.raw || '').slice(0, 500),
+      })
     }
 
     // Sanity Check: Detect logic failure (garbage output or placeholder complaint)

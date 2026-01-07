@@ -686,6 +686,7 @@ export function ServiceDisplay({
                       'Task execution failed, please retry.'
                     }
                     locale={locale}
+                    onRetry={retryMatchAction}
                   />
                 </div>
               )}
