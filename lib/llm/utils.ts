@@ -1,7 +1,9 @@
 import type { ModelId } from './providers'
 
-export function getProvider(modelId: ModelId): 'deepseek' | 'zhipu' {
-  return modelId.startsWith('deepseek') ? 'deepseek' : 'zhipu'
+export function getProvider(modelId: ModelId): 'deepseek' | 'zhipu' | 'gemini' {
+  if (modelId.startsWith('deepseek')) return 'deepseek'
+  if (modelId.startsWith('gemini')) return 'gemini'
+  return 'zhipu'
 }
 
 // Very rough cost estimator; replace with real prices in M7
@@ -12,6 +14,8 @@ const COST_PER_1K: Record<ModelId, { input: number; output: number }> = {
   'glm-4.1v-thinking-flash': { input: 0.004, output: 0.004 },
   // Embeddings typically only charge on input tokens
   'glm-embedding-3': { input: 0.0005, output: 0 },
+  // Gemini Free tier (within daily limit, effectively free)
+  'gemini-3-flash-preview': { input: 0.00015, output: 0.00060 },
 }
 
 export function getCost(

@@ -39,27 +39,27 @@ export const ENV = {
   // 队列分级上限（覆盖默认）
   QUEUE_MAX_PAID_STREAM: Number(
     process.env['QUEUE_MAX_PAID_STREAM'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
   ),
   QUEUE_MAX_FREE_STREAM: Number(
     process.env['QUEUE_MAX_FREE_STREAM'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
   ),
   QUEUE_MAX_PAID_BATCH: Number(
     process.env['QUEUE_MAX_PAID_BATCH'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
   ),
   QUEUE_MAX_FREE_BATCH: Number(
     process.env['QUEUE_MAX_FREE_BATCH'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
   ),
   QUEUE_MAX_PAID_VISION: Number(
     process.env['QUEUE_MAX_PAID_VISION'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
   ),
   QUEUE_MAX_FREE_VISION: Number(
     process.env['QUEUE_MAX_FREE_VISION'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
   ),
 
   // 性能优化配置
@@ -121,6 +121,18 @@ export const ENV = {
   MAX_TOTAL_WAIT_MS_BATCH: Number(
     process.env['MAX_TOTAL_WAIT_MS_BATCH'] ?? '600000'
   ),
+
+  // Gemini API (for Free tier)
+  GEMINI_API_KEY: process.env['GEMINI_API_KEY'] ?? '',
+
+  // Baidu OCR API (for Paid tier OCR)
+  BAIDU_API_KEY: process.env['BAIDU_API_KEY'] ?? '',
+  BAIDU_SECRET_KEY: process.env['BAIDU_SECRET_KEY'] ?? '',
+
+  // Rate Limiting - Configurable via environment
+  RATE_LIMIT_FREE_DAILY: Number(process.env['RATE_LIMIT_FREE_DAILY'] ?? '8'),
+  RATE_LIMIT_PAID_WINDOW_SEC: Number(process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '300'),
+  RATE_LIMIT_PAID_MAX: Number(process.env['RATE_LIMIT_PAID_MAX'] ?? '10'),
 }
 
 export function isProdRedisReady() {

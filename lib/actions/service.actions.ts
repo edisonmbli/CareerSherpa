@@ -136,62 +136,112 @@ export const createServiceAction = withServerActionAuthWrite(
     await markTimeline(svc.id, 'create_service_debit_recorded', { cost })
     const hasQuota = debit.ok // 检查是否成功扣费（即用户是否有配额）
 
-    // 10. 根据输入类型（图片或文本）执行不同的任务入队逻辑
+    // 10. 根据输入类型（图片或文本）和付费状态执行不同的任务入队逻辑
     if (isImage) {
       const tEnq = Date.now()
-      const e1 = await ensureEnqueued({
-        kind: 'batch',
-        serviceId: svc.id,
-        taskId: `job_${svc.id}_${executionSessionId}`,
-        userId,
-        locale: params.locale,
-        templateId: 'ocr_extract' as any,
-        variables: {
-          jobId: job.id,
-          wasPaid: hasQuota,
-          cost,
-          ...(hasQuota ? { debitId: debit.id } : {}),
-          executionSessionId,
-        } as any,
-      })
-      await markTimeline(svc.id, 'create_service_ocr_enqueued', {
-        latencyMs: Date.now() - tEnq,
-      })
-      if (!e1.ok) {
-        if (hasQuota) {
-          // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
-          // already handles the refund logic when enqueue fails.
-          // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
+
+      // Phase 1.5: Different paths for Paid and Free tiers
+      if (hasQuota) {
+        // --- PAID TIER: Use Baidu OCR (sync) + enqueue job_summary ---
+        // Note: Baidu OCR integration will be added here in Phase 1.5
+        // For now, falling back to LLM-based OCR to maintain compatibility
+        const e1 = await ensureEnqueued({
+          kind: 'batch',
+          serviceId: svc.id,
+          taskId: `job_${svc.id}_${executionSessionId}`,
+          userId,
+          locale: params.locale,
+          templateId: 'ocr_extract' as any,
+          variables: {
+            jobId: job.id,
+            wasPaid: hasQuota,
+            cost,
+            debitId: debit.id,
+            executionSessionId,
+          } as any,
+        })
+        await markTimeline(svc.id, 'create_service_ocr_enqueued', {
+          latencyMs: Date.now() - tEnq,
+        })
+        if (!e1.ok) {
           await markDebitFailed(debit.id)
+          await updateServiceExecutionStatus(
+            svc.id,
+            ExecutionStatus.MATCH_FAILED,
+            { failureCode: 'ENQUEUE_FAILED' }
+          )
+          return { ok: false, error: e1.error, serviceId: svc.id }
         }
-        await updateServiceExecutionStatus(
-          svc.id,
-          ExecutionStatus.MATCH_FAILED,
-          { failureCode: 'ENQUEUE_FAILED' }
-        )
-        return { ok: false, error: e1.error, serviceId: svc.id }
-      }
 
-      // 将执行会话写入并设置为 OCR_PENDING，便于前端在 OCR 阶段就订阅通道
-      await updateServiceExecutionStatus(svc.id, ExecutionStatus.OCR_PENDING, {
-        executionSessionId,
-      })
+        await updateServiceExecutionStatus(svc.id, ExecutionStatus.OCR_PENDING, {
+          executionSessionId,
+        })
 
-      trackEvent('TASK_ENQUEUED', {
-        userId,
-        payload: { task: 'ocr_extract', isFree: !hasQuota },
-      })
-      return {
-        ok: true,
-        serviceId: svc.id,
-        isFree: !hasQuota,
-        stream: false,
-        status: 'PENDING_OCR',
-        executionSessionId,
-        hint: {
-          dependency: 'ocr_extract',
-          next: ['SUMMARY_COMPLETED', 'MATCH_STREAMING'],
-        },
+        trackEvent('TASK_ENQUEUED', {
+          userId,
+          payload: { task: 'ocr_extract', isFree: false },
+        })
+        return {
+          ok: true,
+          serviceId: svc.id,
+          isFree: false,
+          stream: false,
+          status: 'PENDING_OCR',
+          executionSessionId,
+          hint: {
+            dependency: 'ocr_extract',
+            next: ['SUMMARY_COMPLETED', 'MATCH_STREAMING'],
+          },
+        }
+      } else {
+        // --- FREE TIER: Use merged job_vision_summary (Gemini multimodal) ---
+        const e1 = await ensureEnqueued({
+          kind: 'batch',
+          serviceId: svc.id,
+          taskId: `job_${svc.id}_${executionSessionId}`,
+          userId,
+          locale: params.locale,
+          templateId: 'job_vision_summary' as any, // Merged OCR + Summary for Free tier
+          variables: {
+            jobId: job.id,
+            wasPaid: false,
+            cost: 0,
+            executionSessionId,
+          } as any,
+        })
+        await markTimeline(svc.id, 'create_service_vision_summary_enqueued', {
+          latencyMs: Date.now() - tEnq,
+        })
+        if (!e1.ok) {
+          await updateServiceExecutionStatus(
+            svc.id,
+            ExecutionStatus.MATCH_FAILED,
+            { failureCode: 'ENQUEUE_FAILED' }
+          )
+          return { ok: false, error: e1.error, serviceId: svc.id }
+        }
+
+        // For merged flow, status starts at SUMMARY_PENDING (skipping OCR)
+        await updateServiceExecutionStatus(svc.id, ExecutionStatus.SUMMARY_PENDING, {
+          executionSessionId,
+        })
+
+        trackEvent('TASK_ENQUEUED', {
+          userId,
+          payload: { task: 'job_vision_summary', isFree: true },
+        })
+        return {
+          ok: true,
+          serviceId: svc.id,
+          isFree: true,
+          stream: false,
+          status: 'PENDING_VISION_SUMMARY',
+          executionSessionId,
+          hint: {
+            dependency: 'job_vision_summary',
+            next: ['SUMMARY_COMPLETED', 'MATCH_STREAMING'],
+          },
+        }
       }
     }
 
@@ -488,20 +538,25 @@ export const retryMatchAction = withServerActionAuthWrite<
       if (!locked) {
         return { ok: false, error: 'enqueue_failed' }
       }
+      // Phase 1.5: Different templates for Paid vs Free tier
+      let templateId: any = 'job_summary'
+      if (needOcr) {
+        templateId = hasQuota ? 'ocr_extract' : 'job_vision_summary' // Free tier uses merged flow
+      }
       const enqSummary = await ensureEnqueued({
         kind: 'batch',
         serviceId: params.serviceId,
         taskId: `job_${params.serviceId}_${executionSessionId}`,
         userId,
         locale: params.locale,
-        templateId: (needOcr ? 'ocr_extract' : 'job_summary') as any,
+        templateId,
         variables: {
           jobId: svc.job.id,
           wasPaid: hasQuota,
           cost,
           ...(hasQuota ? { debitId: debit.id } : {}),
           executionSessionId,
-        },
+        } as any,
       })
       if (!enqSummary.ok) {
         if (hasQuota) {

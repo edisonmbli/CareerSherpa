@@ -1101,6 +1101,38 @@ JD原文:
     variables: ['text'],
     outputSchema: { type: 'object', properties: {} } as JsonSchema,
   },
+  // --- Free Tier: 合并视觉理解 + 岗位提取 ---
+  job_vision_summary: {
+    id: 'job_vision_summary',
+    name: '图片岗位提取',
+    description:
+      '直接从JD截图中提取结构化岗位需求。合并OCR和摘要为单一步骤，适用于Free tier。',
+    systemPrompt: SYSTEM_BASE,
+    userPrompt: `你将收到一张 Base64 编码的岗位描述（JD）截图。
+你的任务是直接从图片中提取并结构化关键岗位需求。
+
+说明：
+1. 仔细阅读截图中的所有文字
+2. 提取岗位名称、公司名称（如可见）和关键需求
+3. 区分"必须项"（硬性要求）和"加分项"（可选技能）
+4. 如果文字不清晰，根据上下文做合理推断
+5. 严格按照指定的 JSON 格式输出
+
+输入图片 (Base64):
+"""
+{image}
+"""
+
+输出必须遵循以下结构：
+- jobTitle: 职位名称（必填）
+- company: 公司名称（如可见，选填）
+- mustHaves: 必须技能/经验数组（至少3项）
+- niceToHaves: 加分技能数组（至少2项）
+
+仅输出有效 JSON，不要包含额外说明。`,
+    variables: ['image'],
+    outputSchema: SCHEMAS_V1.JOB_SUMMARY,
+  },
   // --- 视觉OCR提取 ---
   ocr_extract: {
     id: 'ocr_extract',

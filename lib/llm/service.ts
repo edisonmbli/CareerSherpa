@@ -329,7 +329,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 
     const chain = prompt.pipe(model)
     const hasVisionImage =
-      String(templateId) === 'ocr_extract' &&
+      (String(templateId) === 'ocr_extract' || String(templateId) === 'job_vision_summary') &&
       typeof variables['image'] === 'string' &&
       variables['image']
     const aiMessage: any = hasVisionImage

@@ -14,7 +14,10 @@ import { pushTask } from '@/lib/queue/producer'
 import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
 import { ExecutionStatus, AsyncTaskStatus, FailureCode } from '@prisma/client'
 import { ENV } from '@/lib/env'
-import { logError } from '@/lib/logger'
+import { logError, logInfo } from '@/lib/logger'
+// Phase 1.5: Baidu OCR for Paid tier
+import { extractTextFromBaidu, isBaiduOcrReady } from '@/lib/services/baidu-ocr'
+import { compressIfNeeded } from '@/lib/utils/image-compress'
 
 /**
  * Strategy for OCR Extraction tasks.
@@ -77,6 +80,60 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         })
       }
       if (imageOrUrl) vars['image'] = imageOrUrl
+
+      // Phase 1.5: Use Baidu OCR for Paid tier if configured
+      const isPaidTier = !!variables.wasPaid
+      if (isPaidTier && isBaiduOcrReady() && imageOrUrl) {
+        try {
+          await markTimeline(serviceId, 'baidu_ocr_start', { taskId })
+          const t0Baidu = Date.now()
+
+          // Compress image if needed (Baidu has 4MB limit)
+          const compressedBase64 = await compressIfNeeded(imageOrUrl)
+
+          // Call Baidu OCR API
+          const ocrResult = await extractTextFromBaidu(compressedBase64)
+
+          const t1Baidu = Date.now()
+          await markTimeline(serviceId, 'baidu_ocr_end', {
+            taskId,
+            latencyMs: t1Baidu - t0Baidu,
+            ok: ocrResult.ok,
+            wordsCount: ocrResult.wordsCount,
+          })
+
+          if (ocrResult.ok && ocrResult.text) {
+            // Store the Baidu OCR result directly - bypass LLM execution
+            vars['_baidu_ocr_text'] = ocrResult.text
+            vars['_baidu_ocr_used'] = true
+            logInfo({
+              reqId: taskId,
+              route: 'worker/ocr',
+              userKey: 'system',
+              message: 'Using Baidu OCR for Paid tier',
+              wordsCount: ocrResult.wordsCount,
+            })
+          } else {
+            logError({
+              reqId: taskId,
+              route: 'worker/ocr',
+              error: ocrResult.error || 'Unknown Baidu OCR error',
+              phase: 'baidu_ocr_failed',
+              serviceId,
+            })
+            // Fall through to LLM-based OCR
+          }
+        } catch (e) {
+          logError({
+            reqId: taskId,
+            route: 'worker/ocr',
+            error: String(e),
+            phase: 'baidu_ocr_exception',
+            serviceId,
+          })
+          // Fall through to LLM-based OCR
+        }
+      }
     }
     return vars
   }
@@ -119,11 +176,22 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
     ctx: StrategyContext
   ) {
     const { serviceId, userId, locale, requestId, traceId, taskId } = ctx
-    const dataObj = execResult.ok ? execResult.data || {} : {}
-    const text = String(dataObj?.extracted_text || '')
+
+    // Phase 1.5: Check if Baidu OCR was used (pre-computed in prepareVars)
+    const baiduOcrUsed = !!(variables as any)['_baidu_ocr_used']
+    const baiduOcrText = String((variables as any)['_baidu_ocr_text'] || '')
+
+    // Determine final text: Baidu OCR result takes precedence if available
+    let text: string
+    if (baiduOcrUsed && baiduOcrText) {
+      text = baiduOcrText
+    } else {
+      const dataObj = execResult.ok ? execResult.data || {} : {}
+      text = String(dataObj?.extracted_text || '')
+    }
 
     // Handle Failure
-    if (!execResult.ok || !text) {
+    if ((!baiduOcrUsed && !execResult.ok) || !text) {
       try {
         await txMarkSummaryFailed(serviceId, FailureCode.PREVIOUS_OCR_FAILED)
         const sessionId = String(variables.executionSessionId || '')

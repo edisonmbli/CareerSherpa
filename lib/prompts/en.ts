@@ -1032,6 +1032,38 @@ Please perform the following actions:
     variables: ['text'],
     outputSchema: { type: 'object', properties: {} } as JsonSchema,
   },
+  // --- Free Tier: Combined Vision + Job Summary ---
+  job_vision_summary: {
+    id: 'job_vision_summary',
+    name: 'Vision-based Job Extraction',
+    description:
+      'Extract structured job requirements directly from a JD screenshot using multimodal understanding. Combines OCR and summarization into a single step for Free tier.',
+    systemPrompt: SYSTEM_BASE,
+    userPrompt: `You will receive a Base64-encoded screenshot of a Job Description (JD).
+Your task is to extract and structure the key job requirements directly from the image.
+
+Instructions:
+1. Carefully read all text visible in the screenshot
+2. Extract the job title, company (if visible), and key requirements
+3. Distinguish between "Must-have" (hard requirements) and "Nice-to-have" skills
+4. If text is unclear, make reasonable inferences from context
+5. Output in the exact JSON format specified
+
+Input Image (Base64):
+"""
+{image}
+"""
+
+Output must follow this exact structure:
+- jobTitle: The position title (required)
+- company: Company name if visible (optional)
+- mustHaves: Array of required skills/experience (at least 3 items)
+- niceToHaves: Array of preferred skills (at least 2 items)
+
+Respond ONLY with valid JSON, no additional text.`,
+    variables: ['image'],
+    outputSchema: SCHEMAS_V1.JOB_SUMMARY,
+  },
   // --- Vision OCR extraction ---
   ocr_extract: {
     id: 'ocr_extract',

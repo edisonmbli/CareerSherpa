@@ -32,7 +32,7 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
     free: {
-      modelId: MODEL.GLM_45_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_BATCH,
       isStream: false,
     },
@@ -44,7 +44,7 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
     free: {
-      modelId: MODEL.GLM_45_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_BATCH,
       isStream: false,
     },
@@ -57,7 +57,7 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
     free: {
-      modelId: MODEL.GLM_45_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_BATCH,
       isStream: false,
     },
@@ -71,7 +71,7 @@ const ROUTING_TABLE: Partial<
       isStream: true,
     },
     free: {
-      modelId: MODEL.GLM_45_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_STREAM,
       isStream: true,
     },
@@ -83,7 +83,7 @@ const ROUTING_TABLE: Partial<
       isStream: true,
     },
     free: {
-      modelId: MODEL.GLM_45_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_STREAM,
       isStream: true,
     },
@@ -97,7 +97,7 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
     free: {
-      modelId: MODEL.GLM_45_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_BATCH,
       isStream: false,
       promptId: 'resume_customize_lite', // Use simplified prompt for free tier
@@ -110,7 +110,23 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
     free: {
-      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
+      queueId: QueueId.FREE_VISION,
+      isStream: false,
+    },
+  },
+  // Free tier merged OCR + Job Summary (uses Gemini vision to extract JobSummary directly)
+  // NOTE: Paid tier should NOT use this template - it uses ocr_extract + job_summary instead.
+  //       This entry exists only for type completeness.
+  job_vision_summary: {
+    paid: {
+      // Placeholder: Paid tier routes through ocr_extract → job_summary, not this template
+      modelId: MODEL.DEEPSEEK_CHAT, // Fallback if accidentally called
+      queueId: QueueId.PAID_BATCH,
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_VISION,
       isStream: false,
     },
@@ -138,7 +154,7 @@ export const getJobVisionTaskRouting = (hasQuota: boolean): TaskRouting => {
       isStream: false,
     }
     : {
-      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_VISION,
       isStream: false,
     }

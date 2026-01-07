@@ -392,18 +392,40 @@ export async function handleBatch(
       try {
         // 4. Execute
         await markTimeline(serviceId, 'worker_batch_llm_start', { taskId })
-        const options: any = {}
-        if (templateId === 'resume_customize') {
-          options.temperature = 0.1
+
+        // Phase 1.5: Skip LLM if Baidu OCR was already used (Paid tier OCR bypass)
+        const baiduOcrUsed = !!(preparedVars as any)['_baidu_ocr_used']
+        const baiduOcrText = String((preparedVars as any)['_baidu_ocr_text'] || '')
+
+        let execResult: { result: import('./strategies/interface').ExecutionResult; latencyMs: number }
+
+        if (baiduOcrUsed && baiduOcrText && templateId === 'ocr_extract') {
+          // Skip LLM - use Baidu OCR result directly
+          await markTimeline(serviceId, 'worker_batch_llm_skipped_baidu_ocr', { taskId })
+          execResult = {
+            result: {
+              ok: true,
+              data: { extracted_text: baiduOcrText },
+              raw: baiduOcrText,
+            },
+            latencyMs: 0,
+          }
+        } else {
+          // Normal LLM execution
+          const options: any = {}
+          if (templateId === 'resume_customize') {
+            options.temperature = 0.1
+          }
+          execResult = await executeStructured(
+            decision.modelId,
+            templateId,
+            locale,
+            preparedVars,
+            { userId, serviceId },
+            options
+          )
         }
-        const execResult = await executeStructured(
-          decision.modelId,
-          templateId,
-          locale,
-          preparedVars,
-          { userId, serviceId },
-          options
-        )
+
         await markTimeline(serviceId, 'worker_batch_done', {
           taskId,
           latencyMs: execResult.latencyMs,

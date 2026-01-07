@@ -26,6 +26,7 @@ export type TaskTemplateId =
   | 'resume_summary'
   | 'detailed_resume_summary'
   | 'job_summary'
+  | 'job_vision_summary' // Free tier merged OCR + Job Summary
   | 'job_match'
   | 'resume_customize'
   | 'resume_customize_lite' // Free tier simplified prompt
@@ -120,6 +121,8 @@ export type VariablesFor<T extends TaskTemplateId> = T extends 'resume_summary'
   ? DetailedResumeSummaryVars
   : T extends 'job_summary'
   ? JobSummaryVars
+  : T extends 'job_vision_summary'
+  ? JobSummaryVars // Reuse JobSummaryVars (uses image field)
   : T extends 'job_match'
   ? JobMatchVars
   : T extends 'resume_customize'

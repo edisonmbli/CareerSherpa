@@ -269,6 +269,7 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   resume_summary: resumeSummarySchema,
   detailed_resume_summary: detailedResumeV3Schema,
   job_summary: jobSummarySchema,
+  job_vision_summary: jobSummarySchema, // Free tier merged OCR + Summary (same output as job_summary)
   job_match: jobMatchSchema,
   resume_customize: resumeCustomizeSchema,
   resume_customize_lite: resumeCustomizeSchema, // Same schema as full customize

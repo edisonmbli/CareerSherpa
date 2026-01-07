@@ -1,6 +1,7 @@
 import { ChatZhipuAI } from '@langchain/community/chat_models/zhipuai'
 import { ChatOpenAI } from '@langchain/openai'
 import { ChatDeepSeek } from '@langchain/deepseek'
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { ENV } from '../env'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { generateEmbedding, generateEmbeddings, getEmbeddingDimensions } from './embeddings'
@@ -200,6 +201,55 @@ export class OpenAIProvider implements LLMProvider {
 }
 
 /**
+ * Gemini Provider (for Free tier)
+ * Server-side only - API key must never be exposed to client
+ */
+export class GeminiProvider implements LLMProvider {
+  name = 'gemini'
+  tier: 'free' | 'paid' = 'free'
+
+  isReady(): boolean {
+    return !!process.env['GEMINI_API_KEY']
+  }
+
+  createModel(config: LLMConfig) {
+    if (!this.isReady()) {
+      throw new Error('Gemini API key not configured')
+    }
+
+    return new ChatGoogleGenerativeAI({
+      apiKey: process.env['GEMINI_API_KEY']!,
+      model: config.model || 'gemini-3-flash-preview',
+      temperature: config.temperature ?? 0.3,
+      maxOutputTokens: config.maxTokens ?? 8000,
+    })
+  }
+
+  parseResponse(response: any): LLMResponse {
+    const content = response?.content || ''
+    const usage =
+      response?.response_metadata?.tokenUsage ||
+      response?.usage_metadata ||
+      response?.additional_kwargs?.usage
+
+    const result: LLMResponse = {
+      content,
+      metadata: response?.response_metadata,
+    }
+
+    if (usage) {
+      result.usage = {
+        inputTokens: usage.prompt_tokens || usage.promptTokenCount || usage.input_tokens,
+        outputTokens: usage.completion_tokens || usage.candidatesTokenCount || usage.output_tokens,
+        totalTokens: usage.total_tokens || usage.totalTokenCount,
+      }
+    }
+
+    return result
+  }
+}
+
+/**
  * Provider Registry
  */
 export class ProviderRegistry {
@@ -209,6 +259,7 @@ export class ProviderRegistry {
     this.register(new ZhipuProvider())
     this.register(new DeepSeekProvider())
     this.register(new OpenAIProvider())
+    this.register(new GeminiProvider())
   }
 
   register(provider: LLMProvider) {
@@ -326,12 +377,14 @@ export const ModelId = {
   GLM_45_FLASH: 'glm-4.5-flash',
   GLM_VISION_THINKING_FLASH: 'glm-4.1v-thinking-flash',
   GLM_EMBEDDING_3: 'glm-embedding-3',
+  GEMINI_3_FLASH_PREVIEW: 'gemini-3-flash-preview',
 } as const
 
 export type ModelId = typeof ModelId[keyof typeof ModelId]
 
-export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' {
+export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' | 'gemini' {
   if (modelId.startsWith('deepseek')) return 'deepseek'
+  if (modelId.startsWith('gemini')) return 'gemini'
   return 'zhipu'
 }
 
@@ -386,6 +439,19 @@ export function getModel(
       ...(timeout !== undefined ? { timeout } : {}),
     }
     return new ChatZhipuAI(params)
+  }
+
+  // Phase 1.5: Gemini for Free tier
+  if (modelId === 'gemini-3-flash-preview') {
+    if (!process.env['GEMINI_API_KEY']) {
+      throw new Error('GEMINI_API_KEY not configured')
+    }
+    return new ChatGoogleGenerativeAI({
+      apiKey: process.env['GEMINI_API_KEY'],
+      model: 'gemini-3-flash-preview',
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(maxTokens !== undefined ? { maxOutputTokens: maxTokens } : {}),
+    })
   }
 
   // Fallback: paid text

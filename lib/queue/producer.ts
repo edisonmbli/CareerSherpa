@@ -4,7 +4,7 @@ import { addQuota } from '@/lib/dal/quotas'
 import { ENV } from '@/lib/env'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId, VariablesFor } from '@/lib/prompts/types'
-import { checkRateLimit } from '@/lib/rateLimiter'
+import { checkRateLimit, checkDailyRateLimit } from '@/lib/rateLimiter'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import {
   checkIdempotency,
@@ -57,14 +57,14 @@ export async function pushTask<T extends TaskTemplateId>(
     tierOverride === 'paid'
       ? true
       : tierOverride === 'free'
-      ? false
-      : typeof (params.variables as any)?.wasPaid === 'boolean'
-      ? Boolean((params.variables as any)?.wasPaid)
-      : !quotaInfo.shouldUseFreeQueue
+        ? false
+        : typeof (params.variables as any)?.wasPaid === 'boolean'
+          ? Boolean((params.variables as any)?.wasPaid)
+          : !quotaInfo.shouldUseFreeQueue
   const decision =
     params.templateId === 'job_summary' &&
-    'image' in params.variables &&
-    !!params.variables.image
+      'image' in params.variables &&
+      !!params.variables.image
       ? getJobVisionTaskRouting(hasQuota)
       : getTaskRouting(params.templateId, hasQuota)
   let kindSegment = params.kind
@@ -78,6 +78,45 @@ export async function pushTask<T extends TaskTemplateId>(
 
   // Check quota to decide trial/bound rate limits
   const { shouldUseFreeQueue } = quotaInfo
+
+  // Phase 1.5: Check daily rate limit for Free tier (Gemini calls)
+  if (shouldUseFreeQueue) {
+    const dailyRate = await checkDailyRateLimit(params.userId, 'free')
+    if (!dailyRate.ok) {
+      logAudit(params.userId, 'daily_rate_limited', 'task', params.taskId, {
+        serviceId: params.serviceId,
+        templateId: params.templateId,
+        kind: params.kind,
+        retryAfter: dailyRate.retryAfter,
+      })
+      logEvent(
+        'TASK_RATE_LIMITED',
+        {
+          userId: params.userId,
+          serviceId: params.serviceId,
+          taskId: params.taskId,
+        },
+        {
+          templateId: params.templateId,
+          kind: params.kind,
+          retryAfter: dailyRate.retryAfter,
+          reason: 'daily_limit_exceeded',
+        }
+      )
+      await markTimeline(params.serviceId, 'producer_daily_limited', {
+        taskId: params.taskId,
+        retryAfter: dailyRate.retryAfter,
+      })
+      return {
+        url,
+        rateLimited: true,
+        ...(typeof dailyRate.retryAfter === 'number'
+          ? { retryAfter: dailyRate.retryAfter }
+          : {}),
+        error: 'daily_limit_exceeded',
+      }
+    }
+  }
 
   const rate = await checkRateLimit(
     'pushTask',
@@ -197,16 +236,16 @@ export async function pushTask<T extends TaskTemplateId>(
     qidLower.includes('paid') && qidLower.includes('stream')
       ? cfg.queueLimits.paidStream
       : qidLower.includes('free') && qidLower.includes('stream')
-      ? cfg.queueLimits.freeStream
-      : qidLower.includes('paid') && qidLower.includes('batch')
-      ? cfg.queueLimits.paidBatch
-      : qidLower.includes('free') && qidLower.includes('batch')
-      ? cfg.queueLimits.freeBatch
-      : qidLower.includes('paid') && qidLower.includes('vision')
-      ? cfg.queueLimits.paidVision
-      : qidLower.includes('free') && qidLower.includes('vision')
-      ? cfg.queueLimits.freeVision
-      : cfg.queueMaxSize
+        ? cfg.queueLimits.freeStream
+        : qidLower.includes('paid') && qidLower.includes('batch')
+          ? cfg.queueLimits.paidBatch
+          : qidLower.includes('free') && qidLower.includes('batch')
+            ? cfg.queueLimits.freeBatch
+            : qidLower.includes('paid') && qidLower.includes('vision')
+              ? cfg.queueLimits.paidVision
+              : qidLower.includes('free') && qidLower.includes('vision')
+                ? cfg.queueLimits.freeVision
+                : cfg.queueMaxSize
   const bp = await bumpPending(queueCounterKey, ttlSec, maxSize)
   if (!bp.ok) {
     // 审计与分析：生产者侧背压拒绝

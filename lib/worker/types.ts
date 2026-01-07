@@ -133,6 +133,12 @@ const w7 = z.object({
   templateId: z.literal('resume_customize'),
   variables: resumeCustomizeVars,
 })
+// Phase 1.5: Free tier merged OCR + Job Summary
+const w8 = z.object({
+  ...common,
+  templateId: z.literal('job_vision_summary'),
+  variables: jobSummaryVars, // Same variables as job_summary (uses image field)
+})
 
 export const workerBodySchema = z.discriminatedUnion('templateId', [
   w1,
@@ -142,6 +148,7 @@ export const workerBodySchema = z.discriminatedUnion('templateId', [
   w5,
   w6,
   w7,
+  w8,
 ])
 
 export type WorkerBody = z.infer<typeof workerBodySchema>
