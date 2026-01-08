@@ -9,7 +9,6 @@ import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent } from '@/lib/worker/common'
 import {
   recordRefund,
-  markDebitSuccess,
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
@@ -17,6 +16,198 @@ import { FailureCode } from '@prisma/client'
 
 import { retrieveMatchContext } from '@/lib/rag/retriever'
 import { validateJson } from '@/lib/llm/json-validator'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ParsedMatch {
+  ok: true
+  data: any
+}
+
+interface ParseFailure {
+  ok: false
+  failureCode: FailureCode
+  reason: string
+}
+
+type ParseResult = ParsedMatch | ParseFailure
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Parse and validate LLM output to JSON
+ */
+function parseAndValidate(
+  execResult: ExecutionResult,
+  requestId: string
+): ParseResult {
+  // Case 1: Stream returned nothing
+  if (!execResult.ok && !execResult.raw) {
+    return {
+      ok: false,
+      failureCode: FailureCode.STREAM_EMPTY,
+      reason: execResult.error || 'Stream returned no content',
+    }
+  }
+
+  // Case 2: Try to parse the raw content
+  const validation = validateJson(execResult.raw || '', {
+    enableFallback: true,
+    strictMode: false,
+    debug: { reqId: requestId, route: 'worker/match/parseAndValidate' },
+  })
+
+  if (validation.success && validation.data) {
+    return { ok: true, data: validation.data }
+  }
+
+  // Case 3: Fallback to structured output if available
+  if (execResult.data && typeof execResult.data === 'object') {
+    return { ok: true, data: execResult.data }
+  }
+
+  // Case 4: Parse failed completely
+  return {
+    ok: false,
+    failureCode: FailureCode.JSON_PARSE_FAILED,
+    reason: validation.error || 'No JSON extracted',
+  }
+}
+
+/**
+ * Detect logic failures in LLM output (garbage, placeholder, leakage)
+ */
+function detectLogicFailure(matchJson: any): ParseFailure | null {
+  const score = Number(matchJson.match_score ?? matchJson.score ?? 0)
+  const assessment = String(matchJson.overall_assessment ?? '').toLowerCase()
+  const strengths = Array.isArray(matchJson.strengths) ? matchJson.strengths : []
+
+  // Check 1: Placeholder keywords (LLM refused)
+  const failureKeywords = [
+    'placeholder', 'missing input', '无法完成', '占位符',
+    'input data', 'invalid', '请提供',
+  ]
+  if (failureKeywords.some((k) => assessment.includes(k))) {
+    return {
+      ok: false,
+      failureCode: FailureCode.LLM_LOGIC_REFUSAL,
+      reason: 'LLM returned placeholder response',
+    }
+  }
+
+  // Check 2: Template variable leakage
+  const rawStr = JSON.stringify(matchJson)
+  if ((rawStr.includes('{{') && rawStr.includes('}}')) ||
+    (rawStr.includes('{') && rawStr.includes('}'))) {
+    // More specific check for actual template variables
+    if (/\{\{[a-z_]+\}\}/i.test(rawStr) || /\{[a-z_]+\}/i.test(rawStr)) {
+      return {
+        ok: false,
+        failureCode: FailureCode.TEMPLATE_LEAKAGE,
+        reason: 'Unreplaced template variables in output',
+      }
+    }
+  }
+
+  // Check 3: Ghost/empty response
+  const isEmpty = strengths.length === 0 && assessment.length < 5
+  if (score === 0 && isEmpty) {
+    return {
+      ok: false,
+      failureCode: FailureCode.EMPTY_RESPONSE,
+      reason: 'Ghost response with no meaningful content',
+    }
+  }
+
+  return null // No logic failure detected
+}
+
+/**
+ * Publish failure event and mark task as failed
+ */
+async function publishFailure(
+  channel: string,
+  serviceId: string,
+  taskId: string,
+  requestId: string,
+  traceId: string,
+  failureCode: FailureCode,
+  reason: string
+): Promise<void> {
+  try {
+    await publishEvent(channel, {
+      type: 'status',
+      taskId,
+      code: 'match_failed',
+      status: 'MATCH_FAILED',
+      errorMessage: `Analysis failed: ${reason}`,
+      lastUpdatedAt: new Date().toISOString(),
+      stage: 'finalize',
+      requestId,
+      traceId,
+    })
+  } catch {
+    /* best effort */
+  }
+  await txMarkMatchFailed(serviceId, failureCode)
+}
+
+/**
+ * Handle refunds for failed paid tasks
+ */
+async function handleRefunds(
+  execResult: ExecutionResult,
+  variables: JobMatchVars,
+  serviceId: string,
+  userId: string
+): Promise<void> {
+  if (!execResult.ok && variables.wasPaid && variables.cost && variables.debitId) {
+    try {
+      await recordRefund({
+        userId,
+        serviceId,
+        amount: Number(variables.cost),
+        metadata: { reason: 'match_failed' },
+        relatedId: String(variables.debitId),
+      })
+    } catch (e) {
+      logError({
+        reqId: 'refund_error',
+        route: 'worker/match',
+        error: String(e),
+        phase: 'refund',
+        serviceId,
+      })
+    }
+    try {
+      await markDebitFailed(String(variables.debitId))
+    } catch {
+      /* best effort */
+    }
+  }
+}
+
+function safeParse(jsonStr: any) {
+  if (typeof jsonStr !== 'string') return null
+  try {
+    return JSON.parse(jsonStr)
+  } catch {
+    return null
+  }
+}
+
+function asStringArray(arr: any): string[] {
+  if (Array.isArray(arr)) return arr.map(String)
+  return []
+}
+
+// ============================================================================
+// Strategy Implementation
+// ============================================================================
 
 export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
   templateId = 'job_match' as const
@@ -42,17 +233,13 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     }
 
     // Initialize summary JSONs if missing
-    if (typeof vars['resume_summary_json'] !== 'string')
-      vars['resume_summary_json'] = ''
-    if (typeof vars['job_summary_json'] !== 'string')
-      vars['job_summary_json'] = ''
-    if (typeof vars['detailed_resume_summary_json'] !== 'string')
-      vars['detailed_resume_summary_json'] = ''
+    if (typeof vars['resume_summary_json'] !== 'string') vars['resume_summary_json'] = ''
+    if (typeof vars['job_summary_json'] !== 'string') vars['job_summary_json'] = ''
+    if (typeof vars['detailed_resume_summary_json'] !== 'string') vars['detailed_resume_summary_json'] = ''
 
-    // Notify Frontend: MATCH_PENDING (Analyzing...)
-    // This ensures the user sees "Analyzing match degree..." during the RAG phase
-    // We can do this in parallel with context fetching/RAG to save time, but context fetch is needed for RAG.
-    // Let's fire this off early.
+    // Parallel: Notify frontend + fetch context
+    let contextSvc: any = null
+
     const notifyPendingPromise = (async () => {
       try {
         const channel = getChannel(userId, serviceId, taskId)
@@ -65,37 +252,19 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
           stage: 'rag_start',
           requestId,
         })
-      } catch (e) {
-        /* non-fatal */
-      }
+      } catch { /* non-fatal */ }
     })()
 
-    // Optimization: Fetch summaries and Perform RAG in parallel if possible?
-    // RAG needs summaries (skills, job title). So RAG depends on Context.
-    // BUT, we can parallelize "Fetch Context" and "Notify Pending".
-    // And if context is already present in variables (e.g. passed from previous step? usually not full json), we could skip.
-    // Current flow: Fetch Context -> RAG.
-
-    let contextSvc: any = null
-
     const fetchContextPromise = (async () => {
-      if (
-        !vars['resume_summary_json'] ||
-        !vars['detailed_resume_summary_json'] ||
-        !vars['job_summary_json']
-      ) {
+      if (!vars['resume_summary_json'] || !vars['detailed_resume_summary_json'] || !vars['job_summary_json']) {
         try {
           const tCtx0 = Date.now()
           contextSvc = await getServiceSummariesReadOnly(serviceId, userId)
           const tCtx1 = Date.now()
-          await markTimeline(
-            serviceId,
-            'worker_stream_vars_fetch_context_db_latency',
-            {
-              taskId,
-              latencyMs: tCtx1 - tCtx0,
-            }
-          )
+          await markTimeline(serviceId, 'worker_stream_vars_fetch_context_db_latency', {
+            taskId,
+            latencyMs: tCtx1 - tCtx0,
+          })
         } catch (err) {
           logError({
             reqId: requestId,
@@ -110,36 +279,29 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
 
     await Promise.all([notifyPendingPromise, fetchContextPromise])
 
+    // Populate missing summaries from context
     if (!vars['resume_summary_json']) {
       try {
         const obj = contextSvc?.resume?.resumeSummaryJson
         if (obj) vars['resume_summary_json'] = JSON.stringify(obj)
-      } catch (e) {
-        /* non-fatal */
-      }
+      } catch { /* non-fatal */ }
     }
     if (!vars['detailed_resume_summary_json']) {
       try {
         const obj = contextSvc?.detailedResume?.detailedSummaryJson
         if (obj) vars['detailed_resume_summary_json'] = JSON.stringify(obj)
-      } catch (e) {
-        /* non-fatal */
-      }
+      } catch { /* non-fatal */ }
     }
     if (!vars['job_summary_json']) {
       try {
         const obj = contextSvc?.job?.jobSummaryJson
         if (obj) vars['job_summary_json'] = JSON.stringify(obj)
-      } catch (e) {
-        /* non-fatal */
-      }
+      } catch { /* non-fatal */ }
     }
 
-    await markTimeline(serviceId, 'worker_stream_vars_fetch_context_end', {
-      taskId,
-    })
+    await markTimeline(serviceId, 'worker_stream_vars_fetch_context_end', { taskId })
 
-    // RAG Logic - Refactored to use specialized retriever
+    // RAG retrieval
     await markTimeline(serviceId, 'worker_stream_vars_logic_start', { taskId })
     try {
       const resumeObj = safeParse(vars['resume_summary_json'])
@@ -163,13 +325,7 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       const topStrengths = strengthKeywords.slice(0, 2)
 
       const rag = await retrieveMatchContext(
-        {
-          jobTitle,
-          mustHaves,
-          niceToHaves,
-          resumeSkills: resumeSkillsArr,
-          topStrengths,
-        },
+        { jobTitle, mustHaves, niceToHaves, resumeSkills: resumeSkillsArr, topStrengths },
         ctx.locale || 'en',
         'job_match'
       )
@@ -187,6 +343,7 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     } finally {
       await markTimeline(serviceId, 'worker_stream_vars_logic_end', { taskId })
     }
+
     return vars
   }
 
@@ -198,148 +355,61 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     const { serviceId, userId, requestId, traceId, taskId } = ctx
     const channel = getChannel(userId, serviceId, taskId)
 
-    // If stream empty and failed
-    if (!execResult.ok && !execResult.data?.raw) {
-      try {
-        await publishEvent(channel, {
-          type: 'status',
-          taskId,
-          code: 'match_failed',
-          status: 'MATCH_FAILED',
-          errorMessage: execResult.error || 'Stream failed',
-          lastUpdatedAt: new Date().toISOString(),
-          stage: 'finalize',
-          requestId,
-          traceId,
-        })
-      } catch (e) {
-        /* best effort */
-      }
-      await txMarkMatchFailed(serviceId, FailureCode.JSON_PARSE_FAILED)
-      await handleRefunds(execResult, variables, serviceId, userId)
-      return
-    }
+    // Step 1: Parse and validate
+    const parseResult = parseAndValidate(execResult, requestId)
 
-    // 1. Parse result
-    let matchJson: any = null
-
-    // Use the robust validator which handles markdown, full-width quotes, and repairs syntax
-    const validation = validateJson(execResult.raw || '', {
-      enableFallback: true, // Allow extract/repair strategies
-      strictMode: false,
-      debug: {
-        reqId: requestId,
-        route: 'worker/match/writeResults',
-      },
-    })
-
-    if (validation.success && validation.data) {
-      matchJson = validation.data
-    } else if (execResult.data && typeof execResult.data === 'object') {
-      // Fallback to structured output if available and validation failed (unlikely if raw exists)
-      matchJson = execResult.data
-    }
-
-    // Log validation result for observability
-    if (!matchJson) {
+    if (!parseResult.ok) {
+      const failure = parseResult as ParseFailure
       logError({
         reqId: requestId,
         route: 'worker/match',
-        error: validation.error || 'No JSON extracted',
-        phase: 'json_parse',
+        error: failure.reason,
+        phase: 'parse_validate',
         serviceId,
+        failureCode: failure.failureCode,
         rawLength: (execResult.raw || '').length,
         rawPreview: (execResult.raw || '').slice(0, 500),
       })
-    }
-
-    // Sanity Check: Detect logic failure (garbage output or placeholder complaint)
-    let logicFailed = false
-    let logicFailureReason = ''
-
-    if (!matchJson) {
-      logicFailed = true
-      logicFailureReason = 'json_parse_failed'
-    } else {
-      // Check for failure indicators in content
-      // 1. Score is 0 and assessment contains failure keywords
-      const score = Number(matchJson.match_score ?? matchJson.score ?? 0)
-      const assessment = String(
-        matchJson.overall_assessment ?? ''
-      ).toLowerCase()
-      const strengths = Array.isArray(matchJson.strengths)
-        ? matchJson.strengths
-        : []
-
-      const failureKeywords = [
-        'placeholder',
-        'missing input',
-        '无法完成',
-        '占位符',
-        'input data',
-        'invalid',
-      ]
-      const hasFailureKeyword = failureKeywords.some((k) =>
-        assessment.includes(k)
-      )
-
-      // 2. Empty content (ghost response)
-      const isEmpty = strengths.length === 0 && assessment.length < 5
-
-      if (hasFailureKeyword || (score === 0 && isEmpty)) {
-        logicFailed = true
-        logicFailureReason = 'llm_logic_refusal'
-      }
-
-      // 3. Check for unreplaced variables in output (leakage)
-      const rawStr = JSON.stringify(matchJson)
-      if (rawStr.includes('{{') && rawStr.includes('}}')) {
-        logicFailed = true
-        logicFailureReason = 'template_leakage'
-      }
-    }
-
-    if (logicFailed) {
-      // Mark as failed to trigger refund
+      await publishFailure(channel, serviceId, taskId, requestId, traceId, failure.failureCode, failure.reason)
       execResult.ok = false
-      execResult.error = logicFailureReason
-
-      try {
-        await publishEvent(channel, {
-          type: 'status',
-          taskId,
-          code: 'match_failed',
-          status: 'MATCH_FAILED',
-          errorMessage: 'Analysis failed: ' + logicFailureReason,
-          lastUpdatedAt: new Date().toISOString(),
-          stage: 'finalize',
-          requestId,
-          traceId,
-        })
-      } catch (e) {
-        /* best effort */
-      }
-
-      await txMarkMatchFailed(serviceId, FailureCode.JSON_PARSE_FAILED)
+      execResult.error = failure.reason
       await handleRefunds(execResult, variables, serviceId, userId)
       return
     }
 
-    // Success (even partial stream is considered success for match)
-    // Pass matchJson to be saved in DB
+    const matchJson = parseResult.data
+
+    // Step 2: Detect logic failures (placeholder, leakage, empty)
+    const logicFailure = detectLogicFailure(matchJson)
+
+    if (logicFailure) {
+      logError({
+        reqId: requestId,
+        route: 'worker/match',
+        error: logicFailure.reason,
+        phase: 'logic_check',
+        serviceId,
+        failureCode: logicFailure.failureCode,
+      })
+      await publishFailure(channel, serviceId, taskId, requestId, traceId, logicFailure.failureCode, logicFailure.reason)
+      execResult.ok = false
+      execResult.error = logicFailure.reason
+      await handleRefunds(execResult, variables, serviceId, userId)
+      return
+    }
+
+    // Step 3: Success - save and notify
     await txMarkMatchCompleted(serviceId, matchJson)
 
     try {
-      if (matchJson) {
-        await publishEvent(channel, {
-          type: 'match_result',
-          taskId,
-          json: matchJson,
-          stage: 'match_done',
-          requestId,
-          traceId,
-        })
-      }
+      await publishEvent(channel, {
+        type: 'match_result',
+        taskId,
+        json: matchJson,
+        stage: 'match_done',
+        requestId,
+        traceId,
+      })
       await publishEvent(channel, {
         type: 'status',
         taskId,
@@ -350,74 +420,8 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
         requestId,
         traceId,
       })
-    } catch (e) {
-      /* best effort */
-    }
-
-    if (!execResult.ok && execResult.data?.raw) {
-      // It was a partial success or parsing error but we have raw data
-      // We considered it completed above, but log it
-      logError({
-        reqId: requestId,
-        route: 'worker/match',
-        error: execResult.error || 'Partial success',
-        phase: 'match_partial',
-        serviceId,
-      })
-    }
+    } catch { /* best effort */ }
 
     await handleRefunds(execResult, variables, serviceId, userId)
-  }
-}
-
-function safeParse(jsonStr: any) {
-  if (typeof jsonStr !== 'string') return null
-  try {
-    return JSON.parse(jsonStr)
-  } catch {
-    return null
-  }
-}
-
-function asStringArray(arr: any): string[] {
-  if (Array.isArray(arr)) return arr.map(String)
-  return []
-}
-
-async function handleRefunds(
-  execResult: ExecutionResult,
-  variables: JobMatchVars,
-  serviceId: string,
-  userId: string
-) {
-  if (
-    !execResult.ok &&
-    variables.wasPaid &&
-    variables.cost &&
-    variables.debitId
-  ) {
-    try {
-      await recordRefund({
-        userId,
-        serviceId,
-        amount: Number(variables.cost),
-        metadata: { reason: 'match_failed' },
-        relatedId: String(variables.debitId),
-      })
-    } catch (e) {
-      logError({
-        reqId: 'refund_error',
-        route: 'worker/match',
-        error: String(e),
-        phase: 'refund',
-        serviceId,
-      })
-    }
-    // Fix: Mark debit as FAILED when refunding
-    try {
-      await markDebitFailed(String(variables.debitId))
-    } catch (e) {
-      /* best effort */
-    }
   }
 }

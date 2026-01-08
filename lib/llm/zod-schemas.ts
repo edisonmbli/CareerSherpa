@@ -188,15 +188,12 @@ const detailedResumeV3Schema = z
     { message: 'empty_detailed_resume_summary' }
   )
 
-const jobSummarySchema = z.union([
-  z.object({
-    jobTitle: z.string(),
-    company: z.string().optional(),
-    mustHaves: z.array(z.string()).min(1),
-    niceToHaves: z.array(z.string()).min(1),
-  }),
-  z.object({ markdown: z.string().min(1) }),
-])
+const jobSummarySchema = z.object({
+  jobTitle: z.string(),
+  company: z.string().optional(),
+  mustHaves: z.array(z.string()).min(1),
+  niceToHaves: z.array(z.string()).min(1),
+})
 
 // V2：新设计任务（match/customize/interview）
 const jobMatchSchema = z.object({

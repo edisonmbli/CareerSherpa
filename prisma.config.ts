@@ -1,4 +1,8 @@
 import { defineConfig } from 'prisma/config'
+import { config } from 'dotenv'
+
+// 加载 .env.local 文件（Next.js 风格的环境变量）
+config({ path: '.env.local' })
 
 export default defineConfig({
   experimental: { externalTables: true },

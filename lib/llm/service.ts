@@ -8,7 +8,7 @@ import {
   SystemMessagePromptTemplate,
   HumanMessagePromptTemplate,
 } from '@langchain/core/prompts'
-import { SystemMessage, HumanMessage } from '@langchain/core/messages'
+import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
 import { getTaskSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
@@ -16,6 +16,12 @@ import { getProvider, getCost } from '@/lib/llm/utils'
 import { glmEmbeddingProvider } from '@/lib/llm/embeddings'
 import { ENV } from '@/lib/env'
 import { getTaskLimits } from '@/lib/llm/config'
+import { executeWithSmartRetry, getTierFromModelId } from '@/lib/llm/retry'
+import { shouldUseStructuredOutput } from '@/lib/llm/capability'
+import {
+  extractTokenUsageFromMessage,
+  extractTokenUsageFromModel,
+} from '@/lib/llm/usage-extractor'
 
 export interface RunTaskOptions {
   tier?: 'free' | 'paid'
@@ -61,9 +67,13 @@ export interface RunEmbeddingResult {
 function renderVariables(template: string, variables: Record<string, string>) {
   let rendered = template
   for (const [key, val] of Object.entries(variables)) {
-    // 支持 {{var}} 与 {{ var }} 两种写法
-    const pattern = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
-    rendered = rendered.replace(pattern, val ?? '')
+    // Support both {{var}}, {{ var }}, {var}, and { var } syntax
+    // Double braces (legacy/LangChain convention)
+    const doubleBracePattern = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
+    rendered = rendered.replace(doubleBracePattern, val ?? '')
+    // Single braces (common in templates)
+    const singleBracePattern = new RegExp(`{${key}}`, 'g')
+    rendered = rendered.replace(singleBracePattern, val ?? '')
   }
   return rendered
 }
@@ -110,44 +120,7 @@ interface TaskContext {
   serviceId?: string
 }
 
-// Robust token usage extraction helpers for heterogeneous providers
-function extractTokenUsageFromMessage(msg: any) {
-  const usage =
-    msg?.response_metadata?.tokenUsage ||
-    msg?.response_metadata?.token_usage ||
-    msg?.additional_kwargs?.usage ||
-    msg?.metadata?.usage
-
-  const inputTokens =
-    usage?.prompt_tokens ?? usage?.input_tokens ?? usage?.promptTokens ?? 0
-  const outputTokens =
-    usage?.completion_tokens ??
-    usage?.output_tokens ??
-    usage?.completionTokens ??
-    0
-  return {
-    inputTokens: Number(inputTokens) || 0,
-    outputTokens: Number(outputTokens) || 0,
-  }
-}
-
-function extractTokenUsageFromModel(model: any) {
-  const usage =
-    model?.lc_serializable?.tokenUsage ||
-    model?.lc_serializable?.token_usage ||
-    model?.tokenUsage
-  const inputTokens =
-    usage?.promptTokens ?? usage?.prompt_tokens ?? usage?.input_tokens ?? 0
-  const outputTokens =
-    usage?.completionTokens ??
-    usage?.completion_tokens ??
-    usage?.output_tokens ??
-    0
-  return {
-    inputTokens: Number(inputTokens) || 0,
-    outputTokens: Number(outputTokens) || 0,
-  }
-}
+// Token usage extraction helpers moved to @/lib/llm/usage-extractor
 
 /**
  * 生成单条文本的嵌入，统一入口与日志记录
@@ -332,41 +305,161 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       (String(templateId) === 'ocr_extract' || String(templateId) === 'job_vision_summary') &&
       typeof variables['image'] === 'string' &&
       variables['image']
-    const aiMessage: any = hasVisionImage
-      ? await model.invoke([
-        new SystemMessage(template.systemPrompt),
-        new SystemMessage(
-          `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`
-        ),
-        new HumanMessage({
-          content: [
-            {
-              type: 'text',
-              text: renderVariables((template as any).userPrompt, {
-                ...variables,
-                image: '[attached]',
-              }),
-            },
-            {
-              type: 'image_url',
-              image_url: { url: String(variables['image']) },
-            },
-          ],
-        }),
-      ])
-      : await chain.invoke(variables)
-    const { inputTokens, outputTokens } =
-      extractTokenUsageFromMessage(aiMessage)
 
-    const content: string =
-      (aiMessage as any)?.content ?? (aiMessage as any)?.text ?? ''
+    // Determine tier for smart retry strategy
+    const tier = getTierFromModelId(modelId)
+    const retryContext = {
+      templateId: String(templateId),
+      modelId,
+      serviceId: context.serviceId,
+      userId: context.userId,
+    }
+
+    // Generic Hybrid Result Strategy
+    // Supports both 'withStructuredOutput' (future standard) and 'message' (legacy/other providers)
+    // Capability and schema checks are now in @/lib/llm/capability.ts
+    const schema = getTaskSchema(templateId)
+    const useStructuredOutput = shouldUseStructuredOutput(modelId, schema)
+
+    // Execute with tier-aware smart retry
+    const result: any = await executeWithSmartRetry(
+      async () => {
+        if (useStructuredOutput) {
+          // Case A: Modern Structured Output (Provider Agnostic)
+          // We use includeRaw to get token usage, compatible with Generic Hybrid Strategy
+          const structuredModel = (model as any).withStructuredOutput(schema, {
+            includeRaw: true,
+          })
+
+          // Build message array dynamically based on vision presence
+          const messages: BaseMessage[] = [
+            new SystemMessage(template.systemPrompt),
+          ]
+
+          if (hasVisionImage) {
+            messages.push(new HumanMessage({
+              content: [
+                {
+                  type: 'text',
+                  text: renderVariables((template as any).userPrompt, {
+                    ...variables,
+                    image: '[attached]',
+                  }),
+                },
+                {
+                  type: 'image_url',
+                  image_url: { url: String(variables['image']) },
+                },
+              ],
+            }))
+          } else {
+            messages.push(new HumanMessage(renderVariables((template as any).userPrompt, variables)))
+          }
+
+          return structuredModel.invoke(messages)
+        }
+
+        // Case B: Legacy/Standard Provider Path (e.g. Zhipu GLM)
+        if (hasVisionImage) {
+          // Standardize message structure: separate system prompt and schema instruction
+          // This aligns with how ChatPromptTemplate is constructed for text tasks
+          // and relies on the model's ability to handle multiple system messages (common in modern providers)
+          const legacyMessages: BaseMessage[] = [
+            new SystemMessage(template.systemPrompt),
+            new SystemMessage(`You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`)
+          ]
+
+          legacyMessages.push(new HumanMessage({
+            content: [
+              {
+                type: 'text',
+                text: renderVariables((template as any).userPrompt, {
+                  ...variables,
+                  image: '[attached]',
+                }),
+              },
+              {
+                type: 'image_url',
+                image_url: { url: String(variables['image']) },
+              },
+            ],
+          }))
+
+          return model.invoke(legacyMessages)
+        }
+
+        // Standard Text Task (Legacy)
+        return chain.invoke(variables)
+      },
+      tier,
+      retryContext
+    )
+
+    // Hybrid Result Processing
+    let content: string = ''
+    let inputTokens = 0
+    let outputTokens = 0
+    let parsedData: any = null
+    let preValidated = false
+
+    // Case A: Structured Output ({ parsed, raw })
+    if (result && typeof result === 'object' && 'parsed' in result && 'raw' in result) {
+      parsedData = result.parsed
+      preValidated = true
+      content = JSON.stringify(result.parsed) // Serialize for log/raw return
+      const usage = extractTokenUsageFromMessage(result.raw)
+      inputTokens = usage.inputTokens
+      outputTokens = usage.outputTokens
+    }
+    // Case B: Legacy/Standard Message (AIMessage / BaseMessage)
+    else {
+      const aiMessage = result
+      const usage = extractTokenUsageFromMessage(aiMessage)
+      inputTokens = usage.inputTokens
+      outputTokens = usage.outputTokens
+      content = (aiMessage as any)?.content ?? (aiMessage as any)?.text ?? ''
+    }
 
     // Debug Log: Output
     logDebugData(`${String(templateId)}_output`, {
       output: content,
       latencyMs: Date.now() - start,
-      meta: { inputTokens, outputTokens },
+      meta: { inputTokens, outputTokens, mode: preValidated ? 'structured' : 'legacy' },
     })
+
+    // Validation Flow
+    // If preValidated (StructuredOutput), we skip validateJson/safeParse because it's already done
+    if (preValidated) {
+      // Just need to handle logging
+      const log = await createLlmUsageLogDetailed({
+        taskTemplateId: templateId,
+        provider: getProvider(modelId),
+        modelId,
+        inputTokens,
+        outputTokens,
+        latencyMs: Date.now() - start,
+        cost: getCost(modelId, inputTokens, outputTokens),
+        isStream: false,
+        isSuccess: true,
+        ...(context.userId ? { userId: context.userId } : {}),
+        ...(context.serviceId ? { serviceId: context.serviceId } : {}),
+      })
+
+      return {
+        ok: true,
+        data: parsedData as TaskOutput<T>,
+        raw: content,
+        usage: {
+          inputTokens,
+          outputTokens,
+          totalTokens: inputTokens + outputTokens,
+          cost: getCost(modelId, inputTokens, outputTokens),
+          model: modelId,
+          provider: getProvider(modelId),
+        },
+        usageLogId: (log as any)?.id // M5: Return unified usage log ID
+      } as RunLlmTaskResult<T>
+    }
 
     const parsed = validateJson(content)
     if (!parsed.success || !parsed.data) {
@@ -392,7 +485,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       }
     }
 
-    const schema = getTaskSchema(templateId)
+    // Already have `schema` from above, reuse it
     const safe = schema.safeParse(parsed.data)
     const ok = safe.success
 
@@ -459,7 +552,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         model: modelId,
         provider: getProvider(modelId),
       },
-      usageLogId: (log as any)?.id,
+      usageLogId: (log as any)?.id, // M5: Return unified usage log ID
     }
   } catch (error) {
     const log = await createLlmUsageLogDetailed({

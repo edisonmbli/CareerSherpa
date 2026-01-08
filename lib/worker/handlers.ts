@@ -185,10 +185,16 @@ export async function handleStream(
         })
       }
 
+      // Phase-based error handling to prevent duplicate writeResults calls
+      type StreamPhase = 'LLM_EXECUTE' | 'WRITE_RESULTS' | 'CLEANUP'
+      let phase: StreamPhase = 'LLM_EXECUTE'
+      let execResult: Awaited<ReturnType<typeof executeStreaming>> | null = null
+
       try {
-        // 4. Execute
+        // Phase 1: LLM Execution
+        phase = 'LLM_EXECUTE'
         await markTimeline(serviceId, 'worker_stream_llm_start', { taskId })
-        const execResult = await executeStreaming(
+        execResult = await executeStreaming(
           decision.modelId,
           templateId,
           locale,
@@ -201,10 +207,13 @@ export async function handleStream(
           latencyMs: execResult.latencyMs,
         })
 
-        // 5. Write Results
-        await markTimeline(serviceId, 'worker_stream_finalize_start', {
-          taskId,
-        })
+        // Debug: Log phase transition and raw content
+        console.log(`[Stream] Phase: LLM_EXECUTE complete, raw length: ${execResult.result.raw?.length ?? 0}`)
+
+        // Phase 2: Write Results
+        phase = 'WRITE_RESULTS'
+        await markTimeline(serviceId, 'worker_stream_finalize_start', { taskId })
+        console.log(`[Stream] Phase: WRITE_RESULTS starting`)
         await strategy.writeResults(execResult.result, preparedVars, {
           serviceId,
           userId,
@@ -213,6 +222,11 @@ export async function handleStream(
           traceId,
           taskId,
         })
+        console.log(`[Stream] Phase: WRITE_RESULTS complete`)
+
+        // Phase 3: Cleanup (non-critical)
+        phase = 'CLEANUP'
+        console.log(`[Stream] Phase: CLEANUP starting`)
         await emitStreamIdle(
           channel,
           taskId,
@@ -230,37 +244,75 @@ export async function handleStream(
           taskId
         )
         await markTimeline(serviceId, 'worker_stream_finalize_end', { taskId })
+        console.log(`[Stream] Phase: CLEANUP complete`)
 
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
-        await publishEvent(channel, {
-          type: 'error',
-          taskId,
-          code: 'llm_error',
-          error: error instanceof Error ? error.message : String(error),
-          // NOTE: modelId and provider are intentionally omitted for security
-          stage: 'invoke_or_stream',
-          requestId,
-          traceId,
-        })
-        // Strategy writeResults might handle partial failure if needed, or we assume cleanup is enough
-        // We should probably call writeResults with error result
-        await strategy.writeResults(
-          { ok: false, error: String(error) },
-          preparedVars,
-          {
-            serviceId,
-            userId,
-            locale: locale as string,
-            requestId,
-            traceId,
-            taskId,
-          }
-        )
-        return Response.json(
-          { ok: false, error: String(error) },
-          { status: 500 }
-        )
+        const errMsg = error instanceof Error ? error.message : String(error)
+        console.log(`[Stream] Error in phase: ${phase}, error: ${errMsg}`)
+
+        // Handle based on which phase failed
+        switch (phase) {
+          case 'LLM_EXECUTE':
+            // LLM failed, writeResults not yet called → call it with error
+            logError({
+              reqId: requestId,
+              route: 'worker/stream',
+              error: errMsg,
+              phase: 'llm_execute_failed',
+              serviceId,
+            })
+            await publishEvent(channel, {
+              type: 'error',
+              taskId,
+              code: 'llm_error',
+              error: errMsg,
+              stage: 'invoke_or_stream',
+              requestId,
+              traceId,
+            })
+            await strategy.writeResults(
+              { ok: false, error: errMsg },
+              preparedVars,
+              { serviceId, userId, locale: locale as string, requestId, traceId, taskId }
+            )
+            break
+
+          case 'WRITE_RESULTS':
+            // writeResults failed → just log, don't re-call (data already attempted)
+            logError({
+              reqId: requestId,
+              route: 'worker/stream',
+              error: errMsg,
+              phase: 'writeResults_failed',
+              serviceId,
+              rawLength: execResult?.result?.raw?.length ?? 0,
+            })
+            await publishEvent(channel, {
+              type: 'error',
+              taskId,
+              code: 'finalize_error',
+              error: errMsg,
+              stage: 'finalize',
+              requestId,
+              traceId,
+            })
+            break
+
+          case 'CLEANUP':
+            // Cleanup failed → non-critical, data already persisted
+            logError({
+              reqId: requestId,
+              route: 'worker/stream',
+              error: errMsg,
+              phase: 'cleanup_failed',
+              serviceId,
+            })
+            // Still return success since data was persisted
+            return Response.json({ ok: true, warning: 'cleanup_failed' })
+        }
+
+        return Response.json({ ok: false, error: errMsg }, { status: 500 })
       }
     }
   )
@@ -389,8 +441,13 @@ export async function handleBatch(
         })
       }
 
+      // Phase-based error handling (same pattern as handleStream)
+      type BatchPhase = 'LLM_EXECUTE' | 'WRITE_RESULTS' | 'CLEANUP'
+      let phase: BatchPhase = 'LLM_EXECUTE'
+
       try {
-        // 4. Execute
+        // Phase 1: Execute
+        phase = 'LLM_EXECUTE'
         await markTimeline(serviceId, 'worker_batch_llm_start', { taskId })
 
         // Phase 1.5: Skip LLM if Baidu OCR was already used (Paid tier OCR bypass)
@@ -431,8 +488,12 @@ export async function handleBatch(
           latencyMs: execResult.latencyMs,
         })
 
-        // 5. Write Results
+        console.log(`[Batch] Phase: LLM_EXECUTE complete`)
+
+        // Phase 2: Write Results
+        phase = 'WRITE_RESULTS'
         await markTimeline(serviceId, 'worker_batch_finalize_start', { taskId })
+        console.log(`[Batch] Phase: WRITE_RESULTS starting`)
         await strategy.writeResults(execResult.result, preparedVars, {
           serviceId,
           userId,
@@ -441,7 +502,11 @@ export async function handleBatch(
           traceId,
           taskId,
         })
+        console.log(`[Batch] Phase: WRITE_RESULTS complete`)
 
+        // Phase 3: Cleanup
+        phase = 'CLEANUP'
+        console.log(`[Batch] Phase: CLEANUP starting`)
         await cleanupFinal(
           decision.modelId,
           String(decision.queueId),
@@ -452,29 +517,55 @@ export async function handleBatch(
           taskId
         )
         await markTimeline(serviceId, 'worker_batch_finalize_end', { taskId })
+        console.log(`[Batch] Phase: CLEANUP complete`)
 
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
-        logError({
-          reqId: requestId,
-          route: 'worker/batch',
-          error: String(error),
-          phase: 'execute_failed',
-          serviceId,
-          templateId,
-        })
-        await strategy.writeResults(
-          { ok: false, error: String(error) },
-          preparedVars,
-          {
-            serviceId,
-            userId,
-            locale: locale as string,
-            requestId,
-            traceId,
-            taskId,
-          }
-        )
+        const errMsg = error instanceof Error ? error.message : String(error)
+        console.log(`[Batch] Error in phase: ${phase}, error: ${errMsg}`)
+
+        switch (phase) {
+          case 'LLM_EXECUTE':
+            // LLM failed, call writeResults with error
+            logError({
+              reqId: requestId,
+              route: 'worker/batch',
+              error: errMsg,
+              phase: 'llm_execute_failed',
+              serviceId,
+              templateId,
+            })
+            await strategy.writeResults(
+              { ok: false, error: errMsg },
+              preparedVars,
+              { serviceId, userId, locale: locale as string, requestId, traceId, taskId }
+            )
+            break
+
+          case 'WRITE_RESULTS':
+            // writeResults failed → just log
+            logError({
+              reqId: requestId,
+              route: 'worker/batch',
+              error: errMsg,
+              phase: 'writeResults_failed',
+              serviceId,
+              templateId,
+            })
+            break
+
+          case 'CLEANUP':
+            // Cleanup failed → non-critical
+            logError({
+              reqId: requestId,
+              route: 'worker/batch',
+              error: errMsg,
+              phase: 'cleanup_failed',
+              serviceId,
+            })
+            return Response.json({ ok: true, warning: 'cleanup_failed' })
+        }
+
         return new Response('internal_error', { status: 500 })
       }
     }

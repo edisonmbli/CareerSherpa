@@ -80,7 +80,9 @@ export async function pushTask<T extends TaskTemplateId>(
   const { shouldUseFreeQueue } = quotaInfo
 
   // Phase 1.5: Check daily rate limit for Free tier (Gemini calls)
-  if (shouldUseFreeQueue) {
+  // Use `!hasQuota` to respect explicit tierOverride === 'paid'
+  // Note: If !hasQuota, this is definitively Free tier, so no refund logic needed
+  if (!hasQuota) {
     const dailyRate = await checkDailyRateLimit(params.userId, 'free')
     if (!dailyRate.ok) {
       logAudit(params.userId, 'daily_rate_limited', 'task', params.taskId, {

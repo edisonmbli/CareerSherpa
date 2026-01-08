@@ -144,16 +144,26 @@ export async function checkRateLimit(
         upstashRate(key, limit, windowSec),
         UPSTASH_TIMEOUT_MS
       )
+      // Debug logging for development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[RateLimit:checkRateLimit]', { route, identity, isTrial, limit, key, result })
+      }
       return result
     } catch (e) {
       console.warn(
         `[RateLimit] Upstash latency high (${key}), failing over to local memory strategy.`
       )
-      return memoryRate(key, limit, windowSec)
+      const fallbackResult = memoryRate(key, limit, windowSec)
+      console.log('[RateLimit:memoryFallback]', { key, limit, fallbackResult })
+      return fallbackResult
     }
   }
 
   const result = memoryRate(key, limit, windowSec)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[RateLimit:memoryOnly]', { key, limit, result })
+  }
   return result
 }
+
 
