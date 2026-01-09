@@ -45,7 +45,6 @@ export {
   securityMiddleware,
   extractSecurityContext,
   validateRequestHeaders,
-  applyRateLimit,
   validateUserAuth,
   validateCSRFToken,
   getCSPHeaders,
@@ -84,9 +83,9 @@ export const SecurityUtils = {
     try {
       return validateFileUpload(file, fileType)
     } catch (error) {
-      return { 
-        valid: false, 
-        error: error instanceof Error ? error.message : 'File validation failed' 
+      return {
+        valid: false,
+        error: error instanceof Error ? error.message : 'File validation failed'
       }
     }
   },

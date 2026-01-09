@@ -144,8 +144,10 @@ export function extractJsonFromText(text: string): string {
 
 /**
  * Normalize quotes and repair unescaped quotes within strings
- * Replaces smart quotes/single quotes with double quotes for structure
- * Escapes quotes that appear to be content
+ * 
+ * IMPORTANT: Only ASCII double quotes (") are treated as JSON structural delimiters.
+ * Smart/curly quotes (", ", ') are always kept as-is within string content.
+ * This prevents Chinese text like "业务-IT-产品" from breaking JSON parsing.
  */
 export function fixQuotesInStrings(text: string): string {
   let result = ''
@@ -170,15 +172,10 @@ export function fixQuotesInStrings(text: string): string {
       continue
     }
 
-    // Check for any quote-like character
-    if (
-      char === '"' ||
-      char === "'" ||
-      char === '\u201C' ||
-      char === '\u201D'
-    ) {
+    // Only ASCII double quote is a JSON structural delimiter
+    if (char === '"') {
       if (!inString) {
-        // Start of string - always normalize to double quote
+        // Start of JSON string
         inString = true
         result += '"'
       } else {
@@ -192,16 +189,19 @@ export function fixQuotesInStrings(text: string): string {
           inString = false
           result += '"'
         } else {
-          // It's a quote inside the string (content)
-          if (char === '"') {
-            // Double quotes must be escaped
-            result += '\\"'
-          } else {
-            // Other quotes (single/smart) can stay as is
-            result += char
-          }
+          // It's an unescaped quote inside the string - escape it
+          result += '\\"'
         }
       }
+    } else if (inString && (char === '\u201C' || char === '\u201D' || char === "'")) {
+      // Smart quotes and single quotes inside strings: keep as-is
+      // These are content, not JSON structure
+      result += char
+    } else if (!inString && (char === '\u201C' || char === '\u201D')) {
+      // Smart quotes outside strings - LLM used wrong quote type for JSON structure
+      // Convert to ASCII double quote
+      inString = (char === '\u201C') // Opening smart quote starts string
+      result += '"'
     } else {
       result += char
     }
@@ -210,6 +210,7 @@ export function fixQuotesInStrings(text: string): string {
 
   return result
 }
+
 
 export function escapeControlCharsInStrings(text: string): string {
   let result = ''

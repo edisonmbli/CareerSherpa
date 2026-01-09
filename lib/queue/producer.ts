@@ -4,7 +4,6 @@ import { addQuota } from '@/lib/dal/quotas'
 import { ENV } from '@/lib/env'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId, VariablesFor } from '@/lib/prompts/types'
-import { checkRateLimit, checkDailyRateLimit } from '@/lib/rateLimiter'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import {
   checkIdempotency,
@@ -76,115 +75,9 @@ export async function pushTask<T extends TaskTemplateId>(
     params.serviceId
   )}`
 
-  // Check quota to decide trial/bound rate limits
+  // Check quota to decide trial/bound rate limits (for queue routing only)
+  // Note: Rate limiting is now done at the server action level (user-centric)
   const { shouldUseFreeQueue } = quotaInfo
-
-  // Phase 1.5: Check daily rate limit for Free tier (Gemini calls)
-  // Use `!hasQuota` to respect explicit tierOverride === 'paid'
-  // Note: If !hasQuota, this is definitively Free tier, so no refund logic needed
-  if (!hasQuota) {
-    const dailyRate = await checkDailyRateLimit(params.userId, 'free')
-    if (!dailyRate.ok) {
-      logAudit(params.userId, 'daily_rate_limited', 'task', params.taskId, {
-        serviceId: params.serviceId,
-        templateId: params.templateId,
-        kind: params.kind,
-        retryAfter: dailyRate.retryAfter,
-      })
-      logEvent(
-        'TASK_RATE_LIMITED',
-        {
-          userId: params.userId,
-          serviceId: params.serviceId,
-          taskId: params.taskId,
-        },
-        {
-          templateId: params.templateId,
-          kind: params.kind,
-          retryAfter: dailyRate.retryAfter,
-          reason: 'daily_limit_exceeded',
-        }
-      )
-      await markTimeline(params.serviceId, 'producer_daily_limited', {
-        taskId: params.taskId,
-        retryAfter: dailyRate.retryAfter,
-      })
-      return {
-        url,
-        rateLimited: true,
-        ...(typeof dailyRate.retryAfter === 'number'
-          ? { retryAfter: dailyRate.retryAfter }
-          : {}),
-        error: 'daily_limit_exceeded',
-      }
-    }
-  }
-
-  const rate = await checkRateLimit(
-    'pushTask',
-    params.userId,
-    shouldUseFreeQueue
-  )
-  if (!rate.ok) {
-    // Audit and early return on rate limiting
-    logAudit(params.userId, 'rate_limited', 'task', params.taskId, {
-      serviceId: params.serviceId,
-      templateId: params.templateId,
-      kind: params.kind,
-      retryAfter: rate.retryAfter,
-    })
-    // Analytics: producer-side rate limiting (non-blocking)
-    logEvent(
-      'TASK_RATE_LIMITED',
-      {
-        userId: params.userId,
-        serviceId: params.serviceId,
-        taskId: params.taskId,
-      },
-      {
-        templateId: params.templateId,
-        kind: params.kind,
-        retryAfter: rate.retryAfter,
-      }
-    )
-    const wasPaid = !!params.variables.wasPaid
-    const cost = Number(params.variables.cost || 0)
-    const debitId = String((params.variables as any)?.debitId || '')
-    if (wasPaid && cost > 0 && debitId) {
-      const ledgerServiceId = isServiceScoped(params.templateId)
-        ? params.serviceId
-        : undefined
-      try {
-        await recordRefund({
-          userId: params.userId,
-          amount: cost,
-          relatedId: debitId,
-          ...(ledgerServiceId ? { serviceId: ledgerServiceId } : {}),
-          templateId: params.templateId,
-        })
-      } catch (err) {
-        logError({
-          reqId: params.taskId,
-          route: 'pushTask',
-          error: String(err),
-          phase: 'refund_rate_limit',
-        })
-      }
-    }
-    await markTimeline(params.serviceId, 'producer_rate_limited', {
-      taskId: params.taskId,
-      retryAfter: rate.retryAfter,
-    })
-    return {
-      url,
-      rateLimited: true,
-      refunded: wasPaid && cost > 0,
-      ...(typeof rate.retryAfter === 'number'
-        ? { retryAfter: rate.retryAfter }
-        : {}),
-      error: 'rate_limited',
-    }
-  }
 
   // Map template to idempotency step when applicable
   const TEMPLATE_TO_STEP: Partial<Record<TaskTemplateId, IdempotencyStep>> = {

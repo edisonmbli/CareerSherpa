@@ -1,17 +1,16 @@
 /**
  * Security Middleware
- * Request validation, rate limiting, and security checks
+ * Request validation and security checks
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { checkRateLimit } from '@/lib/rateLimiter'
 import { SECURITY_CONFIG } from './config'
-import { createSecurityAuditLog, generateRateLimitKey } from './validation'
+import { createSecurityAuditLog } from './validation'
 import { logError, logInfo } from '@/lib/logger'
 
 // Edge Runtime compatible UUID generation
 function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0
     const v = c === 'x' ? r : (r & 0x3 | 0x8)
     return v.toString(16)
@@ -57,7 +56,7 @@ export function validateRequestHeaders(req: NextRequest): { valid: boolean; erro
   // Check for required security headers in production
   if (process.env.NODE_ENV === 'production') {
     const requiredHeaders = ['user-agent', 'accept']
-    
+
     for (const header of requiredHeaders) {
       if (!headers.get(header)) {
         return { valid: false, error: `Missing required header: ${header}` }
@@ -103,54 +102,6 @@ export function validateRequestHeaders(req: NextRequest): { valid: boolean; erro
 }
 
 /**
- * Apply rate limiting based on route and user
- */
-export async function applyRateLimit(context: SecurityContext): Promise<{ allowed: boolean; error?: string }> {
-  const { userKey, route, method, reqId } = context
-
-  try {
-    const rateLimit = await checkRateLimit(route, userKey, false)
-
-    if (!rateLimit.ok) {
-      // Log rate limit violation
-      const auditLog = createSecurityAuditLog(
-        userKey,
-        'rate_limit_exceeded',
-        false,
-        { route, method, retryAfter: rateLimit.retryAfter }
-      )
-      
-      logError({
-        reqId,
-        route,
-        userKey,
-        phase: 'rate_limit',
-        error: 'Rate limit exceeded',
-        auditLog
-      })
-
-      return { 
-        allowed: false, 
-        error: `Rate limit exceeded. Try again in ${rateLimit.retryAfter || 300} seconds.` 
-      }
-    }
-
-    return { allowed: true }
-  } catch (error) {
-    logError({
-      reqId,
-      route,
-      userKey,
-      phase: 'rate_limit_check',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    })
-
-    // Allow request if rate limiting fails (fail open)
-    return { allowed: true }
-  }
-}
-
-/**
  * Validate user authentication and authorization
  */
 export function validateUserAuth(context: SecurityContext): { authorized: boolean; error?: string } {
@@ -162,17 +113,17 @@ export function validateUserAuth(context: SecurityContext): { authorized: boolea
 
   // Check if user key is provided
   if (!userKey || userKey === 'anonymous') {
-    return { 
-      authorized: false, 
-      error: 'Authentication required. Please provide a valid user key.' 
+    return {
+      authorized: false,
+      error: 'Authentication required. Please provide a valid user key.'
     }
   }
 
   // Validate user key format (basic validation)
   if (userKey.length < 3 || userKey.length > 100) {
-    return { 
-      authorized: false, 
-      error: 'Invalid user key format.' 
+    return {
+      authorized: false,
+      error: 'Invalid user key format.'
     }
   }
 
@@ -202,9 +153,9 @@ export function validateUserAuth(context: SecurityContext): { authorized: boolea
         auditLog
       })
 
-      return { 
-        authorized: false, 
-        error: 'Invalid user key format.' 
+      return {
+        authorized: false,
+        error: 'Invalid user key format.'
       }
     }
   }
@@ -236,11 +187,11 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
         phase: 'header_validation',
         auditLog
       } as any
-      
+
       if (headerValidation.error !== undefined) {
         logPayload.error = headerValidation.error
       }
-      
+
       logError(logPayload)
 
       return NextResponse.json(
@@ -249,16 +200,7 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
       )
     }
 
-    // 2. Apply rate limiting
-    const rateLimitResult = await applyRateLimit(context)
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: rateLimitResult.error, code: 'RATE_LIMIT_EXCEEDED' },
-        { status: 429 }
-      )
-    }
-
-    // 3. Validate user authentication
+    // 2. Validate user authentication
     const authResult = validateUserAuth(context)
     if (!authResult.authorized) {
       const auditLog = createSecurityAuditLog(
@@ -275,11 +217,11 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
         phase: 'auth_validation',
         auditLog
       } as any
-      
+
       if (authResult.error !== undefined) {
         authLogPayload.error = authResult.error
       }
-      
+
       logError(authLogPayload)
 
       return NextResponse.json(
@@ -326,7 +268,7 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
 export function validateCSRFToken(formData: FormData, expectedOrigin?: string): boolean {
   // Server Actions in Next.js have built-in CSRF protection
   // This is an additional layer for extra security
-  
+
   const token = formData.get('csrf_token') as string
   const origin = formData.get('origin') as string
 

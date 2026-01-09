@@ -199,6 +199,9 @@ const dict = {
       model_too_busy: '当前模型繁忙，请稍后重试',
       job_summary_missing: '缺少岗位要点，无法进行匹配',
       enqueue_failed: '任务入队失败，请稍后重试',
+      // User-centric rate limit messages
+      daily_limit: '今日免费体验次数已用完，充值解锁更深度的定制服务',
+      frequency_limit: '操作太频繁啦，喝杯咖啡休息一下吧 ☕️',
       readyToCustomize: '准备定制简历',
       readyToCustomizeDesc:
         '点击下方“开始定制”按钮，根据岗位要求生成个性化简历。',

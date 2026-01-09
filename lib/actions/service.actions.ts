@@ -2,6 +2,7 @@
 
 import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import { getOrCreateQuota } from '@/lib/dal/quotas'
+import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import {
   recordDebit,
   markDebitSuccess,
@@ -28,6 +29,7 @@ import { ensureEnqueued } from '@/lib/actions/enqueue'
 import { acquireLock } from '@/lib/redis/lock'
 import { ENV } from '@/lib/env'
 import { trackEvent } from '@/lib/analytics/index'
+import { checkOperationRateLimit } from '@/lib/rateLimiter'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
@@ -89,9 +91,19 @@ export const createServiceAction = withServerActionAuthWrite(
       imageUrl = uploadResult.imageUrl
     }
 
-    // 1. 获取最新简历
+    // 1. Check quota first to determine tier
+    const quotaInfo = await checkQuotaForService(userId)
+    const isPaidTier = !quotaInfo.shouldUseFreeQueue
+
+    // 2. User operation rate limit check (early interception)
+    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    if (!rateCheck.ok) {
+      return { ok: false, error: rateCheck.error! }
+    }
+
+    // 3. 获取最新简历
     const resume = await getLatestResume(userId)
-    // 1.1 检查简历是否存在且已完成
+    // 3.1 检查简历是否存在且已完成
     if (!resume || String(resume.status).toUpperCase() !== 'COMPLETED') {
       return { ok: false, error: 'resume_required' } // 如果没有完成的简历，则返回错误
     }
@@ -311,6 +323,17 @@ export const customizeResumeAction = withServerActionAuthWrite<
   'customizeResumeAction',
   async (params: { locale: Locale; serviceId: string }, ctx) => {
     const userId = ctx.userId
+
+    // 1. Check quota to determine tier
+    const quotaInfo = await checkQuotaForService(userId)
+    const isPaidTier = !quotaInfo.shouldUseFreeQueue
+
+    // 2. User operation rate limit check (early interception)
+    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    if (!rateCheck.ok) {
+      return { ok: false, error: rateCheck.error! }
+    }
+
     await getOrCreateQuota(userId)
     const cost = getTaskCost('resume_customize')
 
@@ -412,6 +435,17 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
   'generateInterviewTipsAction',
   async (params: { locale: Locale; serviceId: string }, ctx) => {
     const userId = ctx.userId
+
+    // 1. Check quota to determine tier
+    const quotaInfo = await checkQuotaForService(userId)
+    const isPaidTier = !quotaInfo.shouldUseFreeQueue
+
+    // 2. User operation rate limit check (early interception)
+    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    if (!rateCheck.ok) {
+      return { ok: false, error: rateCheck.error! }
+    }
+
     await getOrCreateQuota(userId)
     const cost = getTaskCost('interview_prep')
 
@@ -504,11 +538,24 @@ export const retryMatchAction = withServerActionAuthWrite<
     | 'previous_summary_failed'
     | 'previous_model_limit'
     | 'enqueue_failed'
+    | 'daily_limit'
+    | 'frequency_limit'
   }
 >(
   'retryMatchAction',
   async (params: { locale: Locale; serviceId: string }, ctx) => {
     const userId = ctx.userId
+
+    // 1. Check quota to determine tier
+    const quotaInfo = await checkQuotaForService(userId)
+    const isPaidTier = !quotaInfo.shouldUseFreeQueue
+
+    // 2. User operation rate limit check (early interception)
+    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    if (!rateCheck.ok) {
+      return { ok: false, error: rateCheck.error! }
+    }
+
     await getOrCreateQuota(userId)
     const cost = getTaskCost('job_match')
     const svc = await getServiceWithContext(params.serviceId)

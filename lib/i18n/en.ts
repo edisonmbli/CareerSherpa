@@ -205,6 +205,9 @@ const dict = {
       model_too_busy: 'Model too busy, please try again later',
       job_summary_missing: 'Missing job summary, cannot match',
       enqueue_failed: 'Failed to enqueue task, try later',
+      // User-centric rate limit messages
+      daily_limit: 'Daily free quota exhausted. Top up for more professional services.',
+      frequency_limit: 'Too many requests! Take a short coffee break ☕️',
       readyToCustomize: 'Ready to Customize',
       readyToCustomizeDesc:
         'Click "Start Customization" below to generate a tailored resume based on the job description.',

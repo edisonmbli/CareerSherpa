@@ -129,9 +129,11 @@ export const ENV = {
   BAIDU_API_KEY: process.env['BAIDU_API_KEY'] ?? '',
   BAIDU_SECRET_KEY: process.env['BAIDU_SECRET_KEY'] ?? '',
 
-  // Rate Limiting - Configurable via environment
-  RATE_LIMIT_FREE_DAILY: Number(process.env['RATE_LIMIT_FREE_DAILY'] ?? '8'),
-  RATE_LIMIT_PAID_WINDOW_SEC: Number(process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '300'),
+  // Rate Limiting - User-centric (at server action level)
+  // Free tier: 5 operations per 24 hours
+  // Paid tier: 10 operations per 15 minutes
+  RATE_LIMIT_FREE_DAILY: Number(process.env['RATE_LIMIT_FREE_DAILY'] ?? '5'),
+  RATE_LIMIT_PAID_WINDOW_SEC: Number(process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '900'),
   RATE_LIMIT_PAID_MAX: Number(process.env['RATE_LIMIT_PAID_MAX'] ?? '10'),
 }
 

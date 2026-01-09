@@ -2,6 +2,7 @@
 
 import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import { getOrCreateQuota } from '@/lib/dal/quotas'
+import { checkQuotaForService } from '@/lib/quota/atomic-operations'
 import { recordDebit } from '@/lib/dal/coinLedger'
 import {
   upsertResume,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/dal/resume'
 import { pushTask } from '@/lib/queue/producer'
 import { trackEvent } from '@/lib/analytics/index'
+import { checkOperationRateLimit } from '@/lib/rateLimiter'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getTaskLimits } from '@/lib/llm/config'
@@ -45,6 +47,17 @@ export const uploadResumeAction = withServerActionAuthWrite<
     if (len > limit) {
       return { ok: false, error: 'text_too_long' }
     }
+
+    // 1. Check quota to determine tier
+    const quotaInfo = await checkQuotaForService(userId)
+    const isPaidTier = !quotaInfo.shouldUseFreeQueue
+
+    // 2. User operation rate limit check (early interception)
+    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    if (!rateCheck.ok) {
+      return { ok: false, error: rateCheck.error! }
+    }
+
     await getOrCreateQuota(userId)
     const cost = 1
     const rec = await upsertResume(userId, params.originalText)
@@ -97,6 +110,17 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
     if (len > limit) {
       return { ok: false, error: 'text_too_long' }
     }
+
+    // 1. Check quota to determine tier
+    const quotaInfo = await checkQuotaForService(userId)
+    const isPaidTier = !quotaInfo.shouldUseFreeQueue
+
+    // 2. User operation rate limit check (early interception)
+    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    if (!rateCheck.ok) {
+      return { ok: false, error: rateCheck.error! }
+    }
+
     await getOrCreateQuota(userId)
     const cost = 1
     const rec = await upsertDetailedResume(userId, params.originalText)
