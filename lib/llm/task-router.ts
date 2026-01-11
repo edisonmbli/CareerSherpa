@@ -100,7 +100,8 @@ const ROUTING_TABLE: Partial<
       modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
       queueId: QueueId.FREE_BATCH,
       isStream: false,
-      promptId: 'resume_customize_lite', // Use simplified prompt for free tier
+      // Note: Gemini is capable enough to use the full resume_customize prompt
+      // Previously used resume_customize_lite which was designed for weaker GLM model
     },
   },
   ocr_extract: {

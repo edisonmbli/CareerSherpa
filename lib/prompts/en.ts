@@ -14,11 +14,13 @@ Core Principles:
 4.  Strictly output in the required JSON format.
 5.  Protect user privacy and do not leak sensitive information.
 
-Output Requirements:
-- Must return valid JSON format.
-- Content must be concise and avoid redundancy.
-- Use the same language as the user's input (Chinese/English).
-- **STRICTLY FORBIDDEN**: Do NOT use smart quotes (“ or ”) as delimiters for JSON keys or values. You MUST use standard double quotes (").`
+### JSON Output Specification (MUST STRICTLY FOLLOW)
+- Your output MUST be a **valid JSON object** that can be parsed by JSON.parse()
+- **FORBIDDEN**: Do NOT include markdown code fences (such as \`\`\`json ... \`\`\`)
+- **FORBIDDEN**: Do NOT use smart/curly quotes (" " ' '), MUST use standard ASCII double quotes (")
+- **FORBIDDEN**: Do NOT add any explanatory text before or after the JSON
+- If a string contains quotes internally, you MUST escape them with backslash (\\")
+- Content must be concise and avoid redundancy.`
 
 // 2. Prototype Schemas (for Asset Extraction)
 const SCHEMAS_V1 = {
@@ -554,11 +556,18 @@ export const EN_TEMPLATES: PromptTemplateMap = {
     description:
       "Extract structured information from the user's raw general resume text.",
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `Please **extract rather than paraphrase**. Output strictly according to the JSON Schema.
+    userPrompt: `Please **extract rather than paraphrase** and **output the complete structured result according to the JSON Schema**.
+
+**Complete Extraction Rules (IMPORTANT):**
+1. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, summary_points, specialties_points, experience, projects, education, skills, certifications, languages, awards, openSource, extras
+2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
+3. Even if there is only one item, it must be correctly placed in the corresponding field
+
+**Extraction Guidelines:**
 - **Responsibilities**: copy verbatim all sentences starting with "Responsible for", "Led", "As the sole owner", etc.
-- **Highlights**: retain quantifiable, impactful results (performance improvements, user metrics, etc.).
-- **Projects & Links**: preserve project name/link/brief description.
-- **Bullet Preservation**: for summary/specialties, output bullet points by copying the original lines.
+- **Highlights**: retain quantifiable, impactful results (performance improvements, user metrics, etc.)
+- **Projects & Links**: preserve project name/link/brief description
+- **Bullet Preservation**: for summary/specialties, output bullet points by copying the original lines
 
 Raw Resume Text:
 """
@@ -573,9 +582,14 @@ Raw Resume Text:
     description:
       "Extract all structured information from the user's detailed history.",
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `Please **extract rather than paraphrase**, and strictly output according to the JSON Schema.
+    userPrompt: `Please **extract rather than paraphrase** and **output the complete structured result according to the JSON Schema**.
 
-Recognition & Mapping Rules:
+**Complete Extraction Rules (IMPORTANT):**
+1. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, experiences, capabilities, rawSections, etc.
+2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
+3. Copy bullet points verbatim - do not merge or rewrite; preserve all numbers/percentages/time ranges
+
+**Recognition & Mapping Rules:**
 1) Company Block: When you see four elements (Company/Product/Duration/Keywords), create an experiences[] item and fill company, product_or_team, role, duration, keywords[].
 2) Project Block: identify **Task / Actions / Results** and store them in projects[].task / actions / results; when numbers or percentages appear, also record them in projects[].metrics[].
 3) Capability Sections: detect sections like "Learning Capability", "Recommendation System", "Creator Growth", "Short Video Understanding", "Lean", "Collaboration", "Leadership", "Problem-Solving"; store them in capabilities[] with original bullet points.
@@ -618,8 +632,12 @@ Raw Text:
     name: 'Job Description Extraction',
     description: 'Extract key requirements from a raw JD.',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `Please parse the following Job Description (JD) text.
-Focus on distinguishing "Must-haves" from "Nice-to-haves".
+    userPrompt: `Please parse the following Job Description (JD) text and **output the complete structured result according to the JSON Schema**.
+
+**Complete Extraction Rules (IMPORTANT):**
+1. You MUST populate **ALL fields** defined in the JSON Schema, including: title, company, location, requirements, nice_to_haves, tech_stack, benefits, company_info, etc.
+2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
+3. Focus on distinguishing "Must-haves" (requirements) from "Nice-to-haves"
 
 Raw JD Text:
 """
@@ -916,6 +934,14 @@ Based on [JD core requirements overview], we made the following key adjustments:
 \`\`\`
 Output 3-5 suggestions total. Each MUST include **Adjustment** and **Reason** sub-items.
 
+### Final Checklist (Anti-Hallucination & Anti-Loop)
+1. **No CoT in output**: All Steps 1-7 are internal thinking only. **NEVER** output them in JSON.
+2. **Missing fields stay empty**: If the original resume doesn't have a field (like wechat, github, linkedin), output empty string "". **NEVER fabricate or guess**. Example: if no wechat exists, then wechat: "".
+3. **Clean invalid data**: If you find yourself about to write "please fill in", "phone same as", "TBD", "keep as-is", **STOP immediately** and output empty string "" instead.
+4. **No explanations**: Only output valid data. Never write any explanatory text in any field.
+5. **No repetition**: If you notice yourself outputting the same text pattern, **STOP current field immediately** and move to the next field.
+6. **No input echo**: **NEVER** copy JSON structure from input context (like job_summary_json or detailed_resume_summary_json fields: jobTitle, company, mustHaves, points, etc.) into output. Output only contains resumeData fields, do not mix in input data structures.
+
 Strictly follow Output Schema for JSON output.`,
     variables: [
       'rag_context',
@@ -926,59 +952,12 @@ Strictly follow Output Schema for JSON output.`,
     ],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
   },
-  // Free tier simplified prompt (for GLM Flash)
-  resume_customize_lite: {
-    id: 'resume_customize_lite',
-    name: 'Resume Customization (Basic)',
-    description: 'Basic resume optimization based on job requirements.',
-    systemPrompt: `You are a resume optimization assistant. Optimize the user's resume based on the target job requirements.
-
-### Core Principles
-- Preserve the user's original content as much as possible
-- Make only necessary refinements and adjustments
-- Never fabricate experiences or skills
-- Use list format for work experience descriptions, each line starting with "- "
-
-### Basics Field Handling
-- **Must copy exactly** from original resume: name, mobile, email, address, lang
-- **Do not add** fields not in the original (such as github, linkedin, wechat)
-- **Only source**: copy directly from the basics object in resume_summary_json
-
-### Output Format
-Output strictly follows the Schema as a valid JSON object. Do not include Markdown code block markers.`,
-    userPrompt: `Please optimize the user's resume based on the following information.
-
-【User Resume】
-"""
-{resume_summary_json}
-"""
-
-【Target Position】
-"""
-{job_summary_json}
-"""
-
-【Match Analysis】
-Reference Strengths to emphasize advantages, reference Weaknesses to supplement:
-"""
-{match_analysis_json}
-"""
-
-### Task Requirements
-1. **basics field**: Copy name, mobile, email, lang directly from input resume's basics, don't skip or add fields
-2. Preserve the core content, only refine wording
-3. Adjust emphasis based on job requirements and match analysis
-4. Work experience descriptions must use list format, each line starting with "- "
-5. Explain 2-3 key adjustments in optimizeSuggestion
-
-Strictly follow the Output Schema and output JSON.`,
-    variables: [
-      'resume_summary_json',
-      'job_summary_json',
-      'match_analysis_json',
-    ],
-    outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
-  },
+  // [DEPRECATED] Free tier simplified prompt - no longer used
+  // Gemini-3-flash-preview is capable enough to use full resume_customize prompt
+  // resume_customize_lite: {
+  //   id: 'resume_customize_lite',
+  //   ... (same as zh.ts - full definition commented out)
+  // },
   interview_prep: {
     id: 'interview_prep',
     name: 'Interview Preparation',

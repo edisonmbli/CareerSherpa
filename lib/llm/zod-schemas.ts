@@ -34,16 +34,14 @@ const educationItemSchema = z.object({
   gpa: z.string().optional(),
   courses: z.array(z.string()).optional(),
 })
-const skillsUnionSchema = z.union([
-  z.array(z.string()),
-  z
-    .object({
-      technical: z.array(z.string()).optional(),
-      soft: z.array(z.string()).optional(),
-      tools: z.array(z.string()).optional(),
-    })
-    .partial(),
-])
+// Fixed: Use object structure only (no union) for Gemini responseSchema compatibility
+const skillsSchema = z.object({
+  technical: z.array(z.string()).optional(),
+  soft: z.array(z.string()).optional(),
+  tools: z.array(z.string()).optional(),
+  // Fallback for skills that don't fit above categories
+  other: z.array(z.string()).optional(),
+})
 const certificationItemSchema = z.object({
   name: z.string().optional(),
   issuer: z.string().optional(),
@@ -73,7 +71,7 @@ const resumeSummarySchema = z
     experience: z.array(experienceItemSchema).optional(),
     projects: z.array(projectItemSchema).optional(),
     education: z.array(educationItemSchema).optional(),
-    skills: skillsUnionSchema.optional(),
+    skills: skillsSchema.optional(),
     certifications: z.array(certificationItemSchema).optional(),
     languages: z.array(languageItemSchema).optional(),
     awards: z.array(awardItemSchema).optional(),
@@ -91,11 +89,10 @@ const resumeSummarySchema = z
       (Array.isArray(d.education) && d.education.length > 0) ||
       Boolean(
         d.skills &&
-        (Array.isArray(d.skills)
-          ? d.skills.length > 0
-          : (d.skills as any).technical?.length ||
+        ((d.skills as any).technical?.length ||
           (d.skills as any).soft?.length ||
-          (d.skills as any).tools?.length)
+          (d.skills as any).tools?.length ||
+          (d.skills as any).other?.length)
       ),
     { message: 'empty_resume_summary' }
   )
@@ -126,7 +123,7 @@ const detailedResumeV3Schema = z
                   .array(
                     z.object({
                       label: z.string(),
-                      value: z.union([z.number(), z.string()]),
+                      value: z.string(), // String only for Gemini compatibility
                       unit: z.string().optional(),
                       period: z.string().optional(),
                     })
@@ -140,10 +137,13 @@ const detailedResumeV3Schema = z
       )
       .optional(),
     capabilities: z
-      .array(z.object({ name: z.string(), points: z.array(z.string()) }))
+      .array(z.object({
+        name: z.string().optional(), // Made optional for LLM output tolerance
+        points: z.array(z.string()).optional() // Made optional for LLM output tolerance
+      }))
       .optional(),
     education: z.array(educationItemSchema).optional(),
-    skills: skillsUnionSchema.optional(),
+    skills: skillsSchema.optional(),
     certifications: z.array(certificationItemSchema).optional(),
     languages: z.array(languageItemSchema).optional(),
     awards: z.array(awardItemSchema).optional(),
@@ -152,38 +152,28 @@ const detailedResumeV3Schema = z
     summary_points: z.array(z.string()).optional(),
     specialties_points: z.array(z.string()).optional(),
     rawSections: z
-      .array(z.object({ title: z.string(), points: z.array(z.string()) }))
+      .array(z.object({
+        title: z.string().optional(), // Made optional for LLM output tolerance
+        points: z.array(z.string()).optional() // Made optional for LLM output tolerance
+      }))
       .optional(),
   })
   .refine(
     (d) =>
-      (Array.isArray(d.experiences) &&
-        d.experiences.length > 0 &&
-        d.experiences.some(
-          (e: any) =>
-            (Array.isArray(e.highlights) && e.highlights.length > 0) ||
-            (Array.isArray(e.projects) &&
-              e.projects.length > 0 &&
-              e.projects.some(
-                (p: any) =>
-                  (Array.isArray(p.task) && p.task.length > 0) ||
-                  (Array.isArray(p.actions) && p.actions.length > 0) ||
-                  (Array.isArray(p.results) && p.results.length > 0)
-              ))
-        )) ||
-      (Array.isArray(d.capabilities) &&
-        d.capabilities.length > 0 &&
-        d.capabilities.some(
-          (c: any) => Array.isArray(c.points) && c.points.length > 0
-        )) ||
+      // Simplified refine: just check if ANY meaningful content exists
+      // This is more tolerant to LLM output variations
+      Boolean(d.summary && String(d.summary).trim().length > 0) ||
+      (Array.isArray(d.summary_points) && d.summary_points.length > 0) ||
+      (Array.isArray(d.experiences) && d.experiences.length > 0) ||
+      (Array.isArray(d.capabilities) && d.capabilities.length > 0) ||
       (Array.isArray(d.education) && d.education.length > 0) ||
+      (Array.isArray(d.rawSections) && d.rawSections.length > 0) ||
       Boolean(
         d.skills &&
-        (Array.isArray(d.skills)
-          ? d.skills.length > 0
-          : (d.skills as any).technical?.length ||
+        ((d.skills as any).technical?.length ||
           (d.skills as any).soft?.length ||
-          (d.skills as any).tools?.length)
+          (d.skills as any).tools?.length ||
+          (d.skills as any).other?.length)
       ),
     { message: 'empty_detailed_resume_summary' }
   )
@@ -269,7 +259,7 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   job_vision_summary: jobSummarySchema, // Free tier merged OCR + Summary (same output as job_summary)
   job_match: jobMatchSchema,
   resume_customize: resumeCustomizeSchema,
-  resume_customize_lite: resumeCustomizeSchema, // Same schema as full customize
+  // resume_customize_lite: resumeCustomizeSchema, // [DEPRECATED] Same schema as full customize
   interview_prep: interviewPrepSchema,
   ocr_extract: ocrExtractSchema,
   // 非生成型任务（嵌入/RAG流水线）占位

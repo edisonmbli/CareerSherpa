@@ -20,17 +20,105 @@ import { getStrategy } from '@/lib/worker/strategies'
 import { markTimeline } from '@/lib/observability/timeline'
 import { logError } from '@/lib/logger'
 import { getProvider } from '@/lib/llm/utils'
+import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
+import { pushTask } from '@/lib/queue/producer'
+import type { DeferredTask } from '@/lib/worker/strategies/interface'
 
 type Body = import('@/lib/worker/types').WorkerBody
 
 // Helper to safely extract common billing fields from any variables union
 type PaidTier = 'paid' | 'free' | undefined
-interface BillingVars { tierOverride?: PaidTier; wasPaid?: boolean }
+interface BillingVars { tierOverride?: PaidTier; wasPaid?: boolean; cost?: number; debitId?: string }
 function extractBillingVars(vars: Record<string, unknown>): BillingVars {
   return {
     tierOverride: (vars['tierOverride'] as PaidTier),
     wasPaid: Boolean(vars['wasPaid']),
+    cost: Number(vars['cost'] || 0),
+    debitId: String(vars['debitId'] || ''),
   }
+}
+
+/**
+ * Centralized handler for guard failures (429 errors).
+ * Handles refund, SSE error notification, and logging.
+ * Reuses existing refund pattern from strategies.
+ */
+async function handleGuardFailure(params: {
+  reason: string
+  userId: string
+  serviceId: string
+  taskId: string
+  templateId: string
+  channel: string
+  requestId: string
+  traceId: string
+  billing: BillingVars
+  kind: 'stream' | 'batch'
+}): Promise<Response> {
+  const { reason, userId, serviceId, taskId, templateId, channel, requestId, traceId, billing, kind } = params
+  const { wasPaid, cost = 0, debitId } = billing
+
+  // 1. SSE error notification (so frontend can show error state)
+  try {
+    await publishEvent(channel, {
+      type: 'error',
+      taskId,
+      code: reason,
+      error: `Guard failed: ${reason}`,
+      stage: 'guards',
+      requestId,
+      traceId,
+    })
+  } catch (e) {
+    logError({
+      reqId: requestId,
+      route: `worker/${kind}`,
+      error: String(e),
+      phase: 'guard_failure_publish',
+      serviceId,
+    })
+  }
+
+  // 2. Refund for Paid tasks (reusing existing pattern)
+  if (wasPaid && cost > 0 && debitId) {
+    try {
+      await recordRefund({
+        userId,
+        amount: cost,
+        relatedId: debitId,
+        ...(isServiceScoped(templateId as any) ? { serviceId } : {}),
+        templateId,
+        metadata: { reason, failedAt: 'guards' },
+      })
+      await markDebitFailed(debitId)
+      // Note: Event tracking for guard failures - using logError for now
+      // since GUARD_FAILURE_REFUNDED is not in AnalyticsEventName
+    } catch (e) {
+      logError({
+        reqId: requestId,
+        route: `worker/${kind}`,
+        error: String(e),
+        phase: 'guard_failure_refund',
+        serviceId,
+      })
+    }
+  }
+
+  // 3. Log the guard failure
+  logError({
+    reqId: requestId,
+    route: `worker/${kind}`,
+    error: reason,
+    phase: 'guard_blocked',
+    serviceId,
+    meta: { taskId, templateId, wasPaid, cost },
+  })
+
+  // 4. Return 429 response
+  return Response.json(
+    { ok: false, reason },
+    { status: 429 }
+  )
 }
 
 // Token handler for SSE
@@ -84,7 +172,8 @@ export async function handleStream(
         traceId,
       })
 
-      const { tierOverride, wasPaid } = extractBillingVars(variables as Record<string, unknown>)
+      const billing = extractBillingVars(variables as Record<string, unknown>)
+      const { tierOverride, wasPaid } = billing
       const userHasQuota =
         tierOverride === 'paid'
           ? true
@@ -136,10 +225,18 @@ export async function handleStream(
         traceId
       )
       if (!gUser.ok)
-        return Response.json(
-          { ok: false, reason: gUser.reason },
-          { status: 429 }
-        )
+        return handleGuardFailure({
+          reason: gUser.reason,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          billing,
+          kind: 'stream',
+        })
 
       const gModel = await guardModel(
         decision.modelId,
@@ -150,10 +247,18 @@ export async function handleStream(
         traceId
       )
       if (!gModel.ok)
-        return Response.json(
-          { ok: false, reason: gModel.reason },
-          { status: 429 }
-        )
+        return handleGuardFailure({
+          reason: gModel.reason,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          billing,
+          kind: 'stream',
+        })
 
       const gQueue = await guardQueue(
         userId,
@@ -166,10 +271,18 @@ export async function handleStream(
         traceId
       )
       if (!gQueue.ok)
-        return Response.json(
-          { ok: false, reason: gQueue.reason },
-          { status: 429 }
-        )
+        return handleGuardFailure({
+          reason: gQueue.reason,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          billing,
+          kind: 'stream',
+        })
 
       await markTimeline(serviceId, 'worker_stream_guards_done', { taskId })
 
@@ -351,7 +464,8 @@ export async function handleBatch(
         traceId,
       })
 
-      const { tierOverride, wasPaid } = extractBillingVars(variables as Record<string, unknown>)
+      const billing = extractBillingVars(variables as Record<string, unknown>)
+      const { tierOverride, wasPaid } = billing
       const userHasQuota =
         tierOverride === 'paid'
           ? true
@@ -392,10 +506,18 @@ export async function handleBatch(
         traceId
       )
       if (!gUser.ok)
-        return Response.json(
-          { ok: false, reason: gUser.reason },
-          { status: 429 }
-        )
+        return handleGuardFailure({
+          reason: gUser.reason,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          billing,
+          kind: 'batch',
+        })
 
       const gModel = await guardModel(
         decision.modelId,
@@ -406,10 +528,18 @@ export async function handleBatch(
         traceId
       )
       if (!gModel.ok)
-        return Response.json(
-          { ok: false, reason: gModel.reason },
-          { status: 429 }
-        )
+        return handleGuardFailure({
+          reason: gModel.reason,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          billing,
+          kind: 'batch',
+        })
 
       const gQueue = await guardQueue(
         userId,
@@ -422,10 +552,18 @@ export async function handleBatch(
         traceId
       )
       if (!gQueue.ok)
-        return Response.json(
-          { ok: false, reason: gQueue.reason },
-          { status: 429 }
-        )
+        return handleGuardFailure({
+          reason: gQueue.reason,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          billing,
+          kind: 'batch',
+        })
 
       await markTimeline(serviceId, 'worker_batch_guards_done', { taskId })
 
@@ -494,7 +632,8 @@ export async function handleBatch(
         phase = 'WRITE_RESULTS'
         await markTimeline(serviceId, 'worker_batch_finalize_start', { taskId })
         console.log(`[Batch] Phase: WRITE_RESULTS starting`)
-        await strategy.writeResults(execResult.result, preparedVars, {
+        // Capture deferred tasks for enqueue after cleanup
+        const deferredTasks = await strategy.writeResults(execResult.result, preparedVars, {
           serviceId,
           userId,
           locale: locale as string,
@@ -504,7 +643,7 @@ export async function handleBatch(
         })
         console.log(`[Batch] Phase: WRITE_RESULTS complete`)
 
-        // Phase 3: Cleanup
+        // Phase 3: Cleanup (releases lock)
         phase = 'CLEANUP'
         console.log(`[Batch] Phase: CLEANUP starting`)
         await cleanupFinal(
@@ -518,6 +657,36 @@ export async function handleBatch(
         )
         await markTimeline(serviceId, 'worker_batch_finalize_end', { taskId })
         console.log(`[Batch] Phase: CLEANUP complete`)
+
+        // Phase 4: Enqueue deferred tasks (AFTER cleanup to avoid lock contention)
+        if (deferredTasks && deferredTasks.length > 0) {
+          console.log(`[Batch] Phase: DEFERRED_ENQUEUE starting, count=${deferredTasks.length}`)
+          for (const task of deferredTasks) {
+            try {
+              const pushRes = await pushTask(task as any)
+              if (pushRes.error) {
+                logError({
+                  reqId: requestId,
+                  route: 'worker/batch',
+                  error: pushRes.error,
+                  phase: 'deferred_enqueue_failed',
+                  serviceId,
+                  meta: { deferredTemplateId: task.templateId },
+                })
+              }
+            } catch (e) {
+              logError({
+                reqId: requestId,
+                route: 'worker/batch',
+                error: String(e),
+                phase: 'deferred_enqueue_error',
+                serviceId,
+                meta: { deferredTemplateId: task.templateId },
+              })
+            }
+          }
+          console.log(`[Batch] Phase: DEFERRED_ENQUEUE complete`)
+        }
 
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {

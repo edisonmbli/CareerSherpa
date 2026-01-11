@@ -1,4 +1,4 @@
-import { WorkerStrategy, StrategyContext, ExecutionResult } from './interface'
+import { WorkerStrategy, StrategyContext, ExecutionResult, DeferredTask } from './interface'
 import { OcrExtractVars } from '@/lib/worker/types'
 import {
   getJobOriginalImageById,
@@ -10,7 +10,6 @@ import {
 import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
 import { acquireLock } from '@/lib/redis/lock'
-import { pushTask } from '@/lib/queue/producer'
 import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
 import { ExecutionStatus, AsyncTaskStatus, FailureCode } from '@prisma/client'
 import { ENV } from '@/lib/env'
@@ -169,12 +168,13 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
 
   /**
    * Writes extracted text to DB and enqueues the next step (Job Summary).
+   * @returns DeferredTask array for handler to enqueue after cleanup, or undefined
    */
   async writeResults(
     execResult: ExecutionResult,
     variables: OcrExtractVars,
     ctx: StrategyContext
-  ) {
+  ): Promise<DeferredTask[] | void> {
     const { serviceId, userId, locale, requestId, traceId, taskId } = ctx
 
     // Phase 1.5: Check if Baidu OCR was used (pre-computed in prepareVars)
@@ -346,8 +346,9 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           taskId: `job_${serviceId}_${sessionId}`,
         })
 
-        // Enqueue Job Summary Task
-        const pushRes = await pushTask({
+        // Return DeferredTask instead of pushing directly
+        // Handler will enqueue AFTER cleanup completes, avoiding lock contention
+        const deferredTask: DeferredTask<'job_summary'> = {
           kind: 'batch',
           serviceId,
           taskId: `job_${serviceId}_${sessionId}`,
@@ -361,21 +362,55 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
             ...(debitId ? { debitId } : {}),
             executionSessionId: sessionId,
           },
-        })
-
-        if (pushRes.error) {
-          logError({
-            reqId: requestId,
-            route: 'worker/ocr',
-            error: pushRes.error,
-            phase: 'enqueue_summary_failed',
-            serviceId,
-          })
         }
 
         await markTimeline(serviceId, 'worker_batch_enqueue_summary_end', {
           taskId: `job_${serviceId}_${sessionId}`,
         })
+
+        // Continue with status updates, then return deferred task at the end
+        try {
+          await updateServiceExecutionStatus(
+            serviceId,
+            ExecutionStatus.OCR_PENDING,
+            {
+              executionSessionId: sessionId,
+            }
+          )
+        } catch (err) {
+          logError({
+            reqId: requestId,
+            route: 'worker/ocr',
+            error: String(err),
+            phase: 'update_status_summary_pending',
+            serviceId,
+          })
+        }
+
+        try {
+          const matchTaskId = buildMatchTaskId(serviceId, sessionId)
+          const matchChannel = getChannel(userId, serviceId, matchTaskId)
+          await publishEvent(matchChannel, {
+            type: 'status',
+            taskId: matchTaskId,
+            code: 'summary_pending',
+            status: 'SUMMARY_PENDING',
+            lastUpdatedAt: new Date().toISOString(),
+            stage: 'enqueue',
+            requestId,
+            traceId,
+          })
+        } catch (err) {
+          logError({
+            reqId: requestId,
+            route: 'worker/ocr',
+            error: String(err),
+            phase: 'publish_summary_pending',
+            serviceId,
+          })
+        }
+
+        return [deferredTask]
       }
     } else {
       await markTimeline(
@@ -386,46 +421,6 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         }
       )
     }
-
-    try {
-      await updateServiceExecutionStatus(
-        serviceId,
-        ExecutionStatus.OCR_PENDING,
-        {
-          executionSessionId: sessionId,
-        }
-      )
-    } catch (err) {
-      logError({
-        reqId: requestId,
-        route: 'worker/ocr',
-        error: String(err),
-        phase: 'update_status_summary_pending',
-        serviceId,
-      })
-    }
-
-    try {
-      const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-      const matchChannel = getChannel(userId, serviceId, matchTaskId)
-      await publishEvent(matchChannel, {
-        type: 'status',
-        taskId: matchTaskId,
-        code: 'summary_pending',
-        status: 'SUMMARY_PENDING',
-        lastUpdatedAt: new Date().toISOString(),
-        stage: 'enqueue',
-        requestId,
-        traceId,
-      })
-    } catch (err) {
-      logError({
-        reqId: requestId,
-        route: 'worker/ocr',
-        error: String(err),
-        phase: 'publish_summary_pending',
-        serviceId,
-      })
-    }
+    // Return undefined (no deferred tasks) for all other code paths
   }
 }

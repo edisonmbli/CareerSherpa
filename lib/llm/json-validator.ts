@@ -17,6 +17,19 @@ const logError = (payload: any) => {
  */
 
 import { executeStrategies } from './json-strategies'
+import { jsonrepair } from 'jsonrepair'
+
+/**
+ * 使用 jsonrepair 库修复常见 JSON 语法错误
+ * 比正则更可靠，能处理：缺逗号、缺引号、尾部逗号、单引号等
+ */
+export function repairJson(text: string): string {
+  try {
+    return jsonrepair(text)
+  } catch {
+    return text // 修复失败返回原文
+  }
+}
 
 export interface ValidationResult<T = any> {
   success: boolean
@@ -43,6 +56,9 @@ export interface ValidationOptions {
  */
 export function cleanJsonText(text: string): string {
   let cleaned = text.trim()
+
+  // Remove DeepSeek R1 reasoning tags (thinking process)
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '')
 
   // Remove all markdown code fences (iterative for nested cases)
   // Handles double-wrapped output like: ``` ```json {...} ``` ```
@@ -261,99 +277,15 @@ export function escapeControlCharsInStrings(text: string): string {
 export function fixJsonSyntax(text: string): string {
   let fixed = text
 
-  // Normalize Chinese punctuation to standard punctuation
+  // Step 1: 基础标准化 - 中文标点转英文
   fixed = fixed.replace(/，/g, ',')
   fixed = fixed.replace(/：/g, ':')
 
-  // 首先处理字符串中的引号问题
-  fixed = fixQuotesInStrings(fixed)
+  // Step 2: 使用 jsonrepair 进行智能修复
+  // 能处理：缺逗号、缺引号、尾部逗号、单引号等
+  fixed = repairJson(fixed)
 
-  // 多次迭代修复，处理复杂的嵌套情况
-  for (let i = 0; i < 3; i++) {
-    const before = fixed
-
-    // 1. 修复对象属性之间缺少逗号（字符串值）
-    // "key": "value" \n "nextKey": -> "key": "value", "nextKey":
-    fixed = fixed.replace(/("\s*:\s*"[^"]*")\s*\n\s*(")/g, '$1,\n  $2')
-    fixed = fixed.replace(/("\s*:\s*"[^"]*")\s+(")/g, '$1, $2')
-
-    // 2. 修复对象属性之间缺少逗号（数组值）
-    // "key": [...] \n "nextKey": -> "key": [...], "nextKey":
-    fixed = fixed.replace(/("\s*:\s*\[[^\]]*\])\s*\n\s*(")/g, '$1,\n  $2')
-    fixed = fixed.replace(/("\s*:\s*\[[^\]]*\])\s+(")/g, '$1, $2')
-
-    // 3. 修复对象属性之间缺少逗号（对象值）
-    // "key": {...} \n "nextKey": -> "key": {...}, "nextKey":
-    fixed = fixed.replace(/("\s*:\s*\{[^}]*\})\s*\n\s*(")/g, '$1,\n  $2')
-    fixed = fixed.replace(/("\s*:\s*\{[^}]*\})\s+(")/g, '$1, $2')
-
-    // 4. 修复对象属性之间缺少逗号（基本类型值）
-    // "key": value \n "nextKey": -> "key": value, "nextKey":
-    fixed = fixed.replace(
-      /("\s*:\s*(?:true|false|null|\d+(?:\.\d+)?))\s*\n\s*(")/g,
-      '$1,\n  $2'
-    )
-    fixed = fixed.replace(
-      /("\s*:\s*(?:true|false|null|\d+(?:\.\d+)?))\s+(")/g,
-      '$1, $2'
-    )
-
-    // 5. 修复数组中字符串元素之间缺少逗号
-    // "item1" \n "item2" -> "item1", "item2"
-    fixed = fixed.replace(/("[^"]*")\s*\n\s*("[^"]*")/g, '$1,\n  $2')
-    fixed = fixed.replace(/("[^"]*")\s+("[^"]*")/g, '$1, $2')
-
-    // 6. 修复数组中字符串和数字之间缺少逗号
-    fixed = fixed.replace(/("[^"]*")\s*\n\s*(\d+(?:\.\d+)?)/g, '$1,\n  $2')
-    fixed = fixed.replace(/("[^"]*")\s+(\d+(?:\.\d+)?)/g, '$1, $2')
-    fixed = fixed.replace(/(\d+(?:\.\d+)?)\s*\n\s*("[^"]*")/g, '$1,\n  $2')
-    fixed = fixed.replace(/(\d+(?:\.\d+)?)\s+("[^"]*")/g, '$1, $2')
-
-    // 7. 修复数组中字符串和布尔值之间缺少逗号
-    fixed = fixed.replace(/("[^"]*")\s*\n\s*(true|false|null)/g, '$1,\n  $2')
-    fixed = fixed.replace(/("[^"]*")\s+(true|false|null)/g, '$1, $2')
-    fixed = fixed.replace(/(true|false|null)\s*\n\s*("[^"]*")/g, '$1,\n  $2')
-    fixed = fixed.replace(/(true|false|null)\s+("[^"]*")/g, '$1, $2')
-
-    // 8. 修复数组中数字和布尔值之间缺少逗号
-    fixed = fixed.replace(
-      /(\d+(?:\.\d+)?)\s*\n\s*(true|false|null)/g,
-      '$1,\n  $2'
-    )
-    fixed = fixed.replace(/(\d+(?:\.\d+)?)\s+(true|false|null)/g, '$1, $2')
-    fixed = fixed.replace(
-      /(true|false|null)\s*\n\s*(\d+(?:\.\d+)?)/g,
-      '$1,\n  $2'
-    )
-    fixed = fixed.replace(/(true|false|null)\s+(\d+(?:\.\d+)?)/g, '$1, $2')
-
-    // 9. 修复数组中对象之间缺少逗号
-    // } \n { -> }, {
-    fixed = fixed.replace(/(\})\s*\n\s*(\{)/g, '$1,\n  $2')
-    fixed = fixed.replace(/(\})\s+(\{)/g, '$1, $2')
-
-    // 10. 修复数组中数组之间缺少逗号
-    // ] \n [ -> ], [
-    fixed = fixed.replace(/(\])\s*\n\s*(\[)/g, '$1,\n  $2')
-    fixed = fixed.replace(/(\])\s+(\[)/g, '$1, $2')
-
-    // 11. 修复数组结束后缺少逗号
-    // ] \n "key": -> ], "key":
-    fixed = fixed.replace(/(\])\s*\n\s*(")/g, '$1,\n  $2')
-    fixed = fixed.replace(/(\])\s+(")/g, '$1, $2')
-
-    // 12. 修复对象结束后缺少逗号
-    // } \n "key": -> }, "key":
-    fixed = fixed.replace(/(\})\s*\n\s*(")/g, '$1,\n  $2')
-    fixed = fixed.replace(/(\})\s+(")/g, '$1, $2')
-
-    // 如果没有变化，停止迭代
-    if (fixed === before) {
-      break
-    }
-  }
-
-  // 清理多余的逗号
+  // Step 3: 最终清理 - 移除可能残留的额外逗号
   fixed = fixed.replace(/,\s*([}\]])/g, '$1')
   fixed = fixed.replace(/,\s*,+/g, ',')
 

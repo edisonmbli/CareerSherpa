@@ -13,6 +13,7 @@ export interface LLMConfig {
   timeout?: number // 以毫秒为单位（与 LangChain/OpenAI 客户端一致）
   provider: 'zhipu' | 'deepseek' | 'openai'
   tier: 'free' | 'paid'
+  jsonMode?: boolean // 启用 JSON 输出模式 (response_format / responseMimeType)
 }
 
 export interface LLMResponse {
@@ -62,6 +63,13 @@ export class ZhipuProvider implements LLMProvider {
       model: config.model,
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? this.getDefaultMaxTokens(config.model),
+      // JSON Mode: GLM API 可能支持 response_format，但 LangChain 封装尚未验证
+      // 如果 ChatZhipuAI 不支持此参数，将被忽略
+      ...(config.jsonMode && {
+        modelKwargs: {
+          response_format: { type: 'json_object' }
+        }
+      }),
     })
   }
 
@@ -126,6 +134,12 @@ export class DeepSeekProvider implements LLMProvider {
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? 4000,
       timeout: config.timeout ?? 180000, // 毫秒；默认3分钟
+      // JSON Mode: 强制模型输出有效 JSON
+      ...(config.jsonMode && {
+        modelKwargs: {
+          response_format: { type: 'json_object' }
+        }
+      }),
     })
   }
 
@@ -217,11 +231,39 @@ export class GeminiProvider implements LLMProvider {
       throw new Error('Gemini API key not configured')
     }
 
+    // Anti-repetition params per docs/53.Gemini_Repeat_Issue_Fix.md
+    // Note: TypeScript types may be outdated, but runtime API supports these params
+    const antiRepetitionConfig = {
+      frequencyPenalty: 0.5, // Strong penalty to break repetition loops
+      presencePenalty: 0.3,  // Encourage new content
+    }
+
+    // CRITICAL: Gemini 3 MUST use temperature=1.0
+    // Per official docs: "Changing the temperature (setting it below 1.0) may lead to 
+    // unexpected behavior, such as looping or degraded performance"
+    // See: https://ai.google.dev/gemini-api/docs/gemini-3
+    const gemini3Temperature = 1.0
+
+    console.log('[GeminiProvider] Creating model with Gemini 3 config:', {
+      model: config.model || 'gemini-3-flash-preview',
+      temperature: gemini3Temperature,
+      maxOutputTokens: config.maxTokens ?? 8000,
+      ...antiRepetitionConfig,
+      jsonMode: config.jsonMode,
+    })
+
+    // @ts-ignore: frequencyPenalty/presencePenalty types may be outdated but runtime API supports them
     return new ChatGoogleGenerativeAI({
       apiKey: process.env['GEMINI_API_KEY']!,
       model: config.model || 'gemini-3-flash-preview',
-      temperature: config.temperature ?? 0.3,
+      temperature: gemini3Temperature, // MUST be 1.0 for Gemini 3 to prevent looping
       maxOutputTokens: config.maxTokens ?? 8000,
+      // NOTE: Removed stopSequences as they may cause premature termination
+      // temperature=1.0 should handle looping prevention per Gemini 3 docs
+      // Anti-repetition penalties (runtime supported even if types outdated)
+      ...antiRepetitionConfig,
+      // JSON Mode (for non-structured output paths)
+      json: config.jsonMode ?? false,
     })
   }
 
@@ -390,9 +432,9 @@ export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' | 'g
 
 export function getModel(
   modelId: ModelId,
-  opts: { temperature?: number; maxTokens?: number; timeoutMs?: number } = {}
+  opts: { temperature?: number; maxTokens?: number; timeoutMs?: number; jsonMode?: boolean } = {}
 ): BaseChatModel {
-  const { temperature, maxTokens, timeoutMs } = opts
+  const { temperature, maxTokens, timeoutMs, jsonMode } = opts
   const timeout = timeoutMs ?? undefined
   // 收敛 provider 层的调试输出：参数确认交由路由层打印一次
 
@@ -404,6 +446,8 @@ export function getModel(
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
+      // JSON Mode: 强制输出有效 JSON
+      ...(jsonMode ? { modelKwargs: { response_format: { type: 'json_object' } } } : {}),
     }
     return new ChatDeepSeek(params)
   }
@@ -415,6 +459,8 @@ export function getModel(
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
+      // JSON Mode: 强制输出有效 JSON
+      ...(jsonMode ? { modelKwargs: { response_format: { type: 'json_object' } } } : {}),
     }
     return new ChatDeepSeek(params)
   }
@@ -451,6 +497,8 @@ export function getModel(
       model: 'gemini-3-flash-preview',
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxOutputTokens: maxTokens } : {}),
+      // JSON Mode: 强制输出有效 JSON
+      ...(jsonMode ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
     })
   }
 

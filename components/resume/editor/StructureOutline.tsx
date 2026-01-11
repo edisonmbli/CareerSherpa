@@ -83,12 +83,12 @@ function SortableItem({
   const Icon = SECTION_ICONS[id] || Layers
 
   // Check if section itself or any of its items has a page break
-  const sectionHasBreak = !!sectionConfig.pageBreaks?.[id]
+  const sectionHasBreak = !!(sectionConfig.pageBreaks as Record<string, boolean | undefined>)?.[id]
   const itemsHaveBreak = (() => {
     if (!resumeData) return false
     const items = (resumeData as any)[id]
     if (Array.isArray(items)) {
-      return items.some((item: any) => sectionConfig.pageBreaks?.[item.id])
+      return items.some((item: any) => (sectionConfig.pageBreaks as Record<string, boolean | undefined>)?.[item.id])
     }
     return false
   })()

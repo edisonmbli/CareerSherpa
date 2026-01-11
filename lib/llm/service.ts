@@ -406,10 +406,51 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     if (result && typeof result === 'object' && 'parsed' in result && 'raw' in result) {
       parsedData = result.parsed
       preValidated = true
-      content = JSON.stringify(result.parsed) // Serialize for log/raw return
+      content = JSON.stringify(result.parsed)
       const usage = extractTokenUsageFromMessage(result.raw)
       inputTokens = usage.inputTokens
       outputTokens = usage.outputTokens
+
+      // DEBUG: If parsed is null, investigate why LangChain withStructuredOutput fails
+      // Key question: is it Zod validation or LangChain's internal schema conversion?
+      if (parsedData === null) {
+        const rawContent = (result.raw as any)?.content
+        console.log('[Structured] ERROR: LangChain withStructuredOutput returned parsed=null')
+        console.log('[Structured] DEBUG: raw.content type:', typeof rawContent)
+        console.log('[Structured] DEBUG: Schema name:', schema?.description || 'no description')
+
+        // Check if there's a parsing_error in the result
+        if ((result as any).parsing_error) {
+          console.log('[Structured] DEBUG: LangChain parsing_error:', (result as any).parsing_error)
+        }
+
+        // Save full raw content to file for analysis
+        const fs = require('fs')
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const debugPath = `tmp/debug-logs/${timestamp}_structured_raw.json`
+        try {
+          fs.writeFileSync(debugPath, typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2))
+          console.log('[Structured] DEBUG: Full raw content saved to:', debugPath)
+        } catch (e) {
+          console.log('[Structured] DEBUG: Failed to save raw content:', e)
+        }
+
+        // Try manual safeParse to compare with LangChain
+        if (typeof rawContent === 'string') {
+          try {
+            const parsed = JSON.parse(rawContent)
+            const validateResult = schema.safeParse(parsed)
+            if (!validateResult.success) {
+              console.log('[Structured] DEBUG: Manual Zod safeParse FAILED:', JSON.stringify(validateResult.error.issues, null, 2))
+            } else {
+              console.log('[Structured] DEBUG: Manual Zod safeParse SUCCEEDED - LangChain internal issue')
+              console.log('[Structured] DEBUG: This suggests passthrough() or schema conversion issue in LangChain')
+            }
+          } catch (e) {
+            console.log('[Structured] DEBUG: JSON parse error:', e)
+          }
+        }
+      }
     }
     // Case B: Legacy/Standard Message (AIMessage / BaseMessage)
     else {
@@ -617,6 +658,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       temperature: 0.3,
       timeoutMs: ENV.WORKER_TIMEOUT_MS,
       maxTokens: limits.maxTokens,
+      jsonMode: true, // 强制 JSON 输出模式
     })
     const chain = prompt.pipe(model)
 

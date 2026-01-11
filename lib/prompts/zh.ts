@@ -18,7 +18,14 @@ const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者�
 - 必须返回有效的JSON格式
 - 内容简洁明了，避免冗余
 - 使用与用户输入一致的语言（中文/英文）
-- 请确保输出标准的 JSON 格式。如果字符串内部包含引号，请务必使用反斜杠转义（\"）。`
+- 请确保输出标准的 JSON 格式。如果字符串内部包含引号，请务必使用反斜杠转义（\"）。
+
+### JSON 输出规范（必须严格遵循）
+- 你的输出必须是**有效的 JSON 对象**，可被 JSON.parse() 直接解析
+- **禁止**包含 markdown 代码块（如 \`\`\`json ... \`\`\`）
+- **禁止**使用中文引号 "..." '...'，必须使用标准 ASCII 双引号 "..."
+- **禁止**在 JSON 前后添加任何说明文字或注释
+- 如果字符串内部包含引号，请务必使用反斜杠转义（\\"）`
 
 // 2. 复用 prototype 的 Schemas (用于资产提取)
 const SCHEMAS_V1 = {
@@ -627,11 +634,18 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
     name: '通用简历提取',
     description: '从用户上传的通用简历原文中提取结构化信息。',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `请“提取而非改写”以下简历原文，严格按照 JSON Schema 输出结构化结果。
-– **职责职责（responsibilities）**：原样提取所有以“负责/主导/作为唯一负责人”等开头的职责句。
-– **成果亮点（highlights）**：提取可量化的、有影响力的结果（如提效、同比提升、用户指标等）。
-– **项目与链接**：保留项目名/链接/简短描述。
-– **要点还原**：职业摘要与专业特长采用“要点列表”逐条复制原文，不做二次改写。
+    userPrompt: `请"提取而非改写"以下简历原文，**严格按照 JSON Schema 输出完整的结构化结果**。
+
+**完整提取规则（重要）：**
+1. 必须填充 JSON Schema 中的**所有字段**，包括：header、summary、summary_points、specialties_points、experience、projects、education、skills、certifications、languages、awards、openSource、extras
+2. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
+3. 即使只有一项内容，也必须正确填入对应字段
+
+**提取指引：**
+– **职责（responsibilities）**：原样提取所有以"负责/主导/作为唯一负责人"等开头的职责句
+– **成果亮点（highlights）**：提取可量化的、有影响力的结果（如提效、同比提升、用户指标等）
+– **项目与链接**：保留项目名/链接/简短描述
+– **要点还原**：职业摘要与专业特长采用"要点列表"逐条复制原文，不做二次改写
 
 简历原文:
 """
@@ -645,9 +659,14 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
     name: '详细履历提取',
     description: '从用户的详细履历中提取所有结构化信息。',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `请“提取而非改写”以下个人详细履历原文，严格按照给定 JSON Schema 输出。必须逐条复制原文要点，不合并、不重写，保留所有数量/百分比/时间范围。
+    userPrompt: `请"提取而非改写"以下个人详细履历原文，**严格按照 JSON Schema 输出完整的结构化结果**。
 
-识别与映射规则：
+**完整提取规则（重要）：**
+1. 必须填充 JSON Schema 中的**所有字段**，包括：header、summary、experiences、capabilities、rawSections 等
+2. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
+3. 必须逐条复制原文要点，不合并、不重写，保留所有数量/百分比/时间范围
+
+**识别与映射规则：**
 1) 公司段：当出现“公司/产品/在职时间/关键词”四要素时，创建 experiences[] 项，填充 company、product_or_team、role、duration、keywords[]。
 2) 项目段（项目经历）：识别“任务/行动/成果”三段，分别写入 projects[].task/actions/results；出现数字或百分比时，同时写入 projects[].metrics[]。
 3) 能力分节：识别“学习能力/推荐系统/创作者增长/短视频内容理解/精益能力/协同能力/领导能力/问题解决能力”等，写入 capabilities[]，points 为原文要点。
@@ -690,8 +709,12 @@ metrics: (label="7日留存", value="3.2%", period="7d"); (label="播放完成�
     name: '岗位JD提取',
     description: '从 JD 原文中提取关键需求。',
     systemPrompt: SYSTEM_BASE,
-    userPrompt: `请解析以下岗位描述（JD）原文。
-重点是区分“必须项”（Must-haves）和“加分项”（Nice-to-haves）。
+    userPrompt: `请解析以下岗位描述（JD）原文，**严格按照 JSON Schema 输出完整的结构化结果**。
+
+**完整提取规则（重要）：**
+1. 必须填充 JSON Schema 中的**所有字段**，包括：title、company、location、requirements、nice_to_haves、tech_stack、benefits、company_info 等
+2. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
+3. 重点是区分"必须项"（Must-haves / requirements）和"加分项"（Nice-to-haves）
 
 JD原文:
 """
@@ -986,6 +1009,14 @@ JD原文:
 \`\`\`
 共输出3-5条建议，每条必须包含 **调整** 和 **理由** 两个子项。
 
+### 最终检查清单（防幻觉与防循环）
+1. **禁止输出思维链**：所有的 Step 1-7 仅在你的思维中进行，**绝对不要**输出到 JSON 结果中。
+2. **缺失字段留空**：如果原简历中没有某个字段的信息（如 wechat、github、linkedin），直接输出空字符串 \"\"，**严禁捏造或猜测**。例如：如果原简历无微信号，则 wechat: \"\"。
+3. **清洗无效数据**：如果发现自己想写 \"请补充\"、\"手机同号\"、\"待定\"、\"此处保持\" 等占位符，**立即停止**，改为输出空字符串 \"\"。
+4. **禁止解释**：只输出有效数据，不要在任何字段里写任何解释性文字。
+5. **禁止重复**：如果发现自己在输出相同的文字模式，**立即停止当前字段**，直接移动到下一个字段。
+6. **禁止回显输入**：**严禁**将输入上下文中的 JSON 结构（如 job_summary_json、detailed_resume_summary_json 的字段 jobTitle、company、mustHaves、points 等）复制到输出中。输出只包含 resumeData 的字段，不要混入输入数据结构。
+
 严格遵循 Output Schema 输出 JSON。`,
     variables: [
       'rag_context',
@@ -996,59 +1027,17 @@ JD原文:
     ],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
   },
-  // Free tier simplified prompt (for GLM Flash)
-  resume_customize_lite: {
-    id: 'resume_customize_lite',
-    name: '简历定制化 (基础版)',
-    description: '基于岗位需求，对用户简历进行基础优化。',
-    systemPrompt: `你是一位简历优化助手。根据目标岗位的要求，对用户简历进行适度优化。
-
-### 核心原则
-- 最大限度保留用户原稿内容
-- 仅做最必要的润色和调整
-- 严禁编造不存在的经历或技能
-- 工作经历描述使用列表格式，每条以 "- " 开头
-
-### 基础信息处理 (basics 字段)
-- **必须完整复制**原简历中的：name, mobile, email, address, lang
-- **不要添加**原简历中没有的字段（如 github, linkedin, wechat 等）
-- **唯一来源**：从 resume_summary_json 的 basics 对象中直接复制
-
-### 输出格式
-输出严格遵循 Schema 的有效 JSON 对象。不要包含 Markdown 代码块标记。`,
-    userPrompt: `请根据以下信息，对用户简历进行基础优化。
-
-【用户简历】
-"""
-{resume_summary_json}
-"""
-
-【目标岗位】
-"""
-{job_summary_json}
-"""
-
-【匹配度分析】
-以下是简历与岗位的匹配分析，参考 Strengths 强化优势，参考 Weaknesses 适当补充：
-"""
-{match_analysis_json}
-"""
-
-### 任务要求
-1. **basics 字段**：从输入简历的 basics 中直接复制 name, mobile, email, lang 等，不要遗漏或添加
-2. 保留原简历的核心内容，仅做措辞优化
-3. 根据岗位需求和匹配分析调整内容重点
-4. 工作经历描述必须使用列表格式，每条以 "- " 开头
-5. 在 optimizeSuggestion 中说明 2-3 处关键调整
-
-严格遵循 Output Schema 输出 JSON。`,
-    variables: [
-      'resume_summary_json',
-      'job_summary_json',
-      'match_analysis_json',
-    ],
-    outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
-  },
+  // [DEPRECATED] Free tier simplified prompt - no longer used
+  // Gemini-3-flash-preview is capable enough to use full resume_customize prompt
+  // resume_customize_lite: {
+  //   id: 'resume_customize_lite',
+  //   name: '简历定制化 (基础版)',
+  //   description: '基于岗位需求，对用户简历进行基础优化。',
+  //   systemPrompt: `你是一位简历优化助手...`,
+  //   userPrompt: `请根据以下信息，对用户简历进行基础优化...`,
+  //   variables: ['resume_summary_json', 'job_summary_json', 'match_analysis_json'],
+  //   outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
+  // },
   interview_prep: {
     id: 'interview_prep',
     name: '面试定向准备',

@@ -13,7 +13,12 @@ import type { ZodTypeAny } from 'zod'
  * @returns true if the model is verified to support structured output
  */
 export function isModelCapable(modelId: string): boolean {
-    // Gemini and DeepSeek are verified to work with withStructuredOutput
+    // DeepSeek Reasoner (R1) does NOT support tool_choice / structured output
+    // Error: "400 deepseek-reasoner does not support this tool_choice"
+    if (modelId === 'deepseek-reasoner') {
+        return false
+    }
+    // Gemini and DeepSeek Chat are verified to work with withStructuredOutput
     return modelId.startsWith('gemini') || modelId.startsWith('deepseek')
 }
 

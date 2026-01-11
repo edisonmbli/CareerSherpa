@@ -10,7 +10,7 @@ interface PageBreakSwitchProps {
 export function PageBreakSwitch({ sectionKey }: PageBreakSwitchProps) {
   const { sectionConfig, togglePageBreak } = useResumeStore()
   const dict = useResumeDict()
-  const isChecked = sectionConfig.pageBreaks?.[sectionKey] || false
+  const isChecked = (sectionConfig.pageBreaks as Record<string, boolean | undefined>)?.[sectionKey] || false
 
   return (
     <div className="flex items-center justify-between py-4 border-t mt-4">

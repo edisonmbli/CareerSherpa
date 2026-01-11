@@ -319,7 +319,7 @@ const createResumeSlice = (
         if (!state.resumeData.sectionTitles) {
           state.resumeData.sectionTitles = {}
         }
-        state.resumeData.sectionTitles[sectionKey] = title
+        (state.resumeData.sectionTitles as Record<string, string | undefined>)[sectionKey] = title
       }
     })
     get().markDirty('resumeData')
@@ -333,8 +333,8 @@ const createResumeSlice = (
         state.sectionConfig.pageBreaks = {}
       }
       // Toggle
-      state.sectionConfig.pageBreaks[sectionKey] =
-        !state.sectionConfig.pageBreaks[sectionKey]
+      (state.sectionConfig.pageBreaks as Record<string, boolean | undefined>)[sectionKey] =
+        !(state.sectionConfig.pageBreaks as Record<string, boolean | undefined>)[sectionKey]
     })
     get().markDirty('sectionConfig')
   },

@@ -29,6 +29,8 @@ export interface PushTaskParams<T extends TaskTemplateId> {
   locale: Locale
   templateId: T
   variables: VariablesFor<T>
+  /** Optional delay before task dispatch (in seconds). Useful to avoid lock contention. */
+  delaySec?: number
 }
 
 /**
@@ -225,6 +227,8 @@ export async function pushTask<T extends TaskTemplateId>(
           retryCount: 0,
         },
         retries: 0,
+        // Delay dispatch to allow previous worker to release lock
+        ...(params.delaySec && params.delaySec > 0 ? { delay: params.delaySec } : {}),
       })
   } catch (error) {
     const wasPaid = !!(params.variables as any)?.wasPaid

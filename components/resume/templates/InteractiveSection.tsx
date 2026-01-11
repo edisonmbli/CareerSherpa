@@ -29,7 +29,7 @@ export function InteractiveSection({
     : activeSectionKey === sectionKey && !activeItemId
 
   const configKey = itemId || sectionKey
-  const hasPageBreak = sectionConfig.pageBreaks?.[configKey]
+  const hasPageBreak = (sectionConfig.pageBreaks as Record<string, boolean | undefined>)?.[configKey]
 
   // Generate unique ID for measurement
   const uniqueId = itemId ? `${sectionKey}-${itemId}` : sectionKey
@@ -64,7 +64,7 @@ export function InteractiveSection({
         // The user said: "移除旧的 .break-after-page 类... 但为了保险起见，打印时可以保留"
         // Let's keep the class but override in CSS if needed.
         hasPageBreak &&
-          "break-after-page mb-8 border-b-2 border-dashed border-red-300 print:border-none relative after:content-['分页符'] after:absolute after:right-0 after:-bottom-5 after:text-xs after:text-red-400 print:after:hidden",
+        "break-after-page mb-8 border-b-2 border-dashed border-red-300 print:border-none relative after:content-['分页符'] after:absolute after:right-0 after:-bottom-5 after:text-xs after:text-red-400 print:after:hidden",
         className
       )}
       onClick={(e) => {

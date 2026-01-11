@@ -89,7 +89,24 @@ export const resumeDataSchema = z.object({
     .describe('其他自定义板块'),
 
   // 用户自定义章节标题 (覆盖默认翻译)
-  sectionTitles: z.record(z.string()).optional().describe('自定义章节标题'),
+  // Note: Use explicit object instead of z.record() for Gemini API compatibility
+  // Note: passthrough() removed - may cause LangChain schema conversion issues
+  sectionTitles: z.object({
+    basics: z.string().optional(),
+    summary: z.string().optional(),
+    educations: z.string().optional(),
+    workExperiences: z.string().optional(),
+    projectExperiences: z.string().optional(),
+    skills: z.string().optional(),
+    certificates: z.string().optional(),
+    hobbies: z.string().optional(),
+    customSections: z.string().optional(),
+    // Add any additional known section keys here
+    languages: z.string().optional(),
+    awards: z.string().optional(),
+    publications: z.string().optional(),
+    references: z.string().optional(),
+  }).optional().describe('自定义章节标题'),
 })
 
 // ==========================================
@@ -100,7 +117,24 @@ export const resumeDataSchema = z.object({
 export const sectionConfigSchema = z.object({
   order: z.array(z.string()).default([]),
   hidden: z.array(z.string()).default([]),
-  pageBreaks: z.record(z.boolean()).optional().describe('章节后强制分页'),
+  // Note: Use explicit object instead of z.record() for Gemini API compatibility
+  // Note: passthrough() removed - may cause LangChain schema conversion issues
+  pageBreaks: z.object({
+    basics: z.boolean().optional(),
+    summary: z.boolean().optional(),
+    educations: z.boolean().optional(),
+    workExperiences: z.boolean().optional(),
+    projectExperiences: z.boolean().optional(),
+    skills: z.boolean().optional(),
+    certificates: z.boolean().optional(),
+    hobbies: z.boolean().optional(),
+    customSections: z.boolean().optional(),
+    // Add any additional known section keys here
+    languages: z.boolean().optional(),
+    awards: z.boolean().optional(),
+    publications: z.boolean().optional(),
+    references: z.boolean().optional(),
+  }).optional().describe('章节后强制分页'),
 })
 
 // ==========================================
