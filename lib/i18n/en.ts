@@ -186,6 +186,7 @@ const dict = {
       noGaps: 'No gaps detected.',
       tip: 'Tip',
       expertVerdict: 'Expert Verdict',
+      recommendations: 'Recommendations',
     },
     interviewUi: {
       start: 'Generate Interview Tips',

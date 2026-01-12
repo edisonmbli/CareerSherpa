@@ -669,6 +669,7 @@ export function ServiceDisplay({
                     noGaps: dict.workbench?.resultCard?.noGaps,
                     tip: dict.workbench?.resultCard?.tip,
                     expertVerdict: dict.workbench?.resultCard?.expertVerdict,
+                    recommendations: dict.workbench?.resultCard?.recommendations,
                   }}
                   actionButton={ctaNode}
                 />

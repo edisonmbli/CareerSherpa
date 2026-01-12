@@ -446,8 +446,11 @@ export function getModel(
       ...(temperature !== undefined ? { temperature } : {}),
       ...(maxTokens !== undefined ? { maxTokens } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
-      // JSON Mode: 强制输出有效 JSON
-      ...(jsonMode ? { modelKwargs: { response_format: { type: 'json_object' } } } : {}),
+      // DeepSeek R1 Thinking Mode (if supported by API)
+      modelKwargs: {
+        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        extra_body: { thinking: { type: 'enabled' } }
+      }
     }
     return new ChatDeepSeek(params)
   }

@@ -46,6 +46,7 @@ interface ResultCardProps {
     tip?: string
     expertVerdict?: string
     scrollHint?: string
+    recommendations?: string
   }
   className?: string
   actionButton?: React.ReactNode
@@ -521,22 +522,37 @@ export function ResultCard({
           </div>
         </div>
 
-        {/* Block C: Recommendations (New) */}
+        {/* Block C: Recommendations (Action Plan) - Magazine Style Header */}
         {recommendations.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 px-1">
-              <div className="p-1 rounded bg-blue-100 dark:bg-blue-900/30">
-                <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <div className="space-y-5 md:space-y-7">
+            {/* Magazine Header */}
+            <div className="relative inline-block">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 -skew-x-12 rounded-sm -mx-2" />
+              <div className="relative flex items-center gap-2 px-1">
+                <span className="text-base font-black text-blue-900/80 dark:text-blue-400 tracking-tight italic">
+                  {labels?.recommendations || 'Recommendations'}
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-r from-blue-500/30 to-transparent w-32" />
               </div>
-              <span className="text-sm font-bold text-foreground tracking-tight">
-                Recommendations
-              </span>
             </div>
-            <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+
+            <div className="relative pl-2 ml-1.5 space-y-6">
+              {/* Vertical Line */}
+              <div className="absolute left-0 top-1 bottom-1 w-px bg-gradient-to-b from-blue-500/30 via-blue-500/10 to-transparent" />
+
               {recommendations.map((rec: string, i: number) => (
-                <li key={i}>{rec}</li>
+                <div key={i} className="relative pl-6">
+                  {/* Timeline Dot */}
+                  <div className="absolute -left-[3px] top-2.5 w-1.5 h-1.5 rounded-full bg-blue-500/60 shadow-sm z-10 ring-4 ring-background" />
+
+                  <div className="space-y-1.5">
+                    <div className="text-sm font-medium text-foreground/90 leading-relaxed font-[family-name:var(--font-jetbrains-mono),monospace]">
+                      {rec}
+                    </div>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
 

@@ -8,6 +8,7 @@ import {
 } from '@/lib/worker/common'
 import { buildQueueCounterKey } from '@/lib/config/concurrency'
 import { isServiceScoped } from '@/lib/llm/task-router'
+import { getTaskConfig } from '@/lib/llm/config'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { logEvent } from '@/lib/observability/logger'
 import { publishStart, emitStreamIdle } from '@/lib/worker/pipeline'
@@ -307,12 +308,21 @@ export async function handleStream(
         // Phase 1: LLM Execution
         phase = 'LLM_EXECUTE'
         await markTimeline(serviceId, 'worker_stream_llm_start', { taskId })
+
+        // Use centralized config for temperature
+        const config = getTaskConfig(templateId)
+        const options: any = {
+          temperature: config.temperature,
+          tier: userHasQuota ? 'paid' : 'free',
+        }
+
         execResult = await executeStreaming(
           decision.modelId,
           templateId,
           locale,
           preparedVars,
           { userId, serviceId },
+          options,
           (text) => onToken(channel, taskId, text, requestId, traceId)
         )
         await markTimeline(serviceId, 'worker_stream_done', {
@@ -607,10 +617,12 @@ export async function handleBatch(
           }
         } else {
           // Normal LLM execution
-          const options: any = {}
-          if (templateId === 'resume_customize') {
-            options.temperature = 0.1
+          const config = getTaskConfig(templateId)
+          const options: any = {
+            temperature: config.temperature,
+            tier: userHasQuota ? 'paid' : 'free',
           }
+
           execResult = await executeStructured(
             decision.modelId,
             templateId,

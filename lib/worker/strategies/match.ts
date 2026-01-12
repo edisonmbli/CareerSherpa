@@ -205,6 +205,25 @@ function asStringArray(arr: any): string[] {
   return []
 }
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number = 3,
+  delayMs: number = 500
+): Promise<T> {
+  let lastError: any
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      lastError = e
+      if (i < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs * Math.pow(2, i)))
+      }
+    }
+  }
+  throw lastError
+}
+
 // ============================================================================
 // Strategy Implementation
 // ============================================================================
@@ -399,7 +418,21 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     }
 
     // Step 3: Success - save and notify
-    await txMarkMatchCompleted(serviceId, matchJson)
+    try {
+      await withRetry(() => txMarkMatchCompleted(serviceId, matchJson))
+    } catch (e) {
+      logError({
+        reqId: requestId,
+        route: 'worker/match',
+        error: String(e),
+        phase: 'save_retry_failed',
+        serviceId,
+      })
+      // Even if save fails, try to notify frontend
+      // But we should probably mark as failed?
+      // For now, let's treat it as critical and fall through to catch
+      throw e
+    }
 
     try {
       await publishEvent(channel, {
@@ -422,6 +455,13 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       })
     } catch { /* best effort */ }
 
+    // Consider handling refunds if the catch block above caught the save error
+    // But since `writeResults` in handlers catches everything, passing error up is enough
+    // to trigger the generic error handler.
+    // However, we want to ensure we don't refund if the LLM part was actually successful
+    // and only the DB save failed (user got value via stream tokens).
+    // The current architecture refunds on ANY writeResults failure.
+    // This seems acceptable for now.
     await handleRefunds(execResult, variables, serviceId, userId)
   }
 }

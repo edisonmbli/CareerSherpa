@@ -87,7 +87,7 @@ const SCHEMAS_V1 = {
         description: '加分项',
       },
     },
-    required: ['jobTitle', 'mustHaves', 'niceToHaves'],
+    required: ['jobTitle', 'company', 'mustHaves', 'niceToHaves'],
   } as JsonSchema,
 }
 
@@ -163,6 +163,14 @@ const SCHEMAS_V2 = {
         description:
           '一段 150 字以内、高度定制化的“毛遂自荐”私信话术 (H-V-C 结构)',
       },
+      recommendations: {
+        type: 'array',
+        items: {
+          type: 'string',
+          description: '针对整体情况的三条具体行动建议 (高价值/可执行)',
+        },
+        description: '给用户的后续行动指南 (3条)',
+      },
     },
     required: [
       'match_score',
@@ -170,6 +178,7 @@ const SCHEMAS_V2 = {
       'strengths',
       'weaknesses',
       'cover_letter_script',
+      'recommendations',
     ],
   } as JsonSchema,
 
@@ -668,8 +677,8 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
 
 **识别与映射规则：**
 1) 公司段：当出现“公司/产品/在职时间/关键词”四要素时，创建 experiences[] 项，填充 company、product_or_team、role、duration、keywords[]。
-2) 项目段（项目经历）：识别“任务/行动/成果”三段，分别写入 projects[].task/actions/results；出现数字或百分比时，同时写入 projects[].metrics[]。
-3) 能力分节：识别“学习能力/推荐系统/创作者增长/短视频内容理解/精益能力/协同能力/领导能力/问题解决能力”等，写入 capabilities[]，points 为原文要点。
+2) 项目高亮：将项目的任务/行动/成果整合为 highlights[] 字符串数组；量化指标格式化为 metrics[] 字符串数组，如 "新用户7日留存 +3.2%"。
+3) 能力分节：识别各类能力描述，写入 capabilities[] 字符串数组，每个字符串是一个能力要点。
 4) 兜底：无法归类的分节写入 rawSections[]，title 为原文标题，points 为原文要点。
 
 极简示例（用于公司/项目识别与字段映射）：
@@ -684,18 +693,15 @@ role: "高级产品经理"
 duration: "2019.03-2021.08"
 keywords: ["内容生态","推荐系统","创作者增长"]
 
-— 项目段示例 —
+— 项目高亮与量化示例 —
 原文：
 项目：内容推荐重排
 任务：降低冷启动损耗
 行动：构建用户-内容相似度特征；上线召回+重排多臂Bandit
 成果：新用户7日留存+3.2%；播放完成率+5.6%
-映射：
-projects[].name: "内容推荐重排"
-task: ["降低冷启动损耗"]
-actions: ["构建用户-内容相似度特征","上线召回+重排多臂Bandit"]
-results: ["新用户7日留存+3.2%","播放完成率+5.6%"]
-metrics: (label="7日留存", value="3.2%", period="7d"); (label="播放完成率", value="5.6%")
+映射（扁平格式）：
+highlights: ["内容推荐重排项目：降低冷启动损耗","构建用户-内容相似度特征","上线召回+重排多臂Bandit"]
+metrics: ["新用户7日留存 +3.2%","播放完成率 +5.6%"]
 
 履历原文:
 """
@@ -847,9 +853,14 @@ JD原文:
    **错误示例（禁止）**:
    - ❌ "H": "您好，关注到贵司的职位..."
    - ❌ "H": "我是一名拥有12年经验的产品人..."
-   - ❌ "H": "消费品企业数字化转型的核心痛点是..."（问题开头，HR 无感）
-
-严格遵循 Output Schema 输出 JSON。`,
+    - ❌ "H": "消费品企业数字化转型的核心痛点是..."（问题开头，HR 无感）
+ 
+   6. **recommendations** (数组):
+      - 必须且仅包含 **3条** 高价值建议
+      - 建议方向：技能提升、简历微调、面试策略
+      - 语气：鼓励性但务实
+ 
+    严格遵循 Output Schema 输出 JSON。`,
     variables: [
       'job_summary_json',
       'resume_summary_json',

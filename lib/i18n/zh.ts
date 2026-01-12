@@ -180,6 +180,7 @@ const dict = {
       noGaps: '未发现明显差距',
       tip: '建议',
       expertVerdict: '专家点评',
+      recommendations: '行动建议',
     },
     interviewUi: {
       start: '面试 Tips',

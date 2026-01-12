@@ -82,7 +82,7 @@ const SCHEMAS_V1 = {
         description: 'Nice-to-have skills',
       },
     },
-    required: ['jobTitle', 'mustHaves', 'niceToHaves'],
+    required: ['jobTitle', 'company', 'mustHaves', 'niceToHaves'],
   } as JsonSchema,
 }
 
@@ -591,8 +591,8 @@ Raw Resume Text:
 
 **Recognition & Mapping Rules:**
 1) Company Block: When you see four elements (Company/Product/Duration/Keywords), create an experiences[] item and fill company, product_or_team, role, duration, keywords[].
-2) Project Block: identify **Task / Actions / Results** and store them in projects[].task / actions / results; when numbers or percentages appear, also record them in projects[].metrics[].
-3) Capability Sections: detect sections like "Learning Capability", "Recommendation System", "Creator Growth", "Short Video Understanding", "Lean", "Collaboration", "Leadership", "Problem-Solving"; store them in capabilities[] with original bullet points.
+2) Project Highlights: Merge task/actions/results into highlights[] string array, each string is a self-contained bullet point; record quantified metrics in metrics[] string array (e.g., "7-day retention +3.2%").
+3) Capability Sections: detect sections like "Learning Capability", "Recommendation System", "Creator Growth", etc.; store them in capabilities[] string array, each string is one capability bullet point.
 4) Fallback: if a section cannot be classified, store it in rawSections[] with its original title and bullet points.
 
 Minimal Examples (for company/project recognition and field mapping):
@@ -607,18 +607,15 @@ role: "Senior Product Manager"
 duration: "2019.03–2021.08"
 keywords: ["Content Ecosystem","Recommendation System","Creator Growth"]
 
-— Project Block —
+— Project Highlights & Metrics Example —
 Raw:
 Project: Recommendation Re-ranking
 Task: Reduce cold-start loss
 Actions: Build user–content similarity features; Launch recall + re-ranking Multi-armed Bandit
 Results: New-user 7-day retention +3.2%; Completion rate +5.6%
-Mapping:
-projects[].name: "Recommendation Re-ranking"
-task: ["Reduce cold-start loss"]
-actions: ["Build user–content similarity features","Launch recall + re-ranking Multi-armed Bandit"]
-results: ["New-user 7-day retention +3.2%","Completion rate +5.6%"]
-metrics: (label="7-day retention", value="3.2%", period="7d"); (label="Completion rate", value="5.6%")
+Mapping (flattened format):
+highlights: ["Recommendation Re-ranking Project: Reduce cold-start loss","Build user–content similarity features","Launch recall + re-ranking Multi-armed Bandit"]
+metrics: ["New-user 7-day retention +3.2%","Completion rate +5.6%"]
 
 Raw Text:
 """

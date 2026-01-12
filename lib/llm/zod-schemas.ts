@@ -97,10 +97,18 @@ const resumeSummarySchema = z
     { message: 'empty_resume_summary' }
   )
 
-const detailedResumeV3Schema = z
+// V4: Flattened schema for Gemini compatibility (max 3 levels nesting)
+// Changes from V3:
+// - experiences[].projects[].metrics[] (5 levels) → experiences[].metrics[] (3 levels)
+// - experiences[].projects[].task[] → merged into highlights[]
+// - capabilities[].points[] (3 levels) → capabilities[] (2 levels)
+// This is now unified for both Free tier (Gemini) and Paid tier (DeepSeek)
+const detailedResumeV4Schema = z
   .object({
     header: headerSchema.optional(),
     summary: z.string().optional(),
+
+    // Flattened experiences (max 3 levels: root → experiences[] → {properties})
     experiences: z
       .array(
         z.object({
@@ -109,39 +117,21 @@ const detailedResumeV3Schema = z
           role: z.string().optional(),
           duration: z.string().optional(),
           keywords: z.array(z.string()).optional(),
+          // All project highlights, tasks, actions merged into flat list
           highlights: z.array(z.string()).optional(),
-          projects: z
-            .array(
-              z.object({
-                name: z.string().optional(),
-                description: z.string().optional(),
-                link: z.string().optional(),
-                task: z.array(z.string()).optional(),
-                actions: z.array(z.string()).optional(),
-                results: z.array(z.string()).optional(),
-                metrics: z
-                  .array(
-                    z.object({
-                      label: z.string(),
-                      value: z.string(), // String only for Gemini compatibility
-                      unit: z.string().optional(),
-                      period: z.string().optional(),
-                    })
-                  )
-                  .optional(),
-              })
-            )
-            .optional(),
+          // Metrics formatted as strings: "提升响应时间 40%"
+          metrics: z.array(z.string()).optional(),
+          // Keep contributions as flat array
           contributions: z.array(z.string()).optional(),
         })
       )
       .optional(),
-    capabilities: z
-      .array(z.object({
-        name: z.string().optional(), // Made optional for LLM output tolerance
-        points: z.array(z.string()).optional() // Made optional for LLM output tolerance
-      }))
-      .optional(),
+
+    // Flattened capabilities (2 levels instead of 3)
+    // Each string is a capability point like "精通 React 生态系统"
+    capabilities: z.array(z.string()).optional(),
+
+    // These are already 2-3 levels, no change needed
     education: z.array(educationItemSchema).optional(),
     skills: skillsSchema.optional(),
     certifications: z.array(certificationItemSchema).optional(),
@@ -151,17 +141,18 @@ const detailedResumeV3Schema = z
     extras: z.array(z.string()).optional(),
     summary_points: z.array(z.string()).optional(),
     specialties_points: z.array(z.string()).optional(),
+
+    // Keep rawSections for flexibility, but simplified
     rawSections: z
       .array(z.object({
-        title: z.string().optional(), // Made optional for LLM output tolerance
-        points: z.array(z.string()).optional() // Made optional for LLM output tolerance
+        title: z.string().optional(),
+        points: z.array(z.string()).optional()
       }))
       .optional(),
   })
   .refine(
     (d) =>
-      // Simplified refine: just check if ANY meaningful content exists
-      // This is more tolerant to LLM output variations
+      // Simplified refine: check if ANY meaningful content exists
       Boolean(d.summary && String(d.summary).trim().length > 0) ||
       (Array.isArray(d.summary_points) && d.summary_points.length > 0) ||
       (Array.isArray(d.experiences) && d.experiences.length > 0) ||
@@ -178,9 +169,79 @@ const detailedResumeV3Schema = z
     { message: 'empty_detailed_resume_summary' }
   )
 
+// [NEW] Deep Schema for Paid Tier / DeepSeek (supports nested projects)
+// Extends V4 logic but restores rich project structure
+export const detailedResumeDeepSchema = z
+  .object({
+    header: headerSchema.optional(),
+    summary: z.string().optional(),
+    experiences: z
+      .array(
+        z.object({
+          company: z.string().optional(),
+          product_or_team: z.string().optional(),
+          role: z.string().optional(),
+          duration: z.string().optional(),
+          keywords: z.array(z.string()).optional(),
+          highlights: z.array(z.string()).optional(),
+          metrics: z.array(z.string()).optional(),
+          // Nested projects for DeepSeek R1
+          projects: z.array(z.object({
+            name: z.string().optional(),
+            description: z.string().optional(),
+            link: z.string().optional(),
+            task: z.array(z.string()).optional(),
+            actions: z.array(z.string()).optional(),
+            results: z.array(z.string()).optional(),
+            metrics: z.array(z.object({
+              label: z.string(),
+              value: z.union([z.number(), z.string()]),
+              unit: z.string().optional(),
+              period: z.string().optional(),
+            })).optional(),
+            highlights: z.array(z.string()).optional(),
+          })).optional(),
+
+          contributions: z.array(z.string()).optional(),
+        })
+      )
+      .optional(),
+    // [PATCH] Allow rich capabilities (object with name/points) to match prompt instruction
+    capabilities: z.array(z.union([
+      z.string(),
+      z.object({
+        name: z.string().optional(),
+        points: z.array(z.string()).optional()
+      })
+    ])).optional(),
+    education: z.array(educationItemSchema).optional(),
+    // [PATCH] Allow skills to be simple array OR structured object
+    skills: z.union([
+      z.array(z.string()),
+      skillsSchema
+    ]).optional(),
+    certifications: z.array(certificationItemSchema).optional(),
+    languages: z.array(languageItemSchema).optional(),
+    awards: z.array(awardItemSchema).optional(),
+    openSource: z.array(openSourceItemSchema).optional(),
+    extras: z.array(z.string()).optional(),
+    summary_points: z.array(z.string()).optional(),
+    specialties_points: z.array(z.string()).optional(),
+    rawSections: z
+      .array(z.object({
+        title: z.string().optional(),
+        points: z.array(z.string()).optional()
+      }))
+      .optional(),
+  })
+  .refine(
+    (d) => Boolean(d.summary || d.experiences?.length || d.education?.length),
+    { message: 'empty_detailed_resume_summary' }
+  )
+
 const jobSummarySchema = z.object({
   jobTitle: z.string(),
-  company: z.string().optional(),
+  company: z.string(),
   mustHaves: z.array(z.string()).min(1),
   niceToHaves: z.array(z.string()).min(1),
 })
@@ -254,7 +315,7 @@ const ocrExtractSchema = z.object({
 // 统一映射
 const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   resume_summary: resumeSummarySchema,
-  detailed_resume_summary: detailedResumeV3Schema,
+  detailed_resume_summary: detailedResumeV4Schema,
   job_summary: jobSummarySchema,
   job_vision_summary: jobSummarySchema, // Free tier merged OCR + Summary (same output as job_summary)
   job_match: jobMatchSchema,

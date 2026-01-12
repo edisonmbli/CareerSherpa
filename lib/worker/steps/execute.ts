@@ -7,6 +7,7 @@ export async function executeStreaming(
   locale: any,
   variables: Record<string, any>,
   meta: { userId: string; serviceId: string },
+  options: any = {},
   onToken: (text: string) => Promise<void>
 ) {
   const start = Date.now()
@@ -17,6 +18,7 @@ export async function executeStreaming(
     locale,
     variables,
     meta,
+    options,
     async (text) => {
       tokenCount += text ? 1 : 0
       await onToken(text)

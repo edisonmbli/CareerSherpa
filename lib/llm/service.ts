@@ -9,7 +9,7 @@ import {
   HumanMessagePromptTemplate,
 } from '@langchain/core/prompts'
 import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
-import { getTaskSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
+import { getTaskSchema, detailedResumeDeepSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
 import { getProvider, getCost } from '@/lib/llm/utils'
@@ -18,6 +18,7 @@ import { ENV } from '@/lib/env'
 import { getTaskLimits } from '@/lib/llm/config'
 import { executeWithSmartRetry, getTierFromModelId } from '@/lib/llm/retry'
 import { shouldUseStructuredOutput } from '@/lib/llm/capability'
+import { runGeminiStructured, runGeminiStreaming, runGeminiVision, shouldUseGeminiDirect } from '@/lib/llm/gemini-direct'
 import {
   extractTokenUsageFromMessage,
   extractTokenUsageFromModel,
@@ -318,7 +319,122 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     // Generic Hybrid Result Strategy
     // Supports both 'withStructuredOutput' (future standard) and 'message' (legacy/other providers)
     // Capability and schema checks are now in @/lib/llm/capability.ts
-    const schema = getTaskSchema(templateId)
+    let schema = getTaskSchema(templateId)
+
+    // [New] Dynamic Schema Selection
+    // For detailed resume summary on Paid tier (DeepSeek/High-end Gemini), usage of Deep Schema is allowed
+    // This addresses the recursion limit on Free Tier Gemini models while enabling rich nesting for Paid models
+    if (String(templateId) === 'detailed_resume_summary' && (options.tier === 'paid')) {
+      schema = detailedResumeDeepSchema
+    }
+
+    // PHASE 1A: Gemini Direct Vision Path (for OCR/vision tasks)
+    if (shouldUseGeminiDirect(modelId) && schema && hasVisionImage) {
+      console.log('[Structured] Using Gemini Direct Vision API for:', templateId)
+
+      const renderedUserPrompt = renderVariables(template.userPrompt, {
+        ...variables,
+        image: '[attached]',
+      })
+
+      // Get image data from variables
+      const imageData = String(variables['image'] || variables['jobImage'] || '')
+      if (!imageData) {
+        return {
+          ok: false,
+          error: 'No image data provided for vision task',
+        } as RunLlmTaskResult<T>
+      }
+
+      const geminiResult = await runGeminiVision(
+        template.systemPrompt,
+        renderedUserPrompt,
+        imageData,
+        schema,
+        {
+          maxOutputTokens: options.maxTokens ?? limits.maxTokens,
+          ...(options.temperature !== undefined ? { temperature: options.temperature } : {})
+        }
+      )
+
+      // Debug Log: Output
+      logDebugData(`${String(templateId)}_output`, {
+        output: geminiResult.raw || JSON.stringify(geminiResult.data),
+        meta: {
+          modelId,
+          elapsed: Date.now() - start,
+          usage: geminiResult.usage,
+          ok: geminiResult.ok,
+          error: geminiResult.error,
+          isVision: true,
+        },
+      })
+
+      if (!geminiResult.ok) {
+        return {
+          ok: false,
+          error: geminiResult.error,
+          raw: geminiResult.raw || '',
+          usage: geminiResult.usage,
+        } as RunLlmTaskResult<T>
+      }
+
+      return {
+        ok: true,
+        data: geminiResult.data,
+        raw: geminiResult.raw || '',
+        usage: geminiResult.usage,
+      } as RunLlmTaskResult<T>
+    }
+
+    // PHASE 1B: Gemini Direct API Path (for text-only structured tasks)
+    // For Gemini 3 models, use native API for better structured output reliability
+    if (shouldUseGeminiDirect(modelId) && schema && !hasVisionImage) {
+      console.log('[Structured] Using Gemini Direct API for:', templateId)
+
+      // Render prompts with variables
+      const renderedUserPrompt = renderVariables(template.userPrompt, variables)
+
+      const geminiResult = await runGeminiStructured(
+        template.systemPrompt,
+        renderedUserPrompt,
+        schema,
+        {
+          maxOutputTokens: options.maxTokens ?? limits.maxTokens,
+          ...(options.temperature !== undefined ? { temperature: options.temperature } : {})
+        }
+      )
+
+      // Debug Log: Output
+      logDebugData(`${String(templateId)}_output`, {
+        output: geminiResult.raw || JSON.stringify(geminiResult.data),
+        meta: {
+          modelId,
+          elapsed: Date.now() - start,
+          usage: geminiResult.usage,
+          ok: geminiResult.ok,
+          error: geminiResult.error,
+        },
+      })
+
+      if (!geminiResult.ok) {
+        return {
+          ok: false,
+          error: geminiResult.error,
+          raw: geminiResult.raw || '',
+          usage: geminiResult.usage,
+        } as RunLlmTaskResult<T>
+      }
+
+      return {
+        ok: true,
+        data: geminiResult.data,
+        raw: geminiResult.raw || '',
+        usage: geminiResult.usage,
+      } as RunLlmTaskResult<T>
+    }
+
+    // PHASE 2: LangChain Path (for other models or fallback)
     const useStructuredOutput = shouldUseStructuredOutput(modelId, schema)
 
     // Execute with tier-aware smart retry
@@ -633,6 +749,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   locale: Locale,
   variables: Record<string, any>,
   context: TaskContext = {},
+  options: RunTaskOptions = {},
   onToken?: (t: string) => void | Promise<void>
 ) {
   const start = Date.now()
@@ -648,6 +765,67 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     meta: { modelId },
   })
 
+  // PHASE 1: Gemini Direct Streaming Path (bypasses LangChain)
+  // For Gemini 3 models, use native API for better streaming reliability
+  if (shouldUseGeminiDirect(modelId)) {
+    console.log('[Streaming] Using Gemini Direct API for:', templateId)
+
+    const limits = getTaskLimits(String(templateId))
+    const renderedUserPrompt = renderVariables(template.userPrompt, variables)
+    const schema = getTaskSchema(templateId)
+
+    const geminiResult = await runGeminiStreaming(
+      template.systemPrompt,
+      renderedUserPrompt,
+      schema,
+      { maxOutputTokens: limits.maxTokens, ...(options.temperature !== undefined ? { temperature: options.temperature } : {}) },
+      onToken
+    )
+
+    const end = Date.now()
+
+    // Debug Log: Output (Streaming)
+    logDebugData(`${String(templateId)}_stream_output`, {
+      output: geminiResult.raw || JSON.stringify(geminiResult.data),
+      latencyMs: end - start,
+      meta: { len: geminiResult.raw?.length || 0, ok: geminiResult.ok },
+    })
+
+    // Log usage (estimate if not provided)
+    const inputTokens = Math.ceil(renderedUserPrompt.length / 4)
+    const outputTokens = Math.ceil((geminiResult.raw?.length || 0) / 4)
+
+    await createLlmUsageLogDetailed({
+      taskTemplateId: templateId,
+      provider: 'gemini',
+      modelId,
+      inputTokens,
+      outputTokens,
+      latencyMs: end - start,
+      cost: getCost(modelId, inputTokens, outputTokens),
+      isStream: true,
+      isSuccess: geminiResult.ok,
+      ...(context.userId ? { userId: context.userId } : {}),
+      ...(context.serviceId ? { serviceId: context.serviceId } : {}),
+    })
+
+    if (!geminiResult.ok) {
+      return {
+        ok: false,
+        error: geminiResult.error,
+        raw: geminiResult.raw || '',
+      } as RunLlmTaskResult<T>
+    }
+
+    return {
+      ok: true,
+      raw: geminiResult.raw || '',
+      data: geminiResult.data,
+      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+    } as RunLlmTaskResult<T>
+  }
+
+  // PHASE 2: LangChain Streaming Path (for other models)
   try {
     const prompt = ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
@@ -655,9 +833,9 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     ])
     const limits = getTaskLimits(String(templateId))
     const model = getModel(modelId, {
-      temperature: 0.3,
-      timeoutMs: ENV.WORKER_TIMEOUT_MS,
-      maxTokens: limits.maxTokens,
+      temperature: options.temperature ?? 0.3,
+      timeoutMs: options.timeoutMs ?? ENV.WORKER_TIMEOUT_MS,
+      maxTokens: options.maxTokens ?? limits.maxTokens,
       jsonMode: true, // 强制 JSON 输出模式
     })
     const chain = prompt.pipe(model)
