@@ -41,6 +41,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+import { ServiceNotification } from '@/components/common/ServiceNotification'
+import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
 import { deriveStage } from '@/lib/utils/workbench-stage'
@@ -96,6 +98,16 @@ export function ServiceDisplay({
   const streamRef = useRef<HTMLDivElement>(null)
   const [freeTierDialog, setFreeTierDialog] = useState(false)
   const [pendingAction, setPendingAction] = useState<'customize' | 'interview' | null>(null)
+
+  const [notification, setNotification] = useState<{
+    type: 'error' | 'success' | 'info'
+    title: string
+    description: string
+  } | null>(null)
+
+  const showError = (title: string, description: string) => {
+    setNotification({ type: 'error', title, description })
+  }
 
   // Track execution tier during customize lifecycle (persisted via localStorage for page refresh)
   const [executionTier, setExecutionTier] = useState<'free' | 'paid' | null>(() => {
@@ -201,29 +213,38 @@ export function ServiceDisplay({
   // Core customize action (called after free tier confirmation if needed)
   const doCustomize = () => {
     setTabValue('customize') // Switch tab immediately for visual feedback
+    setNotification(null)
     startTransition(async () => {
-      const res = await customizeResumeAction({ serviceId: serviceId!, locale })
-      console.log('[Frontend] customizeResumeAction result:', res)
-      if (res?.ok) {
-        if (res.executionSessionId) {
-          // Set task context first for state tracking
-          useWorkbenchStore.getState().startTaskContext('customize', res.executionSessionId)
+      try {
+        const res = await customizeResumeAction({ serviceId: serviceId!, locale })
+        console.log('[Frontend] customizeResumeAction result:', res)
+        if (res?.ok) {
+          if (res.executionSessionId) {
+            // Set task context first for state tracking
+            useWorkbenchStore.getState().startTaskContext('customize', res.executionSessionId)
 
-          // Use customize_ prefix (matches backend channel)
-          const newTaskId = buildTaskId('customize', serviceId!, res.executionSessionId)
-          console.log('[Frontend] Setting taskId to:', newTaskId)
-          setMatchTaskId(newTaskId)
+            // Use customize_ prefix (matches backend channel)
+            const newTaskId = buildTaskId('customize', serviceId!, res.executionSessionId)
+            console.log('[Frontend] Setting taskId to:', newTaskId)
+            setMatchTaskId(newTaskId)
+          }
+          // Set status and start progress simulation immediately (before SSE confirms)
+          // This prevents the 10% → 0% → 10% flash using atomic update
+          useWorkbenchStore.getState().setStatusAndStartProgress('CUSTOMIZE_PENDING')
+        } else {
+          setTabValue('match') // Revert tab on failure
+          const serviceError = getServiceErrorMessage((res as any).error, {
+            statusText: dict.workbench?.statusText,
+            notification: dict.workbench?.notification,
+          })
+          showError(serviceError.title, serviceError.description)
         }
-        // Set status and start progress simulation immediately (before SSE confirms)
-        // This prevents the 10% → 0% → 10% flash using atomic update
-        useWorkbenchStore.getState().setStatusAndStartProgress('CUSTOMIZE_PENDING')
-        // NOTE: Removed router.refresh() - let SSE stream handle status updates
-        // This prevents useServiceStatus from overwriting our CUSTOMIZE_PENDING
-      } else {
-        setTabValue('match') // Revert tab on failure
-        toast.error(
-          dict.workbench.customize.createFailed ||
-          'Failed to start customization'
+      } catch (e) {
+        setTabValue('match')
+        console.error(e)
+        showError(
+          dict.workbench?.customize?.createFailed || 'Failed to start customization',
+          'An unexpected error occurred.'
         )
       }
     })
@@ -251,23 +272,32 @@ export function ServiceDisplay({
 
   // Core interview action
   const doInterview = () => {
+    setNotification(null)
     startTransition(async () => {
-      const res = await generateInterviewTipsAction({ serviceId: serviceId!, locale })
-      if (res?.ok) {
-        if (res.executionSessionId) {
-          // Set task context first for state tracking
-          useWorkbenchStore.getState().startTaskContext('interview', res.executionSessionId)
+      try {
+        const res = await generateInterviewTipsAction({ serviceId: serviceId!, locale })
+        if (res?.ok) {
+          if (res.executionSessionId) {
+            // Set task context first for state tracking
+            useWorkbenchStore.getState().startTaskContext('interview', res.executionSessionId)
 
-          // Use interview_ prefix (matches backend channel)
-          const newTaskId = buildTaskId('interview', serviceId!, res.executionSessionId)
-          setMatchTaskId(newTaskId)
+            // Use interview_ prefix (matches backend channel)
+            const newTaskId = buildTaskId('interview', serviceId!, res.executionSessionId)
+            setMatchTaskId(newTaskId)
+          }
+          setTabValue('interview')
+          // Set status and start progress simulation immediately (before SSE confirms)
+          useWorkbenchStore.getState().setStatusAndStartProgress('INTERVIEW_PENDING')
+        } else {
+          const serviceError = getServiceErrorMessage((res as any).error, {
+            statusText: dict.workbench?.statusText,
+            notification: dict.workbench?.notification,
+          })
+          showError(serviceError.title, serviceError.description)
         }
-        setTabValue('interview')
-        // Set status and start progress simulation immediately (before SSE confirms)
-        useWorkbenchStore.getState().setStatusAndStartProgress('INTERVIEW_PENDING')
-        // NOTE: Removed router.refresh() - let SSE stream handle status updates
-      } else {
-        toast.error('Failed to generate interview tips')
+      } catch (e) {
+        console.error(e)
+        showError('Failed to generate interview tips', 'An unexpected error occurred.')
       }
     })
   }
@@ -490,15 +520,27 @@ export function ServiceDisplay({
 
   // CTA Node for Desktop Headers - now uses extracted component
   const ctaNode = (
-    <CtaButton
-      cta={cta}
-      tabValue={tabValue}
-      customizeStatus={customizeStatus}
-      onCustomize={onCustomize}
-      onInterview={onInterview}
-      onRetryMatch={retryMatchAction}
-      setTabValue={setTabValue}
-    />
+    <div className="flex items-center gap-4">
+      {notification && (
+        <ServiceNotification
+          type={notification.type}
+          title={notification.title}
+          description={notification.description}
+          onClose={() => setNotification(null)}
+          autoDismiss={3000}
+          className="w-auto"
+        />
+      )}
+      <CtaButton
+        cta={cta}
+        tabValue={tabValue}
+        customizeStatus={customizeStatus}
+        onCustomize={onCustomize}
+        onInterview={onInterview}
+        onRetryMatch={retryMatchAction}
+        setTabValue={setTabValue}
+      />
+    </div>
   )
 
   return (

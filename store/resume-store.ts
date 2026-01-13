@@ -293,13 +293,18 @@ const createResumeSlice = (
       state.sectionConfig = config || DEFAULT_SECTION_CONFIG
       state.optimizeSuggestion = optimizeSuggestion || null
 
-      if (opsJson) {
-        if (opsJson.styleConfig) {
-          state.styleConfig = { ...state.styleConfig, ...opsJson.styleConfig }
-        }
-        if (opsJson.currentTemplate) {
-          state.currentTemplate = opsJson.currentTemplate
-        }
+      const targetTemplate = (opsJson?.currentTemplate as TemplateId) || 'standard'
+      const templateDefaults = TemplateDefaultsMap[targetTemplate] || StandardDefaults
+
+      state.currentTemplate = targetTemplate
+
+      // Merge Logic:
+      // 1. Start with defaults for the target template
+      // 2. Override with any saved style config from DB
+      state.styleConfig = {
+        ...state.styleConfig, // Keep base structural defaults (if any)
+        ...templateDefaults,  // Apply template-specific defaults (e.g. Standard Grey)
+        ...(opsJson?.styleConfig || {}), // Apply user saved overrides
       }
     })
   },

@@ -1,4 +1,5 @@
 'use client'
+
 import { useState, useTransition } from 'react'
 import type { Locale } from '@/i18n-config'
 import {
@@ -11,55 +12,53 @@ import {
 } from '@/components/app/AppCard'
 import { Button } from '@/components/ui/button'
 import { useRef } from 'react'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
-import { toast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { createServiceAction } from '@/lib/actions/service.actions'
 import { StepperProgress } from '@/components/workbench/StepperProgress'
 import { UnifiedJDBox } from '@/components/workbench/UnifiedJDBox'
 import { Coins } from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ServiceNotification } from '@/components/common/ServiceNotification'
+import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
+import { useServiceGuard } from '@/lib/hooks/use-service-guard'
 
 export function NewServiceForm({
   locale,
   dict,
   tabsDict,
+  statusDict, // New prop for error mapping
+  notificationDict,
   hasResume,
+  quotaBalance,
 }: {
   locale: Locale
   dict: any
   tabsDict: any
+  statusDict?: any
+  notificationDict?: any
   hasResume: boolean
+  quotaBalance: number
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [file, setFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [text, setText] = useState('')
-  const [errorDialog, setErrorDialog] = useState<{
-    open: boolean
+
+  // Use unified notification state
+  const [notification, setNotification] = useState<{
+    type: 'error' | 'success' | 'info'
     title: string
     description: string
-  }>({ open: false, title: '', description: '' })
+  } | null>(null)
 
   const showError = (title: string, description: string) => {
-    setErrorDialog({ open: true, title, description })
+    setNotification({ type: 'error', title, description })
   }
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!hasResume) {
-      showError(dict.prerequisiteError, '')
-      return
-    }
+  // Core execution logic (extracted for useServiceGuard callback)
+  const executeCreateService = () => {
     if (!text && !file) {
       showError(dict.inputError, '')
       return
@@ -72,56 +71,74 @@ export function NewServiceForm({
       showError(dict.jobTextTooLong || '文本长度超过 8000 字', '')
       return
     }
+
     startTransition(async () => {
+      setNotification(null) // Clear previous errors
+
       let jobImage: string | undefined
       if (file) {
-        jobImage = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result))
-          reader.onerror = () => reject(new Error('file_read_failed'))
-          reader.readAsDataURL(file)
-        })
+        try {
+          jobImage = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = () => reject(new Error('file_read_failed'))
+            reader.readAsDataURL(file)
+          })
+        } catch (e) {
+          showError('File read failed', '')
+          return
+        }
       }
+
       const args: { locale: Locale; jobText?: string; jobImage?: string } = {
         locale,
       }
       if (text) args.jobText = text
       if (jobImage) args.jobImage = jobImage
-      const res = await createServiceAction(args)
-      if (!res || !('ok' in (res as any))) {
-        showError('服务创建失败', '')
-        return
-      }
-      
-      // Handle success
-      if ((res as any).ok) {
-        if ((res as any).isFree)
-          showError(
-            dict.freeQueueTitle || '金币不足，已转入免费队列',
-            dict.freeQueueDesc ||
-              '建议充值使用付费模型，获得更好更快的分析体验。'
-          )
-        if ((res as any).serviceId)
-          router.push(`/${locale}/workbench/${(res as any).serviceId}`)
-      } else {
-        // Handle failure
-        // If we have a serviceId even on failure, we should redirect to it so user sees the "FAILED" state
-        if ((res as any).serviceId) {
-          router.push(`/${locale}/workbench/${(res as any).serviceId}`)
+
+      try {
+        const res = await createServiceAction(args)
+        if (!res || !('ok' in (res as any))) {
+          showError(dict.notification?.serverErrorTitle || '服务创建失败', dict.notification?.serverErrorDesc || '')
           return
         }
 
-        const error = (res as any).error
-        if (error === 'rate_limited') {
-          showError(
-            '创建请求受限',
-            dict.rateLimited || '已有多个任务在创建中，请稍后再试'
-          )
+        if ((res as any).ok) {
+          if ((res as any).serviceId)
+            router.push(`/${locale}/workbench/${(res as any).serviceId}`)
         } else {
-          showError('服务创建失败', dict.serverError || '服务创建失败')
+          const serviceError = getServiceErrorMessage((res as any).error, {
+            statusText: statusDict,
+            notification: notificationDict || dict.notification, // Fallback if missing
+          })
+          showError(serviceError.title, serviceError.description)
         }
+      } catch (e) {
+        console.error('Service creation failed:', e)
+        showError(
+          dict.notification?.serverErrorTitle || 'Service Creation Failed',
+          dict.notification?.serverErrorDesc || 'An unexpected error occurred.'
+        )
       }
     })
+  }
+
+  // Initialize Guard Hook
+  const { execute, GuardDialog } = useServiceGuard({
+    quotaBalance,
+    cost: getTaskCost('job_match'), // Standard match cost
+    dict: dict.notification,
+    onConfirm: executeCreateService,
+  })
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!hasResume) {
+      showError(dict.prerequisiteError, '')
+      return
+    }
+    // Execution flow: Guard (Quota Check) -> executeCreateService
+    execute()
   }
 
   if (!hasResume) {
@@ -147,7 +164,7 @@ export function NewServiceForm({
       <StepperProgress
         currentStep={0 as any}
         maxUnlockedStep={0 as any}
-        onStepClick={() => {}}
+        onStepClick={() => { }}
         labels={{
           step1: String(tabsDict?.match || 'Step 1'),
           step2: String(tabsDict?.customize || 'Step 2'),
@@ -172,8 +189,8 @@ export function NewServiceForm({
             />
             <input type="hidden" name="jd_text" value={text} />
           </AppCardContent>
-          <AppCardFooter>
-            <div className="flex items-center gap-3">
+          <AppCardFooter className="flex-col items-start gap-4 sm:flex-row sm:items-center justify-start">
+            <div className="flex items-center gap-3 order-2 sm:order-1 w-full sm:w-auto">
               <Button
                 type="submit"
                 disabled={isPending}
@@ -189,29 +206,25 @@ export function NewServiceForm({
                 {getTaskCost('job_match')}
               </span>
             </div>
+
+            {/* Notification area next to button */}
+            <div className="order-1 sm:order-2 w-full sm:w-auto flex items-center min-h-[40px]">
+              {notification && (
+                <ServiceNotification
+                  type={notification.type}
+                  title={notification.title}
+                  description={notification.description}
+                  onClose={() => setNotification(null)}
+                  autoDismiss={3000}
+                  className="w-full sm:w-auto"
+                />
+              )}
+            </div>
           </AppCardFooter>
         </AppCard>
       </form>
-      <Dialog
-        open={errorDialog.open}
-        onOpenChange={(open) => setErrorDialog((prev) => ({ ...prev, open }))}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{errorDialog.title}</DialogTitle>
-            <DialogDescription>{errorDialog.description}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() =>
-                setErrorDialog((prev) => ({ ...prev, open: false }))
-              }
-            >
-              OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Free Tier Confirmation Dialog */}
+      {GuardDialog}
     </>
   )
 }

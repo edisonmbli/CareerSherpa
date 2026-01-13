@@ -216,6 +216,16 @@ const dict = {
       readyToCustomizeDesc:
         '点击下方“开始定制”按钮，根据岗位要求生成个性化简历。',
     },
+    notification: {
+      freeModeTitle: '当前为免费体验模式',
+      freeModeDesc: '建议充值解锁思考模式，获得更深度的定制服务。免费模式下将使用基础模型为您服务。',
+      cancel: '取消',
+      confirmFree: '继续使用免费版',
+      rateLimitedTitle: '请求过于频繁',
+      rateLimitedDesc: '系统繁忙，请稍后再试。您也可以考虑充值金币以获得更高的优先级。',
+      serverErrorTitle: '服务暂时不可用',
+      serverErrorDesc: '当前服务不稳定，请稍后再试。',
+    },
     streamPanel: {
       ocr: '图片文本提取',
       summary: '职位信息提取',

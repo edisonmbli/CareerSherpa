@@ -224,6 +224,16 @@ const dict = {
       readyToCustomizeDesc:
         'Click "Start Customization" below to generate a tailored resume based on the job description.',
     },
+    notification: {
+      freeModeTitle: 'Current Free Experience Mode',
+      freeModeDesc: 'We recommend topping up to unlock Thinking Mode for deeper customization. Free mode uses basic models.',
+      cancel: 'Cancel',
+      confirmFree: 'Continue with Free Mode',
+      rateLimitedTitle: 'Request Rate Limited',
+      rateLimitedDesc: 'System is busy, please try again later. Consider topping up for higher priority.',
+      serverErrorTitle: 'Service Unavailable',
+      serverErrorDesc: 'Encountered an unexpected interruption, please try again later.',
+    },
     streamPanel: {
       ocr: 'OCR Extraction',
       summary: 'Job Summary',

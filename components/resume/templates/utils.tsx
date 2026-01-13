@@ -31,7 +31,7 @@ export function renderDescription(
   if (!description) return null
 
   // Preprocessing: Robustly handle potential LLM formatting artifacts
-  let text = description
+  const text = description
     // 1. Replace all variants of <br> tags with newlines
     .replace(/<br\s*\/?>/gi, '\n')
     // 2. Replace literal "\n" string if somehow escaped
