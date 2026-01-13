@@ -282,15 +282,25 @@ const dict = {
     },
     uploader: {
       button: '上传',
-      buttonProcessing: '上传中...',
-      status: { pending: '解析中', completed: '已完成', failed: '失败' },
+      buttonProcessing: '正在上传...',
+      status: {
+        pending: '解析中',
+        completed: '已完成',
+        failed: '失败',
+        uploadSuccess: '上传成功，已开始解析',
+        parseComplete: '解析完成',
+        modelOverloaded: '模型当前繁忙，请稍后再试',
+      },
       toast: {
         uploadSuccess: '上传成功，已开始解析',
         queueFree: '金币不足，已转入免费队列',
         queueError: '当前服务忙，请稍候再试',
         pollSuccess: '解析完成',
-        pollFailed: '解析失败，金币已返还',
+        pollFailed: '解析失败/超时',
+        pollFailedRefund: '解析失败，金币已自动返还',
       },
+      fileTooLarge2MB: '文件过大 (超过 2MB)',
+      fileTooLarge4MB: '文件过大 (超过 4MB)',
       preview: '预览',
       reupload: '重新上传',
       chooseFile: '选择文件',
@@ -299,7 +309,7 @@ const dict = {
       suggestionTextDetailed:
         '建议详细履历文本不超过约 10000 字，以提升解析稳定性',
       processingMarquee: '大模型解析中',
-      etaMarqueeMinTemplate: '预计还需要约 {minutes} 分钟，请稍候再来查看',
+      etaMarqueeMinTemplate: '预计需要 {minutes} 分钟',
       lastUpdatedLabel: '最近一次更新',
       timeline: {
         uploaded: '已上传',

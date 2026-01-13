@@ -40,6 +40,7 @@ export default async function ProfilePage({
   await stackServerApp.getUser({ or: 'redirect' } as any)
   const dict = await getDictionary(locale)
   const p = dict.profile
+  const w = dict.workbench
   const sp = await searchParams
   const tab =
     sp?.tab === 'billing' || sp?.tab === 'assets' ? sp!.tab! : 'assets'
@@ -53,10 +54,19 @@ export default async function ProfilePage({
   const user = await stackServerApp.getUser()
   const latestResume = user ? await getLatestResume(user.id) : null
   const latestDetailed = user ? await getLatestDetailedResume(user.id) : null
+
+  // Fetch quota balance for UX guard
+  let quotaBalance = 0
+  if (user?.id) {
+    const { getOrCreateQuota } = await import('@/lib/dal/quotas')
+    const quota = await getOrCreateQuota(user.id)
+    quotaBalance = quota.balance
+  }
+
   const ledgerData = user
     ? await listLedgerByUser(user.id, page, LEDGER_PAGE_SIZE, {
-        type:
-          fType &&
+      type:
+        fType &&
           [
             'SIGNUP_BONUS',
             'PURCHASE',
@@ -64,18 +74,18 @@ export default async function ProfilePage({
             'FAILURE_REFUND',
             'MANUAL_ADJUST',
           ].includes(fType)
-            ? fType
-            : undefined,
-        status:
-          fStatus &&
+          ? fType
+          : undefined,
+      status:
+        fStatus &&
           ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'].includes(fStatus)
-            ? fStatus
-            : undefined,
-        templateId: fTemplate || undefined,
-        serviceId: fService || undefined,
-        after: fAfter,
-        before: fBefore,
-      })
+          ? fStatus
+          : undefined,
+      templateId: fTemplate || undefined,
+      serviceId: fService || undefined,
+      after: fAfter,
+      before: fBefore,
+    })
     : { items: [], total: 0 }
   const ledger = (ledgerData as any).items || []
   const total = Number((ledgerData as any).total || 0)
@@ -128,6 +138,11 @@ export default async function ProfilePage({
                       actionPreview: p.uploader.preview,
                       actionReupload: p.uploader.reupload,
                     }}
+                    quotaBalance={quotaBalance}
+                    statusTextDict={w.statusText}
+                    notificationDict={w.notification}
+                    resumeTitle={p.resume.title}
+                    detailedTitle={p.detailed.title}
                   />
                 </AppCardContent>
               </AppCard>
@@ -165,6 +180,11 @@ export default async function ProfilePage({
                       actionPreview: p.uploader.preview,
                       actionReupload: p.uploader.reupload,
                     }}
+                    quotaBalance={quotaBalance}
+                    statusTextDict={w.statusText}
+                    notificationDict={w.notification}
+                    resumeTitle={p.resume.title}
+                    detailedTitle={p.detailed.title}
                   />
                 </AppCardContent>
               </AppCard>
@@ -238,16 +258,12 @@ export default async function ProfilePage({
                           href={`/${locale}/profile?tab=billing&page=${Math.max(
                             1,
                             page - 1
-                          )}${fType ? `&type=${fType}` : ''}${
-                            fStatus ? `&status=${fStatus}` : ''
-                          }${fTemplate ? `&tpl=${fTemplate}` : ''}${
-                            fService ? `&svc=${fService}` : ''
-                          }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${
-                            fBefore ? `&before=${fBefore.toISOString()}` : ''
-                          }`}
-                          className={`px-2 py-0.5 rounded border text-xs ${
-                            page <= 1 ? 'opacity-40 pointer-events-none' : ''
-                          }`}
+                          )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
+                            }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
+                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
+                            }`}
+                          className={`px-2 py-0.5 rounded border text-xs ${page <= 1 ? 'opacity-40 pointer-events-none' : ''
+                            }`}
                         >
                           {p.billing.pagination.prev}
                         </Link>
@@ -260,18 +276,14 @@ export default async function ProfilePage({
                           href={`/${locale}/profile?tab=billing&page=${Math.min(
                             pageCount,
                             page + 1
-                          )}${fType ? `&type=${fType}` : ''}${
-                            fStatus ? `&status=${fStatus}` : ''
-                          }${fTemplate ? `&tpl=${fTemplate}` : ''}${
-                            fService ? `&svc=${fService}` : ''
-                          }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${
-                            fBefore ? `&before=${fBefore.toISOString()}` : ''
-                          }`}
-                          className={`px-2 py-0.5 rounded border text-xs ${
-                            page >= pageCount
-                              ? 'opacity-40 pointer-events-none'
-                              : ''
-                          }`}
+                          )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
+                            }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
+                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
+                            }`}
+                          className={`px-2 py-0.5 rounded border text-xs ${page >= pageCount
+                            ? 'opacity-40 pointer-events-none'
+                            : ''
+                            }`}
                         >
                           {p.billing.pagination.next}
                         </Link>

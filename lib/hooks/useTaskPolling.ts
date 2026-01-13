@@ -14,7 +14,7 @@ export function useTaskPolling({
   taskType: string
   enabled: boolean
   onSuccess: () => void
-  onError: () => void
+  onError: (error?: string) => void // Updated to accept error message
   maxAttempts?: number
 }) {
   const [status, setStatus] = useState<AsyncStatus>('IDLE')
@@ -22,6 +22,12 @@ export function useTaskPolling({
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
   const schedule = useRef<number[]>([0, 2000, 3000, 5000, 10000, 10000, 10000])
+
+  useEffect(() => {
+    setStatus('IDLE')
+    setAttempts(0)
+    setLastUpdated(null)
+  }, [taskId, taskType])
 
   useEffect(() => {
     if (!enabled || !taskId) return
@@ -84,7 +90,8 @@ export function useTaskPolling({
             } catch {
               // non-fatal: timeline logging should not block error callback
             }
-            onError()
+            // Pass error message if available
+            onError(data.error || data.message || undefined)
             return
           }
         }

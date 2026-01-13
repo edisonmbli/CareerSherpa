@@ -24,13 +24,13 @@ export function ServiceNotification({
     const [isVisible, setIsVisible] = useState(true)
 
     useEffect(() => {
-        if (autoDismiss && autoDismiss > 0) {
-            const timer = setTimeout(() => {
-                setIsVisible(false)
-                if (onClose) setTimeout(onClose, 300) // waiting for animation
-            }, autoDismiss)
-            return () => clearTimeout(timer)
-        }
+        if (!autoDismiss || autoDismiss <= 0) return
+
+        const timer = setTimeout(() => {
+            setIsVisible(false)
+            if (onClose) setTimeout(onClose, 300) // waiting for animation
+        }, autoDismiss)
+        return () => clearTimeout(timer)
     }, [autoDismiss, onClose])
 
     if (!title || !isVisible) return null

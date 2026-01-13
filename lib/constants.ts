@@ -6,6 +6,8 @@ export const TASK_COSTS: Record<string, number> = {
   job_match: 2,
   resume_customize: 1,
   interview_prep: 1,
+  resume_summary: 1,
+  detailed_resume_summary: 1,
 }
 
 export function getTaskCost(taskKey: keyof typeof TASK_COSTS): number {

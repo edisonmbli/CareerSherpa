@@ -293,14 +293,23 @@ const dict = {
     uploader: {
       button: 'Upload',
       buttonProcessing: 'Uploading...',
-      status: { pending: 'Parsing', completed: 'Completed', failed: 'Failed' },
+      status: {
+        pending: 'Parsing',
+        completed: 'Completed',
+        failed: 'Failed',
+        uploadSuccess: 'Upload success, starting parse',
+        parseComplete: 'Parse Complete',
+      },
       toast: {
         uploadSuccess: 'Uploaded, parsing started',
         queueFree: 'Insufficient coins, task moved to free queue',
         queueError: 'Service busy, please try later',
-        pollSuccess: 'Parsing completed',
-        pollFailed: 'Parsing failed, coins refunded',
+        pollSuccess: 'Parsing complete',
+        pollFailed: 'Parsing failed',
+        pollFailedRefund: 'Parsing failed, coins refunded',
       },
+      fileTooLarge2MB: 'File exceeds 2MB limit',
+      fileTooLarge4MB: 'File exceeds 4MB limit',
       preview: 'Preview',
       reupload: 'Re-upload',
       chooseFile: 'Choose File',
@@ -310,7 +319,7 @@ const dict = {
       suggestionTextDetailed:
         'We recommend keeping the detailed resume text under ~10000 characters for better parsing stability.',
       processingMarquee: 'Model is processing',
-      etaMarqueeMinTemplate: 'Estimated {minutes} min remaining',
+      etaMarqueeMinTemplate: 'Estimated {minutes} mins',
       lastUpdatedLabel: 'Last updated',
       timeline: {
         uploaded: 'Uploaded',
