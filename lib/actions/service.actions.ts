@@ -645,6 +645,64 @@ export const retryMatchAction = withServerActionAuthWrite<
     })
     const hasQuota = debit.ok
     await updateMatchStatus(params.serviceId, AsyncTaskStatus.PENDING)
+
+    // Phase 2 Fix: Paid users must go through Pre-Match Audit logic on retry
+    if (hasQuota) {
+      const matchTaskId = `match_${params.serviceId}_${executionSessionId}`
+      const enq = await ensureEnqueued({
+        kind: 'batch',
+        serviceId: params.serviceId,
+        taskId: `pre_${matchTaskId}`, // Distinct task ID for audit
+        userId,
+        locale: params.locale,
+        templateId: 'pre_match_audit',
+        variables: {
+          serviceId: params.serviceId,
+          resumeId: svc.resumeId,
+          ...(svc.detailedResumeId
+            ? { detailedResumeId: svc.detailedResumeId }
+            : {}),
+          jobId: svc.job.id,
+          resume_summary_json: '', // Worker will fetch
+          job_summary_json: '', // Worker will fetch
+          executionSessionId,
+          wasPaid: hasQuota,
+          cost,
+          ...(hasQuota ? { debitId: debit.id } : {}),
+          nextTaskId: matchTaskId,
+        } as any,
+      })
+
+      if (!enq.ok) {
+        // Refund logic handled by ensureEnqueued? No, ensuring debit failed mark.
+        await markDebitFailed(debit.id)
+        await updateServiceExecutionStatus(
+          params.serviceId,
+          ExecutionStatus.MATCH_FAILED,
+          { failureCode: 'ENQUEUE_FAILED' }
+        )
+        return { ok: false, error: 'enqueue_failed' }
+      }
+
+      trackEvent('TASK_ENQUEUED', {
+        userId,
+        payload: { task: 'retry_pre_match_audit', isFree: !hasQuota },
+      })
+      await updateServiceExecutionStatus(
+        params.serviceId,
+        ExecutionStatus.MATCH_PENDING,
+        { failureCode: null, executionSessionId }
+      )
+      return {
+        ok: true,
+        isFree: !hasQuota,
+        step: 'match',
+        stream: false, // Audit is batch
+        executionSessionId,
+      }
+    }
+
+    // Free Tier: Direct Match
     const enq = await ensureEnqueued({
       kind: 'stream',
       serviceId: params.serviceId,
@@ -663,17 +721,19 @@ export const retryMatchAction = withServerActionAuthWrite<
         job_summary_json: '',
         wasPaid: hasQuota,
         cost,
-        ...(hasQuota ? { debitId: debit.id } : {}),
+        // Removed unreachable debitId check
+        // ...(hasQuota ? { debitId: debit.id } : {}),
         executionSessionId,
       },
     })
     if (!enq.ok) {
-      if (hasQuota) {
-        // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
-        // already handles the refund logic when enqueue fails.
-        // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
-        await markDebitFailed(debit.id)
-      }
+      // Free tier path or failed debit path - no debitId to fail
+      //if (hasQuota) {
+      // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
+      // already handles the refund logic when enqueue fails.
+      // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
+      // await markDebitFailed(debit.id)
+      //}
       await updateServiceExecutionStatus(
         params.serviceId,
         ExecutionStatus.MATCH_FAILED,

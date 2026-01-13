@@ -29,10 +29,15 @@ type Body = import('@/lib/worker/types').WorkerBody
 
 // Helper to safely extract common billing fields from any variables union
 type PaidTier = 'paid' | 'free' | undefined
-interface BillingVars { tierOverride?: PaidTier; wasPaid?: boolean; cost?: number; debitId?: string }
+interface BillingVars {
+  tierOverride?: PaidTier
+  wasPaid?: boolean
+  cost?: number
+  debitId?: string
+}
 function extractBillingVars(vars: Record<string, unknown>): BillingVars {
   return {
-    tierOverride: (vars['tierOverride'] as PaidTier),
+    tierOverride: vars['tierOverride'] as PaidTier,
     wasPaid: Boolean(vars['wasPaid']),
     cost: Number(vars['cost'] || 0),
     debitId: String(vars['debitId'] || ''),
@@ -56,7 +61,18 @@ async function handleGuardFailure(params: {
   billing: BillingVars
   kind: 'stream' | 'batch'
 }): Promise<Response> {
-  const { reason, userId, serviceId, taskId, templateId, channel, requestId, traceId, billing, kind } = params
+  const {
+    reason,
+    userId,
+    serviceId,
+    taskId,
+    templateId,
+    channel,
+    requestId,
+    traceId,
+    billing,
+    kind,
+  } = params
   const { wasPaid, cost = 0, debitId } = billing
 
   // 1. SSE error notification (so frontend can show error state)
@@ -116,10 +132,7 @@ async function handleGuardFailure(params: {
   })
 
   // 4. Return 429 response
-  return Response.json(
-    { ok: false, reason },
-    { status: 429 }
-  )
+  return Response.json({ ok: false, reason }, { status: 429 })
 }
 
 // Token handler for SSE
@@ -179,10 +192,10 @@ export async function handleStream(
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
-            ? false
-            : wasPaid
-              ? true
-              : await getUserHasQuota(userId)
+          ? false
+          : wasPaid
+          ? true
+          : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
       logEvent(
@@ -313,6 +326,8 @@ export async function handleStream(
         const config = getTaskConfig(templateId)
         const options: any = {
           temperature: config.temperature,
+          maxTokens: config.maxTokens,
+          timeoutMs: config.timeoutMs,
           tier: userHasQuota ? 'paid' : 'free',
         }
 
@@ -331,11 +346,17 @@ export async function handleStream(
         })
 
         // Debug: Log phase transition and raw content
-        console.log(`[Stream] Phase: LLM_EXECUTE complete, raw length: ${execResult.result.raw?.length ?? 0}`)
+        console.log(
+          `[Stream] Phase: LLM_EXECUTE complete, raw length: ${
+            execResult.result.raw?.length ?? 0
+          }`
+        )
 
         // Phase 2: Write Results
         phase = 'WRITE_RESULTS'
-        await markTimeline(serviceId, 'worker_stream_finalize_start', { taskId })
+        await markTimeline(serviceId, 'worker_stream_finalize_start', {
+          taskId,
+        })
         console.log(`[Stream] Phase: WRITE_RESULTS starting`)
         await strategy.writeResults(execResult.result, preparedVars, {
           serviceId,
@@ -397,7 +418,14 @@ export async function handleStream(
             await strategy.writeResults(
               { ok: false, error: errMsg },
               preparedVars,
-              { serviceId, userId, locale: locale as string, requestId, traceId, taskId }
+              {
+                serviceId,
+                userId,
+                locale: locale as string,
+                requestId,
+                traceId,
+                taskId,
+              }
             )
             break
 
@@ -480,10 +508,10 @@ export async function handleBatch(
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
-            ? false
-            : wasPaid
-              ? true
-              : await getUserHasQuota(userId)
+          ? false
+          : wasPaid
+          ? true
+          : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
       const ttlSec = getTtlSec()
@@ -600,13 +628,20 @@ export async function handleBatch(
 
         // Phase 1.5: Skip LLM if Baidu OCR was already used (Paid tier OCR bypass)
         const baiduOcrUsed = !!(preparedVars as any)['_baidu_ocr_used']
-        const baiduOcrText = String((preparedVars as any)['_baidu_ocr_text'] || '')
+        const baiduOcrText = String(
+          (preparedVars as any)['_baidu_ocr_text'] || ''
+        )
 
-        let execResult: { result: import('./strategies/interface').ExecutionResult; latencyMs: number }
+        let execResult: {
+          result: import('./strategies/interface').ExecutionResult
+          latencyMs: number
+        }
 
         if (baiduOcrUsed && baiduOcrText && templateId === 'ocr_extract') {
           // Skip LLM - use Baidu OCR result directly
-          await markTimeline(serviceId, 'worker_batch_llm_skipped_baidu_ocr', { taskId })
+          await markTimeline(serviceId, 'worker_batch_llm_skipped_baidu_ocr', {
+            taskId,
+          })
           execResult = {
             result: {
               ok: true,
@@ -620,6 +655,8 @@ export async function handleBatch(
           const config = getTaskConfig(templateId)
           const options: any = {
             temperature: config.temperature,
+            maxTokens: config.maxTokens,
+            timeoutMs: config.timeoutMs,
             tier: userHasQuota ? 'paid' : 'free',
           }
 
@@ -645,14 +682,18 @@ export async function handleBatch(
         await markTimeline(serviceId, 'worker_batch_finalize_start', { taskId })
         console.log(`[Batch] Phase: WRITE_RESULTS starting`)
         // Capture deferred tasks for enqueue after cleanup
-        const deferredTasks = await strategy.writeResults(execResult.result, preparedVars, {
-          serviceId,
-          userId,
-          locale: locale as string,
-          requestId,
-          traceId,
-          taskId,
-        })
+        const deferredTasks = await strategy.writeResults(
+          execResult.result,
+          preparedVars,
+          {
+            serviceId,
+            userId,
+            locale: locale as string,
+            requestId,
+            traceId,
+            taskId,
+          }
+        )
         console.log(`[Batch] Phase: WRITE_RESULTS complete`)
 
         // Phase 3: Cleanup (releases lock)
@@ -672,7 +713,9 @@ export async function handleBatch(
 
         // Phase 4: Enqueue deferred tasks (AFTER cleanup to avoid lock contention)
         if (deferredTasks && deferredTasks.length > 0) {
-          console.log(`[Batch] Phase: DEFERRED_ENQUEUE starting, count=${deferredTasks.length}`)
+          console.log(
+            `[Batch] Phase: DEFERRED_ENQUEUE starting, count=${deferredTasks.length}`
+          )
           for (const task of deferredTasks) {
             try {
               const pushRes = await pushTask(task as any)
@@ -719,7 +762,14 @@ export async function handleBatch(
             await strategy.writeResults(
               { ok: false, error: errMsg },
               preparedVars,
-              { serviceId, userId, locale: locale as string, requestId, traceId, taskId }
+              {
+                serviceId,
+                userId,
+                locale: locale as string,
+                requestId,
+                traceId,
+                taskId,
+              }
             )
             break
 

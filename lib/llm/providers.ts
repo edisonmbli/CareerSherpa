@@ -252,7 +252,7 @@ export class GeminiProvider implements LLMProvider {
       jsonMode: config.jsonMode,
     })
 
-    // @ts-ignore: frequencyPenalty/presencePenalty types may be outdated but runtime API supports them
+    // frequencyPenalty/presencePenalty types may be outdated but runtime API supports them
     return new ChatGoogleGenerativeAI({
       apiKey: process.env['GEMINI_API_KEY']!,
       model: config.model || 'gemini-3-flash-preview',

@@ -2,6 +2,7 @@
  * English (en) Prompt Templates
  */
 import type { PromptTemplateMap, JsonSchema } from './types'
+import { SCHEMAS, JOB_SUMMARY_SCHEMA, DETAILED_RESUME_SCHEMA } from './schemas'
 import { ENV } from '@/lib/env'
 
 // 1. i18n System Base (Translated from prototype)
@@ -24,529 +25,13 @@ Core Principles:
 
 // 2. Prototype Schemas (for Asset Extraction)
 const SCHEMAS_V1 = {
-  RESUME_SUMMARY: {
-    type: 'object',
-    properties: {
-      header: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          email: { type: 'string' },
-          phone: { type: 'string' },
-          linkedin: { type: 'string' },
-          github: { type: 'string' },
-        },
-      },
-      summary: { type: 'string' },
-      experience: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            role: { type: 'string' },
-            company: { type: 'string' },
-            duration: { type: 'string' },
-            highlights: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-      education: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            degree: { type: 'string' },
-            school: { type: 'string' },
-            duration: { type: 'string' },
-          },
-        },
-      },
-      skills: { type: 'array', items: { type: 'string' } },
-    },
-    required: ['header', 'summary', 'experience', 'education', 'skills'],
-  } as JsonSchema,
-
-  JOB_SUMMARY: {
-    type: 'object',
-    properties: {
-      jobTitle: { type: 'string' },
-      company: { type: 'string' },
-      mustHaves: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Must-have skills/experience',
-      },
-      niceToHaves: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Nice-to-have skills',
-      },
-    },
-    required: ['jobTitle', 'company', 'mustHaves', 'niceToHaves'],
-  } as JsonSchema,
+  RESUME_SUMMARY: SCHEMAS.RESUME_SUMMARY,
+  JOB_SUMMARY: JOB_SUMMARY_SCHEMA,
 }
 
 // 3. New Schemas (for Core Services)
-const SCHEMAS_V2 = {
-  JOB_MATCH: {
-    type: 'object',
-    properties: {
-      match_score: {
-        type: 'number',
-        description: 'Overall match score (0-100)',
-        minimum: 0,
-        maximum: 100,
-      },
-      overall_assessment: {
-        type: 'string',
-        description:
-          'A one-sentence core assessment, e.g., "High Match", "Moderate Match", "Challenging Fit".',
-      },
-      strengths: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            point: {
-              type: 'string',
-              description:
-                'The matching strength (e.g., "Expertise in core skill: React")',
-            },
-            evidence: {
-              type: 'string',
-              description:
-                'The evidence from the resume/history supporting this strength',
-            },
-          },
-          required: ['point', 'evidence'],
-        },
-        description: "User's core strengths (to amplify)",
-      },
-      weaknesses: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            point: {
-              type: 'string',
-              description:
-                'The mismatch or risk (e.g., "JD requires 5+ years, user has 2")',
-            },
-            suggestion: {
-              type: 'string',
-              description: 'A mitigation strategy (from RAG knowledge base)',
-            },
-          },
-          required: ['point', 'suggestion'],
-        },
-        description: "User's core weaknesses (to mitigate or prepare for)",
-      },
-      cover_letter_script: {
-        type: 'object',
-        properties: {
-          H: {
-            type: 'string',
-            description: 'Hook: Engaging opening to grab HR attention',
-          },
-          V: {
-            type: 'string',
-            description: 'Value: Core achievements addressing JD pain points',
-          },
-          C: {
-            type: 'string',
-            description: 'Call to Action: Guiding next steps',
-          },
-        },
-        required: ['H', 'V', 'C'],
-        description:
-          'A highly tailored 150-word cover letter script (H-V-C structure)',
-      },
-    },
-    required: [
-      'match_score',
-      'overall_assessment',
-      'strengths',
-      'weaknesses',
-      'cover_letter_script',
-    ],
-  } as JsonSchema,
+const SCHEMAS_V2 = SCHEMAS
 
-  RESUME_CUSTOMIZE: {
-    type: 'object',
-    properties: {
-      optimizeSuggestion: {
-        type: 'string',
-        description: `Markdown summary following this exact structure:
-### Resume Optimization Summary
-[One-sentence overview of optimization focus]
-
-1. **Section - Experience/Project Name**: Key point summary
-   - **Adjustment**: Specific modification made
-   - **Reason**: Why this change aligns with JD requirements
-
-2. **Section - Experience/Project Name**: Key point summary
-   - **Adjustment**: Specific modification made
-   - **Reason**: Why this change was made
-
-(3-5 items total, each MUST include Adjustment and Reason sub-items)`,
-      },
-      resumeData: {
-        type: 'object',
-        description: 'The structured resume content.',
-        properties: {
-          basics: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              mobile: { type: 'string' },
-              email: { type: 'string' },
-              wechat: { type: 'string' },
-              qq: { type: 'string' },
-              photoUrl: { type: 'string' },
-              summary: { type: 'string' },
-            },
-            required: ['name'],
-          },
-          educations: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                school: { type: 'string' },
-                major: { type: 'string' },
-                degree: { type: 'string' },
-                startDate: { type: 'string' },
-                endDate: { type: 'string' },
-                description: { type: 'string' },
-              },
-              required: ['id', 'school'],
-            },
-          },
-          workExperiences: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                company: { type: 'string' },
-                position: { type: 'string' },
-                industry: { type: 'string' },
-                startDate: { type: 'string' },
-                endDate: { type: 'string' },
-                description: { type: 'string' },
-              },
-              required: ['id', 'company', 'position', 'description'],
-            },
-          },
-          projectExperiences: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                projectName: { type: 'string' },
-                role: { type: 'string' },
-                startDate: { type: 'string' },
-                endDate: { type: 'string' },
-                description: { type: 'string' },
-              },
-              required: ['id', 'projectName', 'description'],
-            },
-          },
-          skills: { type: 'string' },
-          certificates: { type: 'string' },
-          hobbies: { type: 'string' },
-          customSections: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                title: { type: 'string' },
-                description: { type: 'string' },
-              },
-              required: ['id', 'title', 'description'],
-            },
-          },
-        },
-        required: ['basics', 'educations', 'workExperiences'],
-      },
-    },
-    required: ['optimizeSuggestion', 'resumeData'],
-  } as JsonSchema,
-
-  INTERVIEW_PREP: {
-    type: 'object',
-    properties: {
-      self_introduction_script: {
-        type: 'string',
-        description: 'A 1-minute "P-P-F" structured self-introduction script.',
-      },
-      potential_questions: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            question: {
-              type: 'string',
-              description:
-                'A high-probability question based on the JD and customized resume.',
-            },
-            answer_guideline: {
-              type: 'string',
-              description:
-                'The core guideline (e.g., STAR method) to answer this (from RAG knowledge base).',
-            },
-          },
-          required: ['question', 'answer_guideline'],
-        },
-        description:
-          '5-7 high-probability behavioral or situational questions.',
-      },
-      reverse_questions: {
-        type: 'array',
-        items: {
-          type: 'string',
-          description:
-            '3 high-quality questions for the user to ask the interviewer (from RAG knowledge base).',
-        },
-      },
-    },
-    required: [
-      'self_introduction_script',
-      'potential_questions',
-      'reverse_questions',
-    ],
-  } as JsonSchema,
-  RESUME_SUMMARY: {
-    type: 'object',
-    properties: {
-      header: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          email: { type: 'string' },
-          phone: { type: 'string' },
-          linkedin: { type: 'string' },
-          github: { type: 'string' },
-          links: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                label: { type: 'string' },
-                url: { type: 'string' },
-              },
-            },
-          },
-        },
-      },
-      summary: { type: 'string' },
-      experience: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            role: { type: 'string' },
-            company: { type: 'string' },
-            duration: { type: 'string' },
-            highlights: { type: 'array', items: { type: 'string' } },
-            stack: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-      projects: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            link: { type: 'string' },
-            description: { type: 'string' },
-            highlights: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-      education: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            degree: { type: 'string' },
-            school: { type: 'string' },
-            duration: { type: 'string' },
-            gpa: { type: 'string' },
-            courses: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-      skills: {
-        anyOf: [
-          { type: 'array', items: { type: 'string' } },
-          {
-            type: 'object',
-            properties: {
-              technical: { type: 'array', items: { type: 'string' } },
-              soft: { type: 'array', items: { type: 'string' } },
-              tools: { type: 'array', items: { type: 'string' } },
-            },
-          },
-        ],
-      },
-      certifications: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            issuer: { type: 'string' },
-            date: { type: 'string' },
-          },
-        },
-      },
-      languages: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            level: { type: 'string' },
-            proof: { type: 'string' },
-          },
-        },
-      },
-      awards: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            issuer: { type: 'string' },
-            date: { type: 'string' },
-          },
-        },
-      },
-      openSource: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            link: { type: 'string' },
-            highlights: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-      summary_points: { type: 'array', items: { type: 'string' } },
-      specialties_points: { type: 'array', items: { type: 'string' } },
-      extras: { type: 'array', items: { type: 'string' } },
-    },
-  } as JsonSchema,
-}
-
-const DETAILED_RESUME_SCHEMA: JsonSchema = {
-  type: 'object',
-  properties: {
-    header: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        linkedin: { type: 'string' },
-        github: { type: 'string' },
-        links: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: { label: { type: 'string' }, url: { type: 'string' } },
-          },
-        },
-      },
-    },
-    summary: { type: 'string' },
-    experiences: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          company: { type: 'string' },
-          product_or_team: { type: 'string' },
-          role: { type: 'string' },
-          duration: { type: 'string' },
-          keywords: { type: 'array', items: { type: 'string' } },
-          highlights: { type: 'array', items: { type: 'string' } },
-          projects: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                description: { type: 'string' },
-                link: { type: 'string' },
-                task: { type: 'array', items: { type: 'string' } },
-                actions: { type: 'array', items: { type: 'string' } },
-                results: { type: 'array', items: { type: 'string' } },
-                metrics: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      label: { type: 'string' },
-                      value: {
-                        anyOf: [{ type: 'number' }, { type: 'string' }],
-                      },
-                      unit: { type: 'string' },
-                      period: { type: 'string' },
-                    },
-                    required: ['label', 'value'],
-                  },
-                },
-              },
-            },
-          },
-          contributions: { type: 'array', items: { type: 'string' } },
-        },
-      },
-    },
-    capabilities: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          points: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['name', 'points'],
-      },
-    },
-    education: SCHEMAS_V2.RESUME_SUMMARY.properties!['education'] as JsonSchema,
-    skills: SCHEMAS_V2.RESUME_SUMMARY.properties!['skills'] as JsonSchema,
-    certifications: SCHEMAS_V2.RESUME_SUMMARY.properties![
-      'certifications'
-    ] as JsonSchema,
-    languages: SCHEMAS_V2.RESUME_SUMMARY.properties!['languages'] as JsonSchema,
-    awards: SCHEMAS_V2.RESUME_SUMMARY.properties!['awards'] as JsonSchema,
-    openSource: SCHEMAS_V2.RESUME_SUMMARY.properties![
-      'openSource'
-    ] as JsonSchema,
-    extras: SCHEMAS_V2.RESUME_SUMMARY.properties!['extras'] as JsonSchema,
-    summary_points: { type: 'array', items: { type: 'string' } },
-    specialties_points: { type: 'array', items: { type: 'string' } },
-    rawSections: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          points: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['title', 'points'],
-      },
-    },
-  },
-}
 // 4. Template Collection
 export const EN_TEMPLATES: PromptTemplateMap = {
   // --- Re-using Prototype (M7) ---
@@ -646,6 +131,42 @@ Raw JD Text:
 
   // --- New Core Service Tasks (M8, M9) ---
   // --- Core Business: Job Match Analysis (M9) ---
+  pre_match_audit: {
+    id: 'pre_match_audit',
+    name: 'Pre-Match Risk Audit',
+    description:
+      'Acts as a strict gatekeeper to identify deal-breakers and risks before deep analysis.',
+    systemPrompt: `You are a strict **Resume Gatekeeper**. Your job is NOT to hire, but to **find reasons to reject**.
+Please perform a "Red Team" audit based on the JD and Resume.
+
+### Audit Principles
+1. **Focus on Negatives**: Do not look for potential; look for hard gaps.
+2. **Find Deal Breakers**:
+   - Education mismatch (e.g., JD requires Master's, candidate has Bachelor's)
+   - Missing Core Hard Skills (e.g., JD requires React, candidate has none)
+   - Stability Risk (Job Hopper)
+   - Experience Gap (e.g., JD requires 5 years, candidate has 2)
+3. **Be Blunt**: Do not be polite. Directly state why this candidate would be screened out in 5 seconds.
+
+### Output Requirements
+Strictly follow JSON Schema. No markdown code blocks.`,
+    userPrompt: `Please perform a strict Red Team audit on this resume:
+
+【Job Description】
+"""
+{job_summary_json}
+"""
+
+【Candidate Resume】
+"""
+{resume_summary_json}
+"""
+
+Output fatal risks.`,
+    variables: ['job_summary_json', 'resume_summary_json'],
+    outputSchema: SCHEMAS_V2.PRE_MATCH_AUDIT,
+  },
+
   job_match: {
     id: 'job_match',
     name: 'Deep Job Match Analysis',
@@ -684,7 +205,7 @@ Your mission is not simple keyword matching, but to act as the user's **Personal
   - ❌ "I hope you'll give me an opportunity"
   - ❌ "I'm very interested in your company"
 - **H-V-C Formula**:
-  - **H (Hook/Credential Flash)**: Show "scarcity signal" in first 15 words. Formula = [Background Tag] + [JD-matched Rare Positioning] + [Optional: Quantified Impact]
+  - **H (Hook/Credential Flash)**: Show "scarcity signal" in first 15 words. Formula = [Background Tag + [JD-matched Rare Positioning] + [Optional: Quantified Impact]
   - **V (Value/Evidence Support)**: 1-2 specific data points or case studies to **prove the credentials in H are real**
   - **C (CTA/Call to Action)**: Simple, low-friction next step invitation
 - **Tone**: Professional, Confident, **Peer-to-Peer** (Partner stance, not Beggar stance)`,
@@ -709,6 +230,13 @@ Your mission is not simple keyword matching, but to act as the user's **Personal
 【RAG Context (Rules/Examples)】
 """
 {rag_context}
+"""
+
+【Pre-Match Audit (Red Teaming - For Reference Only)】
+Context: The following are "Red Team" insights generated under extreme pressure.
+Instruction: These risks are for candidate "Defense Preparation", NOT for rejection. As a "Personal Coach", use these to provide constructive defense strategies in the 'weaknesses' section. Do not be biased by the negative tone; maintain a supportive coaching stance.
+"""
+{pre_match_risks}
 """
 
 ### Execution Steps
@@ -776,6 +304,7 @@ Strictly follow the Output Schema.`,
       'resume_summary_json',
       'detailed_resume_summary_json',
       'rag_context',
+      'pre_match_risks',
     ],
     outputSchema: SCHEMAS_V2.JOB_MATCH,
   },
@@ -829,7 +358,14 @@ Output a valid JSON object strictly adhering to Schema. **DO NOT** include markd
   2. **Change**: Before → After summary
   3. **Reason**: Why this adds value (link to JD requirement)
 - **resumeData**: Structured resume content
-  - **description** fields: Plain text, use '\\n' for line breaks
+  - **basics.summary**:
+    - **Source**: \`resume_summary_json.summary\` (Primary) + \`summary_points\` (Secondary)
+    - **Logic Strategy (Value-Add Judgment)**: 
+      1. **PRESERVE**: If original \`summary\` is high-quality and JD-relevant, keep it verbatim.
+      2. **MERGE & REFINE**: If \`summary_points\` contain key assets that significantly boost match score, integrate them into the summary.
+      3. **SYNTHESIZE**: Only if original \`summary\` is missing or unusable, generate purely from points.
+      4. **Forbidden**: Do NOT populate with \`extras\`, \`languages\`, or \`skills\`.
+  - **description** fields: Plain text list. Use '\\n' to separate points. **Forbidden**: Do NOT use Markdown list markers (- • *) or numbering (1. 2.), as this causes double-rendering errors.
   - **skills**: Use categorized concise format, **NEVER** keyword stuffing
     - **Core Competencies** (3-5 items): Extract by priority
       1. First from resume_summary's specialties_points matching JD requirements
@@ -949,12 +485,6 @@ Strictly follow Output Schema for JSON output.`,
     ],
     outputSchema: SCHEMAS_V2.RESUME_CUSTOMIZE,
   },
-  // [DEPRECATED] Free tier simplified prompt - no longer used
-  // Gemini-3-flash-preview is capable enough to use full resume_customize prompt
-  // resume_customize_lite: {
-  //   id: 'resume_customize_lite',
-  //   ... (same as zh.ts - full definition commented out)
-  // },
   interview_prep: {
     id: 'interview_prep',
     name: 'Interview Preparation',

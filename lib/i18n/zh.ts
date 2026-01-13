@@ -70,6 +70,15 @@ const dict = {
         '目前仅支持文本型 PDF，扫描件/图片暂不支持；请上传含文本内容的 PDF。',
     },
   },
+  worker: {
+    preMatch: {
+      auditing: 'AI 审计员正在进行红队测试...',
+      reportTitle: '【前置风险审计报告 (Bad Cop Findings)】',
+      overallLevel: '整体评级',
+      summary: '审计总结',
+      fatalRisks: '发现的致命风险',
+    },
+  },
   workbench: {
     sidebar: {
       expand: '展开',
@@ -527,7 +536,8 @@ const dict = {
       },
       darkSidebar: {
         name: '深色侧栏',
-        description: '强视觉冲击 - 新媒体运营、独立摄影师、个人品牌持有者、市场营销',
+        description:
+          '强视觉冲击 - 新媒体运营、独立摄影师、个人品牌持有者、市场营销',
       },
       elegant: {
         name: '现代优雅',
@@ -613,7 +623,8 @@ const dict = {
       certificatesPlaceholder: '列出获得的证书或奖项...',
       hobbiesPlaceholder: '列出你的兴趣爱好...',
       aiSuggestionTitle: '简历优化建议',
-      aiSuggestionIntro: '基于简历内容与目标岗位的匹配分析，我为您整理了以下优化建议，希望能帮助您脱颖而出。',
+      aiSuggestionIntro:
+        '基于简历内容与目标岗位的匹配分析，我为您整理了以下优化建议，希望能帮助您脱颖而出。',
       noSuggestions: '暂无优化建议，请先生成简历',
       editContent: '编辑内容',
     },
@@ -647,7 +658,8 @@ const dict = {
       sectionSpacing: '区块间距 (px)',
       pageMargin: '页面边距 (mm)',
       resetConfirm: '确认重置简历？',
-      resetDesc: '此操作将清除所有二次编辑的内容，恢复到AI生成的初始版本。此操作无法撤销。',
+      resetDesc:
+        '此操作将清除所有二次编辑的内容，恢复到AI生成的初始版本。此操作无法撤销。',
       cancel: '取消',
       confirmReset: '确认重置',
       menuTitle: '编辑器菜单',
@@ -662,7 +674,8 @@ const dict = {
     },
     tips: {
       noSuggestions: '暂无优化建议，请先生成简历',
-      suggestionIntro: '基于简历内容与目标岗位的匹配分析，我为您整理了以下优化建议，希望能帮助您脱颖而出。',
+      suggestionIntro:
+        '基于简历内容与目标岗位的匹配分析，我为您整理了以下优化建议，希望能帮助您脱颖而出。',
     },
     history: {
       title: '历史服务',

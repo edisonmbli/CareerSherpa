@@ -1,6 +1,7 @@
 export type TaskConfig = {
   maxTokens: number
   temperature?: number
+  timeoutMs?: number // Add timeout configuration
 }
 
 // Centralized configuration for all LLM tasks
@@ -13,6 +14,13 @@ export const TASK_CONFIG: Record<string, TaskConfig> = {
   resume_customize: { maxTokens: 15000, temperature: 1.0 },
   interview_prep: { maxTokens: 8000, temperature: 1.0 },
   ocr_extract: { maxTokens: 4000, temperature: 0.1 },
+  
+  // Phase 2: Pre-Match Audit (Fast & Cheap, Strict Timeout)
+  pre_match_audit: { 
+    maxTokens: 4000, 
+    temperature: 0.5, // Slightly creative for risk finding
+    timeoutMs: 60000  // 60s timeout for fast failover
+  },
 }
 
 export function getTaskConfig(taskId: string): TaskConfig {

@@ -32,6 +32,7 @@ export type TaskTemplateId =
   // | 'resume_customize_lite' // [DEPRECATED] Free tier uses full prompt now
   | 'interview_prep'
   | 'ocr_extract'
+  | 'pre_match_audit' // Phase 2: Bad Cop audit for Paid tier
   // 非对话/非生成型任务的统一日志标识（用于嵌入生成、RAG流水线）
   | 'rag_embedding'
 
@@ -85,6 +86,7 @@ export type JobMatchVars = {
   tierOverride?: PaidTierOverride
   prompt?: string
   executionSessionId?: string
+  pre_match_risks?: string // Phase 2: Risk context from Pre-Match Audit
 }
 
 export type ResumeCustomizeVars = {
@@ -115,6 +117,22 @@ export type OcrExtractVars = {
   executionSessionId?: string
 }
 
+export type PreMatchAuditVars = {
+  resume_summary_json: string
+  job_summary_json: string
+  // Pass-through variables for the next task (job_match)
+  nextTaskId: string
+  serviceId: string
+  resumeId: string
+  detailedResumeId?: string
+  jobId: string
+  wasPaid: boolean
+  cost: number
+  debitId?: string
+  tierOverride?: PaidTierOverride
+  executionSessionId?: string
+}
+
 export type VariablesFor<T extends TaskTemplateId> = T extends 'resume_summary'
   ? ResumeSummaryVars
   : T extends 'detailed_resume_summary'
@@ -127,10 +145,12 @@ export type VariablesFor<T extends TaskTemplateId> = T extends 'resume_summary'
   ? JobMatchVars
   : T extends 'resume_customize'
   ? ResumeCustomizeVars
-  // : T extends 'resume_customize_lite' // [DEPRECATED]
+  : // : T extends 'resume_customize_lite' // [DEPRECATED]
   // ? ResumeCustomizeVars
-  : T extends 'interview_prep'
+  T extends 'interview_prep'
   ? InterviewPrepVars
   : T extends 'ocr_extract'
   ? OcrExtractVars
+  : T extends 'pre_match_audit'
+  ? PreMatchAuditVars
   : never

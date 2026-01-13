@@ -116,6 +116,19 @@ const ROUTING_TABLE: Partial<
       isStream: false,
     },
   },
+  // Phase 2: Bad Cop Audit (Paid Only)
+  pre_match_audit: {
+    paid: {
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
+      queueId: QueueId.PAID_BATCH, // Use paid queue for priority
+      isStream: false,
+    },
+    free: {
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
+      queueId: QueueId.FREE_BATCH,
+      isStream: false,
+    },
+  },
   // Free tier merged OCR + Job Summary (uses Gemini vision to extract JobSummary directly)
   // NOTE: Paid tier should NOT use this template - it uses ocr_extract + job_summary instead.
   //       This entry exists only for type completeness.
@@ -150,15 +163,15 @@ export const getTaskRouting = (
 export const getJobVisionTaskRouting = (hasQuota: boolean): TaskRouting => {
   return hasQuota
     ? {
-      modelId: MODEL.GLM_VISION_THINKING_FLASH,
-      queueId: QueueId.PAID_VISION,
-      isStream: false,
-    }
+        modelId: MODEL.GLM_VISION_THINKING_FLASH,
+        queueId: QueueId.PAID_VISION,
+        isStream: false,
+      }
     : {
-      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
-      queueId: QueueId.FREE_VISION,
-      isStream: false,
-    }
+        modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
+        queueId: QueueId.FREE_VISION,
+        isStream: false,
+      }
 }
 
 export const isServiceScoped = (t: TaskTemplateId): boolean => {
@@ -167,7 +180,8 @@ export const isServiceScoped = (t: TaskTemplateId): boolean => {
     t === 'job_match' ||
     t === 'resume_customize' ||
     t === 'interview_prep' ||
-    t === 'ocr_extract'
+    t === 'ocr_extract' ||
+    t === 'pre_match_audit'
   )
 }
 

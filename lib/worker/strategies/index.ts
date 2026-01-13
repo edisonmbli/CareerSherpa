@@ -4,6 +4,7 @@ import { OcrExtractStrategy } from './ocr'
 import { customizeStrategy } from './customize'
 import { InterviewStrategy } from './common_tasks'
 import { JobVisionSummaryStrategy } from './vision_summary'
+import { PreMatchStrategy } from './pre_match'
 import { WorkerStrategy } from './interface'
 
 const strategies: Record<string, WorkerStrategy> = {
@@ -15,6 +16,7 @@ const strategies: Record<string, WorkerStrategy> = {
     resume_customize: customizeStrategy,
     interview_prep: new InterviewStrategy(),
     job_vision_summary: new JobVisionSummaryStrategy(),
+    pre_match_audit: new PreMatchStrategy(),
 }
 
 export function getStrategy(templateId: string): WorkerStrategy | undefined {

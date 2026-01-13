@@ -90,6 +90,12 @@ describe('llm/service: structured + streaming', () => {
           tokenUsage: { prompt_tokens: 10, completion_tokens: 5 },
         },
       }),
+      withStructuredOutput: vi.fn().mockReturnValue({
+        invoke: structuredInvoke.mockResolvedValue({
+          parsed: validResumeCustomize,
+          raw: { content: json, response_metadata: { tokenUsage: { prompt_tokens: 10, completion_tokens: 5 } } }
+        })
+      })
     }
 
     const res = await runStructuredLlmTask(

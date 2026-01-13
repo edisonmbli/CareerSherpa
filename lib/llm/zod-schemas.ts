@@ -89,10 +89,10 @@ const resumeSummarySchema = z
       (Array.isArray(d.education) && d.education.length > 0) ||
       Boolean(
         d.skills &&
-        ((d.skills as any).technical?.length ||
-          (d.skills as any).soft?.length ||
-          (d.skills as any).tools?.length ||
-          (d.skills as any).other?.length)
+          ((d.skills as any).technical?.length ||
+            (d.skills as any).soft?.length ||
+            (d.skills as any).tools?.length ||
+            (d.skills as any).other?.length)
       ),
     { message: 'empty_resume_summary' }
   )
@@ -144,10 +144,12 @@ const detailedResumeV4Schema = z
 
     // Keep rawSections for flexibility, but simplified
     rawSections: z
-      .array(z.object({
-        title: z.string().optional(),
-        points: z.array(z.string()).optional()
-      }))
+      .array(
+        z.object({
+          title: z.string().optional(),
+          points: z.array(z.string()).optional(),
+        })
+      )
       .optional(),
   })
   .refine(
@@ -161,10 +163,10 @@ const detailedResumeV4Schema = z
       (Array.isArray(d.rawSections) && d.rawSections.length > 0) ||
       Boolean(
         d.skills &&
-        ((d.skills as any).technical?.length ||
-          (d.skills as any).soft?.length ||
-          (d.skills as any).tools?.length ||
-          (d.skills as any).other?.length)
+          ((d.skills as any).technical?.length ||
+            (d.skills as any).soft?.length ||
+            (d.skills as any).tools?.length ||
+            (d.skills as any).other?.length)
       ),
     { message: 'empty_detailed_resume_summary' }
   )
@@ -186,40 +188,49 @@ export const detailedResumeDeepSchema = z
           highlights: z.array(z.string()).optional(),
           metrics: z.array(z.string()).optional(),
           // Nested projects for DeepSeek R1
-          projects: z.array(z.object({
-            name: z.string().optional(),
-            description: z.string().optional(),
-            link: z.string().optional(),
-            task: z.array(z.string()).optional(),
-            actions: z.array(z.string()).optional(),
-            results: z.array(z.string()).optional(),
-            metrics: z.array(z.object({
-              label: z.string(),
-              value: z.union([z.number(), z.string()]),
-              unit: z.string().optional(),
-              period: z.string().optional(),
-            })).optional(),
-            highlights: z.array(z.string()).optional(),
-          })).optional(),
+          projects: z
+            .array(
+              z.object({
+                name: z.string().optional(),
+                description: z.string().optional(),
+                link: z.string().optional(),
+                task: z.array(z.string()).optional(),
+                actions: z.array(z.string()).optional(),
+                results: z.array(z.string()).optional(),
+                metrics: z
+                  .array(
+                    z.object({
+                      label: z.string(),
+                      value: z.union([z.number(), z.string()]),
+                      unit: z.string().optional(),
+                      period: z.string().optional(),
+                    })
+                  )
+                  .optional(),
+                highlights: z.array(z.string()).optional(),
+              })
+            )
+            .optional(),
 
           contributions: z.array(z.string()).optional(),
         })
       )
       .optional(),
     // [PATCH] Allow rich capabilities (object with name/points) to match prompt instruction
-    capabilities: z.array(z.union([
-      z.string(),
-      z.object({
-        name: z.string().optional(),
-        points: z.array(z.string()).optional()
-      })
-    ])).optional(),
+    capabilities: z
+      .array(
+        z.union([
+          z.string(),
+          z.object({
+            name: z.string().optional(),
+            points: z.array(z.string()).optional(),
+          }),
+        ])
+      )
+      .optional(),
     education: z.array(educationItemSchema).optional(),
     // [PATCH] Allow skills to be simple array OR structured object
-    skills: z.union([
-      z.array(z.string()),
-      skillsSchema
-    ]).optional(),
+    skills: z.union([z.array(z.string()), skillsSchema]).optional(),
     certifications: z.array(certificationItemSchema).optional(),
     languages: z.array(languageItemSchema).optional(),
     awards: z.array(awardItemSchema).optional(),
@@ -228,10 +239,12 @@ export const detailedResumeDeepSchema = z
     summary_points: z.array(z.string()).optional(),
     specialties_points: z.array(z.string()).optional(),
     rawSections: z
-      .array(z.object({
-        title: z.string().optional(),
-        points: z.array(z.string()).optional()
-      }))
+      .array(
+        z.object({
+          title: z.string().optional(),
+          points: z.array(z.string()).optional(),
+        })
+      )
       .optional(),
   })
   .refine(
@@ -266,7 +279,7 @@ const jobMatchSchema = z.object({
         evidence: z.string(),
         tip: z.object({
           interview: z.string(), // 面试应对
-          resume: z.string(),    // 简历微调
+          resume: z.string(), // 简历微调
         }),
         section: z.string().optional(),
       })
@@ -312,6 +325,18 @@ const ocrExtractSchema = z.object({
   notes: z.array(z.string()).optional(),
 })
 
+const preMatchAuditSchema = z.object({
+  risks: z.array(
+    z.object({
+      risk_point: z.string(),
+      severity: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+      reasoning: z.string(),
+    })
+  ),
+  overall_risk_level: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'SAFE']),
+  audit_summary: z.string(),
+})
+
 // 统一映射
 const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   resume_summary: resumeSummarySchema,
@@ -323,6 +348,7 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   // resume_customize_lite: resumeCustomizeSchema, // [DEPRECATED] Same schema as full customize
   interview_prep: interviewPrepSchema,
   ocr_extract: ocrExtractSchema,
+  pre_match_audit: preMatchAuditSchema,
   // 非生成型任务（嵌入/RAG流水线）占位
   rag_embedding: z.object({}),
 }

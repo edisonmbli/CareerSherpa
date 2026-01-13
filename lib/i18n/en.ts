@@ -15,7 +15,8 @@ const dict = {
     match_resume_fit:
       '{{title}} HR DM Scripts Templates Concise Impactful Precise High Match DM script Opening and Closing {{skills}}',
     customize_general: 'resume writing best practices STAR method action verbs',
-    customize_role: '{{title}} core skills keywords quantifiable metrics resume examples',
+    customize_role:
+      '{{title}} core skills keywords quantifiable metrics resume examples',
   },
   designSystem: {
     title: 'Design System',
@@ -68,6 +69,15 @@ const dict = {
       },
       pdfNotice:
         'Only text-based PDFs are supported for now; scanned/image PDFs are not supported.',
+    },
+  },
+  worker: {
+    preMatch: {
+      auditing: 'AI Auditor is performing Red Teaming...',
+      reportTitle: '【Pre-Match Risk Audit Report (Bad Cop Findings)】',
+      overallLevel: 'Overall Risk Level',
+      summary: 'Audit Summary',
+      fatalRisks: 'Fatal Risks Identified',
     },
   },
   workbench: {
@@ -207,7 +217,8 @@ const dict = {
       job_summary_missing: 'Missing job summary, cannot match',
       enqueue_failed: 'Failed to enqueue task, try later',
       // User-centric rate limit messages
-      daily_limit: 'Daily free quota exhausted. Top up for more professional services.',
+      daily_limit:
+        'Daily free quota exhausted. Top up for more professional services.',
       frequency_limit: 'Too many requests! Take a short coffee break ☕️',
       readyToCustomize: 'Ready to Customize',
       readyToCustomizeDesc:
@@ -247,7 +258,8 @@ const dict = {
     },
     freeTierDialog: {
       title: 'Free Experience Mode',
-      description: 'Using free model. Consider topping up for deeper customization.',
+      description:
+        'Using free model. Consider topping up for deeper customization.',
       cancel: 'Cancel',
       continue: 'Continue',
     },
@@ -549,7 +561,8 @@ const dict = {
       },
       darkSidebar: {
         name: 'Dark Sidebar',
-        description: 'Bold visual - for marketers, photographers, personal branding',
+        description:
+          'Bold visual - for marketers, photographers, personal branding',
       },
       elegant: {
         name: 'Modern Elegant',
@@ -561,14 +574,16 @@ const dict = {
       selectTemplate: 'Select Template',
       templateDesc: 'All templates support A4 print and PDF export',
       resetConfirm: 'Confirm Reset Resume?',
-      resetDesc: 'This will restore the resume to the AI-generated version. Your edits will be lost.',
+      resetDesc:
+        'This will restore the resume to the AI-generated version. Your edits will be lost.',
       resetCancel: 'Cancel',
       resetButton: 'Reset',
       structure: 'Resume Structure',
       editResume: 'Edit Resume',
       selectAction: 'Select an action to adjust your resume',
       customSectionTitle: 'Custom section title',
-      markdownTip: '💡 Supports bold, italic, and other Markdown formatting. Can auto-generate lists.',
+      markdownTip:
+        '💡 Supports bold, italic, and other Markdown formatting. Can auto-generate lists.',
     },
     sections: {
       basics: 'Basic Info',
@@ -628,14 +643,16 @@ const dict = {
       phone: 'Phone',
       email: 'Email',
       socialLinks: 'Social Links',
-      summaryPlaceholder: 'Briefly describe your core strengths, career goals, etc.',
+      summaryPlaceholder:
+        'Briefly describe your core strengths, career goals, etc.',
       // PageBreakSwitch keys
       pageBreak: 'Insert page break at bottom',
       pageBreakDesc: 'Force start a new page after this content',
       certificatesPlaceholder: 'List your certificates or awards...',
       hobbiesPlaceholder: 'List your hobbies and interests...',
       aiSuggestionTitle: 'Optimization Suggestions',
-      aiSuggestionIntro: 'Based on your resume content and target position analysis, here are optimization suggestions to help you stand out.',
+      aiSuggestionIntro:
+        'Based on your resume content and target position analysis, here are optimization suggestions to help you stand out.',
       noSuggestions: 'No suggestions yet, please generate resume first',
       editContent: 'Edit Content',
     },
@@ -660,16 +677,19 @@ const dict = {
       font: 'Font',
       compactMode: 'Compact',
       proportionalScale: 'Proportional',
-      proportionalTip: 'When enabled, adjusting any style parameter will proportionally affect others',
+      proportionalTip:
+        'When enabled, adjusting any style parameter will proportionally affect others',
       masterScale: 'Master Scale',
-      masterScaleTip: 'Drag this slider to proportionally adjust all style parameters below',
+      masterScaleTip:
+        'Drag this slider to proportionally adjust all style parameters below',
       fontSize: 'Font Size (ratio)',
       lineHeight: 'Line Height',
       itemSpacing: 'Item Spacing (px)',
       sectionSpacing: 'Section Spacing (px)',
       pageMargin: 'Page Margin (mm)',
       resetConfirm: 'Reset resume?',
-      resetDesc: 'This will clear all your edits and restore to the AI-generated version. This cannot be undone.',
+      resetDesc:
+        'This will clear all your edits and restore to the AI-generated version. This cannot be undone.',
       cancel: 'Cancel',
       confirmReset: 'Confirm Reset',
       menuTitle: 'Editor Menu',
@@ -684,7 +704,8 @@ const dict = {
     },
     tips: {
       noSuggestions: 'No suggestions yet, please generate resume first',
-      suggestionIntro: 'Based on your resume content and target position analysis, here are optimization suggestions to help you stand out.',
+      suggestionIntro:
+        'Based on your resume content and target position analysis, here are optimization suggestions to help you stand out.',
     },
     history: {
       title: 'History',

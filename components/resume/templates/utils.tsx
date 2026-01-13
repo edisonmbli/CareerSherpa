@@ -30,8 +30,15 @@ export function renderDescription(
 ) {
   if (!description) return null
 
+  // Preprocessing: Robustly handle potential LLM formatting artifacts
+  let text = description
+    // 1. Replace all variants of <br> tags with newlines
+    .replace(/<br\s*\/?>/gi, '\n')
+    // 2. Replace literal "\n" string if somehow escaped
+    .replace(/\\n/g, '\n')
+
   // Primary split by newlines
-  let lines = description.split('\n').filter((line) => line.trim() !== '')
+  let lines = text.split('\n').filter((line) => line.trim() !== '')
 
   // Fallback: if there are few lines but content has "；" separators, split those too
   // This handles GLM Flash output that uses Chinese semicolons instead of newlines
@@ -40,7 +47,7 @@ export function renderDescription(
     for (const line of lines) {
       // If line contains "；" and no explicit bullet marker, treat "；" as separator
       const trimmed = line.trim()
-      const hasBulletMarker = /^[-•]/.test(trimmed)
+      const hasBulletMarker = /^(\d+\.|[-•*])\s*/.test(trimmed)
       if (!hasBulletMarker && trimmed.includes('；')) {
         // Split by Chinese semicolon and filter empty
         const subLines = trimmed.split('；').filter((s) => s.trim() !== '')
@@ -67,9 +74,8 @@ export function renderDescription(
     <ul className={listClass}>
       {lines.map((line, i) => {
         const trimmed = line.trim()
-        // Remove existing markers if present to avoid double bullets
-        // Updated regex to be more permissive (allow no space after marker, though rare, and standard markers)
-        const cleanText = trimmed.replace(/^[-•]\s*/, '')
+        // Remove existing markers if present to avoid double bullets (numbers, dots, dashes)
+        const cleanText = trimmed.replace(/^(\d+\.|[-•*])\s*/, '')
 
         return (
           <li key={i} className={itemClass}>

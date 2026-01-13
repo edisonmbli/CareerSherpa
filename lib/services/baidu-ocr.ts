@@ -169,14 +169,24 @@ export async function extractTextFromBaidu(imageBase64: string): Promise<BaiduOc
 
         // Call Baidu OCR API
         const ocrUrl = `${OCR_URL}?access_token=${accessToken}`
-        const response = await fetch(ocrUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json',
-            },
-            body: params,
-        })
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
+
+        let response
+        try {
+            response = await fetch(ocrUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json',
+                },
+                body: params,
+                signal: controller.signal
+            })
+        } finally {
+            clearTimeout(timeoutId)
+        }
 
         const result: BaiduOcrResponse = await response.json()
 

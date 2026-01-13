@@ -290,6 +290,65 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     const sessionId = String(variables.executionSessionId || '')
     const idemNonce = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
+    // Phase 2: Enhanced Reasoning Pipeline (Bad Cop / Good Cop)
+    // Paid users go through Pre-Match Audit; Free users go directly to Match.
+    if (wasPaid) {
+      // --- Paid Tier: Pre-Match Audit (Batch) ---
+      const pushRes = await pushTask({
+        kind: 'batch',
+        serviceId,
+        taskId: `pre_${matchTaskId}`, // Distinct task ID for audit
+        userId,
+        locale: locale as 'en' | 'zh',
+        templateId: 'pre_match_audit',
+        variables: {
+          serviceId,
+          resumeId: svc?.resumeId || '',
+          ...(svc?.detailedResumeId
+            ? { detailedResumeId: svc?.detailedResumeId }
+            : {}),
+          jobId: svc?.job?.id || '',
+          resume_summary_json: '', // Worker will fetch from DB
+          job_summary_json: '', // Worker will fetch from DB
+          executionSessionId: sessionId,
+          wasPaid,
+          cost,
+          ...(debitId ? { debitId } : {}),
+          nextTaskId: matchTaskId, // Pass original match task ID for chaining
+        },
+      })
+
+      if (pushRes.error) {
+        logError({
+          reqId: requestId,
+          route: 'worker/summary',
+          error: pushRes.error,
+          phase: 'enqueue_pre_match_failed',
+          serviceId,
+        })
+        // If audit fails to enqueue, should we fallback to direct match?
+        // Yes, for high availability.
+        console.warn('Pre-match enqueue failed, falling back to direct match.')
+        // Fallthrough to direct match logic below...
+        // But we need to structure this if/else carefully.
+      } else {
+        // Success: Update status and return
+        try {
+          await updateServiceExecutionStatus(
+            serviceId,
+            ExecutionStatus.MATCH_PENDING
+          )
+        } catch (err) { /* ignore */ }
+        
+        await markTimeline(serviceId, 'worker_batch_enqueue_match_end', {
+          taskId: matchTaskId,
+          route: 'pre_match_audit'
+        })
+        return // Stop here, PreMatchStrategy will enqueue job_match
+      }
+    }
+
+    // --- Free Tier (or Fallback): Direct Job Match (Stream) ---
     const pushRes = await pushTask({
       kind: 'stream',
       serviceId,

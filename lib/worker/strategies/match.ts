@@ -255,6 +255,8 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     if (typeof vars['resume_summary_json'] !== 'string') vars['resume_summary_json'] = ''
     if (typeof vars['job_summary_json'] !== 'string') vars['job_summary_json'] = ''
     if (typeof vars['detailed_resume_summary_json'] !== 'string') vars['detailed_resume_summary_json'] = ''
+    // Ensure pre_match_risks is present (failed for strict prompt requirement)
+    if (typeof vars['pre_match_risks'] !== 'string') vars['pre_match_risks'] = ''
 
     // Parallel: Notify frontend + fetch context
     let contextSvc: any = null

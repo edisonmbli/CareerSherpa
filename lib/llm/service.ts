@@ -1,5 +1,7 @@
 import type { Locale } from '@/i18n-config'
 import { getTemplate } from '@/lib/prompts/index'
+import * as fs from 'fs'
+
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getModel, type ModelId } from '@/lib/llm/providers'
 import { getTaskRouting, getJobVisionTaskRouting } from '@/lib/llm/task-router'
@@ -541,7 +543,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         }
 
         // Save full raw content to file for analysis
-        const fs = require('fs')
+        // Save full raw content to file for analysis
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
         const debugPath = `tmp/debug-logs/${timestamp}_structured_raw.json`
         try {
