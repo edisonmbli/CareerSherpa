@@ -87,6 +87,7 @@ const dict = {
       newService: 'New Service',
       myCv: 'My CV',
       coins: 'Coins',
+      backToWorkbench: 'Back to Workbench',
       menu: 'Menu',
       openMenu: 'Open menu',
       sidebarDrawer: 'Sidebar drawer',
@@ -281,13 +282,51 @@ const dict = {
     resume: {
       title: 'General Resume',
       description:
-        'Foundation for AI analysis. All services depend on this file.',
+        'The foundation for all AI services. An essential prerequisite for Match Analysis, Resume Customization, and Interview Prep.',
+      defaultFileName: 'General Resume',
       note: '',
     },
     detailed: {
       title: 'Detailed Resume',
+      badge: 'Recommended',
+      defaultFileName: 'Detailed Resume',
       description:
-        'Richer context can significantly improve AI output quality.',
+        "A 'Power-Up' for advanced insights. Uploading detailed projects and metrics provides rich context for significantly higher quality AI output.",
+      examples: {
+        label: 'STAR Method Examples',
+        roles: {
+          product: 'Product Mgr',
+          ops: 'User Ops',
+          tech: 'Backend Dev',
+          design: 'UI/UX Design',
+        },
+        items: {
+          product: [
+            { label: 'Situation', content: 'Tried to boost paid conversion for a Reading App. Goal: +20% paid users in Q3.' },
+            { label: 'Challenge', content: 'Discount strategies hit a ceiling and hurt margins. Users were price-insensitive.' },
+            { label: 'Action', content: 'Discovered correlation between reading time and payment. Created "Time-for-Credit" feature.' },
+            { label: 'Result', content: 'Conversion up 35% (beat goal). New user first-order time shortened by 40%.' },
+          ],
+          ops: [
+            { label: 'Situation', content: 'Managed 500+ communities with low engagement (5% DAU).' },
+            { label: 'Challenge', content: 'Users ignored official broadcasts. Content was generic; zero interaction.' },
+            { label: 'Action', content: 'Recruited KOLs as "Topic Leaders" and introduced points system to incentivize UGC.' },
+            { label: 'Result', content: 'DAU doubled to 11%. Daily UGC up 300%. Core user retention hit 90%.' },
+          ],
+          tech: [
+            { label: 'Situation', content: 'Ensuring payment system stability during Black Friday sales.' },
+            { label: 'Challenge', content: 'Timeout rate hit 2%. Monolithic DB was a bottleneck and unscalable.' },
+            { label: 'Action', content: 'Implemented cold/hot data separation, MQ for peak shaving, and Event Sourcing.' },
+            { label: 'Result', content: 'QPS capacity up 5x. Zero downtime. Failure rate dropped below 0.01%.' },
+          ],
+          design: [
+            { label: 'Situation', content: 'Optimizing mobile approval workflow for B2B admin system.' },
+            { label: 'Challenge', content: 'Porting complex PC tables to mobile caused high error rates and slowness.' },
+            { label: 'Action', content: 'Ditched tables. Re-designed using "Info Cards" + "Action Cards" separation.' },
+            { label: 'Result', content: 'Approval time cut by 50%. Error feedback dropped to zero. Satisfaction 4.8/5.' },
+          ],
+        },
+      },
       note: '',
     },
     uploader: {

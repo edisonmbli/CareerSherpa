@@ -16,6 +16,8 @@ import { listLedgerByUser } from '@/lib/dal/coinLedger'
 import { LEDGER_PAGE_SIZE } from '@/lib/constants'
 import { BillingFiltersClient } from '@/components/app/BillingFiltersClient'
 import { RechargeWaitlistClient } from '@/components/app/RechargeWaitlistClient'
+import { Badge } from '@/components/ui/badge'
+import { ResumeGuidanceTooltip } from '@/components/resume/ResumeGuidanceTooltip'
 import { Button } from '@/components/ui/button'
 import { LedgerGroupList } from '@/components/app/LedgerGroupList'
 import { ProfileTabs } from '@/components/profile/ProfileTabs'
@@ -97,7 +99,7 @@ export default async function ProfilePage({
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-end mb-6">
             <Link href={`/${locale}/workbench`} className="text-sm underline">
-              {locale === 'zh' ? '返回工作台' : 'Back to Workbench'}
+              {w.sidebar.backToWorkbench}
             </Link>
           </div>
 
@@ -127,7 +129,7 @@ export default async function ProfilePage({
                     }
                     initialFileName={
                       latestResume && latestResume.status === 'COMPLETED'
-                        ? '个人通用简历.pdf'
+                        ? p.resume.defaultFileName
                         : null
                     }
                     initialSummaryJson={latestResume?.resumeSummaryJson || null}
@@ -152,9 +154,14 @@ export default async function ProfilePage({
                   <AppCardTitle className="flex items-center gap-2">
                     <NotebookText className="h-5 w-5 text-primary" />
                     {p.detailed.title}
-                    <Sparkles className="h-3 w-3 text-primary" />
+                    <ResumeGuidanceTooltip
+                      triggerClassName="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-light text-indigo-700 ring-1 ring-inset ring-indigo-100/10 dark:bg-indigo-400/10 dark:text-indigo-400 dark:ring-indigo-400/10"
+                      examples={p.detailed.examples as any}
+                    >
+                      {p.detailed.badge}
+                    </ResumeGuidanceTooltip>
                   </AppCardTitle>
-                  <AppCardDescription>
+                  <AppCardDescription className="flex items-center gap-2 text-sm text-muted-foreground">
                     {p.detailed.description}
                   </AppCardDescription>
                 </AppCardHeader>
@@ -167,7 +174,7 @@ export default async function ProfilePage({
                     }
                     initialFileName={
                       latestDetailed && latestDetailed.status === 'COMPLETED'
-                        ? '个人详细履历.pdf'
+                        ? p.detailed.defaultFileName
                         : null
                     }
                     initialSummaryJson={

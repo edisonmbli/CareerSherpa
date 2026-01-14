@@ -86,6 +86,11 @@ const dict = {
       newService: '新建服务',
       myCv: '我的简历',
       coins: '金币',
+      analysis: '分析',
+      actions: '操作',
+      backToWorkbench: '返回工作台',
+    },
+    nav: {
       menu: '菜单',
       openMenu: '打开菜单',
       sidebarDrawer: '侧栏抽屉',
@@ -272,12 +277,52 @@ const dict = {
     tabs: { assets: '个人经历', billing: '账单/充值' },
     resume: {
       title: '通用简历',
-      description: '这是 AI 分析的基础，后续所有服务均依赖此文件。',
+      description:
+        'AI 服务的核心基石与前置依赖。匹配度分析、简历定制、面试辅导等所有高级功能均基于此文件。',
+      defaultFileName: '个人通用简历',
       note: '',
     },
     detailed: {
       title: '详细履历',
-      description: '提供更丰富的上下文，可显著提升 AI 输出质量。',
+      badge: '建议上传',
+      defaultFileName: '个人详细履历',
+      description:
+        '高阶服务的“加分项”。建议包含项目细节与量化成果，为 AI 提供充足养分，可显著提升定制化质量与深度。',
+      examples: {
+        label: '优秀详历参考 (STAR法则)',
+        roles: {
+          product: '产品经理',
+          ops: '用户运营',
+          tech: '后端开发',
+          design: 'UI/UX设计',
+        },
+        items: {
+          product: [
+            { label: '背景 (Situation)', content: '“阅读App”需提升付费转化率，目标是季度内付费人数增长20%。' },
+            { label: '发展 (Challenge)', content: '通用打折策略遇到瓶颈，且会伤害利润率。用户对价格不敏感，流失点难以捕捉。' },
+            { label: '高潮 (Action)', content: '通过数据挖掘发现“阅读时长”与付费强相关。创新设计“预读时长抵扣”机制，让时间即金钱。' },
+            { label: '结尾 (Result)', content: '上线2个月，付费转化率提升35%（超目标），且新人首单时间缩短40%。' },
+          ],
+          ops: [
+            { label: '背景 (Situation)', content: '负责提升500+个社群的活跃度，当前DAU仅为5%。' },
+            { label: '发展 (Challenge)', content: '用户对官方单向广播已经麻木，内容同质化严重，群内互动几乎为零。' },
+            { label: '高潮 (Action)', content: '去中心化运营。招募KOL为“话题主理人”，引入“社群积分”激励UGC内容生产。' },
+            { label: '结尾 (Result)', content: 'DAU翻倍至11%，日均UGC产出激增300%，核心用户留存率达90%。' },
+          ],
+          tech: [
+            { label: '背景 (Situation)', content: '负责电商大促期间的支付系统稳定性保障。' },
+            { label: '发展 (Challenge)', content: '高峰期支付超时率达2%，原有单体数据库不仅读写瓶颈，还无法水平扩展。' },
+            { label: '高潮 (Action)', content: '实施冷热数据分离，引入MQ削峰填谷，并基于“事件溯源”重构核心交易链路。' },
+            { label: '结尾 (Result)', content: 'QPS承载能力提升5倍，大促期间零故障，订单失败率降至0.01%以下。' },
+          ],
+          design: [
+            { label: '背景 (Situation)', content: '优化B端后台管理系统的移动端审批流程。' },
+            { label: '发展 (Challenge)', content: '直接移植PC版复杂表格到手机端，导致误操作率高，审批效率极低。' },
+            { label: '高潮 (Action)', content: '摒弃表格视图。基于场景重构为“信息卡片”与“操作卡片”分离的视图设计。' },
+            { label: '结尾 (Result)', content: '移动端审批平均耗时缩短50%，误操作反馈归零，用户满意度提升至4.8分。' },
+          ],
+        },
+      },
       note: '',
     },
     uploader: {

@@ -19,15 +19,26 @@ interface AssetPreviewProps {
         awards: string
         openSource: string
         extras: string
+        [key: string]: string
     }
 }
 
-export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) {
-    if (!d) return null
+export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewProps) {
+    if (!rawData) return null
+
+    // Normalization: Ensure 'experiences' is populated even if 'experience' (general resume) is used
+    const d = {
+        ...rawData,
+        experiences: Array.isArray(rawData.experiences) && rawData.experiences.length > 0
+            ? rawData.experiences
+            : Array.isArray(rawData.experience)
+                ? rawData.experience
+                : []
+    }
 
     return (
         <div className="space-y-6 text-sm text-gray-700 pb-8 px-2 leading-relaxed font-sans">
-            {/* Header Info (Simple for now, as real template header is complex) */}
+            {/* Header Info */}
             {d.header && (
                 <div className="text-center mb-6 pb-4 border-b border-gray-100">
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">{d.header.name}</h1>
@@ -76,9 +87,33 @@ export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) 
                 </Section>
             ) : null}
 
-            {/* Work Experiences */}
+            {/* Capabilities (Detailed Resume) */}
+            {Array.isArray(d.capabilities) && d.capabilities.length > 0 ? (
+                <Section title={locale === 'zh' ? '核心能力' : 'Capabilities'}>
+                    <div className="space-y-3">
+                        {d.capabilities.map((c: any, i: number) => {
+                            // Support string[] (V4) or {name, points}[] (Deep Schema)
+                            if (typeof c === 'string') {
+                                return <div key={i} className="flex gap-2"><span className="text-primary/70">•</span><span>{c}</span></div>
+                            }
+                            return (
+                                <div key={i} className="text-sm">
+                                    <div className="font-semibold text-gray-800 mb-1">{c.name}</div>
+                                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                                        {Array.isArray(c.points) && c.points.map((p: string, pi: number) => (
+                                            <li key={pi}>{p}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </Section>
+            ) : null}
+
+            {/* Work Experiences (Normalized) */}
             {Array.isArray(d.experiences) && d.experiences.length > 0 ? (
-                <Section title={locale === 'zh' ? '详细经历' : 'Detailed Experiences'}>
+                <Section title={L.experience || (locale === 'zh' ? '工作经历' : 'Experience')}>
                     <div className="space-y-8">
                         {d.experiences.map((e: any, i: number) => (
                             <div key={i} className="group">
@@ -117,6 +152,15 @@ export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) 
                                         </ul>
                                     )}
 
+                                    {/* General Resume "stack" often inside experience */}
+                                    {Array.isArray(e.stack) && e.stack.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {e.stack.map((s: string, si: number) => (
+                                                <Badge key={si} variant="outline" className="text-[10px] font-normal text-muted-foreground">{s}</Badge>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     {/* Contributions */}
                                     {Array.isArray(e.contributions) && e.contributions.length > 0 && (
                                         <div className="mt-2">
@@ -139,7 +183,7 @@ export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) 
                                         </div>
                                     )}
 
-                                    {/* Nested Projects (Paid Tier) - Styled as "Cards" within the timeline */}
+                                    {/* Nested Projects (Detailed Resume) */}
                                     {Array.isArray(e.projects) && e.projects.length > 0 && (
                                         <div className="mt-4 pt-2">
                                             <div className="flex items-center gap-2 mb-3">
@@ -187,6 +231,11 @@ export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) 
                                                                 )
                                                             })}
                                                         </div>
+                                                        {Array.isArray(p.highlights) && p.highlights.length > 0 && (
+                                                            <ul className="list-disc pl-5 space-y-1 mt-2 text-xs text-gray-600">
+                                                                {p.highlights.map((h: string, hi: number) => <li key={hi}>{h}</li>)}
+                                                            </ul>
+                                                        )}
 
                                                         {/* Project Metrics */}
                                                         {Array.isArray(p.metrics) && p.metrics.length > 0 && (
@@ -219,6 +268,30 @@ export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) 
                 </Section>
             ) : null}
 
+            {/* Top Level Projects (General Resume) */}
+            {Array.isArray(d.projects) && d.projects.length > 0 ? (
+                <Section title={L.projects}>
+                    <div className="space-y-6">
+                        {d.projects.map((p: any, i: number) => (
+                            <div key={i} className="group">
+                                <div className="flex justify-between items-baseline mb-1">
+                                    <div className="font-bold text-gray-900 text-[1.05em] flex gap-2 items-center">
+                                        {p.name}
+                                        {p.link && <a href={p.link} target="_blank" className="text-blue-500 hover:text-blue-600"><Globe className="w-3 h-3" /></a>}
+                                    </div>
+                                </div>
+                                {p.description && <div className="text-sm text-gray-500 mb-2 italic">{p.description}</div>}
+                                {Array.isArray(p.highlights) && p.highlights.length > 0 && (
+                                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                                        {p.highlights.map((h: string, j: number) => (<li key={j}>{h}</li>))}
+                                    </ul>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </Section>
+            ) : null}
+
             {/* Skills */}
             {d.skills ? (
                 <Section title={L.skills}>
@@ -243,6 +316,21 @@ export function AssetPreview({ data: d, locale, labels: L }: AssetPreviewProps) 
                         ))}
                     </ul>
                 </Section>
+            ) : null}
+
+            {/* Raw Sections (Extra customized sections) */}
+            {Array.isArray(d.rawSections) && d.rawSections.length > 0 ? (
+                <div className="space-y-6">
+                    {d.rawSections.map((s: any, i: number) => (
+                        <Section key={i} title={s.title}>
+                            <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                                {Array.isArray(s.points) && s.points.map((p: string, pi: number) => (
+                                    <li key={pi}>{p}</li>
+                                ))}
+                            </ul>
+                        </Section>
+                    ))}
+                </div>
             ) : null}
 
         </div>
