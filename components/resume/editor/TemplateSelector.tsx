@@ -51,7 +51,7 @@ export function TemplateSelector() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-2 text-muted-foreground hover:text-foreground shrink-0 px-2"
+          className="h-8 gap-2 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
         >
           <LayoutTemplate className="h-4 w-4" />
           <span className="hidden lg:inline">{dict.toolbar.template}</span>

@@ -57,7 +57,6 @@ import { useResumeDict } from '../ResumeDictContext'
 
 interface ResumeToolbarProps {
   printRef: React.RefObject<HTMLDivElement>
-  ctaAction?: React.ReactNode
 }
 
 // Helper for Range Input
@@ -113,7 +112,7 @@ const PRESET_COLORS = [
   '#be123c', // Rose 700
 ]
 
-export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
+export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
   const {
     resumeData,
     styleConfig,
@@ -303,19 +302,19 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
   // Template name now comes from dictionary via TemplateSelector component
 
   return (
-    <header className="flex h-12 items-center justify-between border-b bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3 mt-2 mx-2 shrink-0 z-30 shadow-sm transition-colors no-print relative">
+    <header className="flex h-10 items-center justify-between border-b bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3 shrink-0 z-30 shadow-sm transition-colors no-print relative">
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-4 ">
         {/* Left Sidebar Toggle - Chapters */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 text-muted-foreground hover:text-foreground shrink-0 px-2"
+          className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
           onClick={() => setStructureOpen(!isStructureOpen)}
         >
           <PanelLeft
             className={cn(
               'h-4 w-4',
-              isStructureOpen ? 'text-blue-600 dark:text-blue-400' : ''
+              isStructureOpen ? 'text-zinc-900 dark:text-zinc-100' : ''
             )}
           />
           <span className="hidden lg:inline">{dict.toolbar.chapters}</span>
@@ -334,7 +333,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 gap-2 text-muted-foreground hover:text-foreground shrink-0 px-2"
+              className="h-8 gap-2 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
             >
               <Palette className="h-4 w-4" />
               <span className="hidden lg:inline">{dict.toolbar.style}</span>
@@ -642,7 +641,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 text-muted-foreground hover:text-foreground shrink-0 px-2"
+          className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
           onClick={() => setIsResetOpen(true)}
         >
           <RotateCcw className="h-4 w-4" />
@@ -657,7 +656,7 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2 h-8 text-muted-foreground hover:text-foreground shrink-0 px-2"
+              className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span className="hidden lg:inline">{dict.toolbar.export}</span>
@@ -718,28 +717,34 @@ export function ResumeToolbar({ printRef, ctaAction }: ResumeToolbarProps) {
         </Dialog>
       </div>
 
-      {/* Right Actions - AI & CTA */}
+      {/* Right Actions - AI Only */}
       <div className="flex items-center gap-0 pl-4 shrink-0">
-        {/* AI Suggestions - Now Primary Weight */}
+        {/* AI Suggestions - Premium Chip Style */}
+        {/* AI Suggestions - Obsidian & Pearl Style */}
         <Button
           variant="ghost"
           size="sm"
           className={cn(
-            'gap-2 h-8 px-3 hover:bg-blue-500 hover:text-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium rounded-md transition-colors'
+            'gap-2 h-8 px-3 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden group relative',
+            // Base: Solid Pearl/Obsidian
+            'bg-white dark:bg-zinc-900',
+            // Border: Refined
+            'border-b border-blue-100 dark:border-blue-900',
+            // Text: Blue
+            'text-blue-500/90 hover:text-blue-500/100 dark:text-blue-100 font-semibold',
+            // Interaction: Lift & Glow Shadow
+            'shadow-[0_1px_6px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.3)]',
+            'hover:-translate-y-0.5'
           )}
           onClick={() => setAIPanelOpen(!isAIPanelOpen)}
         >
-          <Sparkles className="h-4 w-4" />
-          <span>{dict.toolbar.aiSuggestions}</span>
+          <span className="relative z-10 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-500/90 dark:text-blue-100 transition-transform group-hover:scale-110 duration-500" />
+            <span>{dict.toolbar.aiSuggestions}</span>
+          </span>
+          {/* Subtle sheen effect on hover */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/0 via-blue-50/30 to-blue-50/0 dark:via-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         </Button>
-
-        {/* Divider - Vertically centered */}
-        <div className="flex items-center h-full mx-3">
-          <div className="h-4 w-px bg-border/80" />
-        </div>
-
-        {/* CTA Zone */}
-        {ctaAction}
       </div>
     </header >
   )

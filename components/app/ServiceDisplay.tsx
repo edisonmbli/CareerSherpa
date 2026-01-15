@@ -91,9 +91,12 @@ export function ServiceDisplay({
   // Auto-refresh when COMPLETED to sync server state is now handled by hook
 
   // Local state
-  const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
-    'match'
-  )
+  const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(() => {
+    // Smart Default: Deepest completed step
+    if (initialService?.interview?.status === 'COMPLETED') return 'interview'
+    if (initialService?.customizedResume?.status === 'COMPLETED') return 'customize'
+    return 'match'
+  })
   const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
   const streamRef = useRef<HTMLDivElement>(null)
   const [freeTierDialog, setFreeTierDialog] = useState(false)

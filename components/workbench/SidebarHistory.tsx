@@ -86,7 +86,7 @@ export function SidebarHistory({
                   </TooltipTrigger>
                   <TooltipContent
                     side="right"
-                    className="bg-slate-900 text-slate-50 border-slate-800 z-[60]"
+                    className="bg-slate-900 text-slate-50 border-slate-800 z-[100]"
                   >
                     <p className="text-xs">
                       {s.title || (labels?.newService || 'New Service')}
@@ -107,7 +107,7 @@ export function SidebarHistory({
                       <MoreHorizontal className="w-4 h-4" />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="z-[60]">
+                  <TooltipContent side="right" className="z-[100]">
                     <p className="text-xs">
                       {labels?.expandMore || 'Expand to see more'}
                     </p>

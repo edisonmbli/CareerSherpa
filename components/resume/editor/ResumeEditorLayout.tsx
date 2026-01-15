@@ -171,7 +171,7 @@ export function ResumeEditorLayout({
 
       {/* Top Toolbar - Hidden on Mobile */}
       <div className="hidden md:block">
-        <ResumeToolbar printRef={printRef as any} ctaAction={ctaAction} />
+        <ResumeToolbar printRef={printRef as any} />
       </div>
 
       {/* Main Workspace */}

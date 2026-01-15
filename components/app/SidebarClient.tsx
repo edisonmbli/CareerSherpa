@@ -5,6 +5,7 @@ import { useWorkbenchStore } from '@/lib/stores/workbench.store'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import type { Locale } from '@/i18n-config'
 import { Menu, PlusCircle } from 'lucide-react'
 import {
@@ -89,14 +90,15 @@ export function SidebarClient({
               size="icon"
               onClick={toggle}
               aria-label="Toggle sidebar"
-              className={
-                collapsed ? 'hover:bg-accent hover:text-accent-foreground' : ''
-              }
+              className={cn(
+                'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors',
+                collapsed ? 'hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''
+              )}
             >
               <Menu className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent className="z-[100]">
             {collapsed
               ? dict.workbench.sidebar.expand
               : dict.workbench.sidebar.collapse}
@@ -110,7 +112,7 @@ export function SidebarClient({
       >
         {!collapsed ? (
           <Button
-            className="w-full"
+            className="w-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
             onClick={() => router.push(`/${locale}/workbench`)}
           >
             + {dict.workbench.sidebar.newService}
@@ -123,11 +125,12 @@ export function SidebarClient({
                 size="icon"
                 onClick={() => router.push(`/${locale}/workbench`)}
                 aria-label="Create"
+                className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               >
-                <PlusCircle className="h-4 w-4" />
+                <PlusCircle className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{dict.workbench.sidebar.newService}</TooltipContent>
+            <TooltipContent className="z-[100]">{dict.workbench.sidebar.newService}</TooltipContent>
           </Tooltip>
         )}
       </div>

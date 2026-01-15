@@ -105,10 +105,10 @@ function SortableItem({
           ? 'py-3 px-3 border border-gray-100 bg-white dark:bg-zinc-900 dark:border-zinc-800'
           : 'p-2',
         isActive && !isMobile
-          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+          ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 font-medium'
           : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300',
         isDragging &&
-        'opacity-50 bg-gray-50 dark:bg-zinc-800 ring-2 ring-blue-500/20 z-50 shadow-lg',
+        'opacity-50 bg-gray-50 dark:bg-zinc-800 ring-2 ring-zinc-500/20 z-50 shadow-lg',
         isHidden && 'opacity-60 grayscale',
         hasPageBreak && 'border-l-2 border-orange-300'
       )}
@@ -116,7 +116,7 @@ function SortableItem({
     >
       {/* Active Indicator Strip */}
       {isActive && !isMobile && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-l-md" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-900 dark:bg-zinc-100 rounded-l-md" />
       )}
 
       {/* Drag Handle */}
@@ -138,7 +138,7 @@ function SortableItem({
         className={cn(
           'flex items-center justify-center rounded-md transition-colors',
           isActive && !isMobile
-            ? 'text-blue-600 dark:text-blue-400'
+            ? 'text-zinc-900 dark:text-zinc-100'
             : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'
         )}
       >
@@ -212,14 +212,14 @@ function FixedItem({
         'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none border-b border-dashed border-gray-200 dark:border-zinc-800 pb-2',
         isMobile ? 'py-3 px-3 bg-white dark:bg-zinc-900' : 'p-2',
         isActive && !isMobile
-          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium'
+          ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 font-medium'
           : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300'
       )}
       onClick={onClick}
     >
       {/* Active Indicator Strip */}
       {isActive && !isMobile && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-l-md" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-900 dark:bg-zinc-100 rounded-l-md" />
       )}
 
       {/* Placeholder for Drag Handle alignment */}
@@ -237,7 +237,7 @@ function FixedItem({
         className={cn(
           'flex items-center justify-center rounded-md transition-colors',
           isActive && !isMobile
-            ? 'text-blue-600 dark:text-blue-400'
+            ? 'text-zinc-900 dark:text-zinc-100'
             : 'text-gray-400 dark:text-gray-500'
         )}
       >

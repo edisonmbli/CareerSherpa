@@ -112,17 +112,17 @@ export function RightPropertyPanel({
                * - Subtle premium visual: soft glow, decorative accents
                */
               <div className="relative">
-                {/* Subtle decorative top glow - "scroll unfolding" effect */}
-                <div className="absolute -top-2 left-0 right-0 h-16 bg-gradient-to-b from-blue-50/50 via-blue-50/25 to-transparent dark:from-blue-950/30 dark:via-blue-950/10 pointer-events-none rounded-t-lg" />
+                {/* Subtle decorative top glow - "scroll unfolding" effect - Neutral/Zinc */}
+                <div className="absolute -top-2 left-0 right-0 h-16 bg-gradient-to-b from-zinc-50/80 via-zinc-50/40 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/40 pointer-events-none rounded-t-lg" />
 
-                {/* Content container with subtle left accent line */}
-                <div className="relative space-y-4 pl-3 border-l-2 border-blue-100 dark:border-blue-900/50">
+                {/* Content container with subtle left accent line - Neutral */}
+                <div className="relative space-y-4 pl-3 border-l-[1.5px] border-zinc-200 dark:border-zinc-800">
                   <ReactMarkdown
                     components={{
                       // H3 = Main title - hide on mobile (redundant with drawer header)
                       h3: ({ node, children, ...props }) => (
                         isMobile ? null : (
-                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-200 dark:border-zinc-700">
+                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-200 dark:border-zinc-800">
                             <h3
                               className="text-sm font-semibold text-zinc-900 dark:text-zinc-100"
                               {...props}
@@ -150,7 +150,7 @@ export function RightPropertyPanel({
                       // Ordered list = Main items container (numbered, with counter)
                       ol: ({ node, ...props }) => (
                         <ol
-                          className="ai-main-list space-y-4 my-4"
+                          className="ai-main-list space-y-6 my-4"
                           style={{ counterReset: 'suggestion-counter', listStyle: 'none' }}
                           {...props}
                         />
@@ -158,7 +158,7 @@ export function RightPropertyPanel({
                       // Unordered list = Sub-items container (nested under main items)
                       ul: ({ node, ...props }) => (
                         <ul
-                          className="ai-sub-list space-y-2 mt-2 ml-1"
+                          className="ai-sub-list space-y-3 mt-3 ml-0.5"
                           style={{ listStyle: 'none' }}
                           {...props}
                         />
@@ -166,9 +166,9 @@ export function RightPropertyPanel({
                       // List items - styling determined by parent (ol = main, ul = sub)
                       // No content-based detection needed - structure tells us the type
                       li: ({ node, children, ...props }) => (
-                        <li className="ai-list-item relative" {...props}>
+                        <li className="ai-list-item relative pl-0" {...props}>
                           {/* Number decoration for main items - rendered via CSS */}
-                          <span className="ai-suggestion-number" />
+                          <span className="ai-suggestion-number text-zinc-400 dark:text-zinc-600 font-serif italic absolute -left-5 text-lg" />
                           {/* Content wrapper */}
                           <div className="ai-item-content">
                             {children}
@@ -179,26 +179,24 @@ export function RightPropertyPanel({
                       p: ({ node, children, ...props }) => {
                         const text = String(children || '')
 
-                        // 调整 label - blue left bar
+                        // 调整 label - Clean Editorial Block (Zinc)
                         if (text.match(/^[\*]*调整[:：]/)) {
                           return (
-                            <div className="relative pl-3 py-2 my-2 bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500 dark:border-blue-400 rounded-r">
-                              <p className="text-xs leading-relaxed" {...props}>
-                                <span className="font-semibold text-blue-700 dark:text-blue-400">调整：</span>
-                                <span className="text-zinc-700 dark:text-zinc-300">
-                                  {text.replace(/^[\*]*调整[:：]\s*[\*]*/, '')}
-                                </span>
+                            <div className="relative pl-3 py-1 my-2 border-l-2 border-zinc-900 dark:border-zinc-100">
+                              <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200" {...props}>
+                                <span className="font-bold text-zinc-900 dark:text-zinc-100 mr-1">Adjust:</span>
+                                <span>{text.replace(/^[\*]*调整[:：]\s*[\*]*/, '')}</span>
                               </p>
                             </div>
                           )
                         }
 
-                        // 理由 label - purple left bar  
+                        // 理由 label - Subtle Italic/Gray (Editorial Note)
                         if (text.match(/^[\*]*理由[:：]/)) {
                           return (
-                            <div className="relative pl-3 py-2 my-2 bg-purple-50 dark:bg-purple-950/30 border-l-2 border-purple-500 dark:border-purple-400 rounded-r">
-                              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400" {...props}>
-                                <span className="font-semibold text-purple-700 dark:text-purple-400">理由：</span>
+                            <div className="relative pl-3 my-1">
+                              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500 italic font-serif" {...props}>
+                                <span className="not-italic font-medium mr-1 text-zinc-400">Why:</span>
                                 <span>{text.replace(/^[\*]*理由[:：]\s*[\*]*/, '')}</span>
                               </p>
                             </div>
@@ -207,7 +205,7 @@ export function RightPropertyPanel({
 
                         // Regular paragraph - inherit color from parent container
                         return (
-                          <p className="text-xs leading-relaxed mb-2" {...props}>
+                          <p className="text-sm leading-relaxed mb-2 text-zinc-700 dark:text-zinc-300" {...props}>
                             {children}
                           </p>
                         )
@@ -239,8 +237,8 @@ export function RightPropertyPanel({
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
     )
   }
 
