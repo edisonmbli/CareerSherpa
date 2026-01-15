@@ -80,7 +80,7 @@ export function MobileDrawer({
           {/* History List (Scrollable) */}
           <div className="flex-1 overflow-y-auto px-2 py-2">
             {/* Removed duplicate history label */}
-            <SidebarHistory locale={locale} services={services} />
+            <SidebarHistory locale={locale} services={services} labels={dict.workbench.sidebar} />
           </div>
 
           {/* Bottom Footer */}

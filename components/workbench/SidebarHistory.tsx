@@ -2,8 +2,16 @@
 import React from 'react'
 import Link from 'next/link'
 import type { Locale } from '@/i18n-config'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
-import { FileClock } from 'lucide-react'
+import { FileClock, MoreHorizontal } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface HistoryItem {
   id: string
@@ -17,67 +25,143 @@ export function SidebarHistory({
   services,
   initialLimit = 8,
   collapsed = false,
+  collapsedLimit = 5,
+  labels,
 }: {
   locale: Locale
   services: HistoryItem[]
   initialLimit?: number
   collapsed?: boolean
+  collapsedLimit?: number
+  labels: {
+    newService: string
+    expandMore: string
+    history: string
+    creating: string
+    noHistory: string
+    loadMore: string
+  }
 }) {
   const [limit, setLimit] = React.useState<number>(initialLimit)
+  const pathname = usePathname()
+
   const items = Array.isArray(services) ? services.slice(0, limit) : []
   const hasMore = (services?.length || 0) > limit
 
+  // Helper to check active state
+  const isActive = (id: string) => pathname?.includes(`/workbench/${id}`)
+
   if (collapsed) {
+    // V2: Limit items to reduce clutter
+    const collapsedItems = services.slice(0, collapsedLimit)
+    const hasMoreCollapsed = services.length > collapsedLimit
+
     return (
-      <div className="flex-1 overflow-y-auto mt-3 flex flex-col items-center">
-        {/* H label removed as per user request */}
+      <div className="flex-1 overflow-visible mt-4 flex flex-col items-center">
         <ul className="space-y-3 w-full flex flex-col items-center">
-          {items.map((s) => (
-            <li key={s.id} className="group w-full flex justify-center">
-              <Link
-                href={`/${locale}/workbench/${s.id}`}
-                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
-                title={String(
-                  s.title ?? (locale === 'zh' ? '新服务创建中' : 'Creating...')
-                )}
-              >
-                <FileClock className="h-4 w-4" />
-              </Link>
+          {collapsedItems.map((s) => (
+            <li
+              key={s.id}
+              className="group w-full flex justify-center relative z-50"
+            >
+              {/* Active Indicator (Dot) */}
+              {isActive(s.id) && (
+                <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-sky-400/80" />
+              )}
+
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={`/${locale}/workbench/${s.id}`}
+                      className={cn(
+                        'flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200',
+                        isActive(s.id)
+                          ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                    >
+                      <FileClock className="h-4 w-4" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="right"
+                    className="bg-slate-900 text-slate-50 border-slate-800 z-[60]"
+                  >
+                    <p className="text-xs">
+                      {s.title || (labels?.newService || 'New Service')}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </li>
           ))}
+
+          {/* Visual Indicator for hidden items */}
+          {hasMoreCollapsed && (
+            <li className="w-full flex justify-center py-2 relative z-50">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 cursor-default">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="z-[60]">
+                    <p className="text-xs">
+                      {labels?.expandMore || 'Expand to see more'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </li>
+          )}
         </ul>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto mt-3">
-      <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-        <span
-          className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/40"
-          aria-hidden="true"
-        />
-        <span>{locale === 'zh' ? '历史服务' : 'History'}</span>
+    <div className="flex-1 overflow-y-auto mt-4 pr-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 px-2 flex items-center gap-2">
+        <span>{labels?.history || 'History'}</span>
+        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded text-[9px] min-w-[1.25rem] text-center">
+          {services.length}
+        </span>
       </div>
-      <ul className="space-y-2">
+
+      <ul className="space-y-1">
         {items.map((s) => (
-          <li key={s.id} className="group">
+          <li key={s.id} className="group relative">
+            {/* Active Indicator (Bar) - Changed to Zinc/Slate */}
+            {isActive(s.id) && (
+              <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-zinc-400 dark:bg-zinc-500" />
+            )}
+
             <Link
               href={`/${locale}/workbench/${s.id}`}
-              className="block rounded-md px-2 py-1.5 hover:bg-muted"
+              className={cn(
+                'block rounded-lg px-3 py-2.5 transition-all duration-200 ml-2', // ml-2 for indicator space
+                isActive(s.id)
+                  ? 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              )}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
                 <span
-                  className="truncate max-w-[80%] text-sm"
+                  className={cn(
+                    'truncate text-sm font-normal',
+                    isActive(s.id)
+                      ? 'text-zinc-900 dark:text-zinc-100 font-medium'
+                      : ''
+                  )}
                   title={String(
-                    s.title ??
-                      (locale === 'zh' ? '新服务创建中' : 'Creating...')
+                    s.title ?? (labels?.creating || 'Creating...')
                   )}
                 >
-                  {s.title ??
-                    (locale === 'zh' ? '新服务创建中' : 'Creating...')}
+                  {s.title ?? (labels?.creating || 'Creating...')}
                 </span>
-                <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-light">
                   {formatShort(s.updatedAt || s.createdAt, String(locale))}
                 </span>
               </div>
@@ -85,35 +169,24 @@ export function SidebarHistory({
           </li>
         ))}
         {services.length === 0 && (
-          <li className="text-sm text-muted-foreground">
-            {locale === 'zh' ? '暂无历史记录' : 'No history yet'}
+          <li className="text-sm text-slate-400 px-4 py-8 text-center italic">
+            {labels?.noHistory || 'No history yet'}
           </li>
         )}
       </ul>
+
       {hasMore && (
-        <div className="flex items-center justify-start">
+        <div className="flex items-center justify-center mt-4">
           <button
             type="button"
-            className="mt-3 inline-flex items-center rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            className="group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             onClick={() => setLimit((x) => x + initialLimit)}
-            aria-label={
-              locale === 'zh' ? '加载更多历史服务' : 'Load more history'
-            }
-            title={locale === 'zh' ? '加载更多' : 'Load more'}
+            aria-label={labels?.loadMore || 'Load more'}
           >
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-            </svg>
+            <span className="text-xs font-medium text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-200">
+              {labels?.loadMore || 'Load more'}
+            </span>
+            <MoreHorizontal className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
           </button>
         </div>
       )}

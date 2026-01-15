@@ -134,6 +134,7 @@ export function SidebarClient({
       <SidebarHistory
         locale={locale}
         collapsed={collapsed}
+        labels={dict.workbench.sidebar}
         services={services.map((s) => ({
           id: s.id,
           title: s.title,

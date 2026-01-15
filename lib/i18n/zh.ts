@@ -89,11 +89,14 @@ const dict = {
       analysis: '分析',
       actions: '操作',
       backToWorkbench: '返回工作台',
-    },
-    nav: {
       menu: '菜单',
       openMenu: '打开菜单',
-      sidebarDrawer: '侧栏抽屉',
+      sidebarDrawer: '侧边栏',
+      history: '历史服务',
+      creating: '新服务创建中',
+      expandMore: '展开查看更多',
+      noHistory: '暂无历史记录',
+      loadMore: '加载更多',
     },
     new: {
       title: '岗位匹配度',
@@ -171,6 +174,10 @@ const dict = {
       previewTab: '预览 PDF',
       templateLabel: '导出模板',
     },
+    analysis: {
+      resumeTweak: '简历调优',
+      interviewPrep: '面试准备',
+    },
     resultCard: {
       title: '分析结果',
       loading: '正在分析...',
@@ -178,13 +185,21 @@ const dict = {
       matchScore: '匹配度得分',
       overallAssessment: 'OVERALL ASSESSMENT',
       highlights: '亮点分析',
-      gapsAndSuggestions: '差距与建议',
-      smartPitch: '沟通话术',
-      copyTooltip:
-        '话术按Hook(吸引点)、Value(价值点)、Call to Action(行动点)组织，可按自己表达风格作二次编辑',
-      copy: '复制',
-      copied: '已复制',
-      copySuccess: '话术已复制（已自动移除标签）',
+      gapsAndSuggestions: '差距与应对',
+      smartPitch: {
+        label: '沟通话术',
+        copyTooltip: '复制话术',
+        cleanCopied: '纯文本已复制',
+        definitions: {
+          hook: 'Hook: 吸引注意',
+          value: 'Value: 展现匹配',
+          cta: 'CTA: 引导行动',
+        },
+      },
+      definitions: {
+        structure: '话术结构:',
+        clickToCopy: '点击复制纯文本',
+      },
       highlyMatched: '高度匹配',
       goodFit: '良好匹配',
       lowMatch: '匹配度低',
@@ -223,11 +238,13 @@ const dict = {
     },
     notification: {
       freeModeTitle: '当前为免费体验模式',
-      freeModeDesc: '建议充值解锁思考模式，获得更深度的定制服务。免费模式下将使用基础模型为您服务。',
+      freeModeDesc:
+        '建议充值解锁思考模式，获得更深度的定制服务。免费模式下将使用基础模型为您服务。',
       cancel: '取消',
       confirmFree: '继续使用免费版',
       rateLimitedTitle: '请求过于频繁',
-      rateLimitedDesc: '系统繁忙，请稍后再试。您也可以考虑充值金币以获得更高的优先级。',
+      rateLimitedDesc:
+        '系统繁忙，请稍后再试。您也可以考虑充值金币以获得更高的优先级。',
       serverErrorTitle: '服务暂时不可用',
       serverErrorDesc: '当前服务不稳定，请稍后再试。',
     },
@@ -298,28 +315,89 @@ const dict = {
         },
         items: {
           product: [
-            { label: '背景 (Situation)', content: '“阅读App”需提升付费转化率，目标是季度内付费人数增长20%。' },
-            { label: '发展 (Challenge)', content: '通用打折策略遇到瓶颈，且会伤害利润率。用户对价格不敏感，流失点难以捕捉。' },
-            { label: '高潮 (Action)', content: '通过数据挖掘发现“阅读时长”与付费强相关。创新设计“预读时长抵扣”机制，让时间即金钱。' },
-            { label: '结尾 (Result)', content: '上线2个月，付费转化率提升35%（超目标），且新人首单时间缩短40%。' },
+            {
+              label: '背景 (Situation)',
+              content:
+                '“阅读App”需提升付费转化率，目标是季度内付费人数增长20%。',
+            },
+            {
+              label: '发展 (Challenge)',
+              content:
+                '通用打折策略遇到瓶颈，且会伤害利润率。用户对价格不敏感，流失点难以捕捉。',
+            },
+            {
+              label: '高潮 (Action)',
+              content:
+                '通过数据挖掘发现“阅读时长”与付费强相关。创新设计“预读时长抵扣”机制，让时间即金钱。',
+            },
+            {
+              label: '结尾 (Result)',
+              content:
+                '上线2个月，付费转化率提升35%（超目标），且新人首单时间缩短40%。',
+            },
           ],
           ops: [
-            { label: '背景 (Situation)', content: '负责提升500+个社群的活跃度，当前DAU仅为5%。' },
-            { label: '发展 (Challenge)', content: '用户对官方单向广播已经麻木，内容同质化严重，群内互动几乎为零。' },
-            { label: '高潮 (Action)', content: '去中心化运营。招募KOL为“话题主理人”，引入“社群积分”激励UGC内容生产。' },
-            { label: '结尾 (Result)', content: 'DAU翻倍至11%，日均UGC产出激增300%，核心用户留存率达90%。' },
+            {
+              label: '背景 (Situation)',
+              content: '负责提升500+个社群的活跃度，当前DAU仅为5%。',
+            },
+            {
+              label: '发展 (Challenge)',
+              content:
+                '用户对官方单向广播已经麻木，内容同质化严重，群内互动几乎为零。',
+            },
+            {
+              label: '高潮 (Action)',
+              content:
+                '去中心化运营。招募KOL为“话题主理人”，引入“社群积分”激励UGC内容生产。',
+            },
+            {
+              label: '结尾 (Result)',
+              content:
+                'DAU翻倍至11%，日均UGC产出激增300%，核心用户留存率达90%。',
+            },
           ],
           tech: [
-            { label: '背景 (Situation)', content: '负责电商大促期间的支付系统稳定性保障。' },
-            { label: '发展 (Challenge)', content: '高峰期支付超时率达2%，原有单体数据库不仅读写瓶颈，还无法水平扩展。' },
-            { label: '高潮 (Action)', content: '实施冷热数据分离，引入MQ削峰填谷，并基于“事件溯源”重构核心交易链路。' },
-            { label: '结尾 (Result)', content: 'QPS承载能力提升5倍，大促期间零故障，订单失败率降至0.01%以下。' },
+            {
+              label: '背景 (Situation)',
+              content: '负责电商大促期间的支付系统稳定性保障。',
+            },
+            {
+              label: '发展 (Challenge)',
+              content:
+                '高峰期支付超时率达2%，原有单体数据库不仅读写瓶颈，还无法水平扩展。',
+            },
+            {
+              label: '高潮 (Action)',
+              content:
+                '实施冷热数据分离，引入MQ削峰填谷，并基于“事件溯源”重构核心交易链路。',
+            },
+            {
+              label: '结尾 (Result)',
+              content:
+                'QPS承载能力提升5倍，大促期间零故障，订单失败率降至0.01%以下。',
+            },
           ],
           design: [
-            { label: '背景 (Situation)', content: '优化B端后台管理系统的移动端审批流程。' },
-            { label: '发展 (Challenge)', content: '直接移植PC版复杂表格到手机端，导致误操作率高，审批效率极低。' },
-            { label: '高潮 (Action)', content: '摒弃表格视图。基于场景重构为“信息卡片”与“操作卡片”分离的视图设计。' },
-            { label: '结尾 (Result)', content: '移动端审批平均耗时缩短50%，误操作反馈归零，用户满意度提升至4.8分。' },
+            {
+              label: '背景 (Situation)',
+              content: '优化B端后台管理系统的移动端审批流程。',
+            },
+            {
+              label: '发展 (Challenge)',
+              content:
+                '直接移植PC版复杂表格到手机端，导致误操作率高，审批效率极低。',
+            },
+            {
+              label: '高潮 (Action)',
+              content:
+                '摒弃表格视图。基于场景重构为“信息卡片”与“操作卡片”分离的视图设计。',
+            },
+            {
+              label: '结尾 (Result)',
+              content:
+                '移动端审批平均耗时缩短50%，误操作反馈归零，用户满意度提升至4.8分。',
+            },
           ],
         },
       },

@@ -91,6 +91,11 @@ const dict = {
       menu: 'Menu',
       openMenu: 'Open menu',
       sidebarDrawer: 'Sidebar drawer',
+      history: 'History',
+      creating: 'Creating...',
+      expandMore: 'Expand to see more',
+      noHistory: 'No history yet',
+      loadMore: 'Load more',
     },
     new: {
       title: 'Job Match Analysis',
@@ -174,6 +179,10 @@ const dict = {
       previewTab: 'Preview PDF',
       templateLabel: 'Export template',
     },
+    analysis: {
+      resumeTweak: 'Resume Tweak',
+      interviewPrep: 'Interview Prep',
+    },
     resultCard: {
       title: 'Analysis Results',
       loading: 'Analyzing...',
@@ -182,12 +191,20 @@ const dict = {
       overallAssessment: 'Overall Assessment',
       highlights: 'Highlights',
       gapsAndSuggestions: 'Gaps & Suggestions',
-      smartPitch: 'Smart Pitch',
-      copyTooltip:
-        'Hook, Value, Call to Action; adjust to your style before sending.',
-      copy: 'Copy',
-      copied: 'Copied',
-      copySuccess: 'Script copied (tags removed)',
+      smartPitch: {
+        label: 'Smart Pitch',
+        copyTooltip: 'Copy Content',
+        cleanCopied: 'Clean text copied',
+        definitions: {
+          hook: 'Hook: Grab attention',
+          value: 'Value: Showcase fit',
+          cta: 'CTA: Call-to-Action',
+        },
+      },
+      definitions: {
+        structure: 'Structure:',
+        clickToCopy: 'Click to copy text',
+      },
       highlyMatched: 'Highly Matched',
       goodFit: 'Good Fit',
       lowMatch: 'Low Match',
@@ -200,7 +217,7 @@ const dict = {
       recommendations: 'Recommendations',
     },
     interviewUi: {
-      start: 'Generate Interview Tips',
+      start: 'Interview Tips',
     },
     statusText: {
       analyzing: 'AI is analyzing...',

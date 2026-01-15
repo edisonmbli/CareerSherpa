@@ -521,16 +521,6 @@ export function ServiceDisplay({
   // CTA Node for Desktop Headers - now uses extracted component
   const ctaNode = (
     <div className="flex items-center gap-4">
-      {notification && (
-        <ServiceNotification
-          type={notification.type}
-          title={notification.title}
-          description={notification.description}
-          onClose={() => setNotification(null)}
-          autoDismiss={3000}
-          className="w-auto"
-        />
-      )}
       <CtaButton
         cta={cta}
         tabValue={tabValue}
@@ -543,6 +533,11 @@ export function ServiceDisplay({
     </div>
   )
 
+  // Determine where to embed the Action Button
+  // If customization is complete, the "Next Action" moves to Step 3 (Interview)
+  // Otherwise, it stays at Step 2 (Customize)
+  const activeActionStep: StepId = customizeStatus === 'COMPLETED' ? 3 : 2
+
   return (
     <>
       <div
@@ -550,6 +545,19 @@ export function ServiceDisplay({
           'h-full flex flex-col space-y-4 md:space-y-2' // Increased mobile spacing to prevent overlap
         )}
       >
+        {notification && (
+          <div className="px-1">
+            <ServiceNotification
+              type={notification.type}
+              title={notification.title}
+              description={notification.description}
+              onClose={() => setNotification(null)}
+              autoDismiss={3000}
+              className="w-full"
+            />
+          </div>
+        )}
+
         <StepperProgress
           currentStep={currentStep as any}
           maxUnlockedStep={maxUnlockedStep as any}
@@ -562,6 +570,10 @@ export function ServiceDisplay({
             step1: String(dict.workbench?.tabs?.match || 'Step 1'),
             step2: String(dict.workbench?.tabs?.customize || 'Step 2'),
             step3: String(dict.workbench?.tabs?.interview || 'Step 3'),
+          }}
+          stepActions={{
+            // V7: Dynamic embedded CTA based on workflow stage
+            [activeActionStep]: ctaNode
           }}
           className="shrink-0"
         />
@@ -634,7 +646,7 @@ export function ServiceDisplay({
           }
           className="flex-1 flex flex-col min-h-0 space-y-2 mb-0"
         >
-          <TabsContent value="match" className="flex-1 flex flex-col min-h-0">
+          <TabsContent value="match" className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {(status === 'OCR_PENDING' ||
               status === 'OCR_COMPLETED' ||
               status === 'SUMMARY_PENDING' ||
@@ -697,8 +709,10 @@ export function ServiceDisplay({
                     highlights: dict.workbench?.resultCard?.highlights,
                     gapsAndSuggestions:
                       dict.workbench?.resultCard?.gapsAndSuggestions,
-                    smartPitch: dict.workbench?.resultCard?.smartPitch,
-                    copyTooltip: dict.workbench?.resultCard?.copyTooltip,
+                    smartPitch:
+                      dict.workbench?.resultCard?.smartPitch?.label,
+                    copyTooltip:
+                      dict.workbench?.resultCard?.smartPitch?.copyTooltip,
                     copy: dict.workbench?.resultCard?.copy,
                     copied: dict.workbench?.resultCard?.copied,
                     copySuccess: dict.workbench?.resultCard?.copySuccess,
@@ -712,8 +726,12 @@ export function ServiceDisplay({
                     tip: dict.workbench?.resultCard?.tip,
                     expertVerdict: dict.workbench?.resultCard?.expertVerdict,
                     recommendations: dict.workbench?.resultCard?.recommendations,
+                    resumeTweak: dict.workbench?.analysis?.resumeTweak,
+                    interviewPrep: dict.workbench?.analysis?.interviewPrep,
+                    cleanCopied: dict.workbench?.resultCard?.smartPitch?.cleanCopied,
+                    definitions: dict.workbench?.resultCard?.definitions,
+                    smartPitchDefs: dict.workbench?.resultCard?.smartPitch?.definitions,
                   }}
-                  actionButton={ctaNode}
                 />
               )}
             {(status === 'FAILED' ||
