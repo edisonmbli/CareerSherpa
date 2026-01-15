@@ -3,6 +3,7 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { MATCH_SCORE_THRESHOLDS } from '@/lib/constants'
 
 interface ResultHeaderProps {
   score: number
@@ -36,31 +37,33 @@ export function ResultHeader({
 
   // Score Assessment Logic
   const assessmentLabel =
-    score >= 85
+    score >= MATCH_SCORE_THRESHOLDS.HIGHLY_MATCHED
       ? labels?.highlyMatched || 'Highly Matched'
-      : score >= 60
-        ? labels?.goodFit || 'Good Fit'
-        : labels?.lowMatch || 'Low Match'
+      : score >= MATCH_SCORE_THRESHOLDS.GOOD_FIT
+      ? labels?.goodFit || 'Good Fit'
+      : labels?.lowMatch || 'Low Match'
 
   // Semantic Colors - Tuned for readability & comfort
   const getThemeColors = (s: number) => {
-    if (s >= 85) return {
-      text: 'text-emerald-600 dark:text-emerald-400',
-      glow: 'bg-emerald-500',
-      stop1: '#059669', // Emerald 600
-      stop2: '#34d399'  // Emerald 400
-    }
-    if (s >= 60) return {
-      text: 'text-amber-600 dark:text-amber-400',
-      glow: 'bg-amber-500',
-      stop1: '#d97706', // Amber 600
-      stop2: '#fbbf24'  // Amber 400
-    }
+    if (s >= MATCH_SCORE_THRESHOLDS.HIGHLY_MATCHED)
+      return {
+        text: 'text-emerald-600 dark:text-emerald-400',
+        glow: 'bg-emerald-500',
+        stop1: '#059669', // Emerald 600
+        stop2: '#34d399', // Emerald 400
+      }
+    if (s >= MATCH_SCORE_THRESHOLDS.GOOD_FIT)
+      return {
+        text: 'text-amber-600 dark:text-amber-400',
+        glow: 'bg-amber-500',
+        stop1: '#d97706', // Amber 600
+        stop2: '#fbbf24', // Amber 400
+      }
     return {
       text: 'text-rose-600 dark:text-rose-400',
       glow: 'bg-rose-500',
       stop1: '#e11d48', // Rose 600
-      stop2: '#fb7185'  // Rose 400
+      stop2: '#fb7185', // Rose 400
     }
   }
 
@@ -89,13 +92,12 @@ export function ResultHeader({
 
       {/* 2. Right: Score Block (Side-by-Side: Text + Ring) */}
       <div className="flex flex-row items-center gap-4 md:gap-6 shrink-0 relative">
-
         {/* Dynamic Assessment Label (Left of Ring) */}
         <span
           className={cn(
-            "text-sm md:text-base lg:text-lg font-bold uppercase tracking-wider text-right",
+            'text-sm md:text-base lg:text-lg font-bold uppercase tracking-wider text-right',
             theme.text,
-            "transition-all duration-700 delay-500 transform",
+            'transition-all duration-700 delay-500 transform',
             mounted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
           )}
         >
@@ -104,7 +106,6 @@ export function ResultHeader({
 
         {/* Score Ring Container */}
         <div className="relative w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 group cursor-default">
-
           {/* Glow (The 'Float' Element) - Centered on Ring */}
           <div
             className={cn(
@@ -117,20 +118,31 @@ export function ResultHeader({
           {/* SVG Chart */}
           <svg className="absolute w-0 h-0">
             <defs>
-              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient
+                id="scoreGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
+              >
                 <stop offset="0%" stopColor={theme.stop1} />
                 <stop offset="100%" stopColor={theme.stop2} />
               </linearGradient>
             </defs>
           </svg>
 
-          <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 100 100">
+          <svg
+            className="w-full h-full transform -rotate-90 drop-shadow-sm"
+            viewBox="0 0 100 100"
+          >
             <circle
               className="text-slate-200 dark:text-slate-800"
               strokeWidth="8"
               stroke="currentColor"
               fill="transparent"
-              r={radius} cx="50" cy="50"
+              r={radius}
+              cx="50"
+              cy="50"
             />
             <circle
               className="transition-all duration-[1500ms] cubic-bezier(0.34, 1.56, 0.64, 1)"
@@ -139,7 +151,9 @@ export function ResultHeader({
               strokeDashoffset={strokeDashoffset}
               strokeLinecap="round"
               fill="transparent"
-              r={radius} cx="50" cy="50"
+              r={radius}
+              cx="50"
+              cy="50"
               stroke="url(#scoreGradient)"
             />
           </svg>
@@ -148,7 +162,7 @@ export function ResultHeader({
           <div className="absolute inset-0 flex items-center justify-center">
             <span
               className={cn(
-                'text-lg md:text-2xl font-bold tracking-tighter transition-all duration-700 delay-300',
+                'text-lg md:text-2xl font-extrabold font-mono tracking-tighter transition-all duration-700 delay-300',
                 theme.text,
                 mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
               )}

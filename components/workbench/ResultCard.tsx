@@ -7,6 +7,7 @@ import { ResultHeader } from './result/ResultHeader'
 import { ExpertVerdict } from './result/ExpertVerdict'
 import { AnalysisAccordion } from './result/AnalysisAccordion'
 import { SmartPitch } from './result/SmartPitch'
+import { MATCH_SCORE_THRESHOLDS } from '@/lib/constants'
 
 interface ResultCardProps {
   data: any
@@ -72,7 +73,7 @@ const defaultLabels = {
   lowMatch: '',
   smartPitch: '',
   copied: '',
-  preview: ''
+  preview: '',
 }
 
 export function ResultCard({
@@ -89,15 +90,15 @@ export function ResultCard({
     typeof data?.score !== 'undefined'
       ? Number(data?.score)
       : typeof data?.match_score !== 'undefined'
-        ? Number(data?.match_score)
-        : 0
+      ? Number(data?.match_score)
+      : 0
 
   // Strengths
   const strengths = (
     Array.isArray(data?.highlights)
       ? data.highlights.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.strengths)
-        ? data.strengths.map((s: any) => {
+      ? data.strengths.map((s: any) => {
           if (typeof s === 'string') return { point: s, evidence: '' }
           const point = s?.Point ?? s?.point ?? ''
           const evidence = s?.Evidence ?? s?.evidence ?? ''
@@ -108,7 +109,7 @@ export function ResultCard({
             section,
           }
         })
-        : []
+      : []
   ).slice(0, 6)
 
   // Weaknesses
@@ -116,7 +117,7 @@ export function ResultCard({
     Array.isArray(data?.gaps)
       ? data.gaps.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.weaknesses)
-        ? data.weaknesses.map((w: any) => {
+      ? data.weaknesses.map((w: any) => {
           if (typeof w === 'string')
             return { point: w, evidence: '', tip: null }
           const point = w?.Point ?? w?.point ?? ''
@@ -127,8 +128,8 @@ export function ResultCard({
             typeof tip === 'object' && tip !== null
               ? { interview: tip.interview ?? '', resume: tip.resume ?? '' }
               : typeof tip === 'string'
-                ? { interview: tip, resume: '' }
-                : null
+              ? { interview: tip, resume: '' }
+              : null
 
           return {
             point: String(point),
@@ -136,7 +137,7 @@ export function ResultCard({
             tip: tipObj,
           }
         })
-        : []
+      : []
   ).slice(0, 6)
 
   const recommendations = Array.isArray(data?.recommendations)
@@ -148,16 +149,17 @@ export function ResultCard({
     typeof data?.dm_script === 'string'
       ? data.dm_script
       : typeof data?.cover_letter_script === 'string'
-        ? data.cover_letter_script
-        : typeof data?.cover_letter_script === 'object' &&
-          data?.cover_letter_script !== null
-          ? typeof data.cover_letter_script.script === 'string'
-            ? data.cover_letter_script.script
-            : typeof data.cover_letter_script.H === 'string'
-              ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${data.cover_letter_script.V || ''
-              }\n\n【C】${data.cover_letter_script.C || ''}`
-              : null
-          : null
+      ? data.cover_letter_script
+      : typeof data?.cover_letter_script === 'object' &&
+        data?.cover_letter_script !== null
+      ? typeof data.cover_letter_script.script === 'string'
+        ? data.cover_letter_script.script
+        : typeof data.cover_letter_script.H === 'string'
+        ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${
+            data.cover_letter_script.V || ''
+          }\n\n【C】${data.cover_letter_script.C || ''}`
+        : null
+      : null
 
   const expertVerdict = data?.overall_assessment as string | undefined
 
@@ -178,8 +180,8 @@ export function ResultCard({
 
   // Theme Logic
   const getThemeColor = (s: number) => {
-    if (s >= 80) return 'emerald'
-    if (s >= 60) return 'amber' // Use amber for mid-tier (matches the reference image orange/yellow feel)
+    if (s >= MATCH_SCORE_THRESHOLDS.HIGHLY_MATCHED) return 'emerald'
+    if (s >= MATCH_SCORE_THRESHOLDS.GOOD_FIT) return 'amber' // Use amber for mid-tier (matches the reference image orange/yellow feel)
     return 'rose'
   }
   const themeColor = getThemeColor(score)
@@ -234,7 +236,7 @@ export function ResultCard({
               themeColor={themeColor}
               labels={{
                 resumeTweak: labels?.resumeTweak || 'Resume Tweak',
-                interviewPrep: labels?.interviewPrep || 'Interview Prep'
+                interviewPrep: labels?.interviewPrep || 'Interview Prep',
               }}
             />
           )}
@@ -248,7 +250,7 @@ export function ResultCard({
               themeColor={themeColor}
               labels={{
                 resumeTweak: labels?.resumeTweak || 'Resume Tweak',
-                interviewPrep: labels?.interviewPrep || 'Interview Prep'
+                interviewPrep: labels?.interviewPrep || 'Interview Prep',
               }}
             />
           )}
@@ -275,8 +277,12 @@ export function ResultCard({
               copied: labels?.copied || '',
               copyTooltip: labels?.copyTooltip || '',
               cleanCopied: labels?.cleanCopied || '',
-              ...(labels?.definitions ? { definitions: labels.definitions } : {}),
-              ...(labels?.smartPitchDefs ? { smartPitchDefs: labels.smartPitchDefs } : {}),
+              ...(labels?.definitions
+                ? { definitions: labels.definitions }
+                : {}),
+              ...(labels?.smartPitchDefs
+                ? { smartPitchDefs: labels.smartPitchDefs }
+                : {}),
             }}
           />
         )}
