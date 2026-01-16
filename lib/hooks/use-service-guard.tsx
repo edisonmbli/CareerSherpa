@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 
 interface UseServiceGuardProps {
-    quotaBalance?: number | null
+    quotaBalance?: number | null | undefined
     cost: number
     dict: any // pass in dict.workbench.statusConsole or generic dict
     onConfirm: () => void

@@ -89,7 +89,7 @@ export function SidebarHistory({
                     className="bg-slate-900 text-slate-50 border-slate-800 z-[100]"
                   >
                     <p className="text-xs">
-                      {s.title || (labels?.newService || 'New Service')}
+                      {s.title || labels?.newService || 'New Service'}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -150,14 +150,12 @@ export function SidebarHistory({
               <div className="flex flex-col gap-0.5">
                 <span
                   className={cn(
-                    'truncate text-sm font-normal',
+                    'truncate text-xs font-mono',
                     isActive(s.id)
                       ? 'text-zinc-900 dark:text-zinc-100 font-medium'
                       : ''
                   )}
-                  title={String(
-                    s.title ?? (labels?.creating || 'Creating...')
-                  )}
+                  title={String(s.title ?? (labels?.creating || 'Creating...'))}
                 >
                   {s.title ?? (labels?.creating || 'Creating...')}
                 </span>

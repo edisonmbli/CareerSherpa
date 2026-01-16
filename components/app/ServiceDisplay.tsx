@@ -46,9 +46,13 @@ import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
 import { deriveStage } from '@/lib/utils/workbench-stage'
-import { useServiceStatus, isTerminalStatus } from '@/lib/hooks/useServiceStatus'
+import {
+  useServiceStatus,
+  isTerminalStatus,
+} from '@/lib/hooks/useServiceStatus'
 import { CtaButton } from '@/components/workbench/CtaButton'
 import { buildTaskId } from '@/lib/types/task-context'
+import { useServiceGuard } from '@/lib/hooks/use-service-guard'
 
 export function ServiceDisplay({
   initialService,
@@ -91,16 +95,17 @@ export function ServiceDisplay({
   // Auto-refresh when COMPLETED to sync server state is now handled by hook
 
   // Local state
-  const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(() => {
-    // Smart Default: Deepest completed step
-    if (initialService?.interview?.status === 'COMPLETED') return 'interview'
-    if (initialService?.customizedResume?.status === 'COMPLETED') return 'customize'
-    return 'match'
-  })
+  const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
+    () => {
+      // Smart Default: Deepest completed step
+      if (initialService?.interview?.status === 'COMPLETED') return 'interview'
+      if (initialService?.customizedResume?.status === 'COMPLETED')
+        return 'customize'
+      return 'match'
+    }
+  )
   const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
   const streamRef = useRef<HTMLDivElement>(null)
-  const [freeTierDialog, setFreeTierDialog] = useState(false)
-  const [pendingAction, setPendingAction] = useState<'customize' | 'interview' | null>(null)
 
   const [notification, setNotification] = useState<{
     type: 'error' | 'success' | 'info'
@@ -113,13 +118,17 @@ export function ServiceDisplay({
   }
 
   // Track execution tier during customize lifecycle (persisted via localStorage for page refresh)
-  const [executionTier, setExecutionTier] = useState<'free' | 'paid' | null>(() => {
-    if (typeof window !== 'undefined' && initialService?.id) {
-      const cached = localStorage.getItem(`executionTier_${initialService.id}`)
-      if (cached === 'free' || cached === 'paid') return cached
+  const [executionTier, setExecutionTier] = useState<'free' | 'paid' | null>(
+    () => {
+      if (typeof window !== 'undefined' && initialService?.id) {
+        const cached = localStorage.getItem(
+          `executionTier_${initialService.id}`
+        )
+        if (cached === 'free' || cached === 'paid') return cached
+      }
+      return null
     }
-    return null
-  })
+  )
 
   // Derived state - serviceId now comes from useServiceStatus hook
 
@@ -128,18 +137,20 @@ export function ServiceDisplay({
     storeStatus === 'CUSTOMIZE_PENDING'
       ? 'PENDING'
       : storeStatus === 'CUSTOMIZE_COMPLETED'
-        ? 'COMPLETED'
-        : storeStatus === 'CUSTOMIZE_FAILED'
-          ? 'FAILED'
-          : initialService?.customizedResume?.status || 'IDLE'
+      ? 'COMPLETED'
+      : storeStatus === 'CUSTOMIZE_FAILED'
+      ? 'FAILED'
+      : initialService?.customizedResume?.status || 'IDLE'
 
   // Transition state: customize tab selected but SSE hasn't confirmed task started yet
   // Once store shows CUSTOMIZE_PENDING from SSE, we're no longer in transition
-  const hasReceivedSseConfirmation = storeStatus === 'CUSTOMIZE_PENDING' ||
+  const hasReceivedSseConfirmation =
+    storeStatus === 'CUSTOMIZE_PENDING' ||
     storeStatus === 'CUSTOMIZE_COMPLETED' ||
     storeStatus === 'CUSTOMIZE_FAILED'
 
-  const isTransitionState = tabValue === 'customize' &&
+  const isTransitionState =
+    tabValue === 'customize' &&
     !hasReceivedSseConfirmation &&
     (isPending || customizeStatus === 'PENDING')
 
@@ -183,20 +194,21 @@ export function ServiceDisplay({
     serviceId || '',
     currentTaskId || '',
     status === 'COMPLETED' ||
-    status === 'MATCH_COMPLETED' ||
-    status === 'CUSTOMIZE_COMPLETED' ||
-    status === 'INTERVIEW_COMPLETED' ||
-    status === 'FAILED' ||
-    status === 'OCR_FAILED' ||
-    status === 'SUMMARY_FAILED' ||
-    status === 'MATCH_FAILED' ||
-    status === 'CUSTOMIZE_FAILED' ||
-    status === 'INTERVIEW_FAILED'
+      status === 'MATCH_COMPLETED' ||
+      status === 'CUSTOMIZE_COMPLETED' ||
+      status === 'INTERVIEW_COMPLETED' ||
+      status === 'FAILED' ||
+      status === 'OCR_FAILED' ||
+      status === 'SUMMARY_FAILED' ||
+      status === 'MATCH_FAILED' ||
+      status === 'CUSTOMIZE_FAILED' ||
+      status === 'INTERVIEW_FAILED'
   )
 
   // Progress simulation timer: update every 5s during batch task execution
   useEffect(() => {
-    const isPendingBatchTask = status === 'CUSTOMIZE_PENDING' || status === 'INTERVIEW_PENDING'
+    const isPendingBatchTask =
+      status === 'CUSTOMIZE_PENDING' || status === 'INTERVIEW_PENDING'
     if (!isPendingBatchTask) return
 
     const interval = setInterval(() => {
@@ -219,21 +231,32 @@ export function ServiceDisplay({
     setNotification(null)
     startTransition(async () => {
       try {
-        const res = await customizeResumeAction({ serviceId: serviceId!, locale })
+        const res = await customizeResumeAction({
+          serviceId: serviceId!,
+          locale,
+        })
         console.log('[Frontend] customizeResumeAction result:', res)
         if (res?.ok) {
           if (res.executionSessionId) {
             // Set task context first for state tracking
-            useWorkbenchStore.getState().startTaskContext('customize', res.executionSessionId)
+            useWorkbenchStore
+              .getState()
+              .startTaskContext('customize', res.executionSessionId)
 
             // Use customize_ prefix (matches backend channel)
-            const newTaskId = buildTaskId('customize', serviceId!, res.executionSessionId)
+            const newTaskId = buildTaskId(
+              'customize',
+              serviceId!,
+              res.executionSessionId
+            )
             console.log('[Frontend] Setting taskId to:', newTaskId)
             setMatchTaskId(newTaskId)
           }
           // Set status and start progress simulation immediately (before SSE confirms)
           // This prevents the 10% → 0% → 10% flash using atomic update
-          useWorkbenchStore.getState().setStatusAndStartProgress('CUSTOMIZE_PENDING')
+          useWorkbenchStore
+            .getState()
+            .setStatusAndStartProgress('CUSTOMIZE_PENDING')
         } else {
           setTabValue('match') // Revert tab on failure
           const serviceError = getServiceErrorMessage((res as any).error, {
@@ -246,18 +269,26 @@ export function ServiceDisplay({
         setTabValue('match')
         console.error(e)
         showError(
-          dict.workbench?.customize?.createFailed || 'Failed to start customization',
+          dict.workbench?.customize?.createFailed ||
+            'Failed to start customization',
           'An unexpected error occurred.'
         )
       }
     })
   }
 
+  // Guard for Customize
+  const customizeGuard = useServiceGuard({
+    quotaBalance,
+    cost: getTaskCost('resume_customize'),
+    dict: dict.workbench?.notification,
+    onConfirm: doCustomize,
+  })
+
   // Entry point for customize - shows dialog first if free tier
   const onCustomize = () => {
-    const cost = getTaskCost('resume_customize')
-    const willUseFree = willBeFree(cost)
-    const tierToUse = willUseFree ? 'free' : 'paid'
+    const isFree = customizeGuard.isFreeTierMode
+    const tierToUse = isFree ? 'free' : 'paid'
 
     // Persist execution tier for this session (survives page refresh)
     setExecutionTier(tierToUse)
@@ -265,12 +296,7 @@ export function ServiceDisplay({
       localStorage.setItem(`executionTier_${serviceId}`, tierToUse)
     }
 
-    if (willUseFree) {
-      setPendingAction('customize')
-      setFreeTierDialog(true)
-    } else {
-      doCustomize()
-    }
+    customizeGuard.execute()
   }
 
   // Core interview action
@@ -278,19 +304,30 @@ export function ServiceDisplay({
     setNotification(null)
     startTransition(async () => {
       try {
-        const res = await generateInterviewTipsAction({ serviceId: serviceId!, locale })
+        const res = await generateInterviewTipsAction({
+          serviceId: serviceId!,
+          locale,
+        })
         if (res?.ok) {
           if (res.executionSessionId) {
             // Set task context first for state tracking
-            useWorkbenchStore.getState().startTaskContext('interview', res.executionSessionId)
+            useWorkbenchStore
+              .getState()
+              .startTaskContext('interview', res.executionSessionId)
 
             // Use interview_ prefix (matches backend channel)
-            const newTaskId = buildTaskId('interview', serviceId!, res.executionSessionId)
+            const newTaskId = buildTaskId(
+              'interview',
+              serviceId!,
+              res.executionSessionId
+            )
             setMatchTaskId(newTaskId)
           }
           setTabValue('interview')
           // Set status and start progress simulation immediately (before SSE confirms)
-          useWorkbenchStore.getState().setStatusAndStartProgress('INTERVIEW_PENDING')
+          useWorkbenchStore
+            .getState()
+            .setStatusAndStartProgress('INTERVIEW_PENDING')
         } else {
           const serviceError = getServiceErrorMessage((res as any).error, {
             statusText: dict.workbench?.statusText,
@@ -300,20 +337,25 @@ export function ServiceDisplay({
         }
       } catch (e) {
         console.error(e)
-        showError('Failed to generate interview tips', 'An unexpected error occurred.')
+        showError(
+          'Failed to generate interview tips',
+          'An unexpected error occurred.'
+        )
       }
     })
   }
 
+  // Guard for Interview
+  const interviewGuard = useServiceGuard({
+    quotaBalance,
+    cost: getTaskCost('interview_prep'),
+    dict: dict.workbench?.notification,
+    onConfirm: doInterview,
+  })
+
   // Entry point for interview - shows dialog first if free tier
   const onInterview = () => {
-    const cost = getTaskCost('interview_prep')
-    if (willBeFree(cost)) {
-      setPendingAction('interview')
-      setFreeTierDialog(true)
-    } else {
-      doInterview()
-    }
+    interviewGuard.execute()
   }
 
   const retryMatchAction = () => {
@@ -418,7 +460,9 @@ export function ServiceDisplay({
   }
 
   // Get simulated progress from store
-  const simulatedProgress = useWorkbenchStore((s) => s.progressSimulation.currentProgress)
+  const simulatedProgress = useWorkbenchStore(
+    (s) => s.progressSimulation.currentProgress
+  )
 
   const { currentStep, maxUnlockedStep, cta, statusMessage, progressValue } =
     deriveStage(
@@ -549,15 +593,17 @@ export function ServiceDisplay({
         )}
       >
         {notification && (
-          <div className="px-1">
-            <ServiceNotification
-              type={notification.type}
-              title={notification.title}
-              description={notification.description}
-              onClose={() => setNotification(null)}
-              autoDismiss={3000}
-              className="w-full"
-            />
+          <div className="flex justify-center w-full px-1">
+            <div className="w-auto max-w-xl animate-in slide-in-from-top-2 fade-in duration-300">
+              <ServiceNotification
+                type={notification.type}
+                title={notification.title}
+                description={notification.description}
+                onClose={() => setNotification(null)}
+                autoDismiss={3000}
+                className="w-auto shadow-md"
+              />
+            </div>
           </div>
         )}
 
@@ -576,7 +622,7 @@ export function ServiceDisplay({
           }}
           stepActions={{
             // V7: Dynamic embedded CTA based on workflow stage
-            [activeActionStep]: ctaNode
+            [activeActionStep]: ctaNode,
           }}
           className="shrink-0"
         />
@@ -585,56 +631,57 @@ export function ServiceDisplay({
           <StatusConsole
             status={
               status === 'FAILED' ||
-                status === 'OCR_FAILED' ||
-                status === 'SUMMARY_FAILED' ||
-                status === 'MATCH_FAILED' ||
-                (tabValue === 'customize' && customizeStatus === 'FAILED')
+              status === 'OCR_FAILED' ||
+              status === 'SUMMARY_FAILED' ||
+              status === 'MATCH_FAILED' ||
+              (tabValue === 'customize' && customizeStatus === 'FAILED')
                 ? 'error'
                 : isTransitionState
-                  ? 'streaming'  // Transition state: show as streaming
-                  : (status === 'COMPLETED' || status === 'MATCH_COMPLETED') &&
-                    (tabValue !== 'customize' || customizeStatus === 'COMPLETED')
-                    ? 'completed'
-                    : status === 'MATCH_PENDING' ||
-                      status === 'MATCH_STREAMING' ||
-                      status === 'OCR_PENDING' ||
-                      status === 'SUMMARY_PENDING' ||
-                      customizeStatus === 'PENDING'
-                      ? 'streaming'
-                      : 'idle'
+                ? 'streaming' // Transition state: show as streaming
+                : (status === 'COMPLETED' || status === 'MATCH_COMPLETED') &&
+                  (tabValue !== 'customize' || customizeStatus === 'COMPLETED')
+                ? 'completed'
+                : status === 'MATCH_PENDING' ||
+                  status === 'MATCH_STREAMING' ||
+                  status === 'OCR_PENDING' ||
+                  status === 'SUMMARY_PENDING' ||
+                  customizeStatus === 'PENDING'
+                ? 'streaming'
+                : 'idle'
             }
             statusMessage={
               // Override status message during transition state
               isTransitionState
-                ? (dict.workbench?.statusConsole?.customizeStarting || '正在启动定制服务...')
+                ? dict.workbench?.statusConsole?.customizeStarting ||
+                  '正在启动定制服务...'
                 : statusMessage
             }
             progress={
               // Hide progress during transition state
-              isTransitionState
-                ? 0
-                : progressValue
+              isTransitionState ? 0 : progressValue
             }
             isConnected={isConnected}
             lastUpdated={lastUpdated ? new Date(lastUpdated) : null}
             tier={
               // Use executionTier during customize lifecycle
               tabValue === 'customize'
-                ? (customizeStatus === 'PENDING' || isTransitionState)
-                  ? executionTier ?? undefined  // Show actual tier used for this execution
+                ? customizeStatus === 'PENDING' || isTransitionState
+                  ? executionTier ?? undefined // Show actual tier used for this execution
                   : customizeStatus === 'FAILED'
-                    ? undefined  // Don't show tier on failure (next attempt may differ)
-                    : tier  // IDLE: show potential tier
+                  ? undefined // Don't show tier on failure (next attempt may differ)
+                  : tier // IDLE: show potential tier
                 : tier
             }
             cost={
               // Use correct cost based on execution tier during customize
               tabValue === 'customize'
-                ? (customizeStatus === 'PENDING' || isTransitionState)
-                  ? (executionTier === 'free' ? 0 : currentTaskCost)  // Show actual cost
+                ? customizeStatus === 'PENDING' || isTransitionState
+                  ? executionTier === 'free'
+                    ? 0
+                    : currentTaskCost // Show actual cost
                   : customizeStatus === 'FAILED'
-                    ? 0  // Don't show cost on failure
-                    : displayCost  // IDLE: show potential cost
+                  ? 0 // Don't show cost on failure
+                  : displayCost // IDLE: show potential cost
                 : displayCost
             }
             errorMessage={errorMessage || undefined}
@@ -649,45 +696,50 @@ export function ServiceDisplay({
           }
           className="flex-1 flex flex-col min-h-0 space-y-2 mb-0"
         >
-          <TabsContent value="match" className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <TabsContent
+            value="match"
+            className="flex-1 flex flex-col min-h-0 overflow-y-auto"
+          >
             {(status === 'OCR_PENDING' ||
               status === 'OCR_COMPLETED' ||
               status === 'SUMMARY_PENDING' ||
               status === 'SUMMARY_COMPLETED' ||
               status === 'MATCH_PENDING' ||
               status === 'MATCH_STREAMING') && (
-                <div ref={streamRef}>
-                  <StreamPanel
-                    mode={
-                      status === 'OCR_PENDING' ||
-                        status === 'OCR_COMPLETED' ||
-                        status === 'SUMMARY_PENDING'
-                        ? 'ocr'
-                        : status === 'SUMMARY_COMPLETED'
-                          ? 'summary'
-                          : status === 'MATCH_PENDING'
-                            ? 'summary'
-                            : 'match'
-                    }
-                    ocrText={ocrResult || initialService?.job?.originalText}
-                    summaryJson={
-                      summaryResult ||
-                      (initialService?.job?.jobSummaryJson
-                        ? typeof initialService.job.jobSummaryJson === 'string'
-                          ? JSON.parse(initialService.job.jobSummaryJson)
-                          : initialService.job.jobSummaryJson
-                        : null)
-                    }
-                    content={String(streamingResponse || '')}
-                    timestamp={lastUpdatedMatch ? new Date(lastUpdatedMatch) : null}
-                    dict={dict}
-                    {...(errorMessage
-                      ? { errorMessage: String(errorMessage) }
-                      : {})}
-                    onRetry={retryMatchAction}
-                  />
-                </div>
-              )}
+              <div ref={streamRef}>
+                <StreamPanel
+                  mode={
+                    status === 'OCR_PENDING' ||
+                    status === 'OCR_COMPLETED' ||
+                    status === 'SUMMARY_PENDING'
+                      ? 'ocr'
+                      : status === 'SUMMARY_COMPLETED'
+                      ? 'summary'
+                      : status === 'MATCH_PENDING'
+                      ? 'summary'
+                      : 'match'
+                  }
+                  ocrText={ocrResult || initialService?.job?.originalText}
+                  summaryJson={
+                    summaryResult ||
+                    (initialService?.job?.jobSummaryJson
+                      ? typeof initialService.job.jobSummaryJson === 'string'
+                        ? JSON.parse(initialService.job.jobSummaryJson)
+                        : initialService.job.jobSummaryJson
+                      : null)
+                  }
+                  content={String(streamingResponse || '')}
+                  timestamp={
+                    lastUpdatedMatch ? new Date(lastUpdatedMatch) : null
+                  }
+                  dict={dict}
+                  {...(errorMessage
+                    ? { errorMessage: String(errorMessage) }
+                    : {})}
+                  onRetry={retryMatchAction}
+                />
+              </div>
+            )}
             {(status === 'COMPLETED' ||
               status === 'MATCH_COMPLETED' ||
               matchResult ||
@@ -712,8 +764,7 @@ export function ServiceDisplay({
                     highlights: dict.workbench?.resultCard?.highlights,
                     gapsAndSuggestions:
                       dict.workbench?.resultCard?.gapsAndSuggestions,
-                    smartPitch:
-                      dict.workbench?.resultCard?.smartPitch?.label,
+                    smartPitch: dict.workbench?.resultCard?.smartPitch?.label,
                     copyTooltip:
                       dict.workbench?.resultCard?.smartPitch?.copyTooltip,
                     copy: dict.workbench?.resultCard?.copy,
@@ -728,12 +779,15 @@ export function ServiceDisplay({
                     noGaps: dict.workbench?.resultCard?.noGaps,
                     tip: dict.workbench?.resultCard?.tip,
                     expertVerdict: dict.workbench?.resultCard?.expertVerdict,
-                    recommendations: dict.workbench?.resultCard?.recommendations,
+                    recommendations:
+                      dict.workbench?.resultCard?.recommendations,
                     resumeTweak: dict.workbench?.analysis?.resumeTweak,
                     interviewPrep: dict.workbench?.analysis?.interviewPrep,
-                    cleanCopied: dict.workbench?.resultCard?.smartPitch?.cleanCopied,
+                    cleanCopied:
+                      dict.workbench?.resultCard?.smartPitch?.cleanCopied,
                     definitions: dict.workbench?.resultCard?.definitions,
-                    smartPitchDefs: dict.workbench?.resultCard?.smartPitch?.definitions,
+                    smartPitchDefs:
+                      dict.workbench?.resultCard?.smartPitch?.definitions,
                   }}
                 />
               )}
@@ -741,24 +795,27 @@ export function ServiceDisplay({
               status === 'OCR_FAILED' ||
               status === 'SUMMARY_FAILED' ||
               status === 'MATCH_FAILED') && (
-                <div className="space-y-3">
-                  <StreamPanel
-                    mode="error"
-                    content={
-                      errorMessage ||
-                      dict?.workbench?.streamPanel?.error ||
-                      'Task execution failed, please retry.'
-                    }
-                    locale={locale}
-                    onRetry={retryMatchAction}
-                  />
-                </div>
-              )}
+              <div className="space-y-3">
+                <StreamPanel
+                  mode="error"
+                  content={
+                    errorMessage ||
+                    dict?.workbench?.streamPanel?.error ||
+                    'Task execution failed, please retry.'
+                  }
+                  locale={locale}
+                  onRetry={retryMatchAction}
+                />
+              </div>
+            )}
           </TabsContent>
 
-          <TabsContent value="customize" className="flex-1 flex flex-col min-h-0">
+          <TabsContent
+            value="customize"
+            className="flex-1 flex flex-col min-h-0"
+          >
             {customizeStatus === 'COMPLETED' &&
-              initialService?.customizedResume?.customizedResumeJson ? (
+            initialService?.customizedResume?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
@@ -806,10 +863,10 @@ export function ServiceDisplay({
                     description={
                       // Use executionTier to show correct message based on failed task's tier
                       executionTier === 'free'
-                        ? (dict?.workbench?.statusConsole?.customizeFailedFree ||
-                          '免费模型暂时繁忙，请稍后重试')
-                        : (dict?.workbench?.statusConsole?.customizeRefunded ||
-                          '金币已自动返还，请点击重试')
+                        ? dict?.workbench?.statusConsole?.customizeFailedFree ||
+                          '免费模型暂时繁忙，请稍后重试'
+                        : dict?.workbench?.statusConsole?.customizeRefunded ||
+                          '金币已自动返还，请点击重试'
                     }
                     onRetry={onCustomize}
                     isRetryLoading={isTransitionState || isPending}
@@ -819,7 +876,10 @@ export function ServiceDisplay({
                   // COMPLETED but data not yet loaded - show loading while router refreshes
                   <BatchProgressPanel
                     title={dict.workbench?.statusText?.loading || '加载中...'}
-                    description={dict.workbench?.statusText?.loadingDesc || '简历定制完成，正在加载...'}
+                    description={
+                      dict.workbench?.statusText?.loadingDesc ||
+                      '简历定制完成，正在加载...'
+                    }
                     progress={100}
                   />
                 ) : (
@@ -827,8 +887,10 @@ export function ServiceDisplay({
                     <div className="text-center space-y-2">
                       <h3 className="text-lg font-semibold">
                         {cta?.disabled
-                          ? (dict.workbench?.statusConsole?.customizeStarting || '正在启动定制服务...')
-                          : (dict.workbench?.statusText?.readyToCustomize || 'Ready to Customize')}
+                          ? dict.workbench?.statusConsole?.customizeStarting ||
+                            '正在启动定制服务...'
+                          : dict.workbench?.statusText?.readyToCustomize ||
+                            'Ready to Customize'}
                       </h3>
                       {/* Only show guide text when button is clickable */}
                       {!cta?.disabled && (
@@ -968,62 +1030,11 @@ export function ServiceDisplay({
             </span>
           </div>
         </div>
-      </div >
+      </div>
 
-      {/* Lightweight Free Tier Warning Dialog */}
-      < Dialog open={freeTierDialog} onOpenChange={(open) => {
-        setFreeTierDialog(open)
-        if (!open) setPendingAction(null)
-      }
-      }>
-        <DialogContent
-          className="sm:max-w-[360px] p-4"
-          overlayClassName="bg-zinc-300/20 dark:bg-zinc-800/20 backdrop-blur-xs"
-        >
-          <DialogHeader className="pb-2">
-            <DialogTitle className="text-base font-medium flex items-center gap-2">
-              <PenLine className="w-4 h-4 text-blue-500" />
-              {dict.workbench?.freeTierDialog?.title || '免费体验模式'}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground pt-1">
-              {dict.workbench?.freeTierDialog?.description ||
-                '当前使用免费模型，建议充值获得更深入的定制服务'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="pt-2 flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setFreeTierDialog(false)
-                setPendingAction(null)
-              }}
-              className="text-xs"
-            >
-              {dict.workbench?.freeTierDialog?.cancel || '取消'}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setFreeTierDialog(false)
-                // Immediately switch to target tab for perceived responsiveness
-                if (pendingAction === 'customize') {
-                  setTabValue('customize')
-                  doCustomize()
-                } else if (pendingAction === 'interview') {
-                  setTabValue('interview')
-                  doInterview()
-                }
-                setPendingAction(null)
-              }}
-              className="text-xs"
-            >
-              {dict.workbench?.freeTierDialog?.continue || '继续'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog >
+      {/* Lightweight Free Tier Warning Dialogs */}
+      {customizeGuard.GuardDialog}
+      {interviewGuard.GuardDialog}
     </>
   )
 }
-

@@ -284,13 +284,6 @@ const dict = {
       customizeRefunded: 'Coins refunded, please retry',
       customizeFailedFree: 'Free model temporarily busy, please retry later',
     },
-    freeTierDialog: {
-      title: 'Free Experience Mode',
-      description:
-        'Using free model. Consider topping up for deeper customization.',
-      cancel: 'Cancel',
-      continue: 'Continue',
-    },
     costTooltip: 'Using this service costs {cost} coins',
   },
   profile: {

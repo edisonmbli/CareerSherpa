@@ -281,12 +281,6 @@ const dict = {
       customizeRefunded: '金币已自动返还，请点击重试',
       customizeFailedFree: '免费模型暂时繁忙，请稍后重试',
     },
-    freeTierDialog: {
-      title: '免费体验模式',
-      description: '当前使用免费模型，建议充值获得更深入的定制服务',
-      cancel: '取消',
-      continue: '继续',
-    },
     costTooltip: '使用该服务，将扣减 {cost} 金币',
   },
   profile: {
