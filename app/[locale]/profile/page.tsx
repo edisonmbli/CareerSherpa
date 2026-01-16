@@ -151,12 +151,14 @@ export default async function ProfilePage({
 
               <AppCard>
                 <AppCardHeader>
-                  <AppCardTitle className="flex items-center gap-2">
-                    <NotebookText className="h-5 w-5 text-primary" />
-                    {p.detailed.title}
+                  <AppCardTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <div className="flex items-center gap-2">
+                      <NotebookText className="h-5 w-5 text-primary" />
+                      <span className="whitespace-nowrap">{p.detailed.title}</span>
+                    </div>
                     <ResumeGuidanceTooltip
-                      triggerClassName="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-light text-indigo-700 ring-1 ring-inset ring-indigo-100/10 dark:bg-indigo-400/10 dark:text-indigo-400 dark:ring-indigo-400/10"
-                      examples={p.detailed.examples as any}
+                      triggerClassName="inline-flex items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-light text-blue-500 ring-1 ring-inset ring-blue-100/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/10"
+                      examples={{ ...(p.detailed.examples as any), tips: p.resume.tips }}
                     >
                       {p.detailed.badge}
                     </ResumeGuidanceTooltip>

@@ -19,6 +19,14 @@ interface AssetPreviewProps {
         awards: string
         openSource: string
         extras: string
+        capabilities: string
+        contributions: string
+        courses: string
+        link: string
+        metric: string
+        task: string
+        action: string
+        result: string
         [key: string]: string
     }
 }
@@ -38,15 +46,15 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
     return (
         <div
-            className="space-y-8 text-sm text-slate-700 dark:text-slate-300 pb-12 px-6 md:px-10 leading-relaxed font-sans relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-stone-50 dark:bg-stone-950"
+            className="space-y-4 text-xs text-slate-700 dark:text-slate-300 pb-6 px-4 sm:px-6 md:px-10 leading-relaxed font-sans relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-stone-50 dark:bg-stone-950"
             style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
             }}
         >
             {/* Header Info */}
             {d.header && (
-                <div className="text-center mb-10 pt-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mb-3 font-[family-name:var(--font-playfair),serif]">
+                <div className="text-center mb-5 pt-4">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mb-3 font-[family-name:var(--font-playfair),serif]">
                         {d.header.name}
                     </h1>
                     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-[family-name:var(--font-jetbrains-mono),monospace] uppercase tracking-wide">
@@ -97,7 +105,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
             {/* Capabilities (Detailed Resume) */}
             {Array.isArray(d.capabilities) && d.capabilities.length > 0 ? (
-                <Section title={locale === 'zh' ? '核心能力' : 'Capabilities'}>
+                <Section title={L.capabilities}>
                     <div className="space-y-3">
                         {d.capabilities.map((c: any, i: number) => {
                             // Support string[] (V4) or {name, points}[] (Deep Schema)
@@ -121,8 +129,8 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
             {/* Work Experiences (Normalized) */}
             {Array.isArray(d.experiences) && d.experiences.length > 0 ? (
-                <Section title={L.experience || (locale === 'zh' ? '工作经历' : 'Experience')}>
-                    <div className="space-y-8">
+                <Section title={L.experience}>
+                    <div className="space-y-0">
                         {d.experiences.map((e: any, i: number) => (
                             <div key={i} className="group relative border-l border-slate-200 dark:border-slate-800 pl-5 ml-1.5 pb-8 last:pb-0 last:border-l-0">
                                 {/* Timeline Dot */}
@@ -175,7 +183,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                     {/* Contributions */}
                                     {Array.isArray(e.contributions) && e.contributions.length > 0 && (
                                         <div className="mt-2">
-                                            <div className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1 opacity-80">{locale === 'zh' ? '重要产出' : 'Contributions'}</div>
+                                            <div className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1 opacity-80">{L.contributions}</div>
                                             <ul className="list-disc pl-5 space-y-1 marker:text-gray-300 dark:marker:text-slate-600">{e.contributions.map((c: string, ci: number) => (<li key={ci}>{c}</li>))}</ul>
                                         </div>
                                     )}
@@ -210,7 +218,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                                             <span className="font-semibold text-gray-800 dark:text-slate-200">{p.name}</span>
                                                             {p.link && (
                                                                 <a href={p.link} target="_blank" className="text-xs text-blue-500 dark:text-blue-400 hover:underline flex items-center gap-0.5">
-                                                                    <Globe className="w-3 h-3" /> Link
+                                                                    <Globe className="w-3 h-3" /> {L.link}
                                                                 </a>
                                                             )}
                                                         </div>
@@ -228,7 +236,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                                                     actions: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300',
                                                                     results: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300'
                                                                 }
-                                                                const label = key === 'task' ? 'TASK' : key === 'actions' ? 'ACTION' : 'RESULT';
+                                                                const label = key === 'task' ? L.task : key === 'actions' ? L.action : L.result;
 
                                                                 return (
                                                                     <div key={key} className="flex gap-3 text-xs leading-relaxed">
@@ -253,7 +261,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                                             <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-dashed border-gray-100 dark:border-slate-800">
                                                                 {p.metrics.map((m: any, mi: number) => {
                                                                     const isObj = typeof m === 'object'
-                                                                    const label = isObj ? m.label : 'Metric'
+                                                                    const label = isObj ? m.label : L.metric
                                                                     const value = isObj ? m.value : m
                                                                     const unit = isObj ? m.unit : ''
                                                                     return (
@@ -282,7 +290,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
             {/* Top Level Projects (General Resume) */}
             {Array.isArray(d.projects) && d.projects.length > 0 ? (
                 <Section title={L.projects}>
-                    <div className="space-y-6">
+                    <div className="space-y-0">
                         {d.projects.map((p: any, i: number) => (
                             <div key={i} className="group">
                                 <div className="flex justify-between items-baseline mb-1">
@@ -325,7 +333,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                 </div>
                                 <div className="text-sm mb-1 font-medium text-slate-700">{e.degree} {e.major && <span className="text-slate-500 font-normal">· {e.major}</span>}</div>
                                 {e.gpa && <div className="text-xs text-slate-400 font-[family-name:var(--font-jetbrains-mono),monospace]">GPA: {e.gpa}</div>}
-                                {Array.isArray(e.courses) && <div className="text-xs mt-2 text-slate-500 leading-relaxed"><span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">{locale === 'zh' ? '课程' : 'Courses'}:</span> {e.courses.join(', ')}</div>}
+                                {Array.isArray(e.courses) && <div className="text-xs mt-2 text-slate-500 leading-relaxed"><span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">{L.courses}:</span> {e.courses.join(', ')}</div>}
                             </li>
                         ))}
                     </ul>

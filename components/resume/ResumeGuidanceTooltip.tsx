@@ -34,6 +34,10 @@ export interface ResumeExamplesData {
     tech: { label: string; content: string }[]
     design: { label: string; content: string }[]
   }
+  tips?: {
+    star: string
+    detail: string
+  }
 }
 
 interface ResumeGuidanceTooltipProps {
@@ -68,27 +72,30 @@ export function ResumeGuidanceTooltip({
 
   // Common Content Layout (Title -> Tabs -> Content)
   const ContentLayout = (
-    <Tabs defaultValue="product" className="w-full flex flex-col h-full">
+    <Tabs
+      defaultValue="product"
+      className="w-full flex flex-col h-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl"
+    >
       {/* Header Section */}
-      <div className="flex flex-col gap-3 px-6 py-4 border-b bg-muted/30 shrink-0">
-        <div className="flex items-center gap-2 text-base font-semibold text-foreground/90">
-          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-100 dark:bg-amber-900/30">
-            <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-500" />
-          </div>
+      <div className="flex flex-col gap-4 px-4 sm:px-6 pt-6 pb-4 shrink-0 max-w-full">
+        <div className="flex items-center text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="w-1 h-3.5 bg-blue-500 rounded-full mr-2.5" />
           {examples.label}
         </div>
 
-        <TabsList className="w-full justify-start h-auto p-1 bg-muted/50 rounded-lg flex flex-nowrap overflow-x-auto no-scrollbar">
+        <TabsList className="w-full justify-start h-9 p-1 bg-zinc-100/80 dark:bg-zinc-900/50 rounded-lg flex flex-nowrap overflow-x-auto no-scrollbar">
           {Object.entries(examples.roles).map(([key, label]) => (
             <TabsTrigger
               key={key}
               value={key}
               className="
-                                flex-1 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap
-                                data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm
-                                text-muted-foreground hover:text-foreground
-                                transition-all
-                            "
+                  flex-1 px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap
+                  data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 
+                  data-[state=active]:text-zinc-900 dark:data-[state=active]:text-zinc-50 
+                  data-[state=active]:shadow-sm
+                  text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300
+                  transition-all
+              "
             >
               {label}
             </TabsTrigger>
@@ -97,15 +104,16 @@ export function ResumeGuidanceTooltip({
       </div>
 
       {/* Content Section - Fixed Height to prevent layout shift */}
-      <div className="flex-1 p-5 bg-card/50 overflow-y-auto min-h-0">
+      <div className="flex-1 px-4 sm:px-6 pb-6 overflow-y-auto min-h-0 w-full">
         {Object.entries(examples.items).map(([key, items]) => (
           <TabsContent
             key={key}
             value={key}
-            className="m-0 border-0 p-0 outline-none ring-0 focus-visible:ring-0 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="m-0 border-0 p-0 outline-none ring-0 focus-visible:ring-0 animate-in fade-in slide-in-from-bottom-2 duration-300 w-full"
           >
             <ResumeExampleCard
               items={items as { label: string; content: string }[]}
+              tips={examples.tips || undefined}
             />
           </TabsContent>
         ))}
@@ -119,11 +127,11 @@ export function ResumeGuidanceTooltip({
         <HoverCardTrigger asChild>{TriggerContent}</HoverCardTrigger>
         <HoverCardContent
           // Fixed width and height to ensure stability
-          className="w-[500px] h-[650px] p-0 overflow-hidden border-border/40 shadow-2xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+          className="w-[450px] h-[450px] p-0 overflow-hidden rounded-xl border-zinc-200/50 dark:border-zinc-800/50 shadow-2xl bg-transparent"
           align="start"
           side="right"
           sideOffset={24}
-          alignOffset={-350} // Shift up significantly to center vertically relative to the trigger
+          alignOffset={-280} // Shift up significantly to center vertically relative to the trigger
           collisionPadding={20} // Keep some distance from screen edges
         >
           {ContentLayout}
@@ -135,7 +143,7 @@ export function ResumeGuidanceTooltip({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>{TriggerContent}</DrawerTrigger>
-      <DrawerContent className="h-[85vh] flex flex-col">
+      <DrawerContent className="max-h-[85vh] flex flex-col bg-zinc-50 dark:bg-zinc-950">
         <DrawerHeader className="hidden">
           <DrawerTitle>{examples.label}</DrawerTitle>
           <DrawerDescription>Examples</DrawerDescription>

@@ -301,6 +301,10 @@ const dict = {
       description:
         'The foundation for all AI services. An essential prerequisite for Match Analysis, Resume Customization, and Interview Prep.',
       defaultFileName: 'General Resume',
+      tips: {
+        star: 'Use the STAR method (Situation-Task-Action-Result) to quantify your achievements.',
+        detail: 'Record your career highlights in detail so the AI can better understand your potential.',
+      },
       note: '',
     },
     detailed: {
@@ -356,14 +360,7 @@ const dict = {
         uploadSuccess: 'Upload success, starting parse',
         parseComplete: 'Parse Complete',
       },
-      toast: {
-        uploadSuccess: 'Uploaded, parsing started',
-        queueFree: 'Insufficient coins, task moved to free queue',
-        queueError: 'Service busy, please try later',
-        pollSuccess: 'Parsing complete',
-        pollFailed: 'Parsing failed',
-        pollFailedRefund: 'Parsing failed, coins refunded',
-      },
+
       fileTooLarge2MB: 'File exceeds 2MB limit',
       fileTooLarge4MB: 'File exceeds 4MB limit',
       preview: 'Preview',
@@ -389,6 +386,21 @@ const dict = {
         'Only text-based PDF; ~8000 chars recommended; images not supported',
       placeholderHintDetailed:
         'Only text-based PDF; ~10000 chars recommended; images not supported',
+      time: {
+        secAgo: '{secs} sec ago',
+        minAgo: '{mins} min ago',
+        hrAgo: '{hours} hr ago',
+      },
+      toast: {
+        uploadSuccess: 'Uploaded, parsing started',
+        queueFree: 'Insufficient coins, task moved to free queue',
+        queueError: 'Service busy, please try later',
+        pollSuccess: 'Parsing complete',
+        pollFailed: 'Parsing failed',
+        pollFailedRefund: 'Parsing failed, coins refunded',
+        copiedJson: 'Copied JSON',
+        copiedMd: 'Copied Markdown',
+      },
     },
     billing: {
       cardTitle: 'Billing',
@@ -479,6 +491,14 @@ const dict = {
       openSource: 'Open Source',
       extras: 'Extras',
       stack: 'Stack',
+      capabilities: 'Capabilities',
+      contributions: 'Contributions',
+      courses: 'Courses',
+      link: 'Link',
+      metric: 'Metric',
+      task: 'TASK',
+      action: 'ACTION',
+      result: 'RESULT',
     },
     quota: {
       title: 'Coins',

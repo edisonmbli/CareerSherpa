@@ -297,6 +297,10 @@ const dict = {
       description:
         'AI 服务的核心基石与前置依赖。匹配度分析、简历定制、面试辅导等所有高级功能均基于此文件。',
       defaultFileName: '个人通用简历',
+      tips: {
+        star: '建议使用 STAR 法则 (情境-任务-行动-结果) 量化每一段工作成果',
+        detail: '尽可能详细、完整地记录您职业生涯中的高光时刻，让 AI 更懂你',
+      },
       note: '',
     },
     detailed: {
@@ -316,85 +320,85 @@ const dict = {
         items: {
           product: [
             {
-              label: '背景 (Situation)',
+              label: 'Situation',
               content:
                 '“阅读App”需提升付费转化率，目标是季度内付费人数增长20%。',
             },
             {
-              label: '发展 (Challenge)',
+              label: 'Challenge',
               content:
                 '通用打折策略遇到瓶颈，且会伤害利润率。用户对价格不敏感，流失点难以捕捉。',
             },
             {
-              label: '高潮 (Action)',
+              label: 'Action',
               content:
                 '通过数据挖掘发现“阅读时长”与付费强相关。创新设计“预读时长抵扣”机制，让时间即金钱。',
             },
             {
-              label: '结尾 (Result)',
+              label: 'Result',
               content:
                 '上线2个月，付费转化率提升35%（超目标），且新人首单时间缩短40%。',
             },
           ],
           ops: [
             {
-              label: '背景 (Situation)',
-              content: '负责提升500+个社群的活跃度，当前DAU仅为5%。',
+              label: 'Situation',
+              content: '负责提升500+个社群的活跃度，当前DAU仅为5%，用户粘性较低。',
             },
             {
-              label: '发展 (Challenge)',
+              label: 'Challenge',
               content:
                 '用户对官方单向广播已经麻木，内容同质化严重，群内互动几乎为零。',
             },
             {
-              label: '高潮 (Action)',
+              label: 'Action',
               content:
                 '去中心化运营。招募KOL为“话题主理人”，引入“社群积分”激励UGC内容生产。',
             },
             {
-              label: '结尾 (Result)',
+              label: 'Result',
               content:
                 'DAU翻倍至11%，日均UGC产出激增300%，核心用户留存率达90%。',
             },
           ],
           tech: [
             {
-              label: '背景 (Situation)',
+              label: 'Situation',
               content: '负责电商大促期间的支付系统稳定性保障。',
             },
             {
-              label: '发展 (Challenge)',
+              label: 'Challenge',
               content:
                 '高峰期支付超时率达2%，原有单体数据库不仅读写瓶颈，还无法水平扩展。',
             },
             {
-              label: '高潮 (Action)',
+              label: 'Action',
               content:
                 '实施冷热数据分离，引入MQ削峰填谷，并基于“事件溯源”重构核心交易链路。',
             },
             {
-              label: '结尾 (Result)',
+              label: 'Result',
               content:
                 'QPS承载能力提升5倍，大促期间零故障，订单失败率降至0.01%以下。',
             },
           ],
           design: [
             {
-              label: '背景 (Situation)',
+              label: 'Situation',
               content: '优化B端后台管理系统的移动端审批流程。',
             },
             {
-              label: '发展 (Challenge)',
+              label: 'Challenge',
               content:
                 '直接移植PC版复杂表格到手机端，导致误操作率高，审批效率极低。',
             },
             {
-              label: '高潮 (Action)',
+              label: 'Action',
               content:
                 '摒弃表格视图。基于场景重构为“信息卡片”与“操作卡片”分离的视图设计。',
             },
             {
-              label: '结尾 (Result)',
+              label: 'Result',
               content:
                 '移动端审批平均耗时缩短50%，误操作反馈归零，用户满意度提升至4.8分。',
             },
@@ -421,6 +425,8 @@ const dict = {
         pollSuccess: '解析完成',
         pollFailed: '解析失败/超时',
         pollFailedRefund: '解析失败，金币已自动返还',
+        copiedJson: '已复制 JSON',
+        copiedMd: '已复制 Markdown',
       },
       fileTooLarge2MB: '文件过大 (超过 2MB)',
       fileTooLarge4MB: '文件过大 (超过 4MB)',
@@ -446,6 +452,11 @@ const dict = {
         '目前支持文本型 PDF；建议不超过约 8000 字；扫描件/图片暂不支持',
       placeholderHintDetailed:
         '目前支持文本型 PDF；建议不超过约 10000 字；扫描件/图片暂不支持',
+      time: {
+        secAgo: '{secs} 秒前',
+        minAgo: '{mins} 分钟前',
+        hrAgo: '{hours} 小时前',
+      },
     },
     previewLabels: {
       previewTitle: '简历结构化预览',
@@ -463,6 +474,14 @@ const dict = {
       openSource: '开源',
       extras: '其他',
       stack: '技术栈',
+      capabilities: '核心能力',
+      contributions: '重要产出',
+      courses: '课程',
+      link: '链接',
+      metric: '关键指标',
+      task: '任务',
+      action: '行动',
+      result: '结果',
     },
     quota: {
       title: '金币',

@@ -19,7 +19,7 @@ export function AppCardHeader(
   props: React.ComponentProps<typeof CardHeader>
 ) {
   const { className, ...rest } = props
-  return <CardHeader className={cn('p-6', className)} {...rest} />
+  return <CardHeader className={cn('p-4 sm:p-6', className)} {...rest} />
 }
 
 export function AppCardTitle(
@@ -42,12 +42,12 @@ export function AppCardContent(
   props: React.ComponentProps<typeof CardContent>
 ) {
   const { className, ...rest } = props
-  return <CardContent className={cn('p-6', className)} {...rest} />
+  return <CardContent className={cn('p-4 sm:p-6', className)} {...rest} />
 }
 
 export function AppCardFooter(
   props: React.ComponentProps<typeof CardFooter>
 ) {
   const { className, ...rest } = props
-  return <CardFooter className={cn('p-6', className)} {...rest} />
+  return <CardFooter className={cn('p-4 sm:p-6', className)} {...rest} />
 }

@@ -99,72 +99,36 @@
     break-inside: auto;
   }
 
-  .page-break-fix h3,
-  .page-break-fix h4 {
-    break-after: avoid;
-  }
-
   .break-after-avoid {
     break-after: avoid;
   }
 
-  /* Hide UI elements with specific class */
+  /* Manual page break utility */
+  .break-after-page {
+    break-after: page;
+  }
+
+  h3,
+  h4,
+  .item-header {
+    break-after: avoid;
+  }
+
+  p,
+  li {
+    break-inside: avoid;
+  }
+
+  /* Hide elements in print */
   .no-print {
     display: none !important;
   }
-}
 
-/* Class-based dark mode to support theme toggling */
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: hsl(210 40% 98%);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-body {
-  font-family: var(--font-sans), system-ui, sans-serif;
-}
-
-/* 为认证组件提供样式隔离 */
-.auth-scope :where(button, input, a) {
-  all: revert;
-}
-
-.auth-scope button {
-  cursor: pointer;
-}
-
-.auth-scope input {
-  all: revert;
+  /* Reset background for print */
+  .print-bg-reset {
+    background-color: transparent !important;
+    background-image: none !important;
+  }
 }
 
 @layer base {
@@ -177,96 +141,77 @@ body {
   }
 }
 
-/* AI Suggestion Panel - Structure-based styling */
+.ai-main-list {
+  list-style: none;
+  counter-reset: ai-main-counter;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-/* Main list item (ol > li) - counter increment, number prefix, gradient container */
 .ai-main-list>.ai-list-item {
-  counter-increment: suggestion-counter;
-  /* Only main items increment counter */
-  padding-left: 0.4rem;
-  /* Reduced from 1.25rem - minimal space for number */
-  margin-bottom: 0.75rem;
+  position: relative;
+  counter-increment: ai-main-counter;
 }
 
-/* Number container - positioned at left edge */
 .ai-main-list>.ai-list-item>.ai-suggestion-number {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
   position: absolute;
-  left: -0.25rem;
-  /* Slight offset left */
-  top: 0.5rem;
-  width: 0.75rem;
-  height: 1rem;
-}
-
-/* Decorative slanted parallelogram behind number - per reference design */
-.ai-main-list>.ai-list-item>.ai-suggestion-number::before {
-  content: '';
-  position: absolute;
-  left: -4px;
-  top: -8px;
-  width: 8px;
-  height: 18px;
-  background: oklch(0.92 0.01 250 / 0.8);
-  /* light gray */
-  transform: skewX(-12deg);
-  /* Parallelogram shape */
+  top: -4px;
+  left: 0;
+  color: oklch(0.922 0 0);
+  /* border/zinc-200 */
   z-index: 0;
+  user-select: none;
 }
 
-/* Number itself - positioned on top of parallelogram */
 .ai-main-list>.ai-list-item>.ai-suggestion-number::after {
-  content: counter(suggestion-counter);
+  content: counter(ai-main-counter, decimal-leading-zero);
+  color: oklch(0.922 0 0);
+  /* border/zinc-200 */
+}
+
+.ai-main-list>.ai-list-item>.ai-item-content {
+  position: relative;
+  z-index: 1;
+  padding-left: 24px;
+  /* Make space for the number */
+  padding-top: 4px;
+}
+
+/* Sub-list styling */
+.ai-sub-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-sub-list>.ai-list-item {
+  position: relative;
+  padding-left: 16px;
+}
+
+.ai-sub-list>.ai-list-item::before {
+  content: "";
   position: absolute;
   left: 0;
-  top: 0;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: oklch(0.546 0.245 262.881);
-  /* blue-600 */
-  z-index: 1;
+  top: 10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.4;
 }
 
-/* Main item content - gradient container + blue text */
-.ai-main-list>.ai-list-item>.ai-item-content {
-  padding: 0.5rem 0.625rem;
-  /* Reduced padding */
-  border-radius: 0.375rem;
-  background: linear-gradient(to bottom,
-      oklch(0.97 0.02 250 / 0.5),
-      oklch(0.97 0.02 250 / 0.2),
-      transparent);
-  font-size: 0.75rem;
-  line-height: 1.625;
-  color: oklch(0.546 0.245 262.881);
-  /* blue-600 */
-  font-weight: 500;
-}
-
-/* Sub-list item (ul > li) - plain styling, no numbers */
-.ai-sub-list>.ai-list-item {
-  padding-left: 0;
-}
-
-.ai-sub-list>.ai-list-item>.ai-suggestion-number {
-  display: none;
-  /* Hide number for sub-items */
-}
-
-.ai-sub-list>.ai-list-item>.ai-item-content {
-  font-size: 0.75rem;
-  line-height: 1.625;
-  color: oklch(0.556 0 0);
-  /* zinc-600 */
-  font-weight: 400;
-  /* Normal weight for sub-items */
-}
-
-/* Dark mode overrides */
-.dark .ai-main-list>.ai-list-item>.ai-suggestion-number::before {
-  background: oklch(0.3 0.05 260 / 0.4);
-  /* darker gray-blue */
-}
-
+/* Dark mode adjustments for AI lists */
 .dark .ai-main-list>.ai-list-item>.ai-suggestion-number::after {
   color: oklch(0.707 0.165 254.624);
   /* blue-400 */
@@ -352,51 +297,8 @@ body {
 .resume-modern li::before {
   content: '• ';
   color: oklch(0.488 0.243 264.376);
-}
-
-.resume-modern p {
-  line-height: var(--resume-line-height, 1.75);
-}
-
-.resume-professional {
-  font-family: var(--font-sans), system-ui, sans-serif;
-  color: var(--foreground);
-}
-
-.resume-professional h1 {
-  font-weight: 800;
-  font-size: 2rem;
-  letter-spacing: -0.02em;
-}
-
-.resume-professional h2 {
-  font-weight: 700;
-  margin-top: 18px;
-  border-left: 4px solid oklch(0.205 0 0);
-  padding-left: 8px;
-}
-
-.resume-professional ul {
-  list-style-type: disc;
-}
-
-.resume-professional li {
-  margin: 6px 0;
-}
-
-.resume-professional p {
-  line-height: var(--resume-line-height, 1.8);
-}
-
-/* Resume Customization & Print Physics */
-:root {
-  --resume-padding-x: 10mm;
-  --resume-padding-y: 10mm;
-  --resume-base-font-size: 14px;
-  --resume-line-height: 1.5;
-  --resume-paragraph-spacing: 12px;
-  --resume-item-spacing: 8px;
-  /* Default for work/project item gaps */
+  font-weight: bold;
+  margin-right: 0.5em;
 }
 
 /* Utility class for controllable item spacing */
@@ -495,4 +397,15 @@ li {
     background-color: transparent !important;
     background-image: none !important;
   }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

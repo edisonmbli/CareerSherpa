@@ -30,8 +30,8 @@ export function ProfileTabs({
       className="w-full"
     >
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="assets">{labels.assets}</TabsTrigger>
-        <TabsTrigger value="billing">{labels.billing}</TabsTrigger>
+        <TabsTrigger value="assets" className="cursor-pointer transition-all">{labels.assets}</TabsTrigger>
+        <TabsTrigger value="billing" className="cursor-pointer transition-all">{labels.billing}</TabsTrigger>
       </TabsList>
     </Tabs>
   )

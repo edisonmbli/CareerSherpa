@@ -7,52 +7,54 @@ interface ResumeExampleCardProps {
         content: string
     }[]
     className?: string
+    tips?: {
+        star: string
+        detail: string
+    } | undefined
 }
 
 export function ResumeExampleCard({
     items,
     className,
+    tips,
 }: ResumeExampleCardProps) {
     return (
-        <div className={cn("w-full space-y-3", className)}>
-            {items.map((item, idx) => {
-                return (
-                    <div 
-                        key={idx} 
-                        className="group relative overflow-hidden rounded-lg border bg-slate-50/50 p-4 hover:bg-slate-50 transition-colors dark:bg-slate-900/20 dark:hover:bg-slate-900/30"
-                    >
-                        {/* Left accent border */}
-                        <div className="absolute left-0 top-0 h-full w-[3px] bg-blue-500/30 group-hover:bg-blue-500 transition-colors" />
-
-                        <div className="flex gap-3">
-                            {/* Number/Icon Indicator */}
-                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 text-[10px] font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 mt-0.5">
-                                {idx + 1}
-                            </div>
-
-                            <div className="space-y-1.5 flex-1 min-w-0">
-                                {/* Title/Label */}
-                                <div className="flex items-center gap-2">
-                                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                                        {item.label}
-                                    </h4>
-                                </div>
-                                
-                                {/* Content */}
-                                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-normal">
-                                    {item.content}
-                                </p>
-                            </div>
+        <div className={cn("w-full space-y-4", className)}>
+            {/* Single Cohesive Card */}
+            <div className="relative overflow-hidden rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-4 sm:p-5 shadow-sm">
+                <div className="space-y-3">
+                    {items.map((item, idx) => (
+                        <div key={idx} className="flex gap-2">
+                            <span className={cn(
+                                "shrink-0 text-xs font-bold uppercase tracking-wider mt-0.5 w-[75px] sm:w-[85px]",
+                                idx === 0 ? "text-blue-600/50 dark:text-blue-400/50" :
+                                    idx === 1 ? "text-blue-600/60 dark:text-blue-400/60" :
+                                        idx === 2 ? "text-blue-600/70 dark:text-blue-400/70" :
+                                            "text-blue-600/80 dark:text-blue-400/80"
+                            )}>
+                                {item.label}
+                            </span>
+                            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                {item.content}
+                            </p>
                         </div>
-                    </div>
-                )
-            })}
-            
-            {/* Helpful Tip Footer */}
-            <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-700/80 dark:bg-amber-900/10 dark:text-amber-400">
-                <Lightbulb className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>建议使用 STAR 法则 (情境-任务-行动-结果) 来量化您的工作成果。</span>
+                    ))}
+                </div>
             </div>
+
+            {/* Helpful Tip Footer - Editorial Style */}
+            {tips && (
+                <div className="flex flex-wrap items-start gap-2 rounded-md bg-amber-50/80 p-3 text-xs text-amber-900/60 dark:bg-amber-200/10 dark:text-amber-400/60">
+                    <div className="flex items-start gap-1">
+                        <Lightbulb className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{tips.star}</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                        <Lightbulb className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{tips.detail}</span>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
