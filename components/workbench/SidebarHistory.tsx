@@ -123,9 +123,9 @@ export function SidebarHistory({
 
   return (
     <div className="flex-1 overflow-y-auto mt-4 pr-2">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 px-2 flex items-center gap-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 px-2 flex items-center gap-2">
         <span>{labels?.history || 'History'}</span>
-        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded text-[9px] min-w-[1.25rem] text-center">
+        <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-[9px] min-w-[1.25rem] text-center">
           {services.length}
         </span>
       </div>
@@ -135,7 +135,7 @@ export function SidebarHistory({
           <li key={s.id} className="group relative">
             {/* Active Indicator (Bar) - Changed to Zinc/Slate */}
             {isActive(s.id) && (
-              <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-zinc-400 dark:bg-zinc-500" />
+              <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary" />
             )}
 
             <Link
@@ -143,23 +143,21 @@ export function SidebarHistory({
               className={cn(
                 'block rounded-lg px-3 py-2.5 transition-all duration-200 ml-2', // ml-2 for indicator space
                 isActive(s.id)
-                  ? 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100'
-                  : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
               )}
             >
               <div className="flex flex-col gap-0.5">
                 <span
                   className={cn(
                     'truncate text-xs font-mono',
-                    isActive(s.id)
-                      ? 'text-zinc-900 dark:text-zinc-100 font-medium'
-                      : ''
+                    isActive(s.id) ? 'text-foreground font-medium' : ''
                   )}
                   title={String(s.title ?? (labels?.creating || 'Creating...'))}
                 >
                   {s.title ?? (labels?.creating || 'Creating...')}
                 </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-light">
+                <span className="text-[10px] text-muted-foreground/70 font-light">
                   {formatShort(s.updatedAt || s.createdAt, String(locale))}
                 </span>
               </div>
@@ -167,7 +165,7 @@ export function SidebarHistory({
           </li>
         ))}
         {services.length === 0 && (
-          <li className="text-sm text-slate-400 px-4 py-8 text-center italic">
+          <li className="text-sm text-muted-foreground px-4 py-8 text-center italic">
             {labels?.noHistory || 'No history yet'}
           </li>
         )}
@@ -177,14 +175,14 @@ export function SidebarHistory({
         <div className="flex items-center justify-center mt-4">
           <button
             type="button"
-            className="group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors"
             onClick={() => setLimit((x) => x + initialLimit)}
             aria-label={labels?.loadMore || 'Load more'}
           >
-            <span className="text-xs font-medium text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-200">
+            <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
               {labels?.loadMore || 'Load more'}
             </span>
-            <MoreHorizontal className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+            <MoreHorizontal className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
           </button>
         </div>
       )}

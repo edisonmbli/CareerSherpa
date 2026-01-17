@@ -193,9 +193,9 @@ export function ResultCard({
         // 1. Centered "Page" with max-width (Letterhead feel)
         'max-w-[880px] mx-auto w-full relative mt-4',
         // 2. Tinted Neutral Background
-        'bg-slate-50/50 dark:bg-slate-950/50',
+        'bg-card/50',
         // 3. Double Border Effect
-        'border border-slate-200 dark:border-slate-800',
+        'border border-border',
         'shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
         'rounded-xl backdrop-blur-sm',
         className

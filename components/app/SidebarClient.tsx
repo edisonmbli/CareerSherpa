@@ -125,9 +125,9 @@ export function SidebarClient({
                 size="icon"
                 onClick={() => router.push(`/${locale}/workbench`)}
                 aria-label="Create"
-                className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
               >
-                <PlusCircle className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
+                <PlusCircle className="h-4 w-4 text-muted-foreground" />
               </Button>
             </TooltipTrigger>
             <TooltipContent className="z-[100]">{dict.workbench.sidebar.newService}</TooltipContent>

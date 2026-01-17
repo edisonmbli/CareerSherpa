@@ -197,7 +197,9 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
     const newFontSize = roundVal(1 * newScaleFactor) // fontSize 默认倍率为 1
     const newLineHeight = roundVal(defaults.lineHeight * newScaleFactor)
     const newItemSpacing = Math.round(defaults.itemSpacing * newScaleFactor)
-    const newSectionSpacing = Math.round(defaults.sectionSpacing * newScaleFactor)
+    const newSectionSpacing = Math.round(
+      defaults.sectionSpacing * newScaleFactor
+    )
 
     updateStyleConfig({
       scaleFactor: newScaleFactor,
@@ -302,7 +304,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
   // Template name now comes from dictionary via TemplateSelector component
 
   return (
-    <header className="flex h-10 items-center justify-between border-b bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3 shrink-0 z-30 shadow-sm transition-colors no-print relative">
+    <header className="flex h-10 items-center justify-between border-b bg-card border-border px-3 shrink-0 z-30 shadow-sm transition-colors no-print relative">
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-4 ">
         {/* Left Sidebar Toggle - Chapters */}
         <Button
@@ -320,12 +322,12 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
           <span className="hidden lg:inline">{dict.toolbar.chapters}</span>
         </Button>
 
-        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
+        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
         {/* Template Selector */}
         <TemplateSelector />
 
-        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
+        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
         {/* Style Tweaks */}
         <Popover open={isStyleOpen} onOpenChange={setIsStyleOpen}>
@@ -339,7 +341,11 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
               <span className="hidden lg:inline">{dict.toolbar.style}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4 relative max-h-[80vh] overflow-y-auto" align="end" alignOffset={-70}>
+          <PopoverContent
+            className="w-80 p-4 relative max-h-[80vh] overflow-y-auto"
+            align="end"
+            alignOffset={-70}
+          >
             {/* Native Color Input positioned relative to Popover Content */}
             <input
               ref={colorInputRef}
@@ -527,7 +533,9 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                       onClick={handleProportionalScaleToggle}
                       className={cn(
                         'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
-                        styleConfig.proportionalScale ? 'bg-primary' : 'bg-input'
+                        styleConfig.proportionalScale
+                          ? 'bg-primary'
+                          : 'bg-input'
                       )}
                     >
                       <span
@@ -635,20 +643,20 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
           </PopoverContent>
         </Popover>
 
-        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
+        <div className="h-4 w-px bg-border mx-1 shrink-0" />
 
         {/* Reset */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
+          className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 px-2 transition-colors cursor-pointer"
           onClick={() => setIsResetOpen(true)}
         >
           <RotateCcw className="h-4 w-4" />
           <span className="hidden lg:inline">{dict.toolbar.reset}</span>
         </Button>
 
-        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
+        <div className="h-4 w-px bg-border mx-1 shrink-0" />
 
         {/* Export */}
         <DropdownMenu>
@@ -656,7 +664,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
+              className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 px-2 transition-colors cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span className="hidden lg:inline">{dict.toolbar.export}</span>
@@ -674,7 +682,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1 shrink-0" />
+        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1 shrink-0" />
 
         {/* Save Indicator - Shows when dirty */}
         <SaveIndicator variant="inline" />
@@ -695,9 +703,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{dict.toolbar.resetConfirm}</DialogTitle>
-              <DialogDescription>
-                {dict.toolbar.resetDesc}
-              </DialogDescription>
+              <DialogDescription>{dict.toolbar.resetDesc}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsResetOpen(false)}>
@@ -727,7 +733,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
           className={cn(
             'gap-2 h-8 px-3 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden group relative',
             // Base: Solid Pearl/Obsidian
-            'bg-white dark:bg-zinc-900',
+            'bg-background',
             // Border: Refined
             'border-b border-blue-100 dark:border-blue-900',
             // Text: Blue
@@ -739,13 +745,15 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
           onClick={() => setAIPanelOpen(!isAIPanelOpen)}
         >
           <span className="relative z-10 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-blue-500/90 dark:text-blue-100 transition-transform group-hover:scale-110 duration-500" />
-            <span>{dict.toolbar.aiSuggestions}</span>
+            <Sparkles className="w-3.5 h-3.5 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+            <span className="text-xs tracking-wide">
+              {dict.toolbar.aiSuggestions}
+            </span>
           </span>
-          {/* Subtle sheen effect on hover */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/0 via-blue-50/30 to-blue-50/0 dark:via-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* Shimmer Effect */}
+          <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-blue-400/10 dark:via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
         </Button>
       </div>
-    </header >
+    </header>
   )
 }

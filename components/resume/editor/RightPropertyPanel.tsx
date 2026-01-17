@@ -2,7 +2,7 @@
 
 import { useResumeStore } from '@/store/resume-store'
 import { Button } from '@/components/ui/button'
-import { X, Lightbulb, ArrowLeft, Sparkles, Bot } from 'lucide-react'
+import { X, ArrowLeft, Bot } from 'lucide-react'
 import { BasicsForm } from '../forms/BasicsForm'
 import { SummaryForm } from '../forms/SummaryForm'
 import { WorkExperienceForm } from '../forms/WorkExperienceForm'
@@ -13,6 +13,29 @@ import { SimpleSectionForm } from '../forms/SimpleSectionForm'
 import { cn } from '@/lib/utils'
 import ReactMarkdown from 'react-markdown'
 import { useResumeDict } from '../ResumeDictContext'
+
+// Helper to detect and strip labels (支持中英文)
+const detectLabel = (text: string): { type: 'adjust' | 'reason' | null, content: string } => {
+  // Adjust / 调整
+  const adjustMatch = text.match(/^[\*]*(Adjust|调整)[:：]\s*[\*]*/i)
+  if (adjustMatch) {
+    return {
+      type: 'adjust',
+      content: text.replace(/^[\*]*(Adjust|调整)[:：]\s*[\*]*/i, '')
+    }
+  }
+
+  // Reason / Why / 理由
+  const reasonMatch = text.match(/^[\*]*(Reason|Why|理由)[:：]\s*[\*]*/i)
+  if (reasonMatch) {
+    return {
+      type: 'reason',
+      content: text.replace(/^[\*]*(Reason|Why|理由)[:：]\s*[\*]*/i, '')
+    }
+  }
+
+  return { type: null, content: text }
+}
 
 export function RightPropertyPanel({
   isMobile,
@@ -106,117 +129,114 @@ export function RightPropertyPanel({
           <div className="px-6 pb-24 pt-4">
             {optimizeSuggestion ? (
               /*
-               * DESIGN V5.2: "Magic Scroll" Premium Reference Style
-               * - Blue-600 color matching toolbar "AI 建议"
-               * - Hide header on mobile (redundant with drawer nav)
-               * - Subtle premium visual: soft glow, decorative accents
+               * DESIGN V5.5: Final Polish based on User Feedback
+               * - Removed borders
+               * - Enhanced "Sky" gradient for better visibility
+               * - Dark mode numbers match title color (Blue-400)
+               * - Reduced font sizes and weights to align with toolbar
                */
               <div className="relative">
-                {/* Subtle decorative top glow - "scroll unfolding" effect - Neutral/Zinc */}
-                <div className="absolute -top-2 left-0 right-0 h-16 bg-gradient-to-b from-zinc-50/80 via-zinc-50/40 to-transparent dark:from-zinc-900/80 dark:via-zinc-900/40 pointer-events-none rounded-t-lg" />
+                {/* Subtle decorative top glow */}
+                <div className="absolute -top-2 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/50 to-transparent pointer-events-none rounded-t-lg" />
 
-                {/* Content container with subtle left accent line - Neutral */}
-                <div className="relative space-y-4 pl-3 border-l-[1.5px] border-zinc-200 dark:border-zinc-800">
+                {/* Content container */}
+                <div className="relative space-y-4 pl-3 text-zinc-500/80 dark:text-zinc-300/80  border-l-[0.1px] border-border">
                   <ReactMarkdown
                     components={{
-                      // H3 = Main title - hide on mobile (redundant with drawer header)
+                      // H3 = Main title
                       h3: ({ node, children, ...props }) => (
                         isMobile ? null : (
-                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-200 dark:border-zinc-800">
+                          <div className="mb-2">
                             <h3
-                              className="text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+                              className="text-sm font-semibold tracking-tight text-foreground"
                               {...props}
                             >
                               {children}
                             </h3>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 -mr-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                              onClick={() => setAIPanelOpen(false)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
                           </div>
                         )
                       ),
                       // H1/H2 fallback
                       h1: ({ node, ...props }) => (
-                        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-4 mb-2" {...props} />
+                        <h3 className="text-sm font-serif font-bold text-foreground mt-4 mb-2" {...props} />
                       ),
                       h2: ({ node, ...props }) => (
-                        <h4 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mt-3 mb-2" {...props} />
+                        <h4 className="text-xs font-serif font-bold text-foreground/90 mt-3 mb-2" {...props} />
                       ),
-                      // Ordered list = Main items container (numbered, with counter)
+                      // Ordered list = Main items container (Cards)
                       ol: ({ node, ...props }) => (
                         <ol
-                          className="ai-main-list space-y-6 my-4"
-                          style={{ counterReset: 'suggestion-counter', listStyle: 'none' }}
+                          className={cn(
+                            "space-y-5 my-6 text-xs list-none [counter-reset:suggestion-counter]",
+                            // CARD STYLING (Main List Items Only) - No Border, Stronger Gradient
+                            "[&>li]:relative [&>li]:pl-6 [&>li]:pr-4 [&>li]:pt-4 [&>li]:pb-2 [&>li]:rounded-xl [&>li]:overflow-visible",
+                            // Enhanced Gradient: Sky/Blue tint in light mode for better contrast
+                            "[&>li]:bg-gradient-to-b [&>li]:from-sky-50/80 [&>li]:via-sky-50/40 [&>li]:to-transparent",
+                            "[&>li]:dark:from-blue-300/10 [&>li]:dark:via-blue-300/5 [&>li]:dark:to-transparent",
+                            // Counter Logic
+                            "[&>li]:[counter-increment:suggestion-counter]",
+                            // Big Number via Pseudo-element
+                            "[&>li::before]:content-[counter(suggestion-counter,decimal-leading-zero)]",
+                            "[&>li::before]:absolute [&>li::before]:top-1 [&>li::before]:-left-1",
+                            "[&>li::before]:text-[1.6rem] [&>li::before]:font-bold [&>li::before]:font-mono [&>li::before]:leading-none",
+                            // Number Color: Zinc-200 in light, Blue-400 in dark (matches titles)
+                            "[&>li::before]:text-zinc-200 dark:[&>li::before]:text-blue-500",
+                            "[&>li::before]:z-20", // Ensure it sits above the card background
+                            "[&>li]:z-0" // Establish stacking context
+                          )}
                           {...props}
                         />
                       ),
-                      // Unordered list = Sub-items container (nested under main items)
+                      // Unordered list = Sub-items container (Text)
                       ul: ({ node, ...props }) => (
                         <ul
-                          className="ai-sub-list space-y-3 mt-3 ml-0.5"
-                          style={{ listStyle: 'none' }}
+                          className="space-y-3 mt-2 ml-0.5 list-none relative z-10"
                           {...props}
                         />
                       ),
-                      // List items - styling determined by parent (ol = main, ul = sub)
-                      // No content-based detection needed - structure tells us the type
-                      li: ({ node, children, ...props }) => (
-                        <li className="ai-list-item relative pl-0" {...props}>
-                          {/* Number decoration for main items - rendered via CSS */}
-                          <span className="ai-suggestion-number text-zinc-400 dark:text-zinc-600 font-serif italic absolute -left-5 text-lg" />
-                          {/* Content wrapper */}
-                          <div className="ai-item-content">
-                            {children}
-                          </div>
-                        </li>
-                      ),
-                      // Paragraphs with smart 调整/理由 detection
+                      // Paragraphs with refined typography
                       p: ({ node, children, ...props }) => {
                         const text = String(children || '')
+                        const { type, content } = detectLabel(text)
 
-                        // 调整 label - Clean Editorial Block (Zinc)
-                        if (text.match(/^[\*]*调整[:：]/)) {
+                        // 调整 label
+                        if (type === 'adjust') {
                           return (
-                            <div className="relative pl-3 py-1 my-2 border-l-2 border-zinc-900 dark:border-zinc-100">
-                              <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200" {...props}>
-                                <span className="font-bold text-zinc-900 dark:text-zinc-100 mr-1">Adjust:</span>
-                                <span>{text.replace(/^[\*]*调整[:：]\s*[\*]*/, '')}</span>
+                            <div className="relative pl-3 py-1 my-1.5 border-l-2 border-primary/20 bg-primary/5 rounded-r-sm">
+                              <p className="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 font-normal" {...props}>
+                                <span className="font-semibold text-primary dark:text-blue-400 mr-1.5">Adjust:</span>
+                                <span>{content}</span>
                               </p>
                             </div>
                           )
                         }
 
-                        // 理由 label - Subtle Italic/Gray (Editorial Note)
-                        if (text.match(/^[\*]*理由[:：]/)) {
+                        // 理由 label
+                        if (type === 'reason') {
                           return (
                             <div className="relative pl-3 my-1">
-                              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500 italic font-serif" {...props}>
+                              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 italic font-serif" {...props}>
                                 <span className="not-italic font-medium mr-1 text-zinc-400">Why:</span>
-                                <span>{text.replace(/^[\*]*理由[:：]\s*[\*]*/, '')}</span>
+                                <span>{content}</span>
                               </p>
                             </div>
                           )
                         }
 
-                        // Regular paragraph - inherit color from parent container
+                        // Regular paragraph (Section Titles) - Reduced size/weight
                         return (
-                          <p className="text-sm leading-relaxed mb-2 text-zinc-700 dark:text-zinc-300" {...props}>
+                          <p className="text-xs font-normal leading-relaxed mb-1 text-zinc-800 dark:text-zinc-100" {...props}>
                             {children}
                           </p>
                         )
                       },
-                      // Bold text - inherit color from parent to respect container styling
+                      // Bold text - Reduced weight impact
                       strong: ({ node, ...props }) => (
-                        <strong className="font-semibold" {...props} />
+                        <strong className="font-semibold text-primary dark:text-blue-400" {...props} />
                       ),
-                      // Emphasis - inherit color
+                      // Emphasis
                       em: ({ node, ...props }) => (
-                        <em className="italic" {...props} />
+                        <em className="italic text-muted-foreground" {...props} />
                       ),
                       // Inline code
                       code: ({ node, ...props }) => (
@@ -246,10 +266,10 @@ export function RightPropertyPanel({
   const sectionLabel = activeSectionKey ? (dict.sections[activeSectionKey] || dict.forms.editContent) : dict.forms.editContent
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-zinc-900 transition-colors">
+    <div className="flex flex-col h-full bg-card transition-colors">
       <div
         className={cn(
-          'flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900 z-10 dark:border-zinc-800',
+          'flex items-center justify-between sticky top-0 bg-card z-10 border-b border-border',
           isMobile ? 'p-3 h-10' : 'p-2'
         )}
       >
@@ -267,7 +287,7 @@ export function RightPropertyPanel({
           </Button>
           <span
             className={cn(
-              'font-semibold text-gray-900 dark:text-gray-100',
+              'font-semibold text-foreground',
               isMobile ? 'text-lg' : 'text-base'
             )}
           >
@@ -281,8 +301,8 @@ export function RightPropertyPanel({
           size="icon"
           className={cn(
             isMobile
-              ? 'h-8 w-8 text-muted-foreground hover:text-foreground bg-gray-100/50 dark:bg-zinc-800/50 rounded-full'
-              : 'h-8 w-8 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+              ? 'h-8 w-8 text-muted-foreground hover:text-foreground bg-accent/50 rounded-full'
+              : 'h-8 w-8 text-muted-foreground hover:text-foreground'
           )}
           onClick={() => {
             if (isMobile && onClose) {
