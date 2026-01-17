@@ -126,7 +126,7 @@ export default async function WorkbenchLayout(props: any) {
           dict={dict}
         />
       </div>
-      <div className="bg-muted/60 dark:bg-muted/50 rounded-xl p-6 min-h-[calc(100vh-6rem)]">
+      <div className="min-h-[calc(100vh-6rem)]">
         <WorkbenchColumns
           sidebar={
             <SidebarClient

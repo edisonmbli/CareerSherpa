@@ -86,7 +86,7 @@ export function SidebarHistory({
                   </TooltipTrigger>
                   <TooltipContent
                     side="right"
-                    className="bg-slate-900 text-slate-50 border-slate-800 z-[100]"
+                    className="bg-popover text-popover-foreground border-border z-[100]"
                   >
                     <p className="text-xs">
                       {s.title || labels?.newService || 'New Service'}

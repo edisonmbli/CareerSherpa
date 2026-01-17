@@ -72,8 +72,8 @@ export function SidebarClient({
       window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
   }
   const containerClass = collapsed
-    ? 'flex flex-col h-full border-0 dark:border dark:border-white/10 rounded-lg p-4 gap-4 bg-muted/70 dark:bg-muted/40 shadow-sm'
-    : 'flex flex-col h-full border-0 dark:border dark:border-white/10 rounded-lg p-4 gap-4 bg-card shadow-sm'
+    ? 'flex flex-col h-full border-0 dark:border dark:border-white/10 rounded-lg p-4 gap-4 bg-sidebar shadow-sm'
+    : 'flex flex-col h-full border-0 dark:border dark:border-white/10 rounded-lg p-4 gap-4 bg-sidebar shadow-sm'
   return (
     <div className={containerClass}>
       <div

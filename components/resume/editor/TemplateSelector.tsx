@@ -65,7 +65,7 @@ export function TemplateSelector() {
           "h-[85vh] max-h-[720px]",
           // Enhanced dark mode styling
           "dark:ring-1 dark:ring-white/10",
-          "dark:bg-background/95 dark:backdrop-blur-xl"
+          "dark:bg-popover/95 dark:backdrop-blur-xl"
         )}
       >
         <div className="flex flex-col h-full">
