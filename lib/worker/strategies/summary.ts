@@ -14,7 +14,12 @@ import {
   getDetailedResumeOriginalTextById,
 } from '@/lib/dal/resume'
 import { markTimeline } from '@/lib/observability/timeline'
-import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
+import {
+  getChannel,
+  publishEvent,
+  buildMatchTaskId,
+  getUserHasQuota,
+} from '@/lib/worker/common'
 import { pushTask } from '@/lib/queue/producer'
 import {
   recordRefund,
@@ -33,7 +38,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     public templateId:
       | 'job_summary'
       | 'resume_summary'
-      | 'detailed_resume_summary'
+      | 'detailed_resume_summary',
   ) { }
 
   /**
@@ -50,14 +55,14 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await markTimeline(
             serviceId,
             'worker_batch_vars_fetch_job_text_start',
-            { taskId }
+            { taskId },
           )
         const text = await getJobOriginalTextById(jobId)
         if (serviceId)
           await markTimeline(
             serviceId,
             'worker_batch_vars_fetch_job_text_end',
-            { taskId, meta: text ? `len=${text.length}` : 'null' }
+            { taskId, meta: text ? `len=${text.length}` : 'null' },
           )
         if (text) vars.job_text = text
       }
@@ -68,7 +73,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await markTimeline(
             serviceId,
             'worker_batch_vars_fetch_resume_start',
-            { taskId }
+            { taskId },
           )
         const text = await getResumeOriginalTextById(resumeId)
         if (serviceId)
@@ -85,14 +90,14 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await markTimeline(
             serviceId,
             'worker_batch_vars_fetch_detailed_start',
-            { taskId }
+            { taskId },
           )
         const text = await getDetailedResumeOriginalTextById(detailedId)
         if (serviceId)
           await markTimeline(
             serviceId,
             'worker_batch_vars_fetch_detailed_end',
-            { taskId, meta: text ? `len=${text.length}` : 'null' }
+            { taskId, meta: text ? `len=${text.length}` : 'null' },
           )
         if (text) vars.detailed_resume_text = text
       }
@@ -106,7 +111,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
   async writeResults(
     execResult: ExecutionResult,
     variables: any,
-    ctx: StrategyContext
+    ctx: StrategyContext,
   ) {
     const { serviceId, userId, requestId } = ctx
 
@@ -117,7 +122,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await setResumeSummaryJson(
             resumeId,
             execResult.ok ? execResult.data : undefined,
-            execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
+            execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED,
           )
         }
       } else if (this.templateId === 'detailed_resume_summary') {
@@ -126,7 +131,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           await setDetailedResumeSummaryJson(
             detailedId,
             execResult.ok ? execResult.data : undefined,
-            execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
+            execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED,
           )
         }
       } else if (this.templateId === 'job_summary') {
@@ -149,7 +154,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
   private async handleJobSummaryWrite(
     execResult: ExecutionResult,
     variables: any,
-    ctx: StrategyContext
+    ctx: StrategyContext,
   ) {
     const { serviceId, userId, requestId, traceId, taskId } = ctx
 
@@ -159,21 +164,13 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     await setJobSummaryJson(
       serviceId,
       execResult.ok ? execResult.data : undefined,
-      execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED
+      execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED,
     )
     await markTimeline(serviceId, 'worker_batch_write_summary_db_end', {
       taskId,
     })
 
     if (execResult.ok) {
-      // Parallelize Finalization: DB Update, Redis Publish, QStash Enqueue
-      // Note: QStash enqueue depends on successful completion conceptually, but technically can be initiated
-      // if we assume success. However, for strict correctness, we usually wait for DB update.
-      // But we can parallelize DB and Redis.
-      // And we can also parallelize QStash if we are confident, but let's stick to:
-      // 1. Parallel(DB Update, Redis Publish Success)
-      // 2. Then Enqueue Match
-
       const sessionId = String(variables.executionSessionId || '')
       const matchTaskId = buildMatchTaskId(serviceId, sessionId)
       const matchChannel = getChannel(userId, serviceId, matchTaskId)
@@ -185,11 +182,36 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           error: String(err),
           phase: 'mark_summary_completed',
           serviceId,
-        })
+        }),
       )
+
+      // Determine Next Step: PreMatch (Paid) or Match (Free)
+      const isPaid =
+        variables.tierOverride === 'paid' ||
+        variables.wasPaid ||
+        (await getUserHasQuota(userId))
+
+      const status = 'SUMMARY_COMPLETED'
+      const code = 'summary_completed'
 
       const publishPromise = (async () => {
         try {
+          // STEP 1: Prime the match channel with PENDING status
+          // This ensures frontend finds content when it switches channels
+          const nextPendingStatus = isPaid ? 'PREMATCH_PENDING' : 'MATCH_PENDING'
+          const nextPendingCode = isPaid ? 'prematch_queued' : 'match_queued'
+          await publishEvent(matchChannel, {
+            type: 'status',
+            taskId: matchTaskId,
+            code: nextPendingCode,
+            status: nextPendingStatus,
+            lastUpdatedAt: new Date().toISOString(),
+            stage: 'queue',
+            requestId,
+            traceId,
+          })
+
+          // STEP 2: Publish summary result to match channel
           await publishEvent(matchChannel, {
             type: 'summary_result',
             taskId: matchTaskId,
@@ -198,11 +220,16 @@ export class SummaryStrategy implements WorkerStrategy<any> {
             requestId,
             traceId,
           })
-          await publishEvent(matchChannel, {
+
+          // STEP 3: Send task_switch on current job_ channel
+          // Frontend will switch to match_ channel upon receiving this
+          const currentChannel = getChannel(userId, serviceId, taskId)
+          await publishEvent(currentChannel, {
             type: 'status',
             taskId: matchTaskId,
-            code: 'summary_completed',
-            status: 'SUMMARY_COMPLETED',
+            code: 'task_switch',
+            status,
+            nextTaskId: matchTaskId,
             lastUpdatedAt: new Date().toISOString(),
             stage: 'finalize',
             requestId,
@@ -219,11 +246,8 @@ export class SummaryStrategy implements WorkerStrategy<any> {
         }
       })()
 
-      // Run DB and Redis in parallel
       await Promise.all([dbUpdatePromise, publishPromise])
 
-      // Enqueue Match Task (Dependent on Summary Completion logic)
-      // We can start this as soon as DB mark is done.
       await this.enqueueMatchTask(variables, ctx, matchTaskId)
     } else {
       // Failed
@@ -270,13 +294,34 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           serviceId,
         })
       }
+
+      // Also publish to the current task channel (for frontend listening to job_*)
+      if (taskId !== matchTaskId) {
+        try {
+          const currentChannel = getChannel(userId, serviceId, taskId)
+          await publishEvent(currentChannel, {
+            type: 'status',
+            taskId: taskId,
+            code: 'summary_failed',
+            status: 'SUMMARY_FAILED',
+            failureCode,
+            errorMessage: execResult.error || '',
+            lastUpdatedAt: new Date().toISOString(),
+            stage: 'finalize',
+            requestId,
+            traceId,
+          })
+        } catch (err) {
+          // ignore
+        }
+      }
     }
   }
 
   private async enqueueMatchTask(
     variables: any,
     ctx: StrategyContext,
-    matchTaskId: string
+    matchTaskId: string,
   ) {
     const { serviceId, userId, locale, requestId } = ctx
     await markTimeline(serviceId, 'worker_batch_enqueue_match_start', {
@@ -293,9 +338,10 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     // Phase 2: Enhanced Reasoning Pipeline (Bad Cop / Good Cop)
     // Paid users go through Pre-Match Audit; Free users go directly to Match.
     if (wasPaid) {
-      // --- Paid Tier: Pre-Match Audit (Batch) ---
+      // --- Paid Tier: Pre-Match Audit (Stream) ---
+      // Streaming mode: Provides real-time PreMatch analysis output
       const pushRes = await pushTask({
-        kind: 'batch',
+        kind: 'stream', // Phase 2: Converted to streaming for real-time feedback
         serviceId,
         taskId: `pre_${matchTaskId}`, // Distinct task ID for audit
         userId,
@@ -336,13 +382,15 @@ export class SummaryStrategy implements WorkerStrategy<any> {
         try {
           await updateServiceExecutionStatus(
             serviceId,
-            ExecutionStatus.MATCH_PENDING
+            'PREMATCH_PENDING' as ExecutionStatus,
           )
-        } catch (err) { /* ignore */ }
-        
+        } catch (err) {
+          /* ignore */
+        }
+
         await markTimeline(serviceId, 'worker_batch_enqueue_match_end', {
           taskId: matchTaskId,
-          route: 'pre_match_audit'
+          route: 'pre_match_audit',
         })
         return // Stop here, PreMatchStrategy will enqueue job_match
       }
@@ -386,7 +434,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     try {
       await updateServiceExecutionStatus(
         serviceId,
-        ExecutionStatus.MATCH_PENDING
+        ExecutionStatus.MATCH_PENDING,
       )
     } catch (err) {
       logError({
@@ -407,7 +455,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     execResult: ExecutionResult,
     variables: any,
     serviceId: string,
-    userId: string
+    userId: string,
   ) {
     const wasPaid = !!variables?.wasPaid
     const cost = Number(variables?.cost || 0)

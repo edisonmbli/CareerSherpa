@@ -103,7 +103,7 @@ export const ENV = {
   // TTL（秒）：在收到 done/error 终止事件后为缓冲流键设置过期时间；<=0 表示禁用
   STREAM_TTL_SECONDS: Number(process.env['STREAM_TTL_SECONDS'] ?? '240'),
   // 修剪长度：在收到终止事件后使用 XTRIM MAXLEN 近似修剪；<=0 表示禁用
-  STREAM_TRIM_MAXLEN: Number(process.env['STREAM_TRIM_MAXLEN'] ?? '256'),
+  STREAM_TRIM_MAXLEN: Number(process.env['STREAM_TRIM_MAXLEN'] ?? '2000'),
 
   // 用户级并发上限
   USER_MAX_ACTIVE_STREAM: Number(process.env['USER_MAX_ACTIVE_STREAM'] ?? '3'),

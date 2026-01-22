@@ -10,9 +10,7 @@ import {
 } from '@/components/app/AppCard'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
-import { useWorkbenchStore } from '@/lib/stores/workbench.store'
-import type { WorkbenchStatus } from '@/lib/stores/workbench.store'
-import { useSseStream } from '@/lib/hooks/useSseStream'
+// V2 Components (conditionally imported for bundle optimization when V2 is disabled)
 import {
   customizeResumeAction,
   generateInterviewTipsAction,
@@ -25,9 +23,8 @@ import {
   StepperProgress,
   type StepId,
 } from '@/components/workbench/StepperProgress'
-import { StatusConsole } from '@/components/workbench/StatusConsole'
-import { StreamPanel } from '@/components/workbench/StreamPanel'
 import { ResultCard } from '@/components/workbench/ResultCard'
+import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
 import { Coins, PenLine, Loader2 } from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -42,17 +39,29 @@ import {
 } from '@/components/ui/dialog'
 
 import { ServiceNotification } from '@/components/common/ServiceNotification'
-import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
+
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
-import { deriveStage } from '@/lib/utils/workbench-stage'
-import {
-  useServiceStatus,
-  isTerminalStatus,
-} from '@/lib/hooks/useServiceStatus'
+import { deriveStage, getEstimatedDuration } from '@/lib/utils/workbench-stage'
 import { CtaButton } from '@/components/workbench/CtaButton'
 import { buildTaskId } from '@/lib/types/task-context'
 import { useServiceGuard } from '@/lib/hooks/use-service-guard'
+
+// V2 SSE Integration - Feature flag for gradual rollout
+const USE_SSE_V2 = process.env['NEXT_PUBLIC_USE_SSE_V2'] === 'true' || true // Default to V2
+
+// V2 Components (conditionally imported for bundle optimization when V2 is disabled)
+import { useWorkbenchV2Bridge } from '@/lib/hooks/useWorkbenchV2Bridge'
+import {
+  type WorkbenchStatusV2,
+} from '@/lib/stores/workbench-v2.store'
+import { StatusConsoleV2 } from '@/components/workbench/StatusConsoleV2'
+import { StreamPanelV2 } from '@/components/workbench/StreamPanelV2'
+
+// Helper to check terminal status (Legacy V1 Status string)
+const isTerminalStatus = (status: string | undefined | null) => {
+  return status === 'COMPLETED' || status === 'FAILED'
+}
 
 export function ServiceDisplay({
   initialService,
@@ -72,25 +81,109 @@ export function ServiceDisplay({
   tierOverride?: 'free' | 'paid'
 }) {
   const router = useRouter()
+  // Restore useTransition for actions
   const [isPending, startTransition] = useTransition()
-  const {
-    status: storeStatus,
-    startTask,
-    streamingResponse,
-    setError,
-    errorMessage,
-    statusDetail,
-    isConnected,
-    ocrResult,
-    summaryResult,
-    matchResult,
-  } = useWorkbenchStore()
 
-  // Use centralized status hook for server→store sync
-  const { status: syncedStatus, serviceId } = useServiceStatus({
-    initialService,
-    dict,
+  // Local state for task switching (e.g. customizations)
+  const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
+
+  // Computed Task ID for connection
+  const serviceId = initialService?.id || ''
+  const initialTaskId = initialService?.executionSessionId
+    ? `job_${serviceId}_${initialService.executionSessionId}`
+    : undefined
+  const taskIdToUse = matchTaskId || initialTaskId
+
+  const v2Bridge = useWorkbenchV2Bridge({
+    userId,
+    serviceId,
+    initialTaskId: taskIdToUse,
+    tier: (tierOverride || (quotaBalance && quotaBalance >= getTaskCost('job_match') ? 'paid' : 'free')) as 'free' | 'paid',
+    initialStatus: initialService?.currentStatus,
+    skip: !serviceId || isTerminalStatus(initialService?.currentStatus),
   })
+
+  // Aliases and State Mapping
+  const status = v2Bridge?.status || 'IDLE'
+  // storeStatus alias for legacy compatibility
+  const storeStatus = status
+
+  // Content extraction
+  const matchResult = v2Bridge?.matchJson || null
+  // matchParsed logic simplified: V2 provides consistent json
+  const matchParsed = matchResult
+
+  const isConnected = v2Bridge?.isConnected || false
+  const statusDetail = v2Bridge?.statusDetail || ''
+  const summaryResult = v2Bridge?.summaryJson || null
+  const errorMessage = v2Bridge?.errorMessage || null
+
+  const { setError: setBridgeError, setStatus: setBridgeStatus } = v2Bridge || {}
+
+  const setError = (msg: string) => {
+    setBridgeError?.(msg)
+  }
+
+  // Localized error message computation using secure error handler
+  const localizedError = useMemo(() => {
+    if (!v2Bridge?.errorMessage) return undefined
+    // Use getServiceErrorMessage to sanitize and localize the error
+    // If it's a whitelisted code, we get a specific message
+    // If it's a raw technical error (e.g. "Parse error..."), we get a generic "Service Unavailable" message
+    const dicts = dict?.workbench || {}
+    const { description } = getServiceErrorMessage(v2Bridge.errorMessage, dicts)
+    console.log('[ServiceDisplay] localizedError:', {
+      raw: v2Bridge.errorMessage,
+      hasNotification: !!dicts.notification,
+      serverErrorDesc: dicts.notification?.serverErrorDesc,
+      result: description,
+    })
+    return description
+  }, [v2Bridge?.errorMessage, dict?.workbench])
+
+  // Server state sync: Detect mismatch between server state and V2 bridge
+  // If server shows terminal state but V2 still shows active, force sync
+  useEffect(() => {
+    if (!USE_SSE_V2 || !v2Bridge) return
+
+    const serverMatchStatus = initialService?.job?.matchAnalysisStatus
+    const v2Status = v2Bridge.status
+
+    // Skip if no server status available
+    if (!serverMatchStatus) return
+
+    // Check for server-V2 mismatch: server is terminal, V2 is still active
+    const serverIsTerminal = serverMatchStatus === 'COMPLETED' || serverMatchStatus === 'FAILED'
+    const v2IsActive = v2Status.includes('PENDING') || v2Status.includes('STREAMING')
+
+    if (serverIsTerminal && v2IsActive) {
+      console.log('[ServiceDisplay] Server-V2 mismatch detected:', {
+        serverMatchStatus,
+        v2Status,
+        action: 'force_sync',
+      })
+
+      // Force V2 status to match server
+      // Force V2 status to match server
+      let mappedStatus: WorkbenchStatusV2 = 'MATCH_FAILED'
+
+      if (serverMatchStatus === 'COMPLETED') {
+        mappedStatus = 'MATCH_COMPLETED'
+      } else {
+        // Handle FAILURE cases: try to respect the current V2 phase
+        if (v2Status.startsWith('SUMMARY')) mappedStatus = 'SUMMARY_FAILED'
+        else if (v2Status.startsWith('JOB_VISION'))
+          mappedStatus = 'JOB_VISION_FAILED'
+        else if (v2Status.startsWith('OCR')) mappedStatus = 'OCR_FAILED'
+        else if (v2Status.startsWith('PREMATCH'))
+          mappedStatus = 'PREMATCH_FAILED'
+        else mappedStatus = 'MATCH_FAILED'
+      }
+
+      setBridgeStatus?.(mappedStatus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialService?.job?.matchAnalysisStatus, v2Bridge?.status])
 
   // Auto-refresh when COMPLETED to sync server state is now handled by hook
 
@@ -102,10 +195,10 @@ export function ServiceDisplay({
       if (initialService?.customizedResume?.status === 'COMPLETED')
         return 'customize'
       return 'match'
-    }
+    },
   )
-  const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
-  const streamRef = useRef<HTMLDivElement>(null)
+  // Duplicate local state removed
+  // streamRef removed
 
   const [notification, setNotification] = useState<{
     type: 'error' | 'success' | 'info'
@@ -122,12 +215,12 @@ export function ServiceDisplay({
     () => {
       if (typeof window !== 'undefined' && initialService?.id) {
         const cached = localStorage.getItem(
-          `executionTier_${initialService.id}`
+          `executionTier_${initialService.id}`,
         )
         if (cached === 'free' || cached === 'paid') return cached
       }
       return null
-    }
+    },
   )
 
   // Derived state - serviceId now comes from useServiceStatus hook
@@ -137,10 +230,10 @@ export function ServiceDisplay({
     storeStatus === 'CUSTOMIZE_PENDING'
       ? 'PENDING'
       : storeStatus === 'CUSTOMIZE_COMPLETED'
-      ? 'COMPLETED'
-      : storeStatus === 'CUSTOMIZE_FAILED'
-      ? 'FAILED'
-      : initialService?.customizedResume?.status || 'IDLE'
+        ? 'COMPLETED'
+        : storeStatus === 'CUSTOMIZE_FAILED'
+          ? 'FAILED'
+          : initialService?.customizedResume?.status || 'IDLE'
 
   // Transition state: customize tab selected but SSE hasn't confirmed task started yet
   // Once store shows CUSTOMIZE_PENDING from SSE, we're no longer in transition
@@ -158,73 +251,56 @@ export function ServiceDisplay({
 
   // Note: isStarting state removed in favor of deriving transition state from isPending + customizeStatus
 
-  // Parse match result
+  // Local parsing logic removed (handled by V2 Bridge)
   const matchJson = initialService?.match?.matchSummaryJson
-  let matchParsed = null
-  try {
-    if (matchJson && typeof matchJson === 'object') {
-      matchParsed = matchJson
-    } else if (typeof matchJson === 'string') {
-      const clean = matchJson.replace(/```json\n?|\n?```/g, '').trim()
-      matchParsed = JSON.parse(clean)
-    }
-  } catch {
-    // non-fatal: malformed matchJson should not crash render
-  }
 
   const lastUpdatedMatch = initialService?.match?.updatedAt
 
-  const status = storeStatus
+  // Duplicate status decl removed
 
-  // Initialize matchTaskId from initialService ONLY if not already set
-  // This prevents overwriting taskId set by doCustomize/doInterview
-  useEffect(() => {
-    if (initialService?.executionSessionId && !matchTaskId) {
-      const newTaskId = `match_${serviceId}_${initialService.executionSessionId}`
-      setMatchTaskId(newTaskId)
+  // Calculate current task cost for determining tier
+  const currentTaskCost = (() => {
+    if (tabValue === 'customize') return getTaskCost('resume_customize')
+    if (tabValue === 'interview') return getTaskCost('interview_prep')
+    return getTaskCost('job_match')
+  })()
+
+  // Tier is 'free' if balance < task cost (will use free model)
+  const tier: 'free' | 'paid' =
+    tierOverride ?? ((quotaBalance ?? 0) < currentTaskCost ? 'free' : 'paid')
+
+  // Dynamic task ID generation based on stage
+  // OCR/Summary phases use "job_" prefix (Free tier vision summary)
+  // Match phase uses "match_" prefix
+  // Customize/Interview use their respective prefixes set via actions
+  const computedTaskId = useMemo(() => {
+    // If we have an explicit matchTaskId set (e.g. from customize/interview action), use it
+    if (matchTaskId) return matchTaskId
+
+    // If initialService provided a taskId (rare, usually transient), use it
+    if (initialService?.taskId) return initialService.taskId
+
+    // Fallback: Construct based on status and executionSessionId
+    if (serviceId && initialService?.executionSessionId) {
+      // Early stages -> job prefix
+      if (
+        status === 'IDLE' ||
+        status === 'OCR_PENDING' ||
+        status === 'OCR_COMPLETED' ||
+        status === 'JOB_VISION_PENDING' ||
+        status === 'JOB_VISION_STREAMING' ||
+        status === 'SUMMARY_PENDING'
+      ) {
+        return `job_${serviceId}_${initialService.executionSessionId}`
+      }
+      // Match stages (including SUMMARY_COMPLETED transition) -> match prefix
+      return `match_${serviceId}_${initialService.executionSessionId}`
     }
-  }, [initialService, matchTaskId, serviceId])
+    return null
+  }, [matchTaskId, initialService, serviceId, status, tier])
 
-  // SSE taskId: Use matchTaskId (which may have customize/interview prefix)
-  // Only fallback to initialService?.taskId if matchTaskId not set
-  const currentTaskId = matchTaskId || initialService?.taskId
-
-  useSseStream(
-    userId,
-    serviceId || '',
-    currentTaskId || '',
-    status === 'COMPLETED' ||
-      status === 'MATCH_COMPLETED' ||
-      status === 'CUSTOMIZE_COMPLETED' ||
-      status === 'INTERVIEW_COMPLETED' ||
-      status === 'FAILED' ||
-      status === 'OCR_FAILED' ||
-      status === 'SUMMARY_FAILED' ||
-      status === 'MATCH_FAILED' ||
-      status === 'CUSTOMIZE_FAILED' ||
-      status === 'INTERVIEW_FAILED'
-  )
-
-  // Progress simulation timer: update every 5s during batch task execution
-  useEffect(() => {
-    const isPendingBatchTask =
-      status === 'CUSTOMIZE_PENDING' || status === 'INTERVIEW_PENDING'
-    if (!isPendingBatchTask) return
-
-    const interval = setInterval(() => {
-      useWorkbenchStore.getState().updateSimulatedProgress()
-    }, 3000) // Updated to 3s for smoother progress
-
-    return () => clearInterval(interval)
-  }, [status])
 
   // Handlers
-  // Helper: Check if user will enter free tier for a given task
-  const willBeFree = (taskCost: number) => {
-    const balance = quotaBalance ?? 0
-    return balance < taskCost
-  }
-
   // Core customize action (called after free tier confirmation if needed)
   const doCustomize = () => {
     setTabValue('customize') // Switch tab immediately for visual feedback
@@ -238,25 +314,17 @@ export function ServiceDisplay({
         console.log('[Frontend] customizeResumeAction result:', res)
         if (res?.ok) {
           if (res.executionSessionId) {
-            // Set task context first for state tracking
-            useWorkbenchStore
-              .getState()
-              .startTaskContext('customize', res.executionSessionId)
-
             // Use customize_ prefix (matches backend channel)
             const newTaskId = buildTaskId(
               'customize',
               serviceId!,
-              res.executionSessionId
+              res.executionSessionId,
             )
             console.log('[Frontend] Setting taskId to:', newTaskId)
             setMatchTaskId(newTaskId)
           }
           // Set status and start progress simulation immediately (before SSE confirms)
-          // This prevents the 10% → 0% → 10% flash using atomic update
-          useWorkbenchStore
-            .getState()
-            .setStatusAndStartProgress('CUSTOMIZE_PENDING')
+          setBridgeStatus?.('CUSTOMIZE_PENDING')
         } else {
           setTabValue('match') // Revert tab on failure
           const serviceError = getServiceErrorMessage((res as any).error, {
@@ -270,8 +338,8 @@ export function ServiceDisplay({
         console.error(e)
         showError(
           dict.workbench?.customize?.createFailed ||
-            'Failed to start customization',
-          'An unexpected error occurred.'
+          'Failed to start customization',
+          'An unexpected error occurred.',
         )
       }
     })
@@ -310,24 +378,17 @@ export function ServiceDisplay({
         })
         if (res?.ok) {
           if (res.executionSessionId) {
-            // Set task context first for state tracking
-            useWorkbenchStore
-              .getState()
-              .startTaskContext('interview', res.executionSessionId)
-
             // Use interview_ prefix (matches backend channel)
             const newTaskId = buildTaskId(
               'interview',
               serviceId!,
-              res.executionSessionId
+              res.executionSessionId,
             )
             setMatchTaskId(newTaskId)
           }
           setTabValue('interview')
           // Set status and start progress simulation immediately (before SSE confirms)
-          useWorkbenchStore
-            .getState()
-            .setStatusAndStartProgress('INTERVIEW_PENDING')
+          setBridgeStatus?.('INTERVIEW_PENDING')
         } else {
           const serviceError = getServiceErrorMessage((res as any).error, {
             statusText: dict.workbench?.statusText,
@@ -339,7 +400,7 @@ export function ServiceDisplay({
         console.error(e)
         showError(
           'Failed to generate interview tips',
-          'An unexpected error occurred.'
+          'An unexpected error occurred.',
         )
       }
     })
@@ -360,9 +421,8 @@ export function ServiceDisplay({
 
   const retryMatchAction = () => {
     startTransition(async () => {
-      const { retryMatchAction: serverRetry } = await import(
-        '@/lib/actions/service.actions'
-      )
+      const { retryMatchAction: serverRetry } =
+        await import('@/lib/actions/service.actions')
       const res = await serverRetry({ locale, serviceId: serviceId! })
       if (res?.ok) {
         if (res.executionSessionId) {
@@ -396,18 +456,7 @@ export function ServiceDisplay({
 
   // Refresh page when status becomes COMPLETED or FAILED to ensure data consistency
   useEffect(() => {
-    if (
-      status === 'COMPLETED' ||
-      status === 'MATCH_COMPLETED' ||
-      status === 'CUSTOMIZE_COMPLETED' ||
-      status === 'INTERVIEW_COMPLETED' ||
-      status === 'FAILED' ||
-      status === 'MATCH_FAILED' ||
-      status === 'SUMMARY_FAILED' ||
-      status === 'OCR_FAILED' ||
-      status === 'CUSTOMIZE_FAILED' ||
-      status === 'INTERVIEW_FAILED'
-    ) {
+    if (isTerminalStatus(status)) {
       router.refresh()
     }
   }, [status, router])
@@ -428,12 +477,11 @@ export function ServiceDisplay({
   const [matchLive, setMatchLive] = useState<any>(null)
   useEffect(() => {
     if (
-      status === 'COMPLETED' ||
-      status === 'MATCH_COMPLETED' ||
-      status === 'MATCH_STREAMING'
+      (status === 'MATCH_COMPLETED' ||
+        status === 'MATCH_STREAMING')
     ) {
       try {
-        let txt = String(streamingResponse || '')
+        let txt = String(v2Bridge?.matchContent || '')
         // Strip markdown code blocks if present
         txt = txt.replace(/```json\n?|\n?```/g, '').trim()
         if (txt.startsWith('{') && txt.endsWith('}')) {
@@ -443,10 +491,10 @@ export function ServiceDisplay({
           }
         }
       } catch {
-        // non-fatal: malformed streaming JSON should not crash
+        // non-fatal
       }
     }
-  }, [status, streamingResponse])
+  }, [status, v2Bridge?.matchContent])
   const interviewJson = initialService?.interview?.interviewTipsJson || null
   let interviewParsed: any = null
   try {
@@ -460,13 +508,14 @@ export function ServiceDisplay({
   }
 
   // Get simulated progress from store
-  const simulatedProgress = useWorkbenchStore(
-    (s) => s.progressSimulation.currentProgress
-  )
+  // Get simulated progress from V2 Bridge
+  const simulatedProgress = v2Bridge?.progress || 0
+
+
 
   const { currentStep, maxUnlockedStep, cta, statusMessage, progressValue } =
     deriveStage(
-      status,
+      status as any,
       customizeStatus,
       interviewStatus,
       dict,
@@ -474,19 +523,9 @@ export function ServiceDisplay({
       tabValue,
       statusDetail,
       errorMessage,
-      simulatedProgress
+      simulatedProgress,
+      tier === 'paid',
     )
-
-  // Calculate current task cost for determining tier
-  const currentTaskCost = (() => {
-    if (tabValue === 'customize') return getTaskCost('resume_customize')
-    if (tabValue === 'interview') return getTaskCost('interview_prep')
-    return getTaskCost('job_match')
-  })()
-
-  // Tier is 'free' if balance < task cost (will use free model)
-  const tier: 'free' | 'paid' =
-    tierOverride ?? ((quotaBalance ?? 0) < currentTaskCost ? 'free' : 'paid')
 
   // Display cost is 0 for free tier (no coins deducted)
   const displayCost = tier === 'free' ? 0 : currentTaskCost
@@ -500,17 +539,22 @@ export function ServiceDisplay({
   // Parse title for company/job fallback
   const jobSummary = initialService?.job?.jobSummaryJson
   let displayCompany =
-    matchResult?.company ||
-    matchParsed?.company ||
-    summaryResult?.company ||
+    (matchResult as any)?.company ||
+    (matchParsed as any)?.company ||
+    (summaryResult as any)?.company ||
     initialService?.company ||
     ''
   let displayJob =
-    matchResult?.jobTitle ||
-    matchParsed?.jobTitle ||
-    summaryResult?.jobTitle ||
+    (matchResult as any)?.jobTitle ||
+    (matchParsed as any)?.jobTitle ||
+    (summaryResult as any)?.jobTitle ||
     initialService?.job_title ||
     ''
+
+  if (!displayCompany && !displayJob && matchLive) {
+    displayCompany = matchLive.company || ''
+    displayJob = matchLive.jobTitle || ''
+  }
 
   if (!displayCompany && !displayJob && jobSummary) {
     try {
@@ -535,8 +579,7 @@ export function ServiceDisplay({
 
   const shouldHideConsole =
     (tabValue === 'match' &&
-      (status === 'COMPLETED' ||
-        status === 'MATCH_COMPLETED' ||
+      (status === 'MATCH_COMPLETED' ||
         status === 'CUSTOMIZE_PENDING' ||
         status === 'CUSTOMIZE_COMPLETED' ||
         status === 'CUSTOMIZE_FAILED' ||
@@ -581,15 +624,25 @@ export function ServiceDisplay({
   )
 
   // Determine where to embed the Action Button
-  // If customization is complete, the "Next Action" moves to Step 3 (Interview)
-  // Otherwise, it stays at Step 2 (Customize)
-  const activeActionStep: StepId = customizeStatus === 'COMPLETED' ? 3 : 2
+  // Retry button should appear at the step that failed
+  // Normal flow: customize completed → step 3 (interview), otherwise step 2 (customize)
+  const isMatchFailed = status === 'OCR_FAILED' || status === 'SUMMARY_FAILED' || status === 'MATCH_FAILED' || status === 'PREMATCH_FAILED' || status === 'JOB_VISION_FAILED'
+  const isCustomizeFailed = (customizeStatus as string) === 'FAILED'
+  const isInterviewFailed = interviewStatus === 'FAILED'
+
+  const activeActionStep: StepId = isMatchFailed
+    ? 1 // Match retry at step 1
+    : isInterviewFailed
+      ? 3 // Interview retry at step 3
+      : isCustomizeFailed || (customizeStatus as string) === 'COMPLETED'
+        ? ((customizeStatus as string) === 'COMPLETED' ? 3 : 2) // Customize failed→step 2, completed→step 3
+        : 2 // Default: step 2 (customize)
 
   return (
     <>
       <div
         className={cn(
-          'h-full flex flex-col space-y-4 md:space-y-2' // Increased mobile spacing to prevent overlap
+          'h-full flex flex-col space-y-4 md:space-y-2', // Increased mobile spacing to prevent overlap
         )}
       >
         {notification && (
@@ -627,64 +680,17 @@ export function ServiceDisplay({
           className="shrink-0"
         />
 
-        {!shouldHideConsole && (
-          <StatusConsole
-            status={
-              status === 'FAILED' ||
-              status === 'OCR_FAILED' ||
-              status === 'SUMMARY_FAILED' ||
-              status === 'MATCH_FAILED' ||
-              (tabValue === 'customize' && customizeStatus === 'FAILED')
-                ? 'error'
-                : isTransitionState
-                ? 'streaming' // Transition state: show as streaming
-                : (status === 'COMPLETED' || status === 'MATCH_COMPLETED') &&
-                  (tabValue !== 'customize' || customizeStatus === 'COMPLETED')
-                ? 'completed'
-                : status === 'MATCH_PENDING' ||
-                  status === 'MATCH_STREAMING' ||
-                  status === 'OCR_PENDING' ||
-                  status === 'SUMMARY_PENDING' ||
-                  customizeStatus === 'PENDING'
-                ? 'streaming'
-                : 'idle'
-            }
-            statusMessage={
-              // Override status message during transition state
-              isTransitionState
-                ? dict.workbench?.statusConsole?.customizeStarting ||
-                  '正在启动定制服务...'
-                : statusMessage
-            }
-            progress={
-              // Hide progress during transition state
-              isTransitionState ? 0 : progressValue
-            }
-            isConnected={isConnected}
-            lastUpdated={lastUpdated ? new Date(lastUpdated) : null}
-            tier={
-              // Use executionTier during customize lifecycle
-              tabValue === 'customize'
-                ? customizeStatus === 'PENDING' || isTransitionState
-                  ? executionTier ?? undefined // Show actual tier used for this execution
-                  : customizeStatus === 'FAILED'
-                  ? undefined // Don't show tier on failure (next attempt may differ)
-                  : tier // IDLE: show potential tier
-                : tier
-            }
-            cost={
-              // Use correct cost based on execution tier during customize
-              tabValue === 'customize'
-                ? customizeStatus === 'PENDING' || isTransitionState
-                  ? executionTier === 'free'
-                    ? 0
-                    : currentTaskCost // Show actual cost
-                  : customizeStatus === 'FAILED'
-                  ? 0 // Don't show cost on failure
-                  : displayCost // IDLE: show potential cost
-                : displayCost
-            }
-            errorMessage={errorMessage || undefined}
+        {!shouldHideConsole && USE_SSE_V2 && v2Bridge && tabValue === 'match' && (
+          // V2 StatusConsole - cleaner props, real-time progress from V2 store
+          <StatusConsoleV2
+            status={v2Bridge.status}
+            statusMessage={v2Bridge.statusMessage || statusMessage}
+            progress={v2Bridge.progress || 0}
+            tier={tier}
+            cost={displayCost}
+            isConnected={v2Bridge.isConnected}
+            lastEventAt={v2Bridge.lastEventAt}
+            errorMessage={localizedError}
           />
         )}
 
@@ -700,54 +706,65 @@ export function ServiceDisplay({
             value="match"
             className="flex-1 flex flex-col min-h-0 overflow-y-auto"
           >
-            {(status === 'OCR_PENDING' ||
-              status === 'OCR_COMPLETED' ||
-              status === 'SUMMARY_PENDING' ||
-              status === 'SUMMARY_COMPLETED' ||
-              status === 'MATCH_PENDING' ||
-              status === 'MATCH_STREAMING') && (
-              <div ref={streamRef}>
-                <StreamPanel
-                  mode={
-                    status === 'OCR_PENDING' ||
-                    status === 'OCR_COMPLETED' ||
-                    status === 'SUMMARY_PENDING'
-                      ? 'ocr'
-                      : status === 'SUMMARY_COMPLETED'
-                      ? 'summary'
-                      : status === 'MATCH_PENDING'
-                      ? 'summary'
-                      : 'match'
-                  }
-                  ocrText={ocrResult || initialService?.job?.originalText}
-                  summaryJson={
-                    summaryResult ||
-                    (initialService?.job?.jobSummaryJson
-                      ? typeof initialService.job.jobSummaryJson === 'string'
-                        ? JSON.parse(initialService.job.jobSummaryJson)
-                        : initialService.job.jobSummaryJson
-                      : null)
-                  }
-                  content={String(streamingResponse || '')}
-                  timestamp={
-                    lastUpdatedMatch ? new Date(lastUpdatedMatch) : null
-                  }
-                  dict={dict}
-                  {...(errorMessage
-                    ? { errorMessage: String(errorMessage) }
-                    : {})}
-                  onRetry={retryMatchAction}
-                />
-              </div>
-            )}
-            {(status === 'COMPLETED' ||
-              status === 'MATCH_COMPLETED' ||
+            {/* V2 StreamPanel - uses V2 store content for real-time streaming */}
+            {USE_SSE_V2 && v2Bridge && (
+              v2Bridge.status === 'IDLE' ||
+              v2Bridge.status === 'OCR_PENDING' ||
+              v2Bridge.status === 'OCR_STREAMING' ||
+              v2Bridge.status === 'OCR_COMPLETED' ||
+              v2Bridge.status === 'JOB_VISION_PENDING' ||
+              v2Bridge.status === 'JOB_VISION_STREAMING' ||
+              v2Bridge.status === 'JOB_VISION_COMPLETED' ||
+              v2Bridge.status === 'PREMATCH_PENDING' ||
+              v2Bridge.status === 'PREMATCH_STREAMING' ||
+              v2Bridge.status === 'PREMATCH_COMPLETED' ||
+              v2Bridge.status === 'SUMMARY_PENDING' ||
+              v2Bridge.status === 'SUMMARY_STREAMING' ||
+              v2Bridge.status === 'SUMMARY_COMPLETED' ||
+              v2Bridge.status === 'MATCH_PENDING' ||
+              v2Bridge.status === 'MATCH_STREAMING' ||
+              // Also show on failure states to display error message
+              v2Bridge.status === 'OCR_FAILED' ||
+              v2Bridge.status === 'JOB_VISION_FAILED' ||
+              v2Bridge.status === 'SUMMARY_FAILED' ||
+              v2Bridge.status === 'PREMATCH_FAILED' ||
+              v2Bridge.status === 'MATCH_FAILED'
+            ) && (
+                <div>
+                  <StreamPanelV2
+                    status={v2Bridge.status}
+                    tier={v2Bridge.tier}
+                    // Free tier content
+                    visionContent={v2Bridge.visionContent}
+                    visionJson={v2Bridge.visionJson}
+                    // Paid tier content
+                    ocrContent={v2Bridge.ocrContent}
+                    ocrJson={v2Bridge.ocrJson}
+                    summaryContent={v2Bridge.summaryContent}
+                    summaryJson={v2Bridge.summaryJson}
+                    preMatchContent={v2Bridge.preMatchContent}
+                    preMatchJson={v2Bridge.preMatchJson}
+                    // Both tiers
+                    matchContent={v2Bridge.matchContent}
+                    matchJson={v2Bridge.matchJson}
+                    errorMessage={localizedError}
+                    dict={dict?.workbench?.streamPanel}
+                    onRetry={retryMatchAction}
+                  />
+                </div>
+              )}
+
+            {(status === 'MATCH_COMPLETED' ||
               matchResult ||
               matchParsed) &&
               !(
                 status === 'MATCH_PENDING' ||
                 status === 'MATCH_STREAMING' ||
                 status === 'OCR_PENDING' ||
+                status === 'JOB_VISION_PENDING' ||
+                status === 'JOB_VISION_STREAMING' ||
+                status === 'JOB_VISION_COMPLETED' ||
+                status === 'PREMATCH_PENDING' ||
                 status === 'SUMMARY_PENDING'
               ) && (
                 <ResultCard
@@ -791,31 +808,17 @@ export function ServiceDisplay({
                   }}
                 />
               )}
-            {(status === 'FAILED' ||
-              status === 'OCR_FAILED' ||
-              status === 'SUMMARY_FAILED' ||
-              status === 'MATCH_FAILED') && (
-              <div className="space-y-3">
-                <StreamPanel
-                  mode="error"
-                  content={
-                    errorMessage ||
-                    dict?.workbench?.streamPanel?.error ||
-                    'Task execution failed, please retry.'
-                  }
-                  locale={locale}
-                  onRetry={retryMatchAction}
-                />
-              </div>
-            )}
+            {/* Error-state StreamPanelV2 is now handled by the main panel at L786-828 */}
+
           </TabsContent>
 
           <TabsContent
             value="customize"
             className="flex-1 flex flex-col min-h-0"
           >
-            {customizeStatus === 'COMPLETED' &&
-            initialService?.customizedResume?.customizedResumeJson ? (
+            {/* Customize Tab Content */}
+            {(customizeStatus as string) === 'COMPLETED' &&
+              initialService?.customizedResume?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
@@ -840,7 +843,7 @@ export function ServiceDisplay({
               />
             ) : (
               <>
-                {customizeStatus === 'PENDING' || isTransitionState ? (
+                {((customizeStatus as string) === 'PENDING' || isTransitionState) ? (
                   <BatchProgressPanel
                     title={
                       dict.workbench?.statusText?.analyzing ||
@@ -852,8 +855,8 @@ export function ServiceDisplay({
                     }
                     progress={66}
                   />
-                ) : customizeStatus === 'CUSTOMIZE_FAILED' ||
-                  customizeStatus === 'FAILED' ? (
+                ) : (customizeStatus as string) === 'CUSTOMIZE_FAILED' ||
+                  (customizeStatus as string) === 'FAILED' ? (
                   <BatchProgressPanel
                     mode="error"
                     title={
@@ -864,15 +867,15 @@ export function ServiceDisplay({
                       // Use executionTier to show correct message based on failed task's tier
                       executionTier === 'free'
                         ? dict?.workbench?.statusConsole?.customizeFailedFree ||
-                          '免费模型暂时繁忙，请稍后重试'
+                        '免费模型暂时繁忙，请稍后重试'
                         : dict?.workbench?.statusConsole?.customizeRefunded ||
-                          '金币已自动返还，请点击重试'
+                        '金币已自动返还，请点击重试'
                     }
                     onRetry={onCustomize}
                     isRetryLoading={isTransitionState || isPending}
                     retryLabel={dict.workbench?.customize?.start || '定制简历'}
                   />
-                ) : customizeStatus === 'COMPLETED' ? (
+                ) : (customizeStatus as string) === 'COMPLETED' ? (
                   // COMPLETED but data not yet loaded - show loading while router refreshes
                   <BatchProgressPanel
                     title={dict.workbench?.statusText?.loading || '加载中...'}
@@ -888,9 +891,9 @@ export function ServiceDisplay({
                       <h3 className="text-lg font-semibold">
                         {cta?.disabled
                           ? dict.workbench?.statusConsole?.customizeStarting ||
-                            '正在启动定制服务...'
+                          '正在启动定制服务...'
                           : dict.workbench?.statusText?.readyToCustomize ||
-                            'Ready to Customize'}
+                          'Ready to Customize'}
                       </h3>
                       {/* Only show guide text when button is clickable */}
                       {!cta?.disabled && (
@@ -946,7 +949,7 @@ export function ServiceDisplay({
                                       </ul>
                                     )}
                                   </li>
-                                )
+                                ),
                               )}
                             </ul>
                           </div>
@@ -991,7 +994,7 @@ export function ServiceDisplay({
             // Opacity reduced to 20% to allow content to be visible underneath
             'bg-zinc-300/20 dark:bg-zinc-800/30 backdrop-blur-xs border-t border-border/10 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]',
             // Desktop: Static, transparent background, no border, aligned left, HIDDEN because we moved CTA to header
-            'md:hidden'
+            'md:hidden',
           )}
         >
           <div className="flex items-center gap-3 relative z-50">
@@ -1018,14 +1021,16 @@ export function ServiceDisplay({
                   getTaskCost(
                     tabValue === 'interview'
                       ? 'interview_prep'
-                      : 'resume_customize'
-                  )
-                )
+                      : 'resume_customize',
+                  ),
+                ),
               )}
             >
               <Coins className="w-3 h-3 text-yellow-500" />
               {getTaskCost(
-                tabValue === 'interview' ? 'interview_prep' : 'resume_customize'
+                tabValue === 'interview'
+                  ? 'interview_prep'
+                  : 'resume_customize',
               )}
             </span>
           </div>

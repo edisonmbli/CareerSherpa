@@ -8,15 +8,17 @@ import { buildEventChannel } from '@/lib/pubsub/channels'
 
 export const dynamic = 'force-dynamic'
 
-function toSseEvent(data: any): string {
-  return `data: ${JSON.stringify(data)}\n\n`
+function toSseEvent(data: any, id?: string): string {
+  let s = `data: ${JSON.stringify(data)}\n`
+  if (id) s += `id: ${id}\n`
+  return s + '\n'
 }
 
 type StreamEntry = { id: string; fields: Record<string, string> }
 
 async function readStreamRange(
   streamKey: string,
-  lastId: string | null
+  lastId: string | null,
 ): Promise<StreamEntry[]> {
   if (!redisReady()) return []
   const redis = getRedis()
@@ -42,6 +44,8 @@ export async function GET(req: NextRequest) {
     const taskId = searchParams.get('taskId') || ''
     const fromLatest = searchParams.get('fromLatest') === '1'
 
+    const lastEventId = req.headers.get('last-event-id') || null
+
     if (!userId || !serviceId || !taskId) {
       return new Response('missing_params', { status: 400 })
     }
@@ -53,7 +57,7 @@ export async function GET(req: NextRequest) {
       async start(controller) {
         // 初始握手/心跳
         controller.enqueue(
-          new TextEncoder().encode(toSseEvent({ type: 'connected', channel }))
+          new TextEncoder().encode(toSseEvent({ type: 'connected', channel })),
         )
         try {
           // if (process.env.NODE_ENV !== 'production') {
@@ -61,13 +65,15 @@ export async function GET(req: NextRequest) {
           // }
         } catch { }
 
-        let lastId: string | null = null
+        let lastId: string | null = lastEventId
         let closed = false
         let consecutiveIdle = 0
         let timer: ReturnType<typeof setTimeout> | null = null
 
         // 可选：在首次连接时快进到最新一条，避免重放历史
+        // 仅当没有 Last-Event-ID 时才应用 fromLatest 逻辑
         if (
+          !lastId &&
           fromLatest &&
           ENV.UPSTASH_REDIS_REST_URL &&
           ENV.UPSTASH_REDIS_REST_TOKEN
@@ -136,7 +142,7 @@ export async function GET(req: NextRequest) {
                 const enriched = { ...(data as any), _sid: entry.id }
                 try {
                   controller.enqueue(
-                    new TextEncoder().encode(toSseEvent(enriched))
+                    new TextEncoder().encode(toSseEvent(enriched, entry.id)),
                   )
                 } catch (e) {
                   // If enqueue fails, the stream is likely closed by the client
@@ -146,44 +152,48 @@ export async function GET(req: NextRequest) {
                   return
                 }
                 try {
-                  // if (process.env.NODE_ENV !== 'production') {
-                  //   const len =
-                  //     typeof (data as any)?.text === 'string'
-                  //       ? (data as any).text.length
-                  //       : typeof (data as any)?.data === 'string'
-                  //       ? (data as any).data.length
-                  //       : 0
-                  //   console.info('sse_event', {
-                  //     type: String((data as any)?.type || ''),
-                  //     status: (data as any)?.status,
-                  //     code: (data as any)?.code,
-                  //     taskId: (data as any)?.taskId,
-                  //     id: entry.id,
-                  //     len,
-                  //   })
-                  //   try {
-                  //     const debugDir = path.join(
-                  //       process.cwd(),
-                  //       'tmp',
-                  //       'llm-debug'
-                  //     )
-                  //     await fsp.mkdir(debugDir, { recursive: true })
-                  //     const file = path.join(
-                  //       debugDir,
-                  //       `sse_event_${taskId || 'unknown'}.log`
-                  //     )
-                  //     await fsp.appendFile(
-                  //       file,
-                  //       JSON.stringify({
-                  //         id: entry.id,
-                  //         type: String((data as any)?.type || ''),
-                  //         status: (data as any)?.status,
-                  //         code: (data as any)?.code,
-                  //         len,
-                  //       }) + '\n'
-                  //     )
-                  //   } catch {}
-                  // }
+                  if (process.env.NODE_ENV !== 'production') {
+                    const len =
+                      typeof (data as any)?.text === 'string'
+                        ? (data as any).text.length
+                        : typeof (data as any)?.data === 'string'
+                          ? (data as any).data.length
+                          : 0
+                    console.info('sse_event', {
+                      type: String((data as any)?.type || ''),
+                      status: (data as any)?.status,
+                      code: (data as any)?.code,
+                      taskId: (data as any)?.taskId,
+                      id: entry.id,
+                      len,
+                    })
+                    try {
+                      const debugDir = path.join(
+                        process.cwd(),
+                        'tmp',
+                        'llm-debug'
+                      )
+                      await fsp.mkdir(debugDir, { recursive: true })
+                      const file = path.join(
+                        debugDir,
+                        `sse_event_${taskId || 'unknown'}.log`
+                      )
+                      await fsp.appendFile(
+                        file,
+                        JSON.stringify({
+                          timestamp: new Date().toISOString(),
+                          streamKey, // Log the source stream key
+                          id: entry.id,
+                          type: String((data as any)?.type || ''),
+                          status: (data as any)?.status,
+                          code: (data as any)?.code,
+                          len,
+                          // Log preview of text content to check for empty tokens
+                          preview: (data as any)?.text?.substring(0, 50) || (data as any)?.data?.substring(0, 50) || ''
+                        }) + '\n'
+                      )
+                    } catch { }
+                  }
                 } catch { }
 
                 // 若收到终止事件或终止状态，主动关闭连接，减少后续读取
@@ -201,7 +211,7 @@ export async function GET(req: NextRequest) {
                     ].includes(String(data?.status))) ||
                   (data?.type === 'error' &&
                     ['invoke_or_stream', 'invoke', 'guards'].includes(
-                      String(data?.stage)
+                      String(data?.stage),
                     ))
                 if (isTerminal) {
                   closed = true
@@ -221,8 +231,8 @@ export async function GET(req: NextRequest) {
                   message: (err as Error).message,
                   streamKey,
                   lastId,
-                })
-              )
+                }),
+              ),
             )
           } finally {
             if (!closed) {

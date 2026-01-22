@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { useWorkbenchStore } from '@/lib/stores/workbench.store'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,7 +40,6 @@ export function SidebarClient({
 }) {
   const router = useRouter()
   const [collapsed, setCollapsed] = React.useState(false)
-  const { currentServiceId, status } = useWorkbenchStore()
   React.useEffect(() => {
     const v =
       typeof window !== 'undefined'

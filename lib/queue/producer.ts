@@ -20,6 +20,7 @@ import {
 import { getConcurrencyConfig } from '@/lib/env'
 import { bumpPending } from '@/lib/redis/counter'
 import { logError } from '@/lib/logger'
+import { getChannel, publishEvent } from '@/lib/worker/common'
 
 export interface PushTaskParams<T extends TaskTemplateId> {
   kind: 'stream' | 'batch'
@@ -38,7 +39,7 @@ export interface PushTaskParams<T extends TaskTemplateId> {
  * Returns messageId when published; on replay or rate limit, returns metadata without publishing.
  */
 export async function pushTask<T extends TaskTemplateId>(
-  params: PushTaskParams<T>
+  params: PushTaskParams<T>,
 ): Promise<{
   messageId?: string
   url: string
@@ -64,18 +65,48 @@ export async function pushTask<T extends TaskTemplateId>(
           : !quotaInfo.shouldUseFreeQueue
   const decision =
     params.templateId === 'job_summary' &&
-      'image' in params.variables &&
-      !!params.variables.image
+    'image' in params.variables &&
+    !!params.variables.image
       ? getJobVisionTaskRouting(hasQuota)
       : getTaskRouting(params.templateId, hasQuota)
-  let kindSegment = params.kind
-  const qid = String(decision.queueId).toLowerCase()
-  if (qid.includes('vision')) {
-    kindSegment = 'batch'
-  }
+  // Phase 4: Respect the kind parameter from action layer
+  // Previously had a hardcoded override forcing vision→batch, now removed to enable streaming
+  const kindSegment = params.kind
   const url = `${base}/api/worker/${kindSegment}/${encodeURIComponent(
-    params.serviceId
+    params.serviceId,
   )}`
+
+  // Publish Queued Event to SSE
+  try {
+    const channel = getChannel(params.userId, params.serviceId, params.taskId)
+    let code = 'queued'
+    if (params.templateId === 'job_vision_summary') code = 'job_vision_queued'
+    else if (params.templateId === 'job_summary') code = 'job_summary_queued'
+    else if (params.templateId === 'pre_match_audit') code = 'prematch_queued'
+    else if (params.templateId === 'job_match') code = 'match_queued'
+
+    const pendingStatusMap: Partial<Record<TaskTemplateId, string>> = {
+      job_vision_summary: 'JOB_VISION_PENDING',
+      job_summary: 'SUMMARY_PENDING',
+      pre_match_audit: 'PREMATCH_PENDING',
+      job_match: 'MATCH_PENDING',
+    }
+    const pendingStatus = pendingStatusMap[params.templateId] || 'PENDING'
+
+    // We don't await this to avoid blocking the main flow, or we catch error
+    publishEvent(channel, {
+      type: 'status',
+      taskId: params.taskId,
+      status: pendingStatus,
+      code,
+      stage: 'enqueue',
+      requestId: params.taskId,
+      traceId: params.taskId,
+      lastUpdatedAt: new Date().toISOString(),
+    }).catch((e) => console.error('Failed to publish queued event', e))
+  } catch (e) {
+    // Ignore error
+  }
 
   // Check quota to decide trial/bound rate limits (for queue routing only)
   // Note: Rate limiting is now done at the server action level (user-centric)
@@ -118,7 +149,7 @@ export async function pushTask<T extends TaskTemplateId>(
           serviceId: params.serviceId,
           taskId: params.taskId,
         },
-        { templateId: params.templateId, kind: params.kind, idemKey }
+        { templateId: params.templateId, kind: params.kind, idemKey },
       )
       return { url, replay: true, idemKey }
     }
@@ -165,7 +196,7 @@ export async function pushTask<T extends TaskTemplateId>(
         kind: params.kind,
         queueId: String(decision.queueId || ''),
         retryAfter: bp.retryAfter,
-      }
+      },
     )
     const wasPaid = !!params.variables.wasPaid
     const cost = Number(params.variables.cost || 0)
@@ -228,7 +259,9 @@ export async function pushTask<T extends TaskTemplateId>(
         },
         retries: 0,
         // Delay dispatch to allow previous worker to release lock
-        ...(params.delaySec && params.delaySec > 0 ? { delay: params.delaySec } : {}),
+        ...(params.delaySec && params.delaySec > 0
+          ? { delay: params.delaySec }
+          : {}),
       })
   } catch (error) {
     const wasPaid = !!(params.variables as any)?.wasPaid
@@ -271,7 +304,7 @@ export async function pushTask<T extends TaskTemplateId>(
         templateId: params.templateId,
         kind: params.kind,
         error: error instanceof Error ? error.message : String(error),
-      }
+      },
     )
     return { url, refunded: wasPaid && cost > 0, error: 'enqueue_failed' }
   }
@@ -300,8 +333,41 @@ export async function pushTask<T extends TaskTemplateId>(
       url,
       messageId: res.messageId,
       ...(idemKey ? { idemKey } : {}),
-    }
+    },
   )
+
+  // Phase 4: Emit "Queued" status immediately for UI feedback
+  try {
+    const STATUS_MAP: Record<string, string> = {
+      job_match: 'MATCH_PENDING',
+      job_summary: 'SUMMARY_PENDING',
+      job_vision_summary: 'SUMMARY_PENDING',
+      pre_match_audit: 'MATCH_PENDING', // Audit is part of match phase
+      resume_customize: 'CUSTOMIZE_PENDING',
+      interview_prep: 'INTERVIEW_PENDING',
+    }
+    const pendingStatus = STATUS_MAP[params.templateId] || 'PROCESSING'
+    const channel = getChannel(params.userId, params.serviceId, params.taskId)
+
+    // Fire and forget - don't block return
+    publishEvent(channel, {
+      type: 'status',
+      taskId: params.taskId,
+      status: pendingStatus,
+      code: 'queued',
+      stage: 'enqueue',
+      requestId: params.taskId,
+      traceId: params.taskId,
+      lastUpdatedAt: new Date().toISOString(),
+    }).catch((err) => {
+      // Silent catch for queue notification errors
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Producer] Failed to emit queued event:', err)
+      }
+    })
+  } catch (e) {
+    // Ignore
+  }
 
   await markTimeline(params.serviceId, 'producer_enqueued', {
     taskId: params.taskId,

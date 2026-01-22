@@ -25,7 +25,7 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
         type: 'status',
         taskId: variables.nextTaskId,
         code: 'audit_start',
-        status: 'MATCH_PENDING', // Keep status pending, but update stage
+        status: 'PREMATCH_PENDING', // Correct phase: PreMatch Check
         stage: 'audit_start',
         message: dict.worker.preMatch.auditing,
         lastUpdatedAt: new Date().toISOString(),

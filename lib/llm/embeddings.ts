@@ -41,7 +41,7 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
       maxTokens: 8192,
       // 许多嵌入 API 对每次请求的数组长度有限制，保守默认 16
       batchSize: 16,
-      ...config
+      ...config,
     }
   }
 
@@ -55,39 +55,48 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
     }
 
     try {
-      const response = await fetch('https://open.bigmodel.cn/api/paas/v4/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${ENV.ZHIPUAI_API_KEY}`,
-          'Content-Type': 'application/json',
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
+
+      const response = await fetch(
+        'https://open.bigmodel.cn/api/paas/v4/embeddings',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${ENV.ZHIPUAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: this.config.model,
+            input: text,
+            dimensions: this.config.dimensions,
+          }),
+          signal: controller.signal,
         },
-        body: JSON.stringify({
-          model: this.config.model,
-          input: text,
-          dimensions: this.config.dimensions,
-        }),
-      })
+      ).finally(() => clearTimeout(timeoutId))
 
       if (!response.ok) {
-        throw new Error(`GLM API error: ${response.status} ${response.statusText}`)
+        throw new Error(
+          `GLM API error: ${response.status} ${response.statusText}`,
+        )
       }
 
       const data = await response.json()
-      
+
       if (!data.data || !data.data[0] || !data.data[0].embedding) {
         throw new Error('Invalid embedding response from GLM API')
       }
 
       const result: EmbeddingResult = {
-        embedding: data.data[0].embedding
+        embedding: data.data[0].embedding,
       }
-      
+
       if (data.usage) {
         result.usage = {
-          totalTokens: data.usage.total_tokens
+          totalTokens: data.usage.total_tokens,
         }
       }
-      
+
       return result
     } catch (error) {
       console.error('GLM embedding error:', error)
@@ -106,44 +115,56 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
 
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize)
-      const cleanBatch = batch.map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t.length > 0)
+      const cleanBatch = batch
+        .map((t) => (typeof t === 'string' ? t.trim() : ''))
+        .filter((t) => t.length > 0)
       if (cleanBatch.length === 0) continue
-      
+
       try {
-        const response = await fetch('https://open.bigmodel.cn/api/paas/v4/embeddings', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${ENV.ZHIPUAI_API_KEY}`,
-            'Content-Type': 'application/json',
+        const response = await fetch(
+          'https://open.bigmodel.cn/api/paas/v4/embeddings',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${ENV.ZHIPUAI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: this.config.model,
+              input: cleanBatch,
+              dimensions: this.config.dimensions,
+            }),
           },
-          body: JSON.stringify({
-            model: this.config.model,
-            input: cleanBatch,
-            dimensions: this.config.dimensions,
-          }),
-        })
+        )
 
         if (!response.ok) {
           const bodyText = await response.text().catch(() => '')
-          throw new Error(`GLM API error: ${response.status} ${response.statusText} ${bodyText}`)
+          throw new Error(
+            `GLM API error: ${response.status} ${response.statusText} ${bodyText}`,
+          )
         }
 
         const data = await response.json()
-        
+
         if (!data.data || !Array.isArray(data.data)) {
           throw new Error('Invalid batch embedding response from GLM API')
         }
 
         const batchResults = data.data.map((item: any) => ({
           embedding: item.embedding,
-          usage: data.usage ? {
-            totalTokens: Math.floor(data.usage.total_tokens / batch.length)
-          } : undefined
+          usage: data.usage
+            ? {
+                totalTokens: Math.floor(data.usage.total_tokens / batch.length),
+              }
+            : undefined,
         }))
 
         results.push(...batchResults)
       } catch (error) {
-        console.error(`GLM batch embedding error for batch ${i / batchSize + 1}:`, error)
+        console.error(
+          `GLM batch embedding error for batch ${i / batchSize + 1}:`,
+          error,
+        )
         throw error
       }
     }
@@ -175,7 +196,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   const results = await glmEmbeddingProvider.embedBatch(texts)
-  return results.map(result => result.embedding)
+  return results.map((result) => result.embedding)
 }
 
 /**

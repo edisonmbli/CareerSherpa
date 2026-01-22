@@ -10,11 +10,9 @@ function splitTitle(title: string): [string, string] {
   return [title, '']
 }
 
-function highlightWord(text: string, locale: string) {
-  const zhKey = '更高匹配度'
-  const enKey = 'higher-match'
-  const key = locale === 'zh' ? zhKey : enKey
-  const idx = locale === 'zh' ? text.indexOf(zhKey) : text.toLowerCase().indexOf(enKey)
+function highlightWord(text: string, highlightKeyword: string) {
+  const key = highlightKeyword
+  const idx = text.toLowerCase().indexOf(key.toLowerCase())
   if (idx < 0) return text
   const start = text.slice(0, idx)
   const match = text.slice(idx, idx + key.length)
@@ -40,7 +38,7 @@ export function HeroSection({ dict, visualSrc, locale }: { dict: any; visualSrc?
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
               <span className="block">{line1}</span>
               {line2 && (
-                <span className="block">{highlightWord(line2, locale)}</span>
+                <span className="block">{highlightWord(line2, dict.landing?.highlightKeyword || '')}</span>
               )}
             </h1>
           )

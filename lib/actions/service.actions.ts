@@ -35,6 +35,7 @@ import type { TaskTemplateId } from '@/lib/prompts/types'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import { markTimeline } from '@/lib/observability/timeline'
 import { nanoid } from 'nanoid'
+import { after } from 'next/server'
 
 export type CustomizeResumeActionResult =
   | {
@@ -72,7 +73,7 @@ export const createServiceAction = withServerActionAuthWrite(
   'createServiceAction',
   async (
     params: { locale: Locale; jobText?: string; jobImage?: string },
-    ctx
+    ctx,
   ) => {
     const userId = ctx.userId
     const MAX_IMAGE_BYTES = 3 * 1024 * 1024
@@ -96,7 +97,10 @@ export const createServiceAction = withServerActionAuthWrite(
     const isPaidTier = !quotaInfo.shouldUseFreeQueue
 
     // 2. User operation rate limit check (early interception)
-    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    const rateCheck = await checkOperationRateLimit(
+      userId,
+      isPaidTier ? 'paid' : 'free',
+    )
     if (!rateCheck.ok) {
       return { ok: false, error: rateCheck.error! }
     }
@@ -128,7 +132,7 @@ export const createServiceAction = withServerActionAuthWrite(
       svc.id,
       params.jobText,
       undefined, // originalImage deprecated
-      imageUrl
+      imageUrl,
     )
     await markTimeline(svc.id, 'create_service_job_created')
     // 7. 确保匹配记录存在
@@ -154,45 +158,50 @@ export const createServiceAction = withServerActionAuthWrite(
 
       // Phase 1.5: Different paths for Paid and Free tiers
       if (hasQuota) {
-        // --- PAID TIER: Use Baidu OCR (sync) + enqueue job_summary ---
-        // Note: Baidu OCR integration will be added here in Phase 1.5
-        // For now, falling back to LLM-based OCR to maintain compatibility
-        const e1 = await ensureEnqueued({
-          kind: 'batch',
-          serviceId: svc.id,
-          taskId: `job_${svc.id}_${executionSessionId}`,
-          userId,
-          locale: params.locale,
-          templateId: 'ocr_extract' as any,
-          variables: {
-            jobId: job.id,
-            wasPaid: hasQuota,
-            cost,
-            debitId: debit.id,
+        // --- PAID TIER: Use Baidu OCR (preview) + enqueue job_summary ---
+        // Optimistic update
+        await updateServiceExecutionStatus(
+          svc.id,
+          ExecutionStatus.OCR_PENDING,
+          {
             executionSessionId,
-          } as any,
-        })
-        await markTimeline(svc.id, 'create_service_ocr_enqueued', {
-          latencyMs: Date.now() - tEnq,
-        })
-        if (!e1.ok) {
-          await markDebitFailed(debit.id)
-          await updateServiceExecutionStatus(
-            svc.id,
-            ExecutionStatus.MATCH_FAILED,
-            { failureCode: 'ENQUEUE_FAILED' }
-          )
-          return { ok: false, error: e1.error, serviceId: svc.id }
-        }
+          },
+        )
 
-        await updateServiceExecutionStatus(svc.id, ExecutionStatus.OCR_PENDING, {
-          executionSessionId,
+        after(async () => {
+          const e1 = await ensureEnqueued({
+            kind: 'batch', // OCR remains batch
+            serviceId: svc.id,
+            taskId: `job_${svc.id}_${executionSessionId}`,
+            userId,
+            locale: params.locale,
+            templateId: 'ocr_extract' as any,
+            variables: {
+              jobId: job.id,
+              wasPaid: hasQuota,
+              cost,
+              debitId: debit.id,
+              executionSessionId,
+            } as any,
+          })
+          await markTimeline(svc.id, 'create_service_ocr_enqueued', {
+            latencyMs: Date.now() - tEnq,
+          })
+          if (!e1.ok) {
+            await markDebitFailed(debit.id)
+            await updateServiceExecutionStatus(
+              svc.id,
+              ExecutionStatus.MATCH_FAILED,
+              { failureCode: 'ENQUEUE_FAILED' },
+            )
+          } else {
+            trackEvent('TASK_ENQUEUED', {
+              userId,
+              payload: { task: 'ocr_extract', isFree: false },
+            })
+          }
         })
 
-        trackEvent('TASK_ENQUEUED', {
-          userId,
-          payload: { task: 'ocr_extract', isFree: false },
-        })
         return {
           ok: true,
           serviceId: svc.id,
@@ -207,47 +216,53 @@ export const createServiceAction = withServerActionAuthWrite(
         }
       } else {
         // --- FREE TIER: Use merged job_vision_summary (Gemini multimodal) ---
-        const e1 = await ensureEnqueued({
-          kind: 'batch',
-          serviceId: svc.id,
-          taskId: `job_${svc.id}_${executionSessionId}`,
-          userId,
-          locale: params.locale,
-          templateId: 'job_vision_summary' as any, // Merged OCR + Summary for Free tier
-          variables: {
-            jobId: job.id,
-            wasPaid: false,
-            cost: 0,
+        // Optimistic update
+        await updateServiceExecutionStatus(
+          svc.id,
+          ExecutionStatus.JOB_VISION_PENDING,
+          {
             executionSessionId,
-          } as any,
-        })
-        await markTimeline(svc.id, 'create_service_vision_summary_enqueued', {
-          latencyMs: Date.now() - tEnq,
-        })
-        if (!e1.ok) {
-          await updateServiceExecutionStatus(
-            svc.id,
-            ExecutionStatus.MATCH_FAILED,
-            { failureCode: 'ENQUEUE_FAILED' }
-          )
-          return { ok: false, error: e1.error, serviceId: svc.id }
-        }
+          },
+        )
 
-        // For merged flow, status starts at SUMMARY_PENDING (skipping OCR)
-        await updateServiceExecutionStatus(svc.id, ExecutionStatus.SUMMARY_PENDING, {
-          executionSessionId,
+        after(async () => {
+          const e1 = await ensureEnqueued({
+            kind: 'stream',
+            serviceId: svc.id,
+            taskId: `job_${svc.id}_${executionSessionId}`,
+            userId,
+            locale: params.locale,
+            templateId: 'job_vision_summary' as any,
+            variables: {
+              jobId: job.id,
+              wasPaid: false,
+              cost: 0,
+              executionSessionId,
+            } as any,
+          })
+          await markTimeline(svc.id, 'create_service_vision_summary_enqueued', {
+            latencyMs: Date.now() - tEnq,
+          })
+          if (!e1.ok) {
+            await updateServiceExecutionStatus(
+              svc.id,
+              ExecutionStatus.MATCH_FAILED,
+              { failureCode: 'ENQUEUE_FAILED' },
+            )
+          } else {
+            trackEvent('TASK_ENQUEUED', {
+              userId,
+              payload: { task: 'job_vision_summary', isFree: true },
+            })
+          }
         })
 
-        trackEvent('TASK_ENQUEUED', {
-          userId,
-          payload: { task: 'job_vision_summary', isFree: true },
-        })
         return {
           ok: true,
           serviceId: svc.id,
           isFree: true,
-          stream: false,
-          status: 'PENDING_VISION_SUMMARY',
+          stream: true,
+          status: 'JOB_VISION_PENDING',
           executionSessionId,
           hint: {
             dependency: 'job_vision_summary',
@@ -257,50 +272,51 @@ export const createServiceAction = withServerActionAuthWrite(
       }
     }
 
-    // 10.3 如果是文本 JD，先入队文本提炼（job_summary），由后台在提炼成功后串行触发匹配
-    const tEnq = Date.now()
-    const eText = await ensureEnqueued({
-      kind: 'batch',
-      serviceId: svc.id,
-      taskId: `job_${svc.id}_${executionSessionId}`,
-      userId,
-      locale: params.locale,
-      templateId: 'job_summary',
-      variables: {
-        jobId: job.id,
-        wasPaid: hasQuota,
-        cost,
-        ...(hasQuota ? { debitId: debit.id } : {}),
-        executionSessionId,
-      },
-    })
-    await markTimeline(svc.id, 'create_service_summary_enqueued', {
-      latencyMs: Date.now() - tEnq,
-    })
-    if (!eText.ok) {
-      if (hasQuota) {
-        // We do NOT need to recordRefund manually here, because ensureEnqueued (via pushTask)
-        // already handles the refund logic when enqueue fails.
-        // However, we SHOULD mark the original debit as FAILED so the ledger shows it correctly.
-        await markDebitFailed(debit.id)
-      }
-      await updateServiceExecutionStatus(svc.id, ExecutionStatus.MATCH_FAILED, {
-        failureCode: 'ENQUEUE_FAILED',
-      })
-      return { ok: false, error: eText.error, serviceId: svc.id }
-    }
+    // 10.3 如果是文本 JD
+    // Optimistic update
     await updateServiceExecutionStatus(
       svc.id,
       ExecutionStatus.SUMMARY_PENDING,
       {
         executionSessionId,
-      }
+      },
     )
 
-    trackEvent('TASK_ENQUEUED', {
-      userId,
-      payload: { task: 'job_summary', isFree: !hasQuota },
+    const tEnq = Date.now()
+    after(async () => {
+      const eText = await ensureEnqueued({
+        kind: 'stream',
+        serviceId: svc.id,
+        taskId: `job_${svc.id}_${executionSessionId}`,
+        userId,
+        locale: params.locale,
+        templateId: 'job_summary',
+        variables: {
+          jobId: job.id,
+          wasPaid: hasQuota,
+          cost,
+          ...(hasQuota ? { debitId: debit.id } : {}),
+          executionSessionId,
+        },
+      })
+      await markTimeline(svc.id, 'create_service_summary_enqueued', {
+        latencyMs: Date.now() - tEnq,
+      })
+      if (!eText.ok) {
+        if (hasQuota) {
+          await markDebitFailed(debit.id)
+        }
+        await updateServiceExecutionStatus(svc.id, ExecutionStatus.MATCH_FAILED, {
+          failureCode: 'ENQUEUE_FAILED',
+        })
+      } else {
+        trackEvent('TASK_ENQUEUED', {
+          userId,
+          payload: { task: 'job_summary', isFree: !hasQuota },
+        })
+      }
     })
+
     return {
       ok: true,
       serviceId: svc.id,
@@ -313,7 +329,7 @@ export const createServiceAction = withServerActionAuthWrite(
         next: ['SUMMARY_COMPLETED', 'MATCH_STREAMING'],
       },
     }
-  }
+  },
 )
 
 export const customizeResumeAction = withServerActionAuthWrite<
@@ -329,7 +345,10 @@ export const customizeResumeAction = withServerActionAuthWrite<
     const isPaidTier = !quotaInfo.shouldUseFreeQueue
 
     // 2. User operation rate limit check (early interception)
-    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    const rateCheck = await checkOperationRateLimit(
+      userId,
+      isPaidTier ? 'paid' : 'free',
+    )
     if (!rateCheck.ok) {
       return { ok: false, error: rateCheck.error! }
     }
@@ -358,7 +377,7 @@ export const customizeResumeAction = withServerActionAuthWrite<
     await updateServiceExecutionStatus(
       params.serviceId,
       ExecutionStatus.CUSTOMIZE_PENDING,
-      { executionSessionId }
+      { executionSessionId },
     )
 
     // Push to QStash (New Async Logic)
@@ -383,13 +402,13 @@ export const customizeResumeAction = withServerActionAuthWrite<
       // Set FAILED status on customize_resumes record
       await updateCustomizedResumeStatus(
         params.serviceId,
-        AsyncTaskStatus.FAILED
+        AsyncTaskStatus.FAILED,
       )
       // Set FAILED status on service execution
       await updateServiceExecutionStatus(
         params.serviceId,
         ExecutionStatus.CUSTOMIZE_FAILED,
-        { executionSessionId }
+        { executionSessionId },
       )
       // Mark debit as FAILED to ensure ledger consistency
       if (hasQuota) {
@@ -410,7 +429,7 @@ export const customizeResumeAction = withServerActionAuthWrite<
       isFree: !hasQuota,
       executionSessionId,
     }
-  }
+  },
 )
 
 export const trackCustomizeExportAction = withServerActionAuthWrite(
@@ -425,7 +444,7 @@ export const trackCustomizeExportAction = withServerActionAuthWrite(
       },
     })
     return { ok: true }
-  }
+  },
 )
 
 export const generateInterviewTipsAction = withServerActionAuthWrite<
@@ -441,7 +460,10 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
     const isPaidTier = !quotaInfo.shouldUseFreeQueue
 
     // 2. User operation rate limit check (early interception)
-    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    const rateCheck = await checkOperationRateLimit(
+      userId,
+      isPaidTier ? 'paid' : 'free',
+    )
     if (!rateCheck.ok) {
       return { ok: false, error: rateCheck.error! }
     }
@@ -462,7 +484,7 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
     await updateServiceExecutionStatus(
       params.serviceId,
       ExecutionStatus.INTERVIEW_PENDING,
-      { executionSessionId }
+      { executionSessionId },
     )
 
     {
@@ -485,7 +507,7 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
         await updateServiceExecutionStatus(
           params.serviceId,
           ExecutionStatus.INTERVIEW_FAILED,
-          { executionSessionId }
+          { executionSessionId },
         )
         return { ok: false, error: enq.error }
       }
@@ -502,7 +524,7 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
       stream: true,
       executionSessionId,
     }
-  }
+  },
 )
 
 export const saveCustomizedResumeAction = withServerActionAuthWrite<
@@ -518,7 +540,7 @@ export const saveCustomizedResumeAction = withServerActionAuthWrite<
       payload: { task: 'customize_save', serviceId: params.serviceId },
     })
     return { ok: true }
-  }
+  },
 )
 
 export const retryMatchAction = withServerActionAuthWrite<
@@ -551,7 +573,10 @@ export const retryMatchAction = withServerActionAuthWrite<
     const isPaidTier = !quotaInfo.shouldUseFreeQueue
 
     // 2. User operation rate limit check (early interception)
-    const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
+    const rateCheck = await checkOperationRateLimit(
+      userId,
+      isPaidTier ? 'paid' : 'free',
+    )
     if (!rateCheck.ok) {
       return { ok: false, error: rateCheck.error! }
     }
@@ -579,7 +604,7 @@ export const retryMatchAction = withServerActionAuthWrite<
         !svc.job.originalText && (!!svc.job.originalImage || !!svc.job.imageUrl)
       const ttlSec = Math.max(
         1,
-        Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000)
+        Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000),
       )
       const locked = await acquireLock(params.serviceId, 'summary', ttlSec)
       if (!locked) {
@@ -615,7 +640,7 @@ export const retryMatchAction = withServerActionAuthWrite<
         await updateServiceExecutionStatus(
           params.serviceId,
           ExecutionStatus.MATCH_FAILED,
-          { failureCode: 'ENQUEUE_FAILED' }
+          { failureCode: 'ENQUEUE_FAILED' },
         )
         return { ok: false, error: 'enqueue_failed' }
       }
@@ -627,7 +652,7 @@ export const retryMatchAction = withServerActionAuthWrite<
       await updateServiceExecutionStatus(
         params.serviceId,
         'SUMMARY_PENDING' as any,
-        { failureCode: null, executionSessionId }
+        { failureCode: null, executionSessionId },
       )
       return {
         ok: true,
@@ -679,7 +704,7 @@ export const retryMatchAction = withServerActionAuthWrite<
         await updateServiceExecutionStatus(
           params.serviceId,
           ExecutionStatus.MATCH_FAILED,
-          { failureCode: 'ENQUEUE_FAILED' }
+          { failureCode: 'ENQUEUE_FAILED' },
         )
         return { ok: false, error: 'enqueue_failed' }
       }
@@ -691,7 +716,7 @@ export const retryMatchAction = withServerActionAuthWrite<
       await updateServiceExecutionStatus(
         params.serviceId,
         ExecutionStatus.MATCH_PENDING,
-        { failureCode: null, executionSessionId }
+        { failureCode: null, executionSessionId },
       )
       return {
         ok: true,
@@ -737,7 +762,7 @@ export const retryMatchAction = withServerActionAuthWrite<
       await updateServiceExecutionStatus(
         params.serviceId,
         ExecutionStatus.MATCH_FAILED,
-        { failureCode: 'ENQUEUE_FAILED' }
+        { failureCode: 'ENQUEUE_FAILED' },
       )
       return { ok: false, error: 'enqueue_failed' }
     }
@@ -748,7 +773,7 @@ export const retryMatchAction = withServerActionAuthWrite<
     await updateServiceExecutionStatus(
       params.serviceId,
       ExecutionStatus.MATCH_PENDING,
-      { failureCode: null, executionSessionId }
+      { failureCode: null, executionSessionId },
     )
     return {
       ok: true,
@@ -757,5 +782,5 @@ export const retryMatchAction = withServerActionAuthWrite<
       stream: true,
       executionSessionId,
     }
-  }
+  },
 )

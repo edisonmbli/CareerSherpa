@@ -10,8 +10,17 @@ import {
   SystemMessagePromptTemplate,
   HumanMessagePromptTemplate,
 } from '@langchain/core/prompts'
-import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
-import { getTaskSchema, detailedResumeDeepSchema, type TaskOutput } from '@/lib/llm/zod-schemas'
+import {
+  BaseMessage,
+  SystemMessage,
+  HumanMessage,
+  AIMessage,
+} from '@langchain/core/messages'
+import {
+  getTaskSchema,
+  detailedResumeDeepSchema,
+  type TaskOutput,
+} from '@/lib/llm/zod-schemas'
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
 import { getProvider, getCost } from '@/lib/llm/utils'
@@ -20,7 +29,12 @@ import { ENV } from '@/lib/env'
 import { getTaskLimits } from '@/lib/llm/config'
 import { executeWithSmartRetry, getTierFromModelId } from '@/lib/llm/retry'
 import { shouldUseStructuredOutput } from '@/lib/llm/capability'
-import { runGeminiStructured, runGeminiStreaming, runGeminiVision, shouldUseGeminiDirect } from '@/lib/llm/gemini-direct'
+import {
+  runGeminiStructured,
+  runGeminiStreaming,
+  runGeminiVision,
+  shouldUseGeminiDirect,
+} from '@/lib/llm/gemini-direct'
 import {
   extractTokenUsageFromMessage,
   extractTokenUsageFromModel,
@@ -85,7 +99,7 @@ export async function runLlmTask<T extends TaskTemplateId>(
   taskId: T,
   locale: Locale,
   variables: Record<string, string>,
-  options: RunTaskOptions = {}
+  options: RunTaskOptions = {},
 ): Promise<RunLlmTaskResult<T>> {
   // 统一入口：根据路由决策选择结构化或流式执行
   const userHasQuota = (options.tier ?? 'paid') === 'paid'
@@ -104,7 +118,7 @@ export async function runLlmTask<T extends TaskTemplateId>(
       effectiveTemplateId,
       locale,
       variables,
-      {}
+      {},
     ) as Promise<RunLlmTaskResult<T>>
   }
   return runStructuredLlmTask(
@@ -113,7 +127,7 @@ export async function runLlmTask<T extends TaskTemplateId>(
     locale,
     variables,
     {},
-    options
+    options,
   )
 }
 
@@ -130,7 +144,7 @@ interface TaskContext {
  */
 export async function runEmbedding(
   text: string,
-  context: TaskContext = {}
+  context: TaskContext = {},
 ): Promise<RunEmbeddingResult> {
   const start = Date.now()
   try {
@@ -190,7 +204,7 @@ export async function runEmbedding(
  */
 export async function runEmbeddingBatch(
   texts: string[],
-  context: TaskContext = {}
+  context: TaskContext = {},
 ): Promise<{
   ok: boolean
   vectors?: number[][]
@@ -210,7 +224,7 @@ export async function runEmbeddingBatch(
     const vectors = results.map((r) => r.embedding)
     const inputTokens = results.reduce(
       (sum, r) => sum + Number(r.usage?.totalTokens ?? 0),
-      0
+      0,
     )
 
     await createLlmUsageLogDetailed({
@@ -268,7 +282,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
   locale: Locale,
   variables: Record<string, any>,
   context: TaskContext = {},
-  options: RunTaskOptions = {}
+  options: RunTaskOptions = {},
 ): Promise<RunLlmTaskResult<T>> {
   const start = Date.now()
   try {
@@ -277,7 +291,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     const schemaJson = JSON.stringify(
       (template as any).outputSchema ?? {},
       null,
-      2
+      2,
     )
 
     // Debug Log: Input
@@ -293,7 +307,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     const prompt = ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
       new SystemMessage(
-        `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`
+        `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`,
       ),
       HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
     ])
@@ -305,7 +319,8 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 
     const chain = prompt.pipe(model)
     const hasVisionImage =
-      (String(templateId) === 'ocr_extract' || String(templateId) === 'job_vision_summary') &&
+      (String(templateId) === 'ocr_extract' ||
+        String(templateId) === 'job_vision_summary') &&
       typeof variables['image'] === 'string' &&
       variables['image']
 
@@ -326,13 +341,19 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     // [New] Dynamic Schema Selection
     // For detailed resume summary on Paid tier (DeepSeek/High-end Gemini), usage of Deep Schema is allowed
     // This addresses the recursion limit on Free Tier Gemini models while enabling rich nesting for Paid models
-    if (String(templateId) === 'detailed_resume_summary' && (options.tier === 'paid')) {
+    if (
+      String(templateId) === 'detailed_resume_summary' &&
+      options.tier === 'paid'
+    ) {
       schema = detailedResumeDeepSchema
     }
 
     // PHASE 1A: Gemini Direct Vision Path (for OCR/vision tasks)
     if (shouldUseGeminiDirect(modelId) && schema && hasVisionImage) {
-      console.log('[Structured] Using Gemini Direct Vision API for:', templateId)
+      console.log(
+        '[Structured] Using Gemini Direct Vision API for:',
+        templateId,
+      )
 
       const renderedUserPrompt = renderVariables(template.userPrompt, {
         ...variables,
@@ -340,7 +361,9 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       })
 
       // Get image data from variables
-      const imageData = String(variables['image'] || variables['jobImage'] || '')
+      const imageData = String(
+        variables['image'] || variables['jobImage'] || '',
+      )
       if (!imageData) {
         return {
           ok: false,
@@ -355,8 +378,10 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         schema,
         {
           maxOutputTokens: options.maxTokens ?? limits.maxTokens,
-          ...(options.temperature !== undefined ? { temperature: options.temperature } : {})
-        }
+          ...(options.temperature !== undefined
+            ? { temperature: options.temperature }
+            : {}),
+        },
       )
 
       // Debug Log: Output
@@ -403,8 +428,10 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         schema,
         {
           maxOutputTokens: options.maxTokens ?? limits.maxTokens,
-          ...(options.temperature !== undefined ? { temperature: options.temperature } : {})
-        }
+          ...(options.temperature !== undefined
+            ? { temperature: options.temperature }
+            : {}),
+        },
       )
 
       // Debug Log: Output
@@ -455,7 +482,48 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
           ]
 
           if (hasVisionImage) {
-            messages.push(new HumanMessage({
+            messages.push(
+              new HumanMessage({
+                content: [
+                  {
+                    type: 'text',
+                    text: renderVariables((template as any).userPrompt, {
+                      ...variables,
+                      image: '[attached]',
+                    }),
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: { url: String(variables['image']) },
+                  },
+                ],
+              }),
+            )
+          } else {
+            messages.push(
+              new HumanMessage(
+                renderVariables((template as any).userPrompt, variables),
+              ),
+            )
+          }
+
+          return structuredModel.invoke(messages)
+        }
+
+        // Case B: Legacy/Standard Provider Path (e.g. Zhipu GLM)
+        if (hasVisionImage) {
+          // Standardize message structure: separate system prompt and schema instruction
+          // This aligns with how ChatPromptTemplate is constructed for text tasks
+          // and relies on the model's ability to handle multiple system messages (common in modern providers)
+          const legacyMessages: BaseMessage[] = [
+            new SystemMessage(template.systemPrompt),
+            new SystemMessage(
+              `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`,
+            ),
+          ]
+
+          legacyMessages.push(
+            new HumanMessage({
               content: [
                 {
                   type: 'text',
@@ -469,39 +537,8 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
                   image_url: { url: String(variables['image']) },
                 },
               ],
-            }))
-          } else {
-            messages.push(new HumanMessage(renderVariables((template as any).userPrompt, variables)))
-          }
-
-          return structuredModel.invoke(messages)
-        }
-
-        // Case B: Legacy/Standard Provider Path (e.g. Zhipu GLM)
-        if (hasVisionImage) {
-          // Standardize message structure: separate system prompt and schema instruction
-          // This aligns with how ChatPromptTemplate is constructed for text tasks
-          // and relies on the model's ability to handle multiple system messages (common in modern providers)
-          const legacyMessages: BaseMessage[] = [
-            new SystemMessage(template.systemPrompt),
-            new SystemMessage(`You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`)
-          ]
-
-          legacyMessages.push(new HumanMessage({
-            content: [
-              {
-                type: 'text',
-                text: renderVariables((template as any).userPrompt, {
-                  ...variables,
-                  image: '[attached]',
-                }),
-              },
-              {
-                type: 'image_url',
-                image_url: { url: String(variables['image']) },
-              },
-            ],
-          }))
+            }),
+          )
 
           return model.invoke(legacyMessages)
         }
@@ -510,7 +547,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         return chain.invoke(variables)
       },
       tier,
-      retryContext
+      retryContext,
     )
 
     // Hybrid Result Processing
@@ -521,7 +558,12 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     let preValidated = false
 
     // Case A: Structured Output ({ parsed, raw })
-    if (result && typeof result === 'object' && 'parsed' in result && 'raw' in result) {
+    if (
+      result &&
+      typeof result === 'object' &&
+      'parsed' in result &&
+      'raw' in result
+    ) {
       parsedData = result.parsed
       preValidated = true
       content = JSON.stringify(result.parsed)
@@ -533,13 +575,21 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       // Key question: is it Zod validation or LangChain's internal schema conversion?
       if (parsedData === null) {
         const rawContent = (result.raw as any)?.content
-        console.log('[Structured] ERROR: LangChain withStructuredOutput returned parsed=null')
+        console.log(
+          '[Structured] ERROR: LangChain withStructuredOutput returned parsed=null',
+        )
         console.log('[Structured] DEBUG: raw.content type:', typeof rawContent)
-        console.log('[Structured] DEBUG: Schema name:', schema?.description || 'no description')
+        console.log(
+          '[Structured] DEBUG: Schema name:',
+          schema?.description || 'no description',
+        )
 
         // Check if there's a parsing_error in the result
         if ((result as any).parsing_error) {
-          console.log('[Structured] DEBUG: LangChain parsing_error:', (result as any).parsing_error)
+          console.log(
+            '[Structured] DEBUG: LangChain parsing_error:',
+            (result as any).parsing_error,
+          )
         }
 
         // Save full raw content to file for analysis
@@ -547,8 +597,16 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
         const debugPath = `tmp/debug-logs/${timestamp}_structured_raw.json`
         try {
-          fs.writeFileSync(debugPath, typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2))
-          console.log('[Structured] DEBUG: Full raw content saved to:', debugPath)
+          fs.writeFileSync(
+            debugPath,
+            typeof rawContent === 'string'
+              ? rawContent
+              : JSON.stringify(rawContent, null, 2),
+          )
+          console.log(
+            '[Structured] DEBUG: Full raw content saved to:',
+            debugPath,
+          )
         } catch (e) {
           console.log('[Structured] DEBUG: Failed to save raw content:', e)
         }
@@ -559,10 +617,17 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
             const parsed = JSON.parse(rawContent)
             const validateResult = schema.safeParse(parsed)
             if (!validateResult.success) {
-              console.log('[Structured] DEBUG: Manual Zod safeParse FAILED:', JSON.stringify(validateResult.error.issues, null, 2))
+              console.log(
+                '[Structured] DEBUG: Manual Zod safeParse FAILED:',
+                JSON.stringify(validateResult.error.issues, null, 2),
+              )
             } else {
-              console.log('[Structured] DEBUG: Manual Zod safeParse SUCCEEDED - LangChain internal issue')
-              console.log('[Structured] DEBUG: This suggests passthrough() or schema conversion issue in LangChain')
+              console.log(
+                '[Structured] DEBUG: Manual Zod safeParse SUCCEEDED - LangChain internal issue',
+              )
+              console.log(
+                '[Structured] DEBUG: This suggests passthrough() or schema conversion issue in LangChain',
+              )
             }
           } catch (e) {
             console.log('[Structured] DEBUG: JSON parse error:', e)
@@ -583,7 +648,11 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     logDebugData(`${String(templateId)}_output`, {
       output: content,
       latencyMs: Date.now() - start,
-      meta: { inputTokens, outputTokens, mode: preValidated ? 'structured' : 'legacy' },
+      meta: {
+        inputTokens,
+        outputTokens,
+        mode: preValidated ? 'structured' : 'legacy',
+      },
     })
 
     // Validation Flow
@@ -616,7 +685,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
           model: modelId,
           provider: getProvider(modelId),
         },
-        usageLogId: (log as any)?.id // M5: Return unified usage log ID
+        usageLogId: (log as any)?.id, // M5: Return unified usage log ID
       } as RunLlmTaskResult<T>
     }
 
@@ -663,7 +732,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         })
       const errMsg = hasEmptyExtract
         ? 'ocr_extracted_text_empty'
-        : (safe as any)?.error?.message ?? 'zod_validation_failed'
+        : ((safe as any)?.error?.message ?? 'zod_validation_failed')
       const log = await createLlmUsageLogDetailed({
         taskTemplateId: templateId,
         provider: getProvider(modelId),
@@ -752,7 +821,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   variables: Record<string, any>,
   context: TaskContext = {},
   options: RunTaskOptions = {},
-  onToken?: (t: string) => void | Promise<void>
+  onToken?: (t: string) => void | Promise<void>,
 ) {
   const start = Date.now()
   const template = getTemplate(locale, templateId)
@@ -773,15 +842,33 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     console.log('[Streaming] Using Gemini Direct API for:', templateId)
 
     const limits = getTaskLimits(String(templateId))
-    const renderedUserPrompt = renderVariables(template.userPrompt, variables)
+
+    // Check for image in variables (renderVariables renders it as text if we don't handle it,
+    // but we need to pass it separately to the vision API)
+    // For vision tasks, we should replace the {image} placeholder with [attached] in text prompt
+    // to avoid dumping base64 into the text part.
+    const hasImage =
+      variables['image'] && typeof variables['image'] === 'string'
+
+    const renderedUserPrompt = renderVariables(template.userPrompt, {
+      ...variables,
+      ...(hasImage ? { image: '[attached]' } : {}),
+    })
+
     const schema = getTaskSchema(templateId)
 
     const geminiResult = await runGeminiStreaming(
       template.systemPrompt,
       renderedUserPrompt,
       schema,
-      { maxOutputTokens: limits.maxTokens, ...(options.temperature !== undefined ? { temperature: options.temperature } : {}) },
-      onToken
+      {
+        maxOutputTokens: limits.maxTokens,
+        ...(options.temperature !== undefined
+          ? { temperature: options.temperature }
+          : {}),
+      },
+      onToken,
+      hasImage ? variables['image'] : undefined,
     )
 
     const end = Date.now()
@@ -797,25 +884,32 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     const inputTokens = Math.ceil(renderedUserPrompt.length / 4)
     const outputTokens = Math.ceil((geminiResult.raw?.length || 0) / 4)
 
-    await createLlmUsageLogDetailed({
+    // Fail-safe Usage Log: Record failure in llm_usage_logs
+    const logParams: any = {
       taskTemplateId: templateId,
       provider: 'gemini',
       modelId,
-      inputTokens,
-      outputTokens,
+      inputTokens: Math.ceil(renderedUserPrompt.length / 4),
+      outputTokens: 0,
       latencyMs: end - start,
-      cost: getCost(modelId, inputTokens, outputTokens),
+      cost: 0,
       isStream: true,
       isSuccess: geminiResult.ok,
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
-    })
+    }
+    if (geminiResult.error) {
+      logParams.errorMessage = geminiResult.error
+    }
+
+    const log = await createLlmUsageLogDetailed(logParams)
 
     if (!geminiResult.ok) {
       return {
         ok: false,
         error: geminiResult.error,
         raw: geminiResult.raw || '',
+        usageLogId: (log as any)?.id,
       } as RunLlmTaskResult<T>
     }
 
@@ -823,7 +917,11 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       ok: true,
       raw: geminiResult.raw || '',
       data: geminiResult.data,
-      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+      },
     } as RunLlmTaskResult<T>
   }
 
@@ -869,7 +967,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
         const estOut = Math.ceil(fullText.length / 4)
         inputTokens = estIn
         outputTokens = estOut
-      } catch { }
+      } catch {}
     }
 
     const log = await createLlmUsageLogDetailed({

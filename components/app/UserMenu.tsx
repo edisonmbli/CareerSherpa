@@ -5,12 +5,12 @@ import Image from 'next/image'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 
-export function UserMenu({ locale, dict }: { locale: string; dict: { assets: string; billing: string } }) {
+export function UserMenu({ locale, dict }: { locale: string; dict: any }) {
   const user = useUser()
   const avatarUrl = (user as any)?.profileImageUrl || ''
-  const display = avatarUrl ? '' : ((user as any)?.name || (user as any)?.username || (locale === 'zh' ? '我的账户' : 'My Account'))
+  const display = avatarUrl ? '' : ((user as any)?.name || (user as any)?.username || dict.shell?.myAccount || 'My Account')
   const onSignOut = async () => {
-    try { await user?.signOut?.() } catch {}
+    try { await user?.signOut?.() } catch { }
   }
   return (
     <DropdownMenu>
@@ -26,16 +26,16 @@ export function UserMenu({ locale, dict }: { locale: string; dict: { assets: str
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={`/${locale}/account`}>{locale === 'zh' ? '账户设置' : 'Account Settings'}</Link>
+          <Link href={`/${locale}/account`}>{dict.shell?.accountSettings || 'Account Settings'}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/${locale}/profile?tab=assets`}>{dict.assets}</Link>
+          <Link href={`/${locale}/profile?tab=assets`}>{dict.shell?.assets || 'Assets'}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/${locale}/profile?tab=billing`}>{dict.billing}</Link>
+          <Link href={`/${locale}/profile?tab=billing`}>{dict.shell?.billing || 'Billing'}</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onSignOut}>Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={onSignOut}>{dict.shell?.signOut || 'Sign out'}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

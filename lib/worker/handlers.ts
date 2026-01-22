@@ -192,10 +192,10 @@ export async function handleStream(
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
-          ? false
-          : wasPaid
-          ? true
-          : await getUserHasQuota(userId)
+            ? false
+            : wasPaid
+              ? true
+              : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
       logEvent(
@@ -300,6 +300,29 @@ export async function handleStream(
 
       await markTimeline(serviceId, 'worker_stream_guards_done', { taskId })
 
+      // Phase 4 Fix: Publish status event to trigger frontend progress simulation
+      // Map templateId to the appropriate STREAMING status (worker is now active)
+      // Free tier has two flows based on input type:
+      // - Text JD: job_summary → SUMMARY_* → MATCH_*
+      // - Image JD: job_vision_summary → JOB_VISION_* → MATCH_*
+      const statusForTemplate: Record<string, string> = {
+        job_summary: 'SUMMARY_STREAMING', // Free tier text JD
+        job_vision_summary: 'JOB_VISION_STREAMING', // Free tier image JD
+        pre_match_audit: 'PREMATCH_STREAMING',
+        job_match: 'MATCH_STREAMING',
+      }
+      const streamingStatus = statusForTemplate[templateId] || 'PROCESSING'
+      await publishEvent(channel, {
+        type: 'status',
+        taskId,
+        status: streamingStatus,
+        code: `${templateId}_started`, // Add code for frontend mapping
+        lastUpdatedAt: new Date().toISOString(),
+        stage: 'llm_start',
+        requestId,
+        traceId,
+      })
+
       // 3. Strategy onStart
       if (strategy.onStart) {
         await strategy.onStart(preparedVars, {
@@ -347,8 +370,7 @@ export async function handleStream(
 
         // Debug: Log phase transition and raw content
         console.log(
-          `[Stream] Phase: LLM_EXECUTE complete, raw length: ${
-            execResult.result.raw?.length ?? 0
+          `[Stream] Phase: LLM_EXECUTE complete, raw length: ${execResult.result.raw?.length ?? 0
           }`
         )
 
@@ -371,6 +393,38 @@ export async function handleStream(
         // Phase 3: Cleanup (non-critical)
         phase = 'CLEANUP'
         console.log(`[Stream] Phase: CLEANUP starting`)
+
+        // Emit _COMPLETED status for this task before going idle
+        // IMPORTANT: Only emit completion if execution was successful!
+        // If writeResults set execResult.result.ok = false (e.g. parse failure),
+        // the strategy already emitted a _FAILED status - don't overwrite it.
+        // Free tier has two flows based on input type:
+        // - Text JD: job_summary → SUMMARY_COMPLETED
+        // - Image JD: job_vision_summary → JOB_VISION_COMPLETED
+        const completedStatusMap: Record<string, string> = {
+          job_summary: 'SUMMARY_COMPLETED', // Free tier text JD
+          job_vision_summary: 'JOB_VISION_COMPLETED', // Free tier image JD
+          pre_match_audit: 'PREMATCH_COMPLETED',
+          job_match: 'MATCH_COMPLETED',
+        }
+        const completedStatus = completedStatusMap[templateId]
+        const wasSuccessful = execResult?.result?.ok !== false
+        console.log(`[Stream] CLEANUP: templateId=${templateId}, wasSuccessful=${wasSuccessful}, completedStatus=${completedStatus || 'NONE'}`)
+        if (completedStatus && wasSuccessful) {
+          await publishEvent(channel, {
+            type: 'status',
+            taskId,
+            status: completedStatus,
+            code: `${templateId}_completed`,
+            lastUpdatedAt: new Date().toISOString(),
+            stage: 'completed',
+            requestId,
+            traceId,
+          })
+        } else if (!wasSuccessful) {
+          console.log(`[Stream] CLEANUP: Skipping completion emission - task failed`)
+        }
+
         await emitStreamIdle(
           channel,
           taskId,
@@ -508,10 +562,10 @@ export async function handleBatch(
         tierOverride === 'paid'
           ? true
           : tierOverride === 'free'
-          ? false
-          : wasPaid
-          ? true
-          : await getUserHasQuota(userId)
+            ? false
+            : wasPaid
+              ? true
+              : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
 
       const ttlSec = getTtlSec()

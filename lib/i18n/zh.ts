@@ -72,7 +72,7 @@ const dict = {
   },
   worker: {
     preMatch: {
-      auditing: 'AI 审计员正在进行红队测试...',
+      auditing: '正在模拟 HR 点评',
       reportTitle: '【前置风险审计报告 (Bad Cop Findings)】',
       overallLevel: '整体评级',
       summary: '审计总结',
@@ -234,7 +234,9 @@ const dict = {
       frequency_limit: '操作太频繁啦，喝杯咖啡休息一下吧 ☕️',
       readyToCustomize: '准备定制简历',
       readyToCustomizeDesc:
-        '点击下方“开始定制”按钮，根据岗位要求生成个性化简历。',
+        '点击下方“定制简历”按钮，根据岗位要求生成个性化简历。',
+      service_unavailable: '服务暂时不可用',
+      service_unavailable_desc: '请稍后再试',
     },
     notification: {
       freeModeTitle: '当前为免费体验模式',
@@ -245,6 +247,7 @@ const dict = {
       rateLimitedTitle: '请求过于频繁',
       rateLimitedDesc:
         '系统繁忙，请稍后再试。您也可以考虑充值金币以获得更高的优先级。',
+      dailyLimitDesc: '充值解锁更深度的定制服务',
       serverErrorTitle: '服务暂时不可用',
       serverErrorDesc: '当前服务不稳定，请稍后再试。',
     },
@@ -252,11 +255,21 @@ const dict = {
       ocr: '图片文本提取',
       summary: '职位信息提取',
       match: '匹配度分析',
+      vision: '岗位提取',
+      preMatch: 'HR点评',
+      init: '准备中',
+      waiting: '等待中',
+      error: '任务失败',
       waitingOcr: '正在识别岗位截图...',
       waitingSummary: '正在提取职位信息...',
       waitingMatch: '正在快马加鞭分析匹配度ing，请稍等...',
+      waitingVision: '正在提取岗位信息...',
+      waitingPreMatch: '正在进行HR点评...',
+      waitingDefault: '等待任务开始...',
       analyzing: '正在分析岗位...',
-      error: '任务执行失败',
+      analyzingMatch: '正在分析匹配度...',
+      matchPending: '匹配度分析任务正在排队，请稍候...',
+      errorDefault: '任务执行失败，请重试',
     },
     statusConsole: {
       paid: '付费',
@@ -280,6 +293,13 @@ const dict = {
       customizeFailed: '简历定制失败',
       customizeRefunded: '金币已自动返还，请点击重试',
       customizeFailedFree: '免费模型暂时繁忙，请稍后重试',
+      jobVisionPending: '正在识别岗位截图...',
+      jobVisionCompleted: '识别岗位截图完成',
+      jobVisionFailed: '识别岗位截图失败',
+      prematchPending: '正在模拟 HR 点评',
+      prematchCompleted: 'HR 点评完成',
+      prematchFailed: 'HR 点评失败',
+      queued: '任务已入队，请稍候...',
     },
     costTooltip: '使用该服务，将扣减 {cost} 金币',
   },
@@ -337,7 +357,8 @@ const dict = {
           ops: [
             {
               label: 'Situation',
-              content: '负责提升500+个社群的活跃度，当前DAU仅为5%，用户粘性较低。',
+              content:
+                '负责提升500+个社群的活跃度，当前DAU仅为5%，用户粘性较低。',
             },
             {
               label: 'Challenge',
@@ -844,6 +865,17 @@ const dict = {
       unknownMessage: '发生了未知错误',
       unknownSuggestion: '请重试或联系技术支持。',
     },
+    highlightKeyword: '更高匹配度',
+  },
+  shell: {
+    brand: 'AI求职助手',
+    signIn: '登录',
+    coins: '金币',
+    assets: '资产管理',
+    billing: '金币与账单',
+    myAccount: '我的账户',
+    accountSettings: '账户设置',
+    signOut: '退出登录',
   },
 }
 export default dict

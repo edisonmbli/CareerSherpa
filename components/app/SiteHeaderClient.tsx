@@ -17,14 +17,7 @@ export function SiteHeaderClient({
   locale: string
   isAuthenticated: boolean
   quotaBalance: number | null
-  dict: {
-    brand: string
-    signIn: string
-    myAccount?: string
-    accountSettings?: string
-    cvAssets?: string
-    coinsBilling?: string
-  }
+  dict: any
 }) {
   const pathname = usePathname()
   const isZh = /^\/zh(\/|$)/.test(pathname || '')
@@ -51,10 +44,7 @@ export function SiteHeaderClient({
           {isAuthenticated ? (
             <UserMenu
               locale={locale}
-              dict={{
-                assets: dict.cvAssets || 'CV Assets',
-                billing: dict.coinsBilling || 'Coins & Billing',
-              }}
+              dict={{ shell: dict }}
             />
           ) : (
             <Button asChild size="sm" variant="outline">

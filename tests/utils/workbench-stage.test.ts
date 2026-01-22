@@ -93,14 +93,16 @@ describe('deriveStage', () => {
             expect(result.maxUnlockedStep).toBe(1)
         })
 
-        it('should unlock step 2 when match is completed', () => {
+        it('should unlock step 2 when customize is started', () => {
+            // Note: Match completion alone does NOT unlock step 2
+            // Users must click the CTA button to start customization
             const result = deriveStage(
                 'MATCH_COMPLETED',
-                'IDLE',
+                'PENDING',  // Customize is in progress
                 'IDLE',
                 mockDict,
                 false,
-                'match',
+                'customize',
                 null,
                 null
             )
@@ -254,8 +256,9 @@ describe('deriveStage', () => {
     })
 
     describe('Progress Value', () => {
-        it('should return 80% for match pending', () => {
-            const result = deriveStage(
+        it('should use simulatedProgress for match pending (M9 dynamic stage)', () => {
+            // Without simulatedProgress, should return fallback prog value
+            const resultNoSim = deriveStage(
                 'MATCH_PENDING',
                 'IDLE',
                 'IDLE',
@@ -265,7 +268,22 @@ describe('deriveStage', () => {
                 null,
                 null
             )
-            expect(result.progressValue).toBe(80)
+            // Fallback progress (since useDynamic=true but simulatedProgress=0)
+            expect(resultNoSim.progressValue).toBe(40)
+
+            // With simulatedProgress, should use the simulated value
+            const resultWithSim = deriveStage(
+                'MATCH_PENDING',
+                'IDLE',
+                'IDLE',
+                mockDict,
+                false,
+                'match',
+                null,
+                null,
+                55  // simulatedProgress
+            )
+            expect(resultWithSim.progressValue).toBe(55)
         })
 
         it('should return 100% for match completed', () => {
@@ -282,8 +300,9 @@ describe('deriveStage', () => {
             expect(result.progressValue).toBe(100)
         })
 
-        it('should return 66% for customize pending', () => {
-            const result = deriveStage(
+        it('should use simulatedProgress for customize pending', () => {
+            // Without simulatedProgress, starts at MIN_PROGRESS (10%)
+            const resultNoSim = deriveStage(
                 'MATCH_COMPLETED',
                 'PENDING',
                 'IDLE',
@@ -293,7 +312,21 @@ describe('deriveStage', () => {
                 null,
                 null
             )
-            expect(result.progressValue).toBe(66)
+            expect(resultNoSim.progressValue).toBe(10)  // MIN_PROGRESS fallback
+
+            // With simulatedProgress, should use the simulated value
+            const resultWithSim = deriveStage(
+                'MATCH_COMPLETED',
+                'PENDING',
+                'IDLE',
+                mockDict,
+                false,
+                'customize',
+                null,
+                null,
+                50  // simulatedProgress
+            )
+            expect(resultWithSim.progressValue).toBe(50)
         })
     })
 })

@@ -141,14 +141,13 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
    * Publishes initial status event.
    */
   async onStart(variables: OcrExtractVars, ctx: StrategyContext) {
-    const { serviceId, userId, requestId, traceId } = ctx
-    const sessionId = String(variables.executionSessionId || '')
-    const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-    const matchChannel = getChannel(userId, serviceId, matchTaskId)
+    const { serviceId, userId, requestId, traceId, taskId } = ctx
+    // Use current task ID (job_...) for channel
+    const channel = getChannel(userId, serviceId, taskId)
     try {
-      await publishEvent(matchChannel, {
+      await publishEvent(channel, {
         type: 'status',
-        taskId: matchTaskId,
+        taskId: taskId, // Use current task ID
         code: 'ocr_pending',
         status: 'OCR_PENDING',
         lastUpdatedAt: new Date().toISOString(),
@@ -194,13 +193,11 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
     if ((!baiduOcrUsed && !execResult.ok) || !text) {
       try {
         await txMarkSummaryFailed(serviceId, FailureCode.PREVIOUS_OCR_FAILED)
-        const sessionId = String(variables.executionSessionId || '')
-        const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-        const matchChannel = getChannel(userId, serviceId, matchTaskId)
+        const channel = getChannel(userId, serviceId, taskId)
         try {
-          await publishEvent(matchChannel, {
+          await publishEvent(channel, {
             type: 'status',
-            taskId: matchTaskId,
+            taskId: taskId,
             code: 'summary_failed',
             status: 'SUMMARY_FAILED',
             failureCode: 'PREVIOUS_OCR_FAILED',
@@ -273,13 +270,11 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           })
         )
 
-      const sessionId = String(variables.executionSessionId || '')
-      const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-      const matchChannel = getChannel(userId, serviceId, matchTaskId)
+      const channel = getChannel(userId, serviceId, taskId)
 
-      const publishPromise = publishEvent(matchChannel, {
+      const publishPromise = publishEvent(channel, {
         type: 'ocr_result',
-        taskId: matchTaskId,
+        taskId: taskId,
         text,
         stage: 'ocr_done',
         requestId,
@@ -388,11 +383,10 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         }
 
         try {
-          const matchTaskId = buildMatchTaskId(serviceId, sessionId)
-          const matchChannel = getChannel(userId, serviceId, matchTaskId)
-          await publishEvent(matchChannel, {
+          const channel = getChannel(userId, serviceId, taskId)
+          await publishEvent(channel, {
             type: 'status',
-            taskId: matchTaskId,
+            taskId: taskId,
             code: 'summary_pending',
             status: 'SUMMARY_PENDING',
             lastUpdatedAt: new Date().toISOString(),

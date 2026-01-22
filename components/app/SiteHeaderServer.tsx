@@ -13,12 +13,12 @@ export default async function SiteHeaderServer() {
     const quota = await db.quota.findFirst({ where: { userId: user.id } })
     quotaBalance = quota?.balance ?? null
   }
-  const headerDict = (await getDictionary(locale as any)).header ?? {
-    brand: locale === 'zh' ? 'AI求职助手' : 'CareerShaper',
-    signIn: locale === 'zh' ? '登录' : 'Sign in',
-    coins: locale === 'zh' ? '金币' : 'Coins',
-    assets: locale === 'zh' ? '资产管理' : 'Assets',
-    billing: locale === 'zh' ? '金币与账单' : 'Coins & Billing',
+  const headerDict = (await getDictionary(locale as any)).shell ?? {
+    brand: 'CareerShaper',
+    signIn: 'Sign in',
+    coins: 'Coins',
+    assets: 'Assets',
+    billing: 'Coins & Billing',
   }
   return (
     <SiteHeaderClient

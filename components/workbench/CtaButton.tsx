@@ -54,12 +54,13 @@ export function CtaButton({
         }
     }
 
-    const cost = getTaskCost(
-        tabValue === 'interview' ||
+    // Calculate cost based on action type
+    const cost = cta.action === 'retry_match'
+        ? getTaskCost('job_match')
+        : cta.action === 'interview' || (tabValue === 'interview') ||
             (tabValue === 'customize' && customizeStatus === 'COMPLETED')
-            ? 'interview_prep'
-            : 'resume_customize'
-    )
+            ? getTaskCost('interview_prep')
+            : getTaskCost('resume_customize')
 
     return (
         <div className="flex items-center gap-2">

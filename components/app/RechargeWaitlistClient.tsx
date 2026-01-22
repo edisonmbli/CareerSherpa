@@ -31,7 +31,7 @@ export function RechargeWaitlistClient({
   async function onOpen() {
     setOpen(true)
     startTransition(() => {
-      trackTopupClickAction().catch(() => {})
+      trackTopupClickAction().catch(() => { })
     })
   }
 
@@ -39,8 +39,7 @@ export function RechargeWaitlistClient({
     const v = String(email).trim()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
       toast.error(
-        dict.waitlist?.invalidEmail ||
-          (locale === 'zh' ? '邮箱格式不正确' : 'Invalid email'),
+        dict.billing?.recharge?.invalidEmail || 'Invalid configuration',
         { description: v }
       )
       return
@@ -49,18 +48,13 @@ export function RechargeWaitlistClient({
     const r = await joinPaymentWaitlistAction({ email: v })
     setLoading(false)
     if (r && (r as any).ok) {
-      toast.success(
-        dict.waitlist?.success ||
-          (locale === 'zh' ? '已登记' : 'Added to waitlist'),
-        { description: v }
-      )
+      toast.success(dict.billing?.recharge?.success || 'Success', {
+        description: v,
+      })
       setOpen(false)
       setEmail('')
     } else {
-      toast.error(
-        dict.waitlist?.failed ||
-          (locale === 'zh' ? '提交失败' : 'Submission failed')
-      )
+      toast.error(dict.billing?.recharge?.failed || 'Failed')
     }
   }
 
@@ -74,14 +68,13 @@ export function RechargeWaitlistClient({
         onClick={onOpen}
       >
         <Coins className="h-4 w-4 text-amber-500/80" />
-        {dict.billing?.recharge?.title || (locale === 'zh' ? '充值' : 'Top-up')}
+        {dict.billing?.recharge?.title || 'Top-up'}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dict.billing?.waitlist?.title ||
-                (locale === 'zh' ? '充值功能开发中' : 'Top-up coming soon')}
+              {dict.billing?.recharge?.waitlist?.title || 'Top-up coming soon'}
             </DialogTitle>
             <div className="sr-only">
               <DialogDescription>
@@ -91,16 +84,16 @@ export function RechargeWaitlistClient({
           </DialogHeader>
           <div className="py-2 space-y-3">
             <div className="text-sm text-muted-foreground">
-              {dict.billing?.waitlist?.desc ||
-                (locale === 'zh'
-                  ? '请留下邮箱，功能上线后我们会第一时间通知你'
-                  : 'Leave your email and we will notify you once available')}
+              {dict.billing?.recharge?.waitlist?.desc}
             </div>
             <Input
               type="email"
               autoFocus
               className="border-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-amber-300/40 focus-visible:ring-offset-0"
-              placeholder={dict.waitlist?.emailPlaceholder || 'you@example.com'}
+              placeholder={
+                dict.billing?.recharge?.waitlist?.emailPlaceholder ||
+                'you@example.com'
+              }
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -112,8 +105,7 @@ export function RechargeWaitlistClient({
               size="sm"
               onClick={() => setOpen(false)}
             >
-              {dict.billing?.common?.cancel ||
-                (locale === 'zh' ? '关闭' : 'Close')}
+              {dict.billing?.recharge?.common?.cancel || 'Close'}
             </Button>
             <Button
               type="button"
@@ -122,8 +114,7 @@ export function RechargeWaitlistClient({
               onClick={onSubmit}
               disabled={loading}
             >
-              {dict.waitlist?.submit ||
-                (locale === 'zh' ? '通知我' : 'Notify me')}
+              {dict.billing?.recharge?.waitlist?.submit || 'Notify me'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -131,3 +122,4 @@ export function RechargeWaitlistClient({
     </>
   )
 }
+
