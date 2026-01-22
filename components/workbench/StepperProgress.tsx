@@ -38,7 +38,7 @@ export function StepperProgress({
           'group flex items-center gap-2 focus:outline-none transition-colors duration-200 shrink-0 z-10',
           !customAction && !isLocked ? 'cursor-pointer' : '',
           // V7 Fix: Only appear locked/disabled if there is NO embedded action
-          (isLocked && !customAction) ? 'cursor-not-allowed opacity-50' : ''
+          isLocked && !customAction ? 'cursor-not-allowed opacity-50' : '',
         )}
         onClick={() => !customAction && !isLocked && onStepClick(step.id)}
       >
@@ -59,7 +59,7 @@ export function StepperProgress({
                 </span>
               </div>
             </div>
-          ) : (isLocked && !customAction) ? (
+          ) : isLocked && !customAction ? (
             <div className="h-6 w-6 rounded-full border-2 border-muted flex items-center justify-center bg-muted/30">
               <Lock className="h-3 w-3 text-muted-foreground" />
             </div>
@@ -80,7 +80,7 @@ export function StepperProgress({
               className={cn(
                 'text-sm font-medium whitespace-nowrap lg:hidden',
                 isCurrent ? 'text-primary' : 'text-muted-foreground',
-                !isLocked && !isCurrent && 'group-hover:text-foreground'
+                !isLocked && !isCurrent && 'group-hover:text-foreground',
               )}
               onClick={(e) => {
                 e.stopPropagation()
@@ -103,7 +103,7 @@ export function StepperProgress({
             className={cn(
               'text-sm font-medium whitespace-nowrap',
               isCurrent ? 'text-primary' : 'text-muted-foreground',
-              !isLocked && !isCurrent && 'group-hover:text-foreground'
+              !isLocked && !isCurrent && 'group-hover:text-foreground',
             )}
           >
             {step.label}
@@ -122,7 +122,7 @@ export function StepperProgress({
         <div
           className={cn(
             'h-full transition-all duration-500 ease-in-out',
-            isActive ? 'w-full bg-primary' : 'w-0 bg-transparent'
+            isActive ? 'w-full bg-primary' : 'w-0 bg-transparent',
           )}
         />
       </div>
@@ -134,7 +134,6 @@ export function StepperProgress({
       {/* V7.2 Grid Layout: Forced mathematical centering */}
       {/* Col 1 (1fr) | Col 2 (auto) | Col 3 (1fr) */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full">
-
         {/* Left Column: Step 1 + Flexible Line */}
         <div className="flex items-center min-w-0 pr-2">
           {renderStep(step1)}
@@ -149,11 +148,8 @@ export function StepperProgress({
         {/* Right Column: Flexible Line + Step 3 */}
         <div className="flex items-center min-w-0 pl-2">
           {renderLine(step2.id)}
-          <div className="ml-auto">
-            {renderStep(step3)}
-          </div>
+          <div className="ml-auto">{renderStep(step3)}</div>
         </div>
-
       </div>
     </nav>
   )

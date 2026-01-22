@@ -56,7 +56,11 @@ describe('Resume Store', () => {
     const { initStore, removeSectionItem } = useResumeStore.getState()
     initStore('s1', MOCK_RESUME_DATA, null)
 
-    const targetId = MOCK_RESUME_DATA.workExperiences[0].id
+    const firstWork = MOCK_RESUME_DATA.workExperiences[0]
+    if (!firstWork) {
+      throw new Error('Expected work experience data to exist')
+    }
+    const targetId = firstWork.id
     removeSectionItem('workExperiences', targetId)
 
     const newState = useResumeStore.getState()

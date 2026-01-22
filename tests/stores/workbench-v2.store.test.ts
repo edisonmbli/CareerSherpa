@@ -253,15 +253,15 @@ describe('workbench-v2.store', () => {
             expect(useWorkbenchV2Store.getState().progress.baseProgress).toBe(0)
             expect(useWorkbenchV2Store.getState().progress.targetProgress).toBe(10)
 
-            // SUMMARY_PENDING: 10-35%
+            // SUMMARY_PENDING: 20-25%
             store.setStatus('SUMMARY_PENDING')
-            expect(useWorkbenchV2Store.getState().progress.baseProgress).toBe(10)
-            expect(useWorkbenchV2Store.getState().progress.targetProgress).toBe(35)
+            expect(useWorkbenchV2Store.getState().progress.baseProgress).toBe(20)
+            expect(useWorkbenchV2Store.getState().progress.targetProgress).toBe(25)
 
-            // PREMATCH_PENDING: 35-60%
+            // PREMATCH_PENDING: 45-50%
             store.setStatus('PREMATCH_PENDING')
-            expect(useWorkbenchV2Store.getState().progress.baseProgress).toBe(35)
-            expect(useWorkbenchV2Store.getState().progress.targetProgress).toBe(60)
+            expect(useWorkbenchV2Store.getState().progress.baseProgress).toBe(45)
+            expect(useWorkbenchV2Store.getState().progress.targetProgress).toBe(50)
 
             // MATCH_STREAMING: 70-99%
             store.setStatus('MATCH_STREAMING')

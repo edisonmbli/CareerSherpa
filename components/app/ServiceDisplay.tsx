@@ -42,7 +42,7 @@ import { ServiceNotification } from '@/components/common/ServiceNotification'
 
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
-import { deriveStage, getEstimatedDuration } from '@/lib/utils/workbench-stage'
+import { deriveStage } from '@/lib/utils/workbench-stage'
 import { CtaButton } from '@/components/workbench/CtaButton'
 import { buildTaskId } from '@/lib/types/task-context'
 import { useServiceGuard } from '@/lib/hooks/use-service-guard'
@@ -52,9 +52,7 @@ const USE_SSE_V2 = process.env['NEXT_PUBLIC_USE_SSE_V2'] === 'true' || true // D
 
 // V2 Components (conditionally imported for bundle optimization when V2 is disabled)
 import { useWorkbenchV2Bridge } from '@/lib/hooks/useWorkbenchV2Bridge'
-import {
-  type WorkbenchStatusV2,
-} from '@/lib/stores/workbench-v2.store'
+import { type WorkbenchStatusV2 } from '@/lib/stores/workbench-v2.store'
 import { StatusConsoleV2 } from '@/components/workbench/StatusConsoleV2'
 import { StreamPanelV2 } from '@/components/workbench/StreamPanelV2'
 
@@ -98,7 +96,10 @@ export function ServiceDisplay({
     userId,
     serviceId,
     initialTaskId: taskIdToUse,
-    tier: (tierOverride || (quotaBalance && quotaBalance >= getTaskCost('job_match') ? 'paid' : 'free')) as 'free' | 'paid',
+    tier: (tierOverride ||
+      (quotaBalance && quotaBalance >= getTaskCost('job_match')
+        ? 'paid'
+        : 'free')) as 'free' | 'paid',
     initialStatus: initialService?.currentStatus,
     skip: !serviceId || isTerminalStatus(initialService?.currentStatus),
   })
@@ -109,8 +110,18 @@ export function ServiceDisplay({
   const storeStatus = status
 
   // Content extraction
-  const matchResult = v2Bridge?.matchJson || null
-  // matchParsed logic simplified: V2 provides consistent json
+  let initialMatchJson: any = null
+  try {
+    const raw = initialService?.match?.matchSummaryJson
+    initialMatchJson = raw
+      ? typeof raw === 'string'
+        ? JSON.parse(raw)
+        : raw
+      : null
+  } catch {
+    initialMatchJson = null
+  }
+  const matchResult = v2Bridge?.matchJson || initialMatchJson || null
   const matchParsed = matchResult
 
   const isConnected = v2Bridge?.isConnected || false
@@ -118,7 +129,8 @@ export function ServiceDisplay({
   const summaryResult = v2Bridge?.summaryJson || null
   const errorMessage = v2Bridge?.errorMessage || null
 
-  const { setError: setBridgeError, setStatus: setBridgeStatus } = v2Bridge || {}
+  const { setError: setBridgeError, setStatus: setBridgeStatus } =
+    v2Bridge || {}
 
   const setError = (msg: string) => {
     setBridgeError?.(msg)
@@ -153,8 +165,10 @@ export function ServiceDisplay({
     if (!serverMatchStatus) return
 
     // Check for server-V2 mismatch: server is terminal, V2 is still active
-    const serverIsTerminal = serverMatchStatus === 'COMPLETED' || serverMatchStatus === 'FAILED'
-    const v2IsActive = v2Status.includes('PENDING') || v2Status.includes('STREAMING')
+    const serverIsTerminal =
+      serverMatchStatus === 'COMPLETED' || serverMatchStatus === 'FAILED'
+    const v2IsActive =
+      v2Status.includes('PENDING') || v2Status.includes('STREAMING')
 
     if (serverIsTerminal && v2IsActive) {
       console.log('[ServiceDisplay] Server-V2 mismatch detected:', {
@@ -297,8 +311,7 @@ export function ServiceDisplay({
       return `match_${serviceId}_${initialService.executionSessionId}`
     }
     return null
-  }, [matchTaskId, initialService, serviceId, status, tier])
-
+  }, [matchTaskId, initialService, serviceId, status])
 
   // Handlers
   // Core customize action (called after free tier confirmation if needed)
@@ -338,7 +351,7 @@ export function ServiceDisplay({
         console.error(e)
         showError(
           dict.workbench?.customize?.createFailed ||
-          'Failed to start customization',
+            'Failed to start customization',
           'An unexpected error occurred.',
         )
       }
@@ -476,10 +489,7 @@ export function ServiceDisplay({
   // Parse streaming response into live object
   const [matchLive, setMatchLive] = useState<any>(null)
   useEffect(() => {
-    if (
-      (status === 'MATCH_COMPLETED' ||
-        status === 'MATCH_STREAMING')
-    ) {
+    if (status === 'MATCH_COMPLETED' || status === 'MATCH_STREAMING') {
       try {
         let txt = String(v2Bridge?.matchContent || '')
         // Strip markdown code blocks if present
@@ -511,8 +521,6 @@ export function ServiceDisplay({
   // Get simulated progress from V2 Bridge
   const simulatedProgress = v2Bridge?.progress || 0
 
-
-
   const { currentStep, maxUnlockedStep, cta, statusMessage, progressValue } =
     deriveStage(
       status as any,
@@ -536,46 +544,60 @@ export function ServiceDisplay({
     (initialService?.updatedAt as any) ||
     null
 
-  // Parse title for company/job fallback
+  const hasRefreshedJobSummaryRef = useRef(false)
+
   const jobSummary = initialService?.job?.jobSummaryJson
-  let displayCompany =
-    (matchResult as any)?.company ||
-    (matchParsed as any)?.company ||
-    (summaryResult as any)?.company ||
-    initialService?.company ||
-    ''
-  let displayJob =
-    (matchResult as any)?.jobTitle ||
-    (matchParsed as any)?.jobTitle ||
-    (summaryResult as any)?.jobTitle ||
-    initialService?.job_title ||
-    ''
+  let displayCompany = ''
+  let displayJob = ''
 
-  if (!displayCompany && !displayJob && matchLive) {
-    displayCompany = matchLive.company || ''
-    displayJob = matchLive.jobTitle || ''
-  }
-
-  if (!displayCompany && !displayJob && jobSummary) {
+  if (jobSummary) {
     try {
       const obj =
         typeof jobSummary === 'string' ? JSON.parse(jobSummary) : jobSummary
       displayCompany = obj?.company || obj?.company_name || obj?.org || ''
       displayJob = obj?.jobTitle || obj?.job_title || obj?.title || ''
     } catch {
-      // non-fatal: malformed jobSummary should not crash render
+      displayCompany = ''
+      displayJob = ''
     }
   }
 
-  if (!displayCompany && !displayJob && initialService?.title) {
-    const parts = initialService.title.split(' - ')
-    if (parts.length >= 2) {
-      displayCompany = parts[0]
-      displayJob = parts.slice(1).join(' - ')
-    } else {
-      displayJob = initialService.title
+  if ((!displayCompany || !displayJob) && v2Bridge) {
+    const summaryCandidate = v2Bridge.summaryJson || v2Bridge.visionJson
+    if (summaryCandidate && typeof summaryCandidate === 'object') {
+      const obj = summaryCandidate as Record<string, unknown>
+      const companyCandidate =
+        obj['company'] || obj['company_name'] || obj['org']
+      const jobCandidate = obj['jobTitle'] || obj['job_title'] || obj['title']
+
+      if (!displayCompany && typeof companyCandidate === 'string') {
+        displayCompany = companyCandidate
+      }
+      if (!displayJob && typeof jobCandidate === 'string') {
+        displayJob = jobCandidate
+      }
     }
   }
+
+  const hasSummaryEvent = Boolean(v2Bridge?.summaryJson)
+  const shouldRefreshJobSummary =
+    (!jobSummary && hasSummaryEvent) ||
+    (!jobSummary &&
+      (status === 'SUMMARY_COMPLETED' ||
+        status === 'PREMATCH_PENDING' ||
+        status === 'PREMATCH_STREAMING' ||
+        status === 'PREMATCH_COMPLETED' ||
+        status === 'MATCH_PENDING' ||
+        status === 'MATCH_STREAMING' ||
+        status === 'MATCH_COMPLETED' ||
+        status === 'MATCH_FAILED'))
+
+  useEffect(() => {
+    if (shouldRefreshJobSummary && !hasRefreshedJobSummaryRef.current) {
+      hasRefreshedJobSummaryRef.current = true
+      router.refresh()
+    }
+  }, [router, shouldRefreshJobSummary])
 
   const shouldHideConsole =
     (tabValue === 'match' &&
@@ -626,7 +648,12 @@ export function ServiceDisplay({
   // Determine where to embed the Action Button
   // Retry button should appear at the step that failed
   // Normal flow: customize completed → step 3 (interview), otherwise step 2 (customize)
-  const isMatchFailed = status === 'OCR_FAILED' || status === 'SUMMARY_FAILED' || status === 'MATCH_FAILED' || status === 'PREMATCH_FAILED' || status === 'JOB_VISION_FAILED'
+  const isMatchFailed =
+    status === 'OCR_FAILED' ||
+    status === 'SUMMARY_FAILED' ||
+    status === 'MATCH_FAILED' ||
+    status === 'PREMATCH_FAILED' ||
+    status === 'JOB_VISION_FAILED'
   const isCustomizeFailed = (customizeStatus as string) === 'FAILED'
   const isInterviewFailed = interviewStatus === 'FAILED'
 
@@ -635,8 +662,15 @@ export function ServiceDisplay({
     : isInterviewFailed
       ? 3 // Interview retry at step 3
       : isCustomizeFailed || (customizeStatus as string) === 'COMPLETED'
-        ? ((customizeStatus as string) === 'COMPLETED' ? 3 : 2) // Customize failed→step 2, completed→step 3
+        ? (customizeStatus as string) === 'COMPLETED'
+          ? 3
+          : 2 // Customize failed→step 2, completed→step 3
         : 2 // Default: step 2 (customize)
+
+  const stepActionNode = cta?.show ? ctaNode : null
+  const stepActions = stepActionNode
+    ? { [activeActionStep]: stepActionNode }
+    : undefined
 
   return (
     <>
@@ -673,26 +707,26 @@ export function ServiceDisplay({
             step2: String(dict.workbench?.tabs?.customize || 'Step 2'),
             step3: String(dict.workbench?.tabs?.interview || 'Step 3'),
           }}
-          stepActions={{
-            // V7: Dynamic embedded CTA based on workflow stage
-            [activeActionStep]: ctaNode,
-          }}
+          {...(stepActions ? { stepActions } : {})}
           className="shrink-0"
         />
 
-        {!shouldHideConsole && USE_SSE_V2 && v2Bridge && tabValue === 'match' && (
-          // V2 StatusConsole - cleaner props, real-time progress from V2 store
-          <StatusConsoleV2
-            status={v2Bridge.status}
-            statusMessage={v2Bridge.statusMessage || statusMessage}
-            progress={v2Bridge.progress || 0}
-            tier={tier}
-            cost={displayCost}
-            isConnected={v2Bridge.isConnected}
-            lastEventAt={v2Bridge.lastEventAt}
-            errorMessage={localizedError}
-          />
-        )}
+        {!shouldHideConsole &&
+          USE_SSE_V2 &&
+          v2Bridge &&
+          tabValue === 'match' && (
+            // V2 StatusConsole - cleaner props, real-time progress from V2 store
+            <StatusConsoleV2
+              status={v2Bridge.status}
+              statusMessage={v2Bridge.statusMessage || statusMessage}
+              progress={v2Bridge.progress || 0}
+              tier={tier}
+              cost={displayCost}
+              isConnected={v2Bridge.isConnected}
+              lastEventAt={v2Bridge.lastEventAt}
+              errorMessage={localizedError}
+            />
+          )}
 
         <Tabs
           value={tabValue}
@@ -707,29 +741,29 @@ export function ServiceDisplay({
             className="flex-1 flex flex-col min-h-0 overflow-y-auto"
           >
             {/* V2 StreamPanel - uses V2 store content for real-time streaming */}
-            {USE_SSE_V2 && v2Bridge && (
-              v2Bridge.status === 'IDLE' ||
-              v2Bridge.status === 'OCR_PENDING' ||
-              v2Bridge.status === 'OCR_STREAMING' ||
-              v2Bridge.status === 'OCR_COMPLETED' ||
-              v2Bridge.status === 'JOB_VISION_PENDING' ||
-              v2Bridge.status === 'JOB_VISION_STREAMING' ||
-              v2Bridge.status === 'JOB_VISION_COMPLETED' ||
-              v2Bridge.status === 'PREMATCH_PENDING' ||
-              v2Bridge.status === 'PREMATCH_STREAMING' ||
-              v2Bridge.status === 'PREMATCH_COMPLETED' ||
-              v2Bridge.status === 'SUMMARY_PENDING' ||
-              v2Bridge.status === 'SUMMARY_STREAMING' ||
-              v2Bridge.status === 'SUMMARY_COMPLETED' ||
-              v2Bridge.status === 'MATCH_PENDING' ||
-              v2Bridge.status === 'MATCH_STREAMING' ||
-              // Also show on failure states to display error message
-              v2Bridge.status === 'OCR_FAILED' ||
-              v2Bridge.status === 'JOB_VISION_FAILED' ||
-              v2Bridge.status === 'SUMMARY_FAILED' ||
-              v2Bridge.status === 'PREMATCH_FAILED' ||
-              v2Bridge.status === 'MATCH_FAILED'
-            ) && (
+            {USE_SSE_V2 &&
+              v2Bridge &&
+              (v2Bridge.status === 'IDLE' ||
+                v2Bridge.status === 'OCR_PENDING' ||
+                v2Bridge.status === 'OCR_STREAMING' ||
+                v2Bridge.status === 'OCR_COMPLETED' ||
+                v2Bridge.status === 'JOB_VISION_PENDING' ||
+                v2Bridge.status === 'JOB_VISION_STREAMING' ||
+                v2Bridge.status === 'JOB_VISION_COMPLETED' ||
+                v2Bridge.status === 'PREMATCH_PENDING' ||
+                v2Bridge.status === 'PREMATCH_STREAMING' ||
+                v2Bridge.status === 'PREMATCH_COMPLETED' ||
+                v2Bridge.status === 'SUMMARY_PENDING' ||
+                v2Bridge.status === 'SUMMARY_STREAMING' ||
+                v2Bridge.status === 'SUMMARY_COMPLETED' ||
+                v2Bridge.status === 'MATCH_PENDING' ||
+                v2Bridge.status === 'MATCH_STREAMING' ||
+                // Also show on failure states to display error message
+                v2Bridge.status === 'OCR_FAILED' ||
+                v2Bridge.status === 'JOB_VISION_FAILED' ||
+                v2Bridge.status === 'SUMMARY_FAILED' ||
+                v2Bridge.status === 'PREMATCH_FAILED' ||
+                v2Bridge.status === 'MATCH_FAILED') && (
                 <div>
                   <StreamPanelV2
                     status={v2Bridge.status}
@@ -754,9 +788,7 @@ export function ServiceDisplay({
                 </div>
               )}
 
-            {(status === 'MATCH_COMPLETED' ||
-              matchResult ||
-              matchParsed) &&
+            {(status === 'MATCH_COMPLETED' || matchResult || matchParsed) &&
               !(
                 status === 'MATCH_PENDING' ||
                 status === 'MATCH_STREAMING' ||
@@ -809,7 +841,6 @@ export function ServiceDisplay({
                 />
               )}
             {/* Error-state StreamPanelV2 is now handled by the main panel at L786-828 */}
-
           </TabsContent>
 
           <TabsContent
@@ -818,7 +849,7 @@ export function ServiceDisplay({
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
-              initialService?.customizedResume?.customizedResumeJson ? (
+            initialService?.customizedResume?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
@@ -843,7 +874,8 @@ export function ServiceDisplay({
               />
             ) : (
               <>
-                {((customizeStatus as string) === 'PENDING' || isTransitionState) ? (
+                {(customizeStatus as string) === 'PENDING' ||
+                isTransitionState ? (
                   <BatchProgressPanel
                     title={
                       dict.workbench?.statusText?.analyzing ||
@@ -867,9 +899,9 @@ export function ServiceDisplay({
                       // Use executionTier to show correct message based on failed task's tier
                       executionTier === 'free'
                         ? dict?.workbench?.statusConsole?.customizeFailedFree ||
-                        '免费模型暂时繁忙，请稍后重试'
+                          '免费模型暂时繁忙，请稍后重试'
                         : dict?.workbench?.statusConsole?.customizeRefunded ||
-                        '金币已自动返还，请点击重试'
+                          '金币已自动返还，请点击重试'
                     }
                     onRetry={onCustomize}
                     isRetryLoading={isTransitionState || isPending}
@@ -891,9 +923,9 @@ export function ServiceDisplay({
                       <h3 className="text-lg font-semibold">
                         {cta?.disabled
                           ? dict.workbench?.statusConsole?.customizeStarting ||
-                          '正在启动定制服务...'
+                            '正在启动定制服务...'
                           : dict.workbench?.statusText?.readyToCustomize ||
-                          'Ready to Customize'}
+                            'Ready to Customize'}
                       </h3>
                       {/* Only show guide text when button is clickable */}
                       {!cta?.disabled && (

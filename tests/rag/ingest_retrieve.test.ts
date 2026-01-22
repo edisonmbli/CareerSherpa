@@ -32,6 +32,30 @@ vi.mock('@/lib/rag/vectorStore', () => ({
       return nodes.slice(0, options.similarityTopK)
     }),
   },
+  getVectorStore: () => ({
+    add: vi.fn(async (nodes: Document[]) => {
+      nodes.forEach((node) => memoryStore.set(node.id_, node))
+      return nodes.map((node) => node.id_)
+    }),
+    retrieve: vi.fn(async (options: any) => {
+      const nodes: NodeWithScore[] = []
+      for (const doc of memoryStore.values()) {
+        let match = true
+        if (options.filters) {
+          for (const filter of options.filters.filters) {
+            if (doc.metadata[filter.key] !== filter.value) {
+              match = false
+              break
+            }
+          }
+        }
+        if (match) {
+          nodes.push({ node: doc, score: 0.9 })
+        }
+      }
+      return nodes.slice(0, options.similarityTopK)
+    }),
+  }),
 }))
 
 // The DAL's `addKnowledgeEntries` no longer calls the embedding service directly,

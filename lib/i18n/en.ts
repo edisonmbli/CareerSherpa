@@ -244,13 +244,16 @@ const dict = {
     },
     notification: {
       freeModeTitle: 'Current Free Experience Mode',
-      freeModeDesc: 'We recommend topping up to unlock Thinking Mode for deeper customization. Free mode uses basic models.',
+      freeModeDesc:
+        'We recommend topping up to unlock Thinking Mode for deeper customization. Free mode uses basic models.',
       cancel: 'Cancel',
       confirmFree: 'Continue with Free Mode',
       rateLimitedTitle: 'Request Rate Limited',
-      rateLimitedDesc: 'System is busy, please try again later. Consider topping up for higher priority.',
+      rateLimitedDesc:
+        'System is busy, please try again later. Consider topping up for higher priority.',
       serverErrorTitle: 'Service Unavailable',
-      serverErrorDesc: 'Encountered an unexpected interruption, please try again later.',
+      serverErrorDesc:
+        'Encountered an unexpected interruption, please try again later.',
     },
     streamPanel: {
       ocr: 'OCR Extraction',
@@ -277,8 +280,14 @@ const dict = {
       free: 'FREE',
       seconds: 's ago',
       minutes: 'm ago',
+      jobVisionQueued: 'Job extraction task queued',
+      ocrQueued: 'OCR task queued',
+      summaryQueued: 'Job summary task queued',
+      prematchQueued: 'HR review task queued',
+      matchQueued: 'Match analysis task queued',
       ocrPending: 'Extracting text from image...',
       ocrCompleted: 'OCR Extraction Completed',
+      summaryInit: 'Preparing job summary...',
       summaryPending: 'Extracting job details...',
       summaryCompleted: 'Job Details Extracted',
       matchPending: 'Analyzing match degree...',
@@ -313,7 +322,8 @@ const dict = {
       defaultFileName: 'General Resume',
       tips: {
         star: 'Use the STAR method (Situation-Task-Action-Result) to quantify your achievements.',
-        detail: 'Record your career highlights in detail so the AI can better understand your potential.',
+        detail:
+          'Record your career highlights in detail so the AI can better understand your potential.',
       },
       note: '',
     },
@@ -333,28 +343,91 @@ const dict = {
         },
         items: {
           product: [
-            { label: 'Situation', content: 'Tried to boost paid conversion for a Reading App. Goal: +20% paid users in Q3.' },
-            { label: 'Challenge', content: 'Discount strategies hit a ceiling and hurt margins. Users were price-insensitive.' },
-            { label: 'Action', content: 'Discovered correlation between reading time and payment. Created "Time-for-Credit" feature.' },
-            { label: 'Result', content: 'Conversion up 35% (beat goal). New user first-order time shortened by 40%.' },
+            {
+              label: 'Situation',
+              content:
+                'Tried to boost paid conversion for a Reading App. Goal: +20% paid users in Q3.',
+            },
+            {
+              label: 'Challenge',
+              content:
+                'Discount strategies hit a ceiling and hurt margins. Users were price-insensitive.',
+            },
+            {
+              label: 'Action',
+              content:
+                'Discovered correlation between reading time and payment. Created "Time-for-Credit" feature.',
+            },
+            {
+              label: 'Result',
+              content:
+                'Conversion up 35% (beat goal). New user first-order time shortened by 40%.',
+            },
           ],
           ops: [
-            { label: 'Situation', content: 'Managed 500+ communities with low engagement (5% DAU).' },
-            { label: 'Challenge', content: 'Users ignored official broadcasts. Content was generic; zero interaction.' },
-            { label: 'Action', content: 'Recruited KOLs as "Topic Leaders" and introduced points system to incentivize UGC.' },
-            { label: 'Result', content: 'DAU doubled to 11%. Daily UGC up 300%. Core user retention hit 90%.' },
+            {
+              label: 'Situation',
+              content: 'Managed 500+ communities with low engagement (5% DAU).',
+            },
+            {
+              label: 'Challenge',
+              content:
+                'Users ignored official broadcasts. Content was generic; zero interaction.',
+            },
+            {
+              label: 'Action',
+              content:
+                'Recruited KOLs as "Topic Leaders" and introduced points system to incentivize UGC.',
+            },
+            {
+              label: 'Result',
+              content:
+                'DAU doubled to 11%. Daily UGC up 300%. Core user retention hit 90%.',
+            },
           ],
           tech: [
-            { label: 'Situation', content: 'Ensuring payment system stability during Black Friday sales.' },
-            { label: 'Challenge', content: 'Timeout rate hit 2%. Monolithic DB was a bottleneck and unscalable.' },
-            { label: 'Action', content: 'Implemented cold/hot data separation, MQ for peak shaving, and Event Sourcing.' },
-            { label: 'Result', content: 'QPS capacity up 5x. Zero downtime. Failure rate dropped below 0.01%.' },
+            {
+              label: 'Situation',
+              content:
+                'Ensuring payment system stability during Black Friday sales.',
+            },
+            {
+              label: 'Challenge',
+              content:
+                'Timeout rate hit 2%. Monolithic DB was a bottleneck and unscalable.',
+            },
+            {
+              label: 'Action',
+              content:
+                'Implemented cold/hot data separation, MQ for peak shaving, and Event Sourcing.',
+            },
+            {
+              label: 'Result',
+              content:
+                'QPS capacity up 5x. Zero downtime. Failure rate dropped below 0.01%.',
+            },
           ],
           design: [
-            { label: 'Situation', content: 'Optimizing mobile approval workflow for B2B admin system.' },
-            { label: 'Challenge', content: 'Porting complex PC tables to mobile caused high error rates and slowness.' },
-            { label: 'Action', content: 'Ditched tables. Re-designed using "Info Cards" + "Action Cards" separation.' },
-            { label: 'Result', content: 'Approval time cut by 50%. Error feedback dropped to zero. Satisfaction 4.8/5.' },
+            {
+              label: 'Situation',
+              content:
+                'Optimizing mobile approval workflow for B2B admin system.',
+            },
+            {
+              label: 'Challenge',
+              content:
+                'Porting complex PC tables to mobile caused high error rates and slowness.',
+            },
+            {
+              label: 'Action',
+              content:
+                'Ditched tables. Re-designed using "Info Cards" + "Action Cards" separation.',
+            },
+            {
+              label: 'Result',
+              content:
+                'Approval time cut by 50%. Error feedback dropped to zero. Satisfaction 4.8/5.',
+            },
           ],
         },
       },

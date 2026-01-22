@@ -31,6 +31,31 @@ vi.mock('@/lib/rag/vectorStore', () => ({
       return results.slice(0, options.similarityTopK)
     }),
   },
+  getVectorStore: () => ({
+    storesText: true,
+    add: vi.fn(async (nodes: Document[]) => {
+      nodes.forEach((n) => memoryStore.set(n.id_, n))
+      return nodes.map((n) => n.id_)
+    }),
+    retrieve: vi.fn(async (options: any) => {
+      const results: NodeWithScore[] = []
+      for (const doc of memoryStore.values()) {
+        let match = true
+        if (options.filters) {
+          for (const f of options.filters.filters) {
+            if (doc.metadata[f.key] !== f.value) {
+              match = false
+              break
+            }
+          }
+        }
+        if (match) {
+          results.push({ node: doc, score: 0.9 })
+        }
+      }
+      return results.slice(0, options.similarityTopK)
+    }),
+  }),
 }))
 
 describe('RAG retriever (LlamaIndex)', () => {

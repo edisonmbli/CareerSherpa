@@ -115,7 +115,8 @@ describe('JSON Parsing Strategies', () => {
                 extractJsonFromText,
                 fixJsonSyntax
             )
-            expect(result.success).toBe(false)
+            expect(result.success).toBe(true)
+            expect(result.fallbackUsed).toBe(true)
             expect(result.warnings).toBeDefined()
         })
 

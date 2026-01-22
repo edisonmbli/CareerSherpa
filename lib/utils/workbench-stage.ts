@@ -7,6 +7,10 @@
 
 import type { StepId } from '@/components/workbench/StepperProgress'
 import type { WorkbenchStatusV2 } from '@/lib/stores/workbench-v2.store'
+import {
+  WORKBENCH_PROGRESS_CONFIG,
+  WORKBENCH_PROGRESS_DEFAULT,
+} from '@/lib/constants'
 
 /**
  * CTA (Call to Action) button configuration
@@ -384,49 +388,24 @@ function deriveGlobalStatusMessage(
   let message = ''
   let progress = 0
 
-  // M9 status progress configuration - defines dynamic stages and their fallback values
-  // Range: [start, end]
-  const M9_STATUS_CONFIG_PAID: Record<string, { range: [number, number] }> = {
-    OCR_PENDING: { range: [0, 10] },
-    SUMMARY_PENDING: { range: [10, 35] },
-    PREMATCH_PENDING: { range: [35, 60] },
-    MATCH_PENDING: { range: [60, 90] }, // Pending analysis
-    MATCH_STREAMING: { range: [90, 99] }, // Streaming results
-    // Completed states
-    OCR_COMPLETED: { range: [10, 10] },
-    SUMMARY_COMPLETED: { range: [35, 35] },
-    PREMATCH_COMPLETED: { range: [60, 60] },
-    MATCH_COMPLETED: { range: [100, 100] },
-    COMPLETED: { range: [100, 100] },
-  }
-
-  const M9_STATUS_CONFIG_FREE: Record<string, { range: [number, number] }> = {
-    JOB_VISION_PENDING: { range: [0, 40] },
-    JOB_VISION_STREAMING: { range: [0, 40] },
-    SUMMARY_PENDING: { range: [0, 40] }, // Fallback for text input
-    MATCH_PENDING: { range: [40, 90] },
-    MATCH_STREAMING: { range: [90, 99] },
-    // Completed states
-    JOB_VISION_COMPLETED: { range: [40, 40] },
-    SUMMARY_COMPLETED: { range: [40, 40] },
-    MATCH_COMPLETED: { range: [100, 100] },
-    COMPLETED: { range: [100, 100] },
-  }
-
-  const config = isPaid ? M9_STATUS_CONFIG_PAID : M9_STATUS_CONFIG_FREE
-  const statusConfig = config[status]
+  const tierKey = isPaid ? 'paid' : 'free'
+  const config = WORKBENCH_PROGRESS_CONFIG as Record<
+    'free' | 'paid',
+    Partial<Record<WorkbenchStatusV2, [number, number, number]>>
+  >
+  const statusConfig = config[tierKey]?.[status]
 
   // Calculate progress
-  if (statusConfig) {
-    const [start, end] = statusConfig.range
+  if (simulatedProgress > 0) {
+    progress = Math.min(100, Math.max(0, simulatedProgress))
+  } else if (statusConfig) {
+    const [start, end] = statusConfig
     if (start === end) {
       progress = start
     } else {
-      // Map simulated progress (0-100) to range [start, end]
-      progress = start + ((end - start) * simulatedProgress) / 100
+      progress = start
     }
   } else {
-    // Fallback for failed or unknown states
     if (status.includes('FAILED')) progress = 0
     else if (status.includes('COMPLETED')) progress = 100
   }
@@ -434,22 +413,75 @@ function deriveGlobalStatusMessage(
   // Try statusDetail first for message
   // Try statusDetail first for message
   if (statusDetail) {
-    if (statusDetail === 'queued' || statusDetail.endsWith('_queued')) {
-      // Handle specific queued states with fallback to generic
-      if (statusDetail.includes('ocr')) {
-        message = dict.workbench?.statusConsole?.['ocrQueued'] || 'OCR Task Queued...'
-      } else if (statusDetail.includes('summary')) {
-        message = dict.workbench?.statusConsole?.['summaryQueued'] || 'Job Analysis Queued...'
-      } else if (statusDetail.includes('prematch')) {
-        message = dict.workbench?.statusConsole?.['prematchQueued'] || 'Audit Task Queued...'
-      } else if (statusDetail.includes('match')) {
-        message = dict.workbench?.statusConsole?.['matchQueued'] || 'Match Analysis Queued...'
+    const detailLower = statusDetail.toLowerCase()
+    const isGenericQueued =
+      detailLower === 'queued' ||
+      detailLower === 'queue' ||
+      detailLower === 'enqueue' ||
+      detailLower.endsWith('_queued')
+
+    if (isGenericQueued) {
+      const queuedKey =
+        detailLower === 'queued' ||
+        detailLower === 'queue' ||
+        detailLower === 'enqueue'
+          ? status.toLowerCase()
+          : detailLower
+      if (queuedKey.includes('job_vision') || status === 'JOB_VISION_PENDING') {
+        message =
+          dict.workbench?.statusConsole?.['jobVisionQueued'] ||
+          dict.workbench?.statusConsole?.['queued'] ||
+          'Task is queued...'
+      } else if (queuedKey.includes('ocr') || status === 'OCR_PENDING') {
+        message =
+          dict.workbench?.statusConsole?.['ocrQueued'] ||
+          dict.workbench?.statusConsole?.['queued'] ||
+          'Task is queued...'
+      } else if (
+        queuedKey.includes('summary') ||
+        status === 'SUMMARY_PENDING'
+      ) {
+        message =
+          dict.workbench?.statusConsole?.['summaryQueued'] ||
+          dict.workbench?.statusConsole?.['queued'] ||
+          'Task is queued...'
+      } else if (
+        queuedKey.includes('prematch') ||
+        status === 'PREMATCH_PENDING'
+      ) {
+        message =
+          dict.workbench?.statusConsole?.['prematchQueued'] ||
+          dict.workbench?.statusConsole?.['queued'] ||
+          'Task is queued...'
+      } else if (queuedKey.includes('match') || status === 'MATCH_PENDING') {
+        message =
+          dict.workbench?.statusConsole?.['matchQueued'] ||
+          dict.workbench?.statusConsole?.['queued'] ||
+          'Task is queued...'
       } else {
-        message = dict.workbench?.statusConsole?.['queued'] || 'Task is queued...'
+        message =
+          dict.workbench?.statusConsole?.['queued'] || 'Task is queued...'
       }
     } else {
       const mapped = stext[statusDetail]
       if (mapped) message = String(mapped)
+    }
+  }
+
+  const summaryInitDetails = new Set([
+    null,
+    'SUMMARY_PENDING',
+    'summary_pending',
+    'PENDING_SUMMARY',
+    'pending_summary',
+  ])
+
+  if (!message && status === 'SUMMARY_PENDING' && !isPaid) {
+    if (summaryInitDetails.has(statusDetail)) {
+      message =
+        statusConsole['summaryInit'] ||
+        statusConsole['summaryPending'] ||
+        'Preparing job summary...'
     }
   }
 
@@ -517,9 +549,12 @@ function deriveGlobalStatusMessage(
       MATCH_FAILED: statusConsole['matchFailed'] || 'Match Analysis Failed',
 
       // Streaming states (Paid tier)
-      OCR_STREAMING: statusConsole['ocrPending'] || 'Extracting text from image...',
-      SUMMARY_STREAMING: statusConsole['summaryPending'] || 'Extracting job details...',
-      PREMATCH_STREAMING: statusConsole['prematchPending'] || 'Auditing requirements...',
+      OCR_STREAMING:
+        statusConsole['ocrPending'] || 'Extracting text from image...',
+      SUMMARY_STREAMING:
+        statusConsole['summaryPending'] || 'Extracting job details...',
+      PREMATCH_STREAMING:
+        statusConsole['prematchPending'] || 'Auditing requirements...',
 
       FAILED: stext['failed'] || 'Failed',
     }
@@ -536,36 +571,12 @@ export function getEstimatedDuration(
   status: WorkbenchStatusV2,
   isPaid: boolean,
 ): number {
-  const DEFAULT = 60000
-  if (isPaid) {
-    switch (status) {
-      case 'OCR_PENDING':
-        return 30000
-      case 'SUMMARY_PENDING':
-        return 60000
-      case 'PREMATCH_PENDING':
-        return 60000
-      case 'MATCH_PENDING':
-        return 120000
-      case 'MATCH_STREAMING':
-        return 120000
-      default:
-        return DEFAULT
-    }
-  } else {
-    switch (status) {
-      case 'JOB_VISION_PENDING':
-        return 60000
-      case 'JOB_VISION_STREAMING':
-        return 60000
-      case 'SUMMARY_PENDING':
-        return 60000
-      case 'MATCH_PENDING':
-        return 90000
-      case 'MATCH_STREAMING':
-        return 90000
-      default:
-        return DEFAULT
-    }
-  }
+  const tierKey = isPaid ? 'paid' : 'free'
+  const config = WORKBENCH_PROGRESS_CONFIG as Record<
+    'free' | 'paid',
+    Partial<Record<WorkbenchStatusV2, [number, number, number]>>
+  >
+  const defaultDuration = WORKBENCH_PROGRESS_DEFAULT[2]
+  const statusConfig = config[tierKey]?.[status]
+  return statusConfig?.[2] ?? defaultDuration
 }

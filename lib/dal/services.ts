@@ -106,6 +106,8 @@ export async function getServiceForUser(serviceId: string, userId: string) {
   return prisma.service.findFirst({
     where: { id: serviceId, userId },
     include: {
+      resume: true,
+      detailedResume: true,
       job: true,
       match: true,
       customizedResume: true,

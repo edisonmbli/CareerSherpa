@@ -30,6 +30,48 @@ export const TASK_COSTS: Record<string, number> = {
   detailed_resume_summary: 1,
 }
 
+export const DEFAULT_SECTION_ORDER = [
+  'basics',
+  'summary',
+  'workExperiences',
+  'projectExperiences',
+  'educations',
+  'skills',
+  'certificates',
+  'hobbies',
+  'customSections',
+] as const
+
+export const WORKBENCH_PROGRESS_CONFIG = {
+  free: {
+    JOB_VISION_PENDING: [0, 10, 10000],
+    JOB_VISION_STREAMING: [10, 40, 30000],
+    JOB_VISION_COMPLETED: [40, 40, 0],
+    SUMMARY_PENDING: [0, 10, 10000],
+    SUMMARY_STREAMING: [10, 40, 30000],
+    SUMMARY_COMPLETED: [40, 40, 0],
+    MATCH_PENDING: [40, 50, 10000],
+    MATCH_STREAMING: [50, 99, 60000],
+    MATCH_COMPLETED: [100, 100, 0],
+  },
+  paid: {
+    OCR_PENDING: [0, 10, 15000],
+    OCR_STREAMING: [10, 20, 30000],
+    OCR_COMPLETED: [20, 20, 0],
+    SUMMARY_PENDING: [20, 25, 10000],
+    SUMMARY_STREAMING: [25, 45, 30000],
+    SUMMARY_COMPLETED: [45, 45, 0],
+    PREMATCH_PENDING: [45, 50, 10000],
+    PREMATCH_STREAMING: [50, 65, 30000],
+    PREMATCH_COMPLETED: [65, 65, 0],
+    MATCH_PENDING: [65, 70, 10000],
+    MATCH_STREAMING: [70, 99, 90000],
+    MATCH_COMPLETED: [100, 100, 0],
+  },
+} as const
+
+export const WORKBENCH_PROGRESS_DEFAULT = [0, 0, 60000] as const
+
 export function getTaskCost(taskKey: keyof typeof TASK_COSTS): number {
   return TASK_COSTS[taskKey] ?? 0
 }

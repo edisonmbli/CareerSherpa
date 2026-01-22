@@ -32,6 +32,7 @@ vi.mock('@/lib/llm/providers', async () => {
     GLM_45_FLASH: 'glm-4.5-flash',
     GLM_VISION_THINKING_FLASH: 'glm-4.1v-thinking-flash',
     GLM_EMBEDDING_3: 'glm-embedding-3',
+    GEMINI_3_FLASH_PREVIEW: 'gemini-3-flash-preview',
   } as const
   return {
     ModelId,
@@ -52,12 +53,63 @@ vi.mock('@/lib/dal/llmUsageLog', () => {
 
 vi.mock('@/lib/llm/utils', () => {
   return {
-    getProvider: (modelId: string) => (modelId.startsWith('deepseek') ? 'deepseek' : 'zhipu'),
+    getProvider: (modelId?: string) => {
+      if (!modelId) return 'zhipu'
+      if (modelId.startsWith('deepseek')) return 'deepseek'
+      if (modelId.startsWith('gemini')) return 'google'
+      return 'zhipu'
+    },
     getCost: () => 0.123,
   }
 })
 
-import { runStructuredLlmTask, runStreamingLlmTask, runLlmTask } from '@/lib/llm/service'
+vi.mock('@/lib/llm/gemini-direct', () => {
+  return {
+    runGeminiStructured: vi.fn(async () => ({
+      ok: true,
+      data: { markdown: 'gemini ok' },
+      raw: '{"markdown":"gemini ok"}',
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2,
+        model: 'gemini-3-flash-preview',
+        provider: 'google',
+      },
+    })),
+    runGeminiStreaming: vi.fn(async () => ({
+      ok: true,
+      raw: '',
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2,
+        model: 'gemini-3-flash-preview',
+        provider: 'google',
+      },
+    })),
+    runGeminiVision: vi.fn(async () => ({
+      ok: true,
+      raw: '{"markdown":"vision ok"}',
+      data: { markdown: 'vision ok' },
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2,
+        model: 'gemini-3-flash-preview',
+        provider: 'google',
+      },
+    })),
+    shouldUseGeminiDirect: (modelId: string) =>
+      modelId.startsWith('gemini-3') || modelId === 'gemini-3-flash-preview',
+  }
+})
+
+import {
+  runStructuredLlmTask,
+  runStreamingLlmTask,
+  runLlmTask,
+} from '@/lib/llm/service'
 import { routeTask } from '@/lib/llm/task-router'
 
 describe('llm/service: structured + streaming', () => {
@@ -93,17 +145,27 @@ describe('llm/service: structured + streaming', () => {
       withStructuredOutput: vi.fn().mockReturnValue({
         invoke: structuredInvoke.mockResolvedValue({
           parsed: validResumeCustomize,
-          raw: { content: json, response_metadata: { tokenUsage: { prompt_tokens: 10, completion_tokens: 5 } } }
-        })
-      })
+          raw: {
+            content: json,
+            response_metadata: {
+              tokenUsage: { prompt_tokens: 10, completion_tokens: 5 },
+            },
+          },
+        }),
+      }),
     }
 
     const res = await runStructuredLlmTask(
       'deepseek-chat',
       'resume_customize',
       'en',
-      { rag_context: 'tips', resume_text: '...', job_summary_json: '{}', match_analysis_json: '{}' },
-      { userId: 'u_real', serviceId: 's_real' }
+      {
+        rag_context: 'tips',
+        resume_text: '...',
+        job_summary_json: '{}',
+        match_analysis_json: '{}',
+      },
+      { userId: 'u_real', serviceId: 's_real' },
     )
 
     expect(res.ok).toBe(true)
@@ -123,7 +185,9 @@ describe('llm/service: structured + streaming', () => {
     currentModel = {
       invoke: structuredInvoke.mockResolvedValue({
         content: 'not a json string',
-        response_metadata: { tokenUsage: { prompt_tokens: 3, completion_tokens: 2 } },
+        response_metadata: {
+          tokenUsage: { prompt_tokens: 3, completion_tokens: 2 },
+        },
       }),
     }
 
@@ -131,8 +195,13 @@ describe('llm/service: structured + streaming', () => {
       'deepseek-chat',
       'resume_customize',
       'en',
-      { rag_context: 'x', resume_text: 'y', job_summary_json: '{}', match_analysis_json: '{}' },
-      { userId: 'u1', serviceId: 's1' }
+      {
+        rag_context: 'x',
+        resume_text: 'y',
+        job_summary_json: '{}',
+        match_analysis_json: '{}',
+      },
+      { userId: 'u1', serviceId: 's1' },
     )
 
     expect(res.ok).toBe(false)
@@ -148,7 +217,9 @@ describe('llm/service: structured + streaming', () => {
     currentModel = {
       invoke: structuredInvoke.mockResolvedValue({
         content: json,
-        response_metadata: { tokenUsage: { prompt_tokens: 2, completion_tokens: 1 } },
+        response_metadata: {
+          tokenUsage: { prompt_tokens: 2, completion_tokens: 1 },
+        },
       }),
     }
 
@@ -156,8 +227,13 @@ describe('llm/service: structured + streaming', () => {
       'deepseek-chat',
       'resume_customize',
       'en',
-      { rag_context: 'a', resume_text: 'b', job_summary_json: '{}', match_analysis_json: '{}' },
-      { userId: 'u2', serviceId: 's2' }
+      {
+        rag_context: 'a',
+        resume_text: 'b',
+        job_summary_json: '{}',
+        match_analysis_json: '{}',
+      },
+      { userId: 'u2', serviceId: 's2' },
     )
 
     expect(res.ok).toBe(false)
@@ -169,19 +245,28 @@ describe('llm/service: structured + streaming', () => {
 
   it('runStreamingLlmTask streams tokens and logs usage', async () => {
     currentModel = {
-      stream: streamingStream.mockResolvedValue((async function* () {
-        yield { content: 'Hello ' }
-        yield { content: 'World' }
-      })()),
-      lc_serializable: { tokenUsage: { promptTokens: 12, completionTokens: 7 } },
+      stream: streamingStream.mockResolvedValue(
+        (async function* () {
+          yield { content: 'Hello ' }
+          yield { content: 'World' }
+        })(),
+      ),
+      lc_serializable: {
+        tokenUsage: { promptTokens: 12, completionTokens: 7 },
+      },
     }
 
     const res = await runStreamingLlmTask(
       'deepseek-chat',
       'job_match',
       'zh',
-      { resume_summary_json: '{}', detailed_resume_summary_json: '{}', job_summary_json: '{}', rag_context: '...' },
-      { userId: 'u3', serviceId: 's3' }
+      {
+        resume_summary_json: '{}',
+        detailed_resume_summary_json: '{}',
+        job_summary_json: '{}',
+        rag_context: '...',
+      },
+      { userId: 'u3', serviceId: 's3' },
     )
 
     expect(res.ok).toBe(true)
@@ -199,22 +284,36 @@ describe('llm/service: runLlmTask integration with router', () => {
     // Use real router; set model to support both stream and invoke depending on worker
     // Streaming path
     currentModel = {
-      stream: streamingStream.mockResolvedValue((async function* () {
-        yield { content: 'A' }
-        yield { content: 'B' }
-      })()),
+      stream: streamingStream.mockResolvedValue(
+        (async function* () {
+          yield { content: 'A' }
+          yield { content: 'B' }
+        })(),
+      ),
       lc_serializable: { tokenUsage: { promptTokens: 1, completionTokens: 2 } },
-      invoke: structuredInvoke.mockResolvedValue({ content: JSON.stringify({ markdown: 'X' }) }),
+      invoke: structuredInvoke.mockResolvedValue({
+        content: JSON.stringify({ markdown: 'X' }),
+      }),
     }
 
-    const paidStream = await runLlmTask('job_match', 'en', { resume_summary_json: '{}', job_summary_json: '{}', rag_context: '...' }, { tier: 'paid' })
+    const paidStream = await runLlmTask(
+      'job_match',
+      'en',
+      { resume_summary_json: '{}', job_summary_json: '{}', rag_context: '...' },
+      { tier: 'paid' },
+    )
     expect(paidStream.ok).toBe(true)
     expect(paidStream.raw).toBe('AB')
 
     // Image triggers vision and structured
-    const imgPath = '/Users/edisonmbli/Projects/CareerShaper/docs/llm_testing/IMG_3877.JPG'
-    // We don’t load the image into memory; just pass a placeholder to trigger router condition
-    const vision = await runLlmTask('job_summary', 'zh', { jobImage: imgPath }, { tier: 'paid', hasImage: true })
+    const imgPath =
+      '/Users/edisonmbli/Projects/CareerShaper/docs/llm_testing/IMG_3877.JPG'
+    const vision = await runLlmTask(
+      'job_vision_summary',
+      'zh',
+      { image: imgPath },
+      { tier: 'paid', hasImage: true },
+    )
     expect(vision.ok).toBe(true)
     // structured path used invoke under the hood; our stub returns JSON, so raw is undefined
     // runStructuredLlmTask returns data, not raw only; we assert ok
@@ -237,13 +336,27 @@ describe('llm/service: runLlmTask integration with router', () => {
       },
     }
     currentModel = {
-      stream: streamingStream.mockResolvedValue((async function* () {
-        yield { content: 'C' }
-      })()),
+      stream: streamingStream.mockResolvedValue(
+        (async function* () {
+          yield { content: 'C' }
+        })(),
+      ),
       lc_serializable: { tokenUsage: { promptTokens: 2, completionTokens: 3 } },
-      invoke: structuredInvoke.mockResolvedValue({ content: JSON.stringify(validResumeCustomize) }),
+      invoke: structuredInvoke.mockResolvedValue({
+        content: JSON.stringify(validResumeCustomize),
+      }),
     }
-    const freeRes = await runLlmTask('resume_customize', 'en', { rag_context: 'x', resume_text: 'y', job_summary_json: '{}', match_analysis_json: '{}' }, { tier: 'free' })
+    const freeRes = await runLlmTask(
+      'resume_customize',
+      'en',
+      {
+        rag_context: 'x',
+        resume_text: 'y',
+        job_summary_json: '{}',
+        match_analysis_json: '{}',
+      },
+      { tier: 'free' },
+    )
     expect(freeRes.ok).toBe(true)
   })
 })

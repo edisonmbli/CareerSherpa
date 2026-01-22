@@ -12,6 +12,13 @@ vi.mock('@/lib/rag/vectorStore', () => ({
       return nodes.map((n) => n.id_)
     }),
   },
+  getVectorStore: () => ({
+    storesText: true,
+    add: vi.fn(async (nodes: Document[]) => {
+      nodes.forEach((n) => memoryStore.set(n.id_, n))
+      return nodes.map((n) => n.id_)
+    }),
+  }),
 }))
 
 import { addKnowledgeEntries } from '@/lib/dal/knowledgeEntries'

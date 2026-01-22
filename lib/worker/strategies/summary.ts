@@ -197,7 +197,6 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       const publishPromise = (async () => {
         try {
           // STEP 1: Prime the match channel with PENDING status
-          // This ensures frontend finds content when it switches channels
           const nextPendingStatus = isPaid ? 'PREMATCH_PENDING' : 'MATCH_PENDING'
           const nextPendingCode = isPaid ? 'prematch_queued' : 'match_queued'
           await publishEvent(matchChannel, {
@@ -211,18 +210,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
             traceId,
           })
 
-          // STEP 2: Publish summary result to match channel
-          await publishEvent(matchChannel, {
-            type: 'summary_result',
-            taskId: matchTaskId,
-            json: execResult.data,
-            stage: 'summary_done',
-            requestId,
-            traceId,
-          })
-
-          // STEP 3: Send task_switch on current job_ channel
-          // Frontend will switch to match_ channel upon receiving this
+          // STEP 2: Send task_switch on current job_ channel
           const currentChannel = getChannel(userId, serviceId, taskId)
           await publishEvent(currentChannel, {
             type: 'status',
@@ -232,6 +220,16 @@ export class SummaryStrategy implements WorkerStrategy<any> {
             nextTaskId: matchTaskId,
             lastUpdatedAt: new Date().toISOString(),
             stage: 'finalize',
+            requestId,
+            traceId,
+          })
+
+          // STEP 3: Publish summary result to match channel
+          await publishEvent(matchChannel, {
+            type: 'summary_result',
+            taskId: matchTaskId,
+            json: execResult.data,
+            stage: 'summary_done',
             requestId,
             traceId,
           })

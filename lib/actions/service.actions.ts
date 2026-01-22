@@ -39,23 +39,23 @@ import { after } from 'next/server'
 
 export type CustomizeResumeActionResult =
   | {
-    ok: true
-    taskId: string
-    taskType: 'customize'
-    isFree: boolean
-    executionSessionId: string
-  }
+      ok: true
+      taskId: string
+      taskType: 'customize'
+      isFree: boolean
+      executionSessionId: string
+    }
   | { ok: false; error: string }
 
 export type GenerateInterviewTipsActionResult =
   | {
-    ok: true
-    taskId: string
-    taskType: 'interview'
-    isFree: boolean
-    stream: true
-    executionSessionId: string
-  }
+      ok: true
+      taskId: string
+      taskType: 'interview'
+      isFree: boolean
+      stream: true
+      executionSessionId: string
+    }
   | { ok: false; error: string }
 
 export type SaveCustomizedResumeActionResult = { ok: true }
@@ -285,7 +285,7 @@ export const createServiceAction = withServerActionAuthWrite(
     const tEnq = Date.now()
     after(async () => {
       const eText = await ensureEnqueued({
-        kind: 'stream',
+        kind: 'batch',
         serviceId: svc.id,
         taskId: `job_${svc.id}_${executionSessionId}`,
         userId,
@@ -306,9 +306,13 @@ export const createServiceAction = withServerActionAuthWrite(
         if (hasQuota) {
           await markDebitFailed(debit.id)
         }
-        await updateServiceExecutionStatus(svc.id, ExecutionStatus.MATCH_FAILED, {
-          failureCode: 'ENQUEUE_FAILED',
-        })
+        await updateServiceExecutionStatus(
+          svc.id,
+          ExecutionStatus.MATCH_FAILED,
+          {
+            failureCode: 'ENQUEUE_FAILED',
+          },
+        )
       } else {
         trackEvent('TASK_ENQUEUED', {
           userId,
@@ -546,23 +550,23 @@ export const saveCustomizedResumeAction = withServerActionAuthWrite<
 export const retryMatchAction = withServerActionAuthWrite<
   { locale: Locale; serviceId: string },
   | {
-    ok: true
-    isFree: boolean
-    step: 'summary' | 'match'
-    stream: boolean
-    executionSessionId: string
-  }
+      ok: true
+      isFree: boolean
+      step: 'summary' | 'match'
+      stream: boolean
+      executionSessionId: string
+    }
   | {
-    ok: false
-    error:
-    | 'job_summary_missing'
-    | 'previous_ocr_failed'
-    | 'previous_summary_failed'
-    | 'previous_model_limit'
-    | 'enqueue_failed'
-    | 'daily_limit'
-    | 'frequency_limit'
-  }
+      ok: false
+      error:
+        | 'job_summary_missing'
+        | 'previous_ocr_failed'
+        | 'previous_summary_failed'
+        | 'previous_model_limit'
+        | 'enqueue_failed'
+        | 'daily_limit'
+        | 'frequency_limit'
+    }
 >(
   'retryMatchAction',
   async (params: { locale: Locale; serviceId: string }, ctx) => {

@@ -52,7 +52,11 @@ describe('uploadJobImage', () => {
 
             // Check that uploadFile was called with a file mock
             expect(mockUpload).toHaveBeenCalledTimes(1)
-            const [fileMock] = mockUpload.mock.calls[0]
+            const firstCall = mockUpload.mock.calls[0]
+            if (!firstCall) {
+                throw new Error('Expected uploadFile to be called')
+            }
+            const [fileMock] = firstCall
             expect((fileMock as any).type).toBe('image/jpeg')
         })
 
@@ -68,7 +72,11 @@ describe('uploadJobImage', () => {
             const result = await uploadJobImage(smallBase64)
 
             expect(result.ok).toBe(true)
-            const [fileMock] = mockUpload.mock.calls[0]
+            const firstCall = mockUpload.mock.calls[0]
+            if (!firstCall) {
+                throw new Error('Expected uploadFile to be called')
+            }
+            const [fileMock] = firstCall
             expect((fileMock as any).type).toBe('image/png')
         })
     })

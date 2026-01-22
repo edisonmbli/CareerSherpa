@@ -21,9 +21,11 @@ import { getStrategy } from '@/lib/worker/strategies'
 import { markTimeline } from '@/lib/observability/timeline'
 import { logError } from '@/lib/logger'
 import { getProvider } from '@/lib/llm/utils'
-import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
+import { recordRefund, markDebitFailed, markDebitSuccess } from '@/lib/dal/coinLedger'
+import { setInterviewTipsJson, setMatchSummaryJson } from '@/lib/dal/services'
 import { pushTask } from '@/lib/queue/producer'
 import type { DeferredTask } from '@/lib/worker/strategies/interface'
+import { AsyncTaskStatus } from '@prisma/client'
 
 type Body = import('@/lib/worker/types').WorkerBody
 
@@ -151,6 +153,81 @@ export async function onToken(
     requestId,
     traceId,
   })
+}
+
+function safeParseJson(raw?: string) {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+export async function streamWriteResults(
+  templateId: string,
+  serviceId: string,
+  exec: { result?: { raw?: string } },
+  _variables: Record<string, unknown>,
+  _userId: string,
+  _requestId: string,
+) {
+  const raw = exec.result?.raw
+  const parsed = safeParseJson(raw)
+
+  if (templateId === 'job_match') {
+    if (parsed) {
+      await setMatchSummaryJson(serviceId, parsed, AsyncTaskStatus.COMPLETED)
+      return
+    }
+    await setMatchSummaryJson(
+      serviceId,
+      { markdown: raw || '' },
+      AsyncTaskStatus.FAILED,
+    )
+    return
+  }
+
+  if (templateId === 'interview_prep') {
+    if (parsed) {
+      await setInterviewTipsJson(serviceId, parsed, AsyncTaskStatus.COMPLETED)
+      return
+    }
+    await setInterviewTipsJson(
+      serviceId,
+      { markdown: raw || '' },
+      AsyncTaskStatus.COMPLETED,
+    )
+  }
+}
+
+export async function streamHandleTransactions(
+  templateId: string,
+  exec: { result?: { raw?: string; usageLogId?: string } },
+  variables: Record<string, unknown>,
+  serviceId: string,
+  userId: string,
+  _requestId: string,
+) {
+  const wasPaid = Boolean(variables['wasPaid'])
+  const cost = Number(variables['cost'] || 0)
+  const debitId = String(variables['debitId'] || '')
+  if (!wasPaid || cost <= 0 || !debitId) return
+
+  const raw = exec.result?.raw
+  const parsed = safeParseJson(raw)
+  if (templateId === 'job_match' && !parsed) {
+    await recordRefund({
+      userId,
+      amount: cost,
+      relatedId: debitId,
+      serviceId,
+      templateId,
+    })
+    return
+  }
+
+  await markDebitSuccess(debitId, exec.result?.usageLogId)
 }
 
 export async function handleStream(

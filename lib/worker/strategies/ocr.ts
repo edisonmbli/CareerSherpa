@@ -272,14 +272,26 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
 
       const channel = getChannel(userId, serviceId, taskId)
 
-      const publishPromise = publishEvent(channel, {
-        type: 'ocr_result',
-        taskId: taskId,
-        text,
-        stage: 'ocr_done',
-        requestId,
-        traceId,
-      }).catch((err) =>
+      const publishPromise = Promise.all([
+        publishEvent(channel, {
+          type: 'ocr_result',
+          taskId: taskId,
+          text,
+          stage: 'ocr_done',
+          requestId,
+          traceId,
+        }),
+        publishEvent(channel, {
+          type: 'status',
+          taskId: taskId,
+          code: 'ocr_completed',
+          status: 'OCR_COMPLETED',
+          lastUpdatedAt: new Date().toISOString(),
+          stage: 'ocr_done',
+          requestId,
+          traceId,
+        }),
+      ]).catch((err) =>
         logError({
           reqId: requestId,
           route: 'worker/ocr',
@@ -367,7 +379,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         try {
           await updateServiceExecutionStatus(
             serviceId,
-            ExecutionStatus.OCR_PENDING,
+            ExecutionStatus.SUMMARY_PENDING,
             {
               executionSessionId: sessionId,
             }

@@ -25,7 +25,11 @@ describe('Resume Schema Validation', () => {
       const result = basicInfoSchema.safeParse(invalidData)
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.issues[0].path).toContain('name')
+        const firstIssue = result.error.issues[0]
+        expect(firstIssue).toBeDefined()
+        if (firstIssue) {
+          expect(firstIssue.path).toContain('name')
+        }
       }
     })
   })

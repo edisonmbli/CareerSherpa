@@ -22,6 +22,7 @@ import { StandardDefaults } from '@/components/resume/templates/TemplateStandard
 import { DesignDefaults } from '@/components/resume/templates/TemplateDesign'
 import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
 import { TemplateConfig } from '@/components/resume/templates/types'
+import { DEFAULT_SECTION_ORDER } from '@/lib/constants'
 
 export const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
   technical: TechnicalDefaults,
@@ -36,17 +37,7 @@ export const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
 
 // Default Section Config
 const DEFAULT_SECTION_CONFIG: SectionConfig = {
-  order: [
-    'basics',
-    'summary',
-    'workExperiences',
-    'projectExperiences',
-    'educations',
-    'skills',
-    'certificates',
-    'hobbies',
-    'customSections',
-  ],
+  order: [...DEFAULT_SECTION_ORDER],
   hidden: [],
 }
 

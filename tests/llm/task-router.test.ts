@@ -8,9 +8,9 @@ describe('task-router: getTaskRouting', () => {
     expect(decision.isStream).toBe(false)
   })
 
-  it('routes detailed_resume_summary: free glm-4.5-flash structured', () => {
+  it('routes detailed_resume_summary: free gemini-3-flash-preview structured', () => {
     const decision = getTaskRouting('detailed_resume_summary', false)
-    expect(decision.modelId).toBe('glm-4.5-flash')
+    expect(decision.modelId).toBe('gemini-3-flash-preview')
     expect(decision.isStream).toBe(false)
   })
 
@@ -20,9 +20,9 @@ describe('task-router: getTaskRouting', () => {
     expect(decision.isStream).toBe(true)
   })
 
-  it('routes job_match (free) to glm-4.5-flash stream', () => {
+  it('routes job_match (free) to gemini-3-flash-preview stream', () => {
     const decision = getTaskRouting('job_match', false)
-    expect(decision.modelId).toBe('glm-4.5-flash')
+    expect(decision.modelId).toBe('gemini-3-flash-preview')
     expect(decision.isStream).toBe(true)
   })
 
@@ -32,9 +32,9 @@ describe('task-router: getTaskRouting', () => {
     expect(decision.isStream).toBe(false)
   })
 
-  it('routes vision (free) to glm-4.1v-thinking-flash structured', () => {
+  it('routes vision (free) to gemini-3-flash-preview structured', () => {
     const decision = getJobVisionTaskRouting(false)
-    expect(decision.modelId).toBe('glm-4.1v-thinking-flash')
+    expect(decision.modelId).toBe('gemini-3-flash-preview')
     expect(decision.isStream).toBe(false)
   })
 
@@ -44,9 +44,9 @@ describe('task-router: getTaskRouting', () => {
     expect(decision.isStream).toBe(false)
   })
 
-  it('defaults free text to glm-4.5-flash structured', () => {
+  it('defaults free text to gemini-3-flash-preview structured', () => {
     const decision = getTaskRouting('resume_summary', false)
-    expect(decision.modelId).toBe('glm-4.5-flash')
+    expect(decision.modelId).toBe('gemini-3-flash-preview')
     expect(decision.isStream).toBe(false)
   })
 })

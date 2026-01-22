@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DEFAULT_SECTION_ORDER } from '@/lib/constants'
 
 // ==========================================
 // 1. 原子数据结构 (Data Structures)
@@ -115,7 +116,7 @@ export const resumeDataSchema = z.object({
 
 // 用于控制 ResumeEditor 的章节顺序和显隐
 export const sectionConfigSchema = z.object({
-  order: z.array(z.string()).default([]),
+  order: z.array(z.string()).default([...DEFAULT_SECTION_ORDER]),
   hidden: z.array(z.string()).default([]),
   // Note: Use explicit object instead of z.record() for Gemini API compatibility
   // Note: passthrough() removed - may cause LangChain schema conversion issues

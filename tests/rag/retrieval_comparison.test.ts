@@ -42,7 +42,7 @@ beforeAll(async () => {
   const count = await prisma.knowledgeEntry.count()
   if (count === 0) {
     throw new Error(
-      'RAG 数据库为空。请先运行 `npx tsx scripts/ingest-rag-docs.ts` 完成入库。'
+      'RAG 数据库为空。请先运行 `npx tsx scripts/ingest-rag-docs.ts` 完成入库。',
     )
   }
 }, 30000)
@@ -70,7 +70,7 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
       embedding,
       preferredFilters,
       topK,
-      0
+      0,
     )) as Row[]
     const t2 = Date.now()
 
@@ -82,7 +82,7 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         query,
         preferredFilters,
         topK,
-        0
+        0,
       )) as Row[]
       t3 = Date.now()
     } catch (err) {
@@ -97,14 +97,14 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         embedding,
         { lang: 'zh', isPublic: true },
         topK,
-        0
+        0,
       )) as Row[]
       try {
         vecRows = (await findSimilarKnowledgeEntriesViaVectorStore(
           query,
           { lang: 'zh', isPublic: true },
           topK,
-          0
+          0,
         )) as Row[]
       } catch (err) {
         vecError = err instanceof Error ? err.message : String(err)
@@ -137,7 +137,6 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
     }
 
     // 输出对比指标，便于后续架构决策
-    // eslint-disable-next-line no-console
     console.table(metrics)
 
     // 基本一致性断言：至少有一定交集，且两路结果按分数排序（降序）
@@ -145,13 +144,13 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
       expect(inter).toBeGreaterThanOrEqual(Math.min(topK, 2))
       const vecArr = vecRows.map((r) => r.score)
       const nonIncreasingVec = vecArr.every((v, i, arr) =>
-        i === 0 ? true : v <= arr[i - 1]!
+        i === 0 ? true : v <= arr[i - 1]!,
       )
       expect(nonIncreasingVec).toBe(true)
     }
     const sqlArr = sqlRows.map((r) => r.score)
     const nonIncreasingSql = sqlArr.every((v, i, arr) =>
-      i === 0 ? true : v <= arr[i - 1]!
+      i === 0 ? true : v <= arr[i - 1]!,
     )
     expect(nonIncreasingSql).toBe(true)
   }, 60000)
@@ -178,7 +177,7 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
       embedding2,
       preferredFilters,
       topK,
-      0
+      0,
     )) as Row[]
     const t2 = Date.now()
 
@@ -190,7 +189,7 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         query,
         preferredFilters,
         topK,
-        0
+        0,
       )) as Row[]
       t3 = Date.now()
     } catch (err) {
@@ -205,14 +204,14 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
         embedding2,
         { lang: 'en', isPublic: true },
         topK,
-        0
+        0,
       )) as Row[]
       try {
         vecRows2 = (await findSimilarKnowledgeEntriesViaVectorStore(
           query,
           { lang: 'en', isPublic: true },
           topK,
-          0
+          0,
         )) as Row[]
       } catch (err) {
         vecError2 = err instanceof Error ? err.message : String(err)
@@ -244,20 +243,19 @@ describe('检索路径对比：SQL($queryRaw) vs VectorStore', () => {
       usedCategory: usedCategory ?? 'none',
     }
 
-    // eslint-disable-next-line no-console
     console.table(metrics)
 
     if (vecRows2.length) {
       expect(inter).toBeGreaterThanOrEqual(Math.min(topK, 2))
       const vecArr2 = vecRows2.map((r) => r.score)
       const nonIncreasingVec2 = vecArr2.every((v, i, arr) =>
-        i === 0 ? true : v <= arr[i - 1]!
+        i === 0 ? true : v <= arr[i - 1]!,
       )
       expect(nonIncreasingVec2).toBe(true)
     }
     const sqlArr = sqlRows.map((r) => r.score)
     const nonIncreasingSql2 = sqlArr.every((v, i, arr) =>
-      i === 0 ? true : v <= arr[i - 1]!
+      i === 0 ? true : v <= arr[i - 1]!,
     )
     expect(nonIncreasingSql2).toBe(true)
   }, 60000)

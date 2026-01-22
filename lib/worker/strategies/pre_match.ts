@@ -57,7 +57,7 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
     variables: PreMatchAuditVars,
     ctx: StrategyContext
   ) {
-    const { serviceId, userId, locale } = ctx
+    const { serviceId, userId, locale, requestId, traceId } = ctx
     const dict = await getDictionary(locale as any)
 
     // 1. Construct Risk Context
@@ -91,6 +91,38 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
       console.warn(
         `[PreMatch] Audit failed or empty. Error: ${execResult.error}`
       )
+    }
+
+    if (execResult.ok && execResult.data) {
+      try {
+        const channel = getChannel(userId, serviceId, variables.nextTaskId)
+        await publishEvent(channel, {
+          type: 'pre_match_result',
+          taskId: variables.nextTaskId,
+          json: execResult.data,
+          stage: 'prematch_done',
+          requestId,
+          traceId,
+        })
+        await publishEvent(channel, {
+          type: 'status',
+          taskId: variables.nextTaskId,
+          status: 'PREMATCH_COMPLETED',
+          code: 'prematch_completed',
+          lastUpdatedAt: new Date().toISOString(),
+          stage: 'completed',
+          requestId,
+          traceId,
+        })
+      } catch (e) {
+        logError({
+          reqId: ctx.requestId,
+          route: 'worker/pre_match',
+          error: String(e),
+          phase: 'publish_prematch_result',
+          serviceId,
+        })
+      }
     }
 
     // 2. Enqueue the actual Job Match Task

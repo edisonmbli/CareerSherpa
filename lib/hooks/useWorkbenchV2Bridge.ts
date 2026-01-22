@@ -21,6 +21,7 @@ import {
 } from '@/lib/stores/workbench-v2.store'
 import { useSseStreamV2 } from '@/lib/hooks/useSseStreamV2'
 import { sseLog } from '@/lib/ui/sse-debug-logger'
+import { mapToStatus } from '@/lib/ui/sse-event-processor'
 
 interface WorkbenchBridgeOptions {
     userId: string
@@ -240,34 +241,6 @@ export function useWorkbenchV2Bridge(options: WorkbenchBridgeOptions) {
 // =============================================================================
 
 function mapInitialStatus(serverStatus: string): WorkbenchStatusV2 | null {
-    const s = serverStatus.toUpperCase()
-    const known: Record<string, WorkbenchStatusV2> = {
-        JOB_VISION_PENDING: 'JOB_VISION_PENDING',
-        JOB_VISION_STREAMING: 'JOB_VISION_STREAMING',
-        JOB_VISION_COMPLETED: 'JOB_VISION_COMPLETED',
-        JOB_VISION_FAILED: 'JOB_VISION_FAILED',
-        OCR_PENDING: 'OCR_PENDING',
-        OCR_COMPLETED: 'OCR_COMPLETED',
-        OCR_FAILED: 'OCR_FAILED',
-        SUMMARY_PENDING: 'SUMMARY_PENDING',
-        SUMMARY_COMPLETED: 'SUMMARY_COMPLETED',
-        SUMMARY_FAILED: 'SUMMARY_FAILED',
-        PREMATCH_PENDING: 'PREMATCH_PENDING',
-        PREMATCH_COMPLETED: 'PREMATCH_COMPLETED',
-        PREMATCH_FAILED: 'PREMATCH_FAILED',
-        MATCH_PENDING: 'MATCH_PENDING',
-        MATCH_STREAMING: 'MATCH_STREAMING',
-        MATCH_COMPLETED: 'MATCH_COMPLETED',
-        MATCH_FAILED: 'MATCH_FAILED',
-        COMPLETED: 'MATCH_COMPLETED',
-        CUSTOMIZE_PENDING: 'CUSTOMIZE_PENDING',
-        CUSTOMIZE_COMPLETED: 'CUSTOMIZE_COMPLETED',
-        CUSTOMIZE_FAILED: 'CUSTOMIZE_FAILED',
-        INTERVIEW_PENDING: 'INTERVIEW_PENDING',
-        INTERVIEW_COMPLETED: 'INTERVIEW_COMPLETED',
-        INTERVIEW_FAILED: 'INTERVIEW_FAILED',
-    }
-    return known[s] || null
+    return mapToStatus(serverStatus)
 }
-
 

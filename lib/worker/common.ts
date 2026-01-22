@@ -49,11 +49,20 @@ function getEventText(event: Record<string, unknown>): string {
 
 // --- Token batcher global singleton type ---
 declare global {
-  var __cs_token_batchers__: Map<string, { tokens: string[]; timer?: ReturnType<typeof setTimeout>; startedAt: number }> | undefined
+  var __cs_token_batchers__:
+    | Map<
+        string,
+        {
+          tokens: string[]
+          timer?: ReturnType<typeof setTimeout>
+          startedAt: number
+        }
+      >
+    | undefined
 }
 
 export async function parseWorkerBody(
-  req: Request
+  req: Request,
 ): Promise<{ ok: true; body: WorkerBody } | { ok: false; response: Response }> {
   try {
     const json = await req.json()
@@ -100,7 +109,7 @@ export function buildCounterKey(userId: string, serviceId: string): string {
 export function getChannel(
   userId: string,
   serviceId: string,
-  taskId: string
+  taskId: string,
 ): string {
   return buildEventChannel(userId, serviceId, taskId)
 }
@@ -128,7 +137,7 @@ export async function requeueWithDelay(
   kind: WorkerKind,
   service: string,
   body: WorkerBody,
-  delaySec: number
+  delaySec: number,
 ) {
   const client = getQStash()
   const base = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
@@ -162,7 +171,7 @@ export async function enterGuards(
   counterKey: string,
   ttlSec: number,
   maxSize: number,
-  doQueueBump: boolean = true
+  doQueueBump: boolean = true,
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
   const locked = await acquireLock(userId, kind, ttlSec)
   if (!locked) {
@@ -192,7 +201,7 @@ export async function enterGuards(
 export async function exitGuards(
   userId: string,
   kind: WorkerKind,
-  counterKey: string
+  counterKey: string,
 ) {
   try {
     await decPending(counterKey)
@@ -205,7 +214,7 @@ export async function exitGuards(
 export async function enterModelConcurrency(
   modelId: ModelIdType,
   queueId: string,
-  ttlSec: number
+  ttlSec: number,
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
   const tier = getTierFromQueueId(queueId)
   const key = buildModelActiveKey(modelId, tier)
@@ -215,7 +224,7 @@ export async function enterModelConcurrency(
 
 export async function exitModelConcurrency(
   modelId: ModelIdType,
-  queueId: string
+  queueId: string,
 ) {
   const tier = getTierFromQueueId(queueId)
   const key = buildModelActiveKey(modelId, tier)
@@ -225,7 +234,7 @@ export async function exitModelConcurrency(
 export async function enterUserConcurrency(
   userId: string,
   kind: WorkerKind,
-  ttlSec: number
+  ttlSec: number,
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
   const cfg = getConcurrencyConfig()
   const maxActive =
@@ -241,7 +250,7 @@ export async function exitUserConcurrency(userId: string, kind: WorkerKind) {
 
 export async function publishEvent(
   channel: string,
-  event: Record<string, any>
+  event: Record<string, any>,
 ) {
   const redis = getRedis()
 
@@ -256,6 +265,10 @@ export async function publishEvent(
     tokens: string[]
     timer?: ReturnType<typeof setTimeout>
     startedAt: number
+    requestId?: string
+    traceId?: string
+    taskId?: string
+    stage?: string
   }
   const batchers = globalThis.__cs_token_batchers__
   const tokenBatchers: Map<string, Batcher> =
@@ -269,15 +282,17 @@ export async function publishEvent(
     if (!buf || buf.tokens.length === 0) return
     const mergedText = buf.tokens.join('')
     const parts = ch.split(':')
-    const taskId = parts[parts.length - 1] || ''
+    const taskId = buf.taskId || parts[parts.length - 1] || ''
     const payloadObj = {
       type: 'token_batch',
-      stage: 'stream',
+      stage: buf.stage || 'stream',
       text: mergedText,
       count: buf.tokens.length,
       startedAt: buf.startedAt,
       endedAt: Date.now(),
       taskId,
+      ...(buf.requestId ? { requestId: buf.requestId } : {}),
+      ...(buf.traceId ? { traceId: buf.traceId } : {}),
     }
     const payloadStr = JSON.stringify(payloadObj)
     try {
@@ -301,13 +316,26 @@ export async function publishEvent(
     const text = getEventText(event)
     let buf = tokenBatchers.get(channel)
     if (!buf) {
-      buf = { tokens: [], startedAt: Date.now() }
+      buf = {
+        tokens: [],
+        startedAt: Date.now(),
+      }
+      if (event?.['requestId']) buf.requestId = event['requestId']
+      if (event?.['traceId']) buf.traceId = event['traceId']
+      if (event?.['taskId']) buf.taskId = event['taskId']
+      if (event?.['stage']) buf.stage = event['stage']
       tokenBatchers.set(channel, buf)
       // 定时器：时间窗口先到即 flush（互补策略）
       buf.timer = setTimeout(
         () => flush(channel),
-        Math.max(ENV.STREAM_FLUSH_INTERVAL_MS || 20, 20)
+        Math.max(ENV.STREAM_FLUSH_INTERVAL_MS || 20, 20),
       )
+    } else {
+      if (!buf.requestId && event?.['requestId'])
+        buf.requestId = event['requestId']
+      if (!buf.traceId && event?.['traceId']) buf.traceId = event['traceId']
+      if (!buf.taskId && event?.['taskId']) buf.taskId = event['taskId']
+      if (!buf.stage && event?.['stage']) buf.stage = event['stage']
     }
     buf.tokens.push(text)
     // 长度阈值先到即立即 flush（互补策略）
