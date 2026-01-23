@@ -17,7 +17,7 @@ import {
   getJobVisionTaskRouting,
   isServiceScoped,
 } from '@/lib/llm/task-router'
-import { getConcurrencyConfig } from '@/lib/env'
+import { buildQueueCounterKey, queueMaxSizeFor } from '@/lib/config/concurrency'
 import { bumpPending } from '@/lib/redis/counter'
 import { logError } from '@/lib/logger'
 import { getChannel, publishEvent } from '@/lib/worker/common'
@@ -157,23 +157,8 @@ export async function pushTask<T extends TaskTemplateId>(
 
   // 生产者侧队列背压：按 QueueId 维度限制入队
   const ttlSec = Math.max(1, Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000))
-  const queueCounterKey = `bp:queue:${String(decision.queueId)}`
-  const cfg = getConcurrencyConfig()
-  const qidLower = String(decision.queueId).toLowerCase()
-  const maxSize =
-    qidLower.includes('paid') && qidLower.includes('stream')
-      ? cfg.queueLimits.paidStream
-      : qidLower.includes('free') && qidLower.includes('stream')
-        ? cfg.queueLimits.freeStream
-        : qidLower.includes('paid') && qidLower.includes('batch')
-          ? cfg.queueLimits.paidBatch
-          : qidLower.includes('free') && qidLower.includes('batch')
-            ? cfg.queueLimits.freeBatch
-            : qidLower.includes('paid') && qidLower.includes('vision')
-              ? cfg.queueLimits.paidVision
-              : qidLower.includes('free') && qidLower.includes('vision')
-                ? cfg.queueLimits.freeVision
-                : cfg.queueMaxSize
+  const queueCounterKey = buildQueueCounterKey(String(decision.queueId))
+  const maxSize = queueMaxSizeFor(String(decision.queueId))
   const bp = await bumpPending(queueCounterKey, ttlSec, maxSize)
   if (!bp.ok) {
     // 审计与分析：生产者侧背压拒绝
@@ -195,6 +180,8 @@ export async function pushTask<T extends TaskTemplateId>(
         templateId: params.templateId,
         kind: params.kind,
         queueId: String(decision.queueId || ''),
+        maxSize,
+        ...(bp.pending !== undefined ? { pending: bp.pending } : {}),
         retryAfter: bp.retryAfter,
       },
     )

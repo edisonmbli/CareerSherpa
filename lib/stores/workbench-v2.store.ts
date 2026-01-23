@@ -291,16 +291,8 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
     const state = get()
     const prevStatus = state.status
 
-    // Debug: trace all status updates
-    console.log('[V2Store] setStatus called:', {
-      prevStatus,
-      newStatus: status,
-      detail,
-    })
-
     // Skip if same status (idempotent)
     if (prevStatus === status && state.statusDetail === detail) {
-      console.log('[V2Store] setStatus: skipped (same status)')
       return
     }
 
@@ -311,14 +303,11 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
       if (status.includes('PENDING')) {
         // Allowed regression for Retry
       } else {
-        console.warn(
-          '[V2Store] Rejected status regression (Terminal -> Active):',
-          {
-            prev: prevStatus,
-            new: status,
-            reason: 'Potential race condition from delayed SSE packet',
-          },
-        )
+        sseLog.warn('status_regression_blocked', {
+          prev: prevStatus,
+          next: status,
+          reason: 'Potential race condition from delayed SSE packet',
+        })
         return
       }
     }
@@ -456,9 +445,6 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
 
   setMatchResult: (json) => {
     sseLog.event('match_result', { keys: Object.keys(json) })
-    console.log(
-      '[V2Store] setMatchResult called, setting status to MATCH_COMPLETED',
-    )
     set((s) => ({
       content: {
         ...s.content,
@@ -473,10 +459,6 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
         targetProgress: 100,
       },
     }))
-    console.log(
-      '[V2Store] setMatchResult complete, new status:',
-      useWorkbenchV2Store.getState().status,
-    )
   },
 
   // Paid tier - OCR

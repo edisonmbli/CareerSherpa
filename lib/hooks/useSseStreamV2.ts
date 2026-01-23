@@ -268,8 +268,7 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
 
           const currentState = useWorkbenchV2Store.getState()
 
-          // DEBUG: Log raw event processing details
-          console.log('[SSE DEBUG] Processing Event:', {
+          sseLog.event('process_event', {
             type: raw.type,
             taskId: currentTaskIdRef.current,
             eventTaskId: raw.taskId,
@@ -292,17 +291,13 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
 
             setLastNonMatchTarget(processed.newStatus, currentState.tier)
 
-            console.log(
-              '[useSseStreamV2] Defensive setStatus:',
-              processed.newStatus,
-            )
+            sseLog.event('set_status', { status: processed.newStatus })
 
             setStatus(processed.newStatus, processed.statusDetail)
             // Log event after applying status
             sseLog.event('status_applied', { status: processed.newStatus })
 
-            // Debug: trace all status updates from SSE events
-            console.log('[useSseStreamV2] Status logic:', {
+            sseLog.event('status_logic', {
               newStatus: processed.newStatus,
               oldStatus: oldStatus,
               shouldSwitch: shouldSwitchTask(oldStatus, processed.newStatus),
@@ -372,15 +367,11 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
             }
           }
 
-          // Debug: trace matchResult handling
           if (processed.matchResult) {
-            console.log(
-              '[useSseStreamV2] matchResult received, calling setMatchResult:',
-              {
-                keys: Object.keys(processed.matchResult),
-                hasMatchScore: 'match_score' in processed.matchResult,
-              },
-            )
+            sseLog.event('match_result_received', {
+              keys: Object.keys(processed.matchResult),
+              hasMatchScore: 'match_score' in processed.matchResult,
+            })
             setMatchResult(processed.matchResult)
             // Content Backfill
             const state = useWorkbenchV2Store.getState()
@@ -434,9 +425,6 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
           }
 
           if (processed.streamCompleted) {
-            console.log('[SSE DEBUG] Stream Completed event received', {
-              taskId,
-            })
             sseLog.event('stream_completed', { taskId })
             flushTokenBuffer()
 

@@ -144,12 +144,14 @@ export function ServiceDisplay({
     // If it's a raw technical error (e.g. "Parse error..."), we get a generic "Service Unavailable" message
     const dicts = dict?.workbench || {}
     const { description } = getServiceErrorMessage(v2Bridge.errorMessage, dicts)
-    console.log('[ServiceDisplay] localizedError:', {
-      raw: v2Bridge.errorMessage,
-      hasNotification: !!dicts.notification,
-      serverErrorDesc: dicts.notification?.serverErrorDesc,
-      result: description,
-    })
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ServiceDisplay] localizedError:', {
+        raw: v2Bridge.errorMessage,
+        hasNotification: !!dicts.notification,
+        serverErrorDesc: dicts.notification?.serverErrorDesc,
+        result: description,
+      })
+    }
     return description
   }, [v2Bridge?.errorMessage, dict?.workbench])
 
@@ -171,11 +173,13 @@ export function ServiceDisplay({
       v2Status.includes('PENDING') || v2Status.includes('STREAMING')
 
     if (serverIsTerminal && v2IsActive) {
-      console.log('[ServiceDisplay] Server-V2 mismatch detected:', {
-        serverMatchStatus,
-        v2Status,
-        action: 'force_sync',
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ServiceDisplay] Server-V2 mismatch detected:', {
+          serverMatchStatus,
+          v2Status,
+          action: 'force_sync',
+        })
+      }
 
       // Force V2 status to match server
       // Force V2 status to match server
@@ -324,7 +328,9 @@ export function ServiceDisplay({
           serviceId: serviceId!,
           locale,
         })
-        console.log('[Frontend] customizeResumeAction result:', res)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Frontend] customizeResumeAction result:', res)
+        }
         if (res?.ok) {
           if (res.executionSessionId) {
             // Use customize_ prefix (matches backend channel)
@@ -333,7 +339,9 @@ export function ServiceDisplay({
               serviceId!,
               res.executionSessionId,
             )
-            console.log('[Frontend] Setting taskId to:', newTaskId)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Frontend] Setting taskId to:', newTaskId)
+            }
             setMatchTaskId(newTaskId)
           }
           // Set status and start progress simulation immediately (before SSE confirms)
@@ -348,7 +356,9 @@ export function ServiceDisplay({
         }
       } catch (e) {
         setTabValue('match')
-        console.error(e)
+        if (process.env.NODE_ENV === 'development') {
+          console.error(e)
+        }
         showError(
           dict.workbench?.customize?.createFailed ||
             'Failed to start customization',
@@ -410,7 +420,9 @@ export function ServiceDisplay({
           showError(serviceError.title, serviceError.description)
         }
       } catch (e) {
-        console.error(e)
+        if (process.env.NODE_ENV === 'development') {
+          console.error(e)
+        }
         showError(
           'Failed to generate interview tips',
           'An unexpected error occurred.',

@@ -1,4 +1,5 @@
 import { isProdRedisReady, ENV } from './env'
+import { RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC } from '@/lib/constants'
 import { getRedis } from '@/lib/redis/client'
 
 type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
@@ -7,7 +8,7 @@ type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
 const windowSec = ENV.RATE_LIMIT_PAID_WINDOW_SEC || 300 // 5 minutes for paid
 const trialLimit = 3 // Legacy: for trial users
 const boundLimit = ENV.RATE_LIMIT_PAID_MAX || 10 // Paid: 10 calls per window
-const dailyFreeLimit = ENV.RATE_LIMIT_FREE_DAILY || 8 // Free: 8 calls per day
+const dailyFreeLimit = ENV.RATE_LIMIT_FREE_DAILY || 1 // Free: 1 calls per day
 const UPSTASH_TIMEOUT_MS = 5000 // 5s timeout for Redis operations to handle network latency
 
 const mem = new Map<string, { count: number; resetAt: number }>()
@@ -17,7 +18,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Upstash timeout')), ms)
+      setTimeout(() => reject(new Error('Upstash timeout')), ms),
     ),
   ])
 }
@@ -25,7 +26,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 // 统一 Upstash 访问方式：改用 getRedis 客户端
 // Critical: The timeout only applies to INCR (the counting op).
 // EXPIRE and TTL are best-effort and should not cause fallback to memory.
-async function upstashRate(key: string, limit: number, ttlSec: number): Promise<RateResult> {
+async function upstashRate(
+  key: string,
+  limit: number,
+  ttlSec: number,
+): Promise<RateResult> {
   const redis = getRedis()
 
   // Step 1: INCR (the critical counting operation - timeout applies here)
@@ -49,9 +54,12 @@ async function upstashRate(key: string, limit: number, ttlSec: number): Promise<
     })
   } else {
     // Ensure TTL exists to prevent infinite keys (best-effort)
-    redis.ttl(key).then(ttl => {
-      if (ttl === -1) redis.expire(key, ttlSec).catch(() => { })
-    }).catch(() => { })
+    redis
+      .ttl(key)
+      .then((ttl) => {
+        if (ttl === -1) redis.expire(key, ttlSec).catch(() => {})
+      })
+      .catch(() => {})
   }
 
   // Step 3: Check limit
@@ -61,7 +69,7 @@ async function upstashRate(key: string, limit: number, ttlSec: number): Promise<
     try {
       const tRaw = await Promise.race([
         redis.ttl(key),
-        new Promise<number>((resolve) => setTimeout(() => resolve(-2), 500)) // 500ms mini-timeout
+        new Promise<number>((resolve) => setTimeout(() => resolve(-2), 500)), // 500ms mini-timeout
       ])
       const t = Number(tRaw)
       if (!Number.isNaN(t) && t > 0) retryAfter = t
@@ -73,7 +81,6 @@ async function upstashRate(key: string, limit: number, ttlSec: number): Promise<
 
   return { ok: true, remaining: Math.max(0, limit - c) }
 }
-
 
 function memoryRate(key: string, limit: number, ttlSec: number): RateResult {
   const now = Date.now()
@@ -97,7 +104,7 @@ function memoryRate(key: string, limit: number, ttlSec: number): RateResult {
  */
 export async function checkDailyRateLimit(
   userId: string,
-  tier: 'free' | 'paid'
+  tier: 'free' | 'paid',
 ): Promise<RateResult> {
   if (tier === 'paid') return { ok: true } // Paid uses window-based limit
 
@@ -108,7 +115,7 @@ export async function checkDailyRateLimit(
     try {
       const result = await withTimeout(
         upstashRate(key, dailyFreeLimit, ttlSec),
-        UPSTASH_TIMEOUT_MS
+        UPSTASH_TIMEOUT_MS,
       )
       // Debug logging for development
       if (process.env.NODE_ENV === 'development') {
@@ -116,11 +123,13 @@ export async function checkDailyRateLimit(
       }
       return result
     } catch (e) {
-      console.warn(`[RateLimit] Daily check failed for ${userId}, using memory fallback`)
+      console.warn(
+        `[RateLimit] Daily check failed for ${userId}, using memory fallback`,
+      )
       // IMPORTANT: If Redis check already ran and incremented counter,
       // we don't have visibility into the result. Fail-closed in production.
       if (process.env.NODE_ENV === 'production') {
-        return { ok: false, retryAfter: 60 } // Fail-closed in production
+        return { ok: false, retryAfter: RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC }
       }
       // In development, allow memory fallback for testing convenience
     }
@@ -145,7 +154,7 @@ export async function checkDailyRateLimit(
 export async function checkRateLimit(
   route: string,
   identity: string,
-  isTrial: boolean
+  isTrial: boolean,
 ): Promise<RateResult> {
   const limit = isTrial ? trialLimit : boundLimit
   const key = `rate:${identity}:${route}`
@@ -155,17 +164,27 @@ export async function checkRateLimit(
       // Wrap Upstash call with timeout to prevent blocking
       const result = await withTimeout(
         upstashRate(key, limit, windowSec),
-        UPSTASH_TIMEOUT_MS
+        UPSTASH_TIMEOUT_MS,
       )
       // Debug logging for development
       if (process.env.NODE_ENV === 'development') {
-        console.log('[RateLimit:checkRateLimit]', { route, identity, isTrial, limit, key, result })
+        console.log('[RateLimit:checkRateLimit]', {
+          route,
+          identity,
+          isTrial,
+          limit,
+          key,
+          result,
+        })
       }
       return result
     } catch (e) {
       console.warn(
-        `[RateLimit] Upstash latency high (${key}), failing over to local memory strategy.`
+        `[RateLimit] Upstash latency high (${key}), failing over to local memory strategy.`,
       )
+      if (process.env.NODE_ENV === 'production') {
+        return { ok: false, retryAfter: RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC }
+      }
       const fallbackResult = memoryRate(key, limit, windowSec)
       console.log('[RateLimit:memoryFallback]', { key, limit, fallbackResult })
       return fallbackResult
@@ -194,13 +213,13 @@ export type OperationRateLimitResult = {
  * Check user operation rate limit at server action level
  * - Free tier: 5 operations per 24 hours (daily limit)
  * - Paid tier: 10 operations per 15 minutes (frequency limit)
- * 
+ *
  * This should be called at the entry of each user-initiated action
  * (createService, customize, interview, retry, upload resume, etc.)
  */
 export async function checkOperationRateLimit(
   userId: string,
-  tier: 'free' | 'paid'
+  tier: 'free' | 'paid',
 ): Promise<OperationRateLimitResult> {
   if (tier === 'free') {
     // Free tier: 5 ops per 24 hours
@@ -212,19 +231,29 @@ export async function checkOperationRateLimit(
       try {
         const result = await withTimeout(
           upstashRate(key, limit, ttlSec),
-          UPSTASH_TIMEOUT_MS
+          UPSTASH_TIMEOUT_MS,
         )
         if (process.env.NODE_ENV === 'development') {
           console.log('[OpRateLimit:Free]', { userId, limit, result })
         }
         if (!result.ok) {
-          return { ok: false, error: 'daily_limit', retryAfter: result.retryAfter }
+          return {
+            ok: false,
+            error: 'daily_limit',
+            retryAfter: result.retryAfter,
+          }
         }
         return { ok: true, remaining: result.remaining }
       } catch (e) {
-        console.warn(`[OpRateLimit] Daily check failed for ${userId}, using memory fallback`)
+        console.warn(
+          `[OpRateLimit] Daily check failed for ${userId}, using memory fallback`,
+        )
         if (process.env.NODE_ENV === 'production') {
-          return { ok: false, error: 'daily_limit', retryAfter: 60 }
+          return {
+            ok: false,
+            error: 'daily_limit',
+            retryAfter: RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC,
+          }
         }
       }
     }
@@ -232,7 +261,11 @@ export async function checkOperationRateLimit(
     // Memory fallback
     const memResult = memoryRate(key, limit, ttlSec)
     if (!memResult.ok) {
-      return { ok: false, error: 'daily_limit', retryAfter: memResult.retryAfter }
+      return {
+        ok: false,
+        error: 'daily_limit',
+        retryAfter: memResult.retryAfter,
+      }
     }
     return { ok: true, remaining: memResult.remaining }
   } else {
@@ -246,27 +279,51 @@ export async function checkOperationRateLimit(
       try {
         const result = await withTimeout(
           upstashRate(key, limit, ttlSec),
-          UPSTASH_TIMEOUT_MS
+          UPSTASH_TIMEOUT_MS,
         )
         const elapsed = Date.now() - startTime
         if (process.env.NODE_ENV === 'development') {
-          console.log('[OpRateLimit:Paid]', { userId, limit, ttlSec, result, elapsedMs: elapsed })
+          console.log('[OpRateLimit:Paid]', {
+            userId,
+            limit,
+            ttlSec,
+            result,
+            elapsedMs: elapsed,
+          })
         }
         if (!result.ok) {
-          return { ok: false, error: 'frequency_limit', retryAfter: result.retryAfter }
+          return {
+            ok: false,
+            error: 'frequency_limit',
+            retryAfter: result.retryAfter,
+          }
         }
         return { ok: true, remaining: result.remaining }
       } catch (e) {
         const elapsed = Date.now() - startTime
         const errorMsg = e instanceof Error ? e.message : String(e)
-        console.warn(`[OpRateLimit] Frequency check failed for ${userId}, using memory fallback`, {
-          elapsedMs: elapsed,
-          error: errorMsg,
-          timeoutMs: UPSTASH_TIMEOUT_MS
-        })
+        console.warn(
+          `[OpRateLimit] Frequency check failed for ${userId}, using memory fallback`,
+          {
+            elapsedMs: elapsed,
+            error: errorMsg,
+            timeoutMs: UPSTASH_TIMEOUT_MS,
+          },
+        )
+        if (process.env.NODE_ENV === 'production') {
+          return {
+            ok: false,
+            error: 'frequency_limit',
+            retryAfter: RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC,
+          }
+        }
         const fallbackResult = memoryRate(key, limit, ttlSec)
         if (!fallbackResult.ok) {
-          return { ok: false, error: 'frequency_limit', retryAfter: fallbackResult.retryAfter }
+          return {
+            ok: false,
+            error: 'frequency_limit',
+            retryAfter: fallbackResult.retryAfter,
+          }
         }
         return { ok: true, remaining: fallbackResult.remaining }
       }
@@ -275,7 +332,11 @@ export async function checkOperationRateLimit(
     // Memory fallback
     const memResult = memoryRate(key, limit, ttlSec)
     if (!memResult.ok) {
-      return { ok: false, error: 'frequency_limit', retryAfter: memResult.retryAfter }
+      return {
+        ok: false,
+        error: 'frequency_limit',
+        retryAfter: memResult.retryAfter,
+      }
     }
     return { ok: true, remaining: memResult.remaining }
   }

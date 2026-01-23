@@ -33,6 +33,7 @@ export interface GeminiDirectConfig {
   model?: string
   maxOutputTokens?: number
   temperature?: number // Default 1.0 for Gemini 3
+  timeoutMs?: number
   // NOTE: frequencyPenalty/presencePenalty removed - not supported by gemini-3-flash-preview
 }
 
@@ -46,6 +47,17 @@ export interface GeminiDirectResult {
     totalTokens?: number
   }
   error?: string
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
+  if (!timeoutMs || timeoutMs <= 0) return promise
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Gemini timeout')), timeoutMs)
+  })
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId)
+  }) as Promise<T>
 }
 
 /**
@@ -87,19 +99,22 @@ export async function runGeminiStructured<T>(
     // "place your specific instructions at the end of the prompt, after the data context"
     const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`
 
-    const response = await client.models.generateContent({
-      model,
-      contents: fullPrompt,
-      config: {
-        // Gemini 3 recommended settings
-        temperature,
-        maxOutputTokens: config.maxOutputTokens ?? 8000,
-        // NOTE: frequencyPenalty/presencePenalty NOT supported by gemini-3-flash-preview
-        // Structured output configuration
-        responseMimeType: 'application/json',
-        responseSchema: jsonSchema as any,
-      },
-    })
+    const response = await withTimeout(
+      client.models.generateContent({
+        model,
+        contents: fullPrompt,
+        config: {
+          // Gemini 3 recommended settings
+          temperature,
+          maxOutputTokens: config.maxOutputTokens ?? 8000,
+          // NOTE: frequencyPenalty/presencePenalty NOT supported by gemini-3-flash-preview
+          // Structured output configuration
+          responseMimeType: 'application/json',
+          responseSchema: jsonSchema as any,
+        },
+      }),
+      config.timeoutMs,
+    )
 
     const elapsed = Date.now() - start
     const rawText = response.text || ''
@@ -223,26 +238,29 @@ export async function runGeminiVision<T>(
     // Format: [{ inlineData: { mimeType, data } }, { text: "..." }]
     const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`
 
-    const response = await client.models.generateContent({
-      model,
-      contents: [
-        {
-          inlineData: {
-            mimeType,
-            data: base64Data,
+    const response = await withTimeout(
+      client.models.generateContent({
+        model,
+        contents: [
+          {
+            inlineData: {
+              mimeType,
+              data: base64Data,
+            },
           },
+          { text: fullPrompt },
+        ],
+        config: {
+          temperature,
+          maxOutputTokens: config.maxOutputTokens ?? 8000,
+          // NOTE: frequencyPenalty/presencePenalty NOT supported by gemini-3-flash-preview
+          // Structured output configuration
+          responseMimeType: 'application/json',
+          responseSchema: jsonSchema as any,
         },
-        { text: fullPrompt },
-      ],
-      config: {
-        temperature,
-        maxOutputTokens: config.maxOutputTokens ?? 8000,
-        // NOTE: frequencyPenalty/presencePenalty NOT supported by gemini-3-flash-preview
-        // Structured output configuration
-        responseMimeType: 'application/json',
-        responseSchema: jsonSchema as any,
-      },
-    })
+      }),
+      config.timeoutMs,
+    )
 
     const elapsed = Date.now() - start
     const rawText = response.text || ''
@@ -414,32 +432,38 @@ export async function runGeminiStreaming<T>(
     }
 
     // Use streaming API
-    const stream = await client.models.generateContentStream({
-      model,
-      contents,
-      config: {
-        temperature,
-        maxOutputTokens: config.maxOutputTokens ?? 8000,
-        // NOTE: frequencyPenalty/presencePenalty NOT supported by gemini-3-flash-preview
-        // Enable JSON mode if schema provided
-        ...(jsonSchema
-          ? {
-              responseMimeType: 'application/json',
-              responseSchema: jsonSchema as any,
-            }
-          : {}),
-      },
-    })
+    const stream = await withTimeout(
+      client.models.generateContentStream({
+        model,
+        contents,
+        config: {
+          temperature,
+          maxOutputTokens: config.maxOutputTokens ?? 8000,
+          // NOTE: frequencyPenalty/presencePenalty NOT supported by gemini-3-flash-preview
+          // Enable JSON mode if schema provided
+          ...(jsonSchema
+            ? {
+                responseMimeType: 'application/json',
+                responseSchema: jsonSchema as any,
+              }
+            : {}),
+        },
+      }),
+      config.timeoutMs,
+    )
 
     let fullText = ''
     try {
-      for await (const chunk of stream) {
-        const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        fullText += text
-        if (text && onToken) {
-          await onToken(text)
+      const consumeStream = async () => {
+        for await (const chunk of stream) {
+          const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          fullText += text
+          if (text && onToken) {
+            await onToken(text)
+          }
         }
       }
+      await withTimeout(consumeStream(), config.timeoutMs)
     } catch (streamErr) {
       console.error('[GeminiDirect] Stream iteration error:', streamErr)
     }

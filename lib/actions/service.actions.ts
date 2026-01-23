@@ -116,7 +116,7 @@ export const createServiceAction = withServerActionAuthWrite(
     // 3. 获取或创建用户配额
     await getOrCreateQuota(userId)
     // 4. 定义服务成本
-    const cost = 2
+    const cost = getTaskCost('job_match')
 
     // 5. 创建服务记录
     const svc = await createService(userId, resume.id, detailed?.id)

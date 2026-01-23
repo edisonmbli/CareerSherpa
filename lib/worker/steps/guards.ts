@@ -11,9 +11,17 @@ export async function guardUser(
 ) {
   const gate = await enterUserConcurrency(userId, kind, ttlSec)
   if (!gate.ok) {
-    const retryAfter = gate.response.headers.get('Retry-After')
-    await guardBlocked(channel, userId, 'user_concurrency', 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
-    return { ok: false, reason: 'user_concurrency' as const, retryAfter: retryAfter ? Number(retryAfter) : undefined }
+    const retryAfter = getRetryAfter(gate.response)
+    await guardBlocked(
+      channel,
+      userId,
+      'user_concurrency',
+      'guards',
+      requestId,
+      traceId,
+      retryAfter
+    )
+    return { ok: false, reason: 'user_concurrency' as const, retryAfter }
   }
   return { ok: true as const }
 }
@@ -28,9 +36,17 @@ export async function guardModel(
 ) {
   const gate = await enterModelConcurrency(modelId, queueId, ttlSec)
   if (!gate.ok) {
-    const retryAfter = gate.response.headers.get('Retry-After')
-    await guardBlocked(channel, userIdFromChannel(channel), 'model_concurrency', 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
-    return { ok: false, reason: 'model_concurrency' as const, retryAfter: retryAfter ? Number(retryAfter) : undefined }
+    const retryAfter = getRetryAfter(gate.response)
+    await guardBlocked(
+      channel,
+      userIdFromChannel(channel),
+      'model_concurrency',
+      'guards',
+      requestId,
+      traceId,
+      retryAfter
+    )
+    return { ok: false, reason: 'model_concurrency' as const, retryAfter }
   }
   return { ok: true as const }
 }
@@ -43,16 +59,37 @@ export async function guardQueue(
   maxSize: number,
   channel: string,
   requestId: string,
-  traceId: string
+  traceId: string,
+  doQueueBump: boolean = true
 ) {
-  const gate = await enterGuards(userId, kind, counterKey, ttlSec, maxSize, true)
+  const gate = await enterGuards(
+    userId,
+    kind,
+    counterKey,
+    ttlSec,
+    maxSize,
+    doQueueBump,
+  )
   if (!gate.ok) {
     const msg = await safeText(gate.response)
-    const retryAfter = gate.response.headers.get('Retry-After')
-    const code = msg === 'concurrency_locked' ? 'concurrency_locked' : msg === 'backpressure' ? 'backpressure' : 'guards_failed'
-    // Note: code is already the union type, cast ensures type narrowing
-    await guardBlocked(channel, userId, code as 'concurrency_locked' | 'backpressure' | 'guards_failed', 'guards', requestId, traceId, retryAfter ? Number(retryAfter) : undefined)
-    return { ok: false as const, reason: code as 'concurrency_locked' | 'backpressure' | 'guards_failed', retryAfter: retryAfter ? Number(retryAfter) : undefined }
+    const retryAfter = getRetryAfter(gate.response)
+    const code = normalizeGuardCode(msg)
+    await guardBlocked(
+      channel,
+      userId,
+      code as 'concurrency_locked' | 'backpressure' | 'guards_failed',
+      'guards',
+      requestId,
+      traceId,
+      retryAfter
+    )
+    return {
+      ok: false as const,
+      reason: code as 'concurrency_locked' | 'backpressure' | 'guards_failed',
+      retryAfter,
+      ...(gate.pending !== undefined ? { pending: gate.pending } : {}),
+      ...(gate.maxSize !== undefined ? { maxSize: gate.maxSize } : {}),
+    }
   }
   return { ok: true as const }
 }
@@ -64,4 +101,17 @@ function userIdFromChannel(ch: string): string {
 
 async function safeText(res: Response): Promise<string> {
   try { return await res.text() } catch { return 'guards_failed' }
+}
+
+function getRetryAfter(res: Response): number | undefined {
+  const value = res.headers.get('Retry-After')
+  if (!value) return undefined
+  const num = Number(value)
+  return Number.isFinite(num) ? num : undefined
+}
+
+function normalizeGuardCode(msg: string) {
+  if (msg === 'concurrency_locked') return 'concurrency_locked'
+  if (msg === 'backpressure') return 'backpressure'
+  return 'guards_failed'
 }

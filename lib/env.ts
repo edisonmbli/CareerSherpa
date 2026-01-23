@@ -1,6 +1,8 @@
 // Edge/Node 兼容的环境变量读取：仅使用 process.env
 // Next.js 会在运行时/构建时注入 .env.local，无需手动加载。
 
+import { CONCURRENCY_PERSISTENT_TTL_SECONDS } from '@/lib/constants'
+
 export const ENV = {
   OPENAI_API_KEY: process.env['OPENAI_API_KEY'] ?? '',
   UPSTASH_REDIS_REST_URL: process.env['UPSTASH_REDIS_REST_URL'] ?? '',
@@ -21,53 +23,66 @@ export const ENV = {
   // 配额管理配置
   FREE_QUOTA_LIMIT: Number(process.env['FREE_QUOTA_LIMIT'] ?? '3'), // 免费用户配额限制
   QUOTA_RESET_INTERVAL_HOURS: Number(
-    process.env['QUOTA_RESET_INTERVAL_HOURS'] ?? '24'
+    process.env['QUOTA_RESET_INTERVAL_HOURS'] ?? '24',
   ), // 配额重置间隔（小时）
   QUOTA_ANOMALY_THRESHOLD: Number(
-    process.env['QUOTA_ANOMALY_THRESHOLD'] ?? '10'
+    process.env['QUOTA_ANOMALY_THRESHOLD'] ?? '10',
   ), // 异常使用阈值
 
   // 并发控制配置
   DEEPSEEK_MAX_WORKERS: Number(process.env['DEEPSEEK_MAX_WORKERS'] ?? '5'), // DeepSeek最大并发数
   GLM_MAX_WORKERS: Number(process.env['GLM_MAX_WORKERS'] ?? '5'), // GLM最大并发数
-  WORKER_TIMEOUT_MS: Number(process.env['WORKER_TIMEOUT_MS'] ?? '60000'), // Worker超时时间（毫秒）
+  WORKER_TIMEOUT_MS: Number(process.env['WORKER_TIMEOUT_MS'] ?? '300000'), // Worker超时时间（毫秒）
   QUEUE_MAX_SIZE: Number(process.env['QUEUE_MAX_SIZE'] ?? '100'), // 队列最大长度（默认）
   QUEUE_POSITION_UPDATE_INTERVAL_MS: Number(
-    process.env['QUEUE_POSITION_UPDATE_INTERVAL_MS'] ?? '2000'
+    process.env['QUEUE_POSITION_UPDATE_INTERVAL_MS'] ?? '2000',
   ), // 队列位置更新间隔
 
   // 队列分级上限（覆盖默认）
   QUEUE_MAX_PAID_STREAM: Number(
     process.env['QUEUE_MAX_PAID_STREAM'] ??
-    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
   ),
   QUEUE_MAX_FREE_STREAM: Number(
     process.env['QUEUE_MAX_FREE_STREAM'] ??
-    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
   ),
   QUEUE_MAX_PAID_BATCH: Number(
     process.env['QUEUE_MAX_PAID_BATCH'] ??
-    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
   ),
   QUEUE_MAX_FREE_BATCH: Number(
     process.env['QUEUE_MAX_FREE_BATCH'] ??
-    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
   ),
   QUEUE_MAX_PAID_VISION: Number(
     process.env['QUEUE_MAX_PAID_VISION'] ??
-    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
   ),
   QUEUE_MAX_FREE_VISION: Number(
     process.env['QUEUE_MAX_FREE_VISION'] ??
-    String(process.env['QUEUE_MAX_SIZE'] ?? '100')
+      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
   ),
 
   // 性能优化配置
   CACHE_TTL_SECONDS: Number(process.env['CACHE_TTL_SECONDS'] ?? '300'), // 缓存TTL（秒）
   BATCH_OPERATION_SIZE: Number(process.env['BATCH_OPERATION_SIZE'] ?? '10'), // 批量操作大小
   CONCURRENCY_LOCK_TIMEOUT_MS: Number(
-    process.env['CONCURRENCY_LOCK_TIMEOUT_MS'] ?? '10000'
+    process.env['CONCURRENCY_LOCK_TIMEOUT_MS'] ?? '10000',
   ), // 并发锁超时时间
+  CONCURRENCY_KEEP_ZERO_TTL_SECONDS: Number(
+    process.env['CONCURRENCY_KEEP_ZERO_TTL_SECONDS'] ?? '30',
+  ),
+  CONCURRENCY_COUNTER_TTL_SECONDS: Number(
+    process.env['CONCURRENCY_COUNTER_TTL_SECONDS'] ??
+      String(
+        Math.ceil(Number(process.env['WORKER_TIMEOUT_MS'] ?? '300000') / 1000),
+      ),
+  ),
+  CONCURRENCY_PERSISTENT_TTL_SECONDS: Number(
+    process.env['CONCURRENCY_PERSISTENT_TTL_SECONDS'] ??
+      String(CONCURRENCY_PERSISTENT_TTL_SECONDS),
+  ),
 
   // Stack Auth 配置
   NEXT_PUBLIC_STACK_PROJECT_ID:
@@ -94,14 +109,14 @@ export const ENV = {
   // Redis Streams 合并写入配置
   // 时间窗口（毫秒）：在该窗口内的 token 事件被合并为一次写入
   STREAM_FLUSH_INTERVAL_MS: Number(
-    process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '20'
+    process.env['STREAM_FLUSH_INTERVAL_MS'] ?? '20',
   ),
   // 长度阈值（事件数量）：达到该数量立即触发 flush（窗口未到也立即写）
   STREAM_FLUSH_SIZE: Number(process.env['STREAM_FLUSH_SIZE'] ?? '5'),
 
   // Redis Streams 后处理配置（终止事件触发）
   // TTL（秒）：在收到 done/error 终止事件后为缓冲流键设置过期时间；<=0 表示禁用
-  STREAM_TTL_SECONDS: Number(process.env['STREAM_TTL_SECONDS'] ?? '240'),
+  STREAM_TTL_SECONDS: Number(process.env['STREAM_TTL_SECONDS'] ?? '900'),
   // 修剪长度：在收到终止事件后使用 XTRIM MAXLEN 近似修剪；<=0 表示禁用
   STREAM_TRIM_MAXLEN: Number(process.env['STREAM_TRIM_MAXLEN'] ?? '2000'),
 
@@ -110,16 +125,18 @@ export const ENV = {
   USER_MAX_ACTIVE_BATCH: Number(process.env['USER_MAX_ACTIVE_BATCH'] ?? '3'),
 
   // 模型×tier并发上限（覆盖值）
-  MAX_DS_REASONER_PAID: Number(process.env['MAX_DS_REASONER_PAID'] ?? '5'),
-  MAX_DS_CHAT_PAID: Number(process.env['MAX_DS_CHAT_PAID'] ?? '5'),
+  MAX_DS_REASONER_PAID: Number(process.env['MAX_DS_REASONER_PAID'] ?? '20'),
+  MAX_DS_CHAT_PAID: Number(process.env['MAX_DS_CHAT_PAID'] ?? '20'),
   MAX_GLM_FLASH_FREE: Number(process.env['MAX_GLM_FLASH_FREE'] ?? '2'),
   MAX_GLM_VISION_PAID: Number(process.env['MAX_GLM_VISION_PAID'] ?? '3'),
   MAX_GLM_VISION_FREE: Number(process.env['MAX_GLM_VISION_FREE'] ?? '2'),
+  MAX_GEMINI_FLASH_PAID: Number(process.env['MAX_GEMINI_FLASH_PAID'] ?? '20'),
+  MAX_GEMINI_FLASH_FREE: Number(process.env['MAX_GEMINI_FLASH_FREE'] ?? '5'),
   MAX_TOTAL_WAIT_MS_STREAM: Number(
-    process.env['MAX_TOTAL_WAIT_MS_STREAM'] ?? '480000'
+    process.env['MAX_TOTAL_WAIT_MS_STREAM'] ?? '480000',
   ),
   MAX_TOTAL_WAIT_MS_BATCH: Number(
-    process.env['MAX_TOTAL_WAIT_MS_BATCH'] ?? '600000'
+    process.env['MAX_TOTAL_WAIT_MS_BATCH'] ?? '600000',
   ),
 
   // Gemini API (for Free tier)
@@ -133,7 +150,9 @@ export const ENV = {
   // Free tier: 5 operations per 24 hours
   // Paid tier: 10 operations per 15 minutes
   RATE_LIMIT_FREE_DAILY: Number(process.env['RATE_LIMIT_FREE_DAILY'] ?? '5'),
-  RATE_LIMIT_PAID_WINDOW_SEC: Number(process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '900'),
+  RATE_LIMIT_PAID_WINDOW_SEC: Number(
+    process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '900',
+  ),
   RATE_LIMIT_PAID_MAX: Number(process.env['RATE_LIMIT_PAID_MAX'] ?? '10'),
 }
 
@@ -208,6 +227,8 @@ export function getConcurrencyConfig() {
       glmFlashFree: ENV.MAX_GLM_FLASH_FREE,
       glmVisionPaid: ENV.MAX_GLM_VISION_PAID,
       glmVisionFree: ENV.MAX_GLM_VISION_FREE,
+      geminiFlashPaid: ENV.MAX_GEMINI_FLASH_PAID,
+      geminiFlashFree: ENV.MAX_GEMINI_FLASH_FREE,
     },
   }
 }

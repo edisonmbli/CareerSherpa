@@ -32,6 +32,8 @@ export function getMaxWorkersForModel(
   if (id === 'glm-4.5-flash' && tier === 'free') return cfg.modelTierLimits.glmFlashFree
   if (id === 'glm-4.1v-thinking-flash' && tier === 'paid') return cfg.modelTierLimits.glmVisionPaid
   if (id === 'glm-4.1v-thinking-flash' && tier === 'free') return cfg.modelTierLimits.glmVisionFree
+  if (id.startsWith('gemini') && tier === 'paid') return cfg.modelTierLimits.geminiFlashPaid
+  if (id.startsWith('gemini') && tier === 'free') return cfg.modelTierLimits.geminiFlashFree
   const provider = getProvider(modelId as any)
   return provider === 'deepseek' ? cfg.deepseekMaxWorkers : cfg.glmMaxWorkers
 }

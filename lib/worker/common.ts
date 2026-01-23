@@ -99,7 +99,7 @@ export function hasImage(variables?: Record<string, any>): boolean {
 }
 
 export function getTtlSec(): number {
-  return Math.max(1, Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000))
+  return Math.max(1, Math.floor(ENV.CONCURRENCY_COUNTER_TTL_SECONDS))
 }
 
 export function buildCounterKey(userId: string, serviceId: string): string {
@@ -172,7 +172,10 @@ export async function enterGuards(
   ttlSec: number,
   maxSize: number,
   doQueueBump: boolean = true,
-): Promise<{ ok: true } | { ok: false; response: Response }> {
+): Promise<
+  | { ok: true }
+  | { ok: false; response: Response; pending?: number; maxSize?: number }
+> {
   const locked = await acquireLock(userId, kind, ttlSec)
   if (!locked) {
     return {
@@ -192,6 +195,8 @@ export async function enterGuards(
           status: 429,
           headers: { 'Retry-After': String(retry) },
         }),
+        ...(bp.pending !== undefined ? { pending: bp.pending } : {}),
+        maxSize,
       }
     }
   }
@@ -219,6 +224,17 @@ export async function enterModelConcurrency(
   const tier = getTierFromQueueId(queueId)
   const key = buildModelActiveKey(modelId, tier)
   const maxWorkers = getMaxWorkersForModel(modelId, tier)
+  const bp = await bumpPending(key, ttlSec, maxWorkers)
+  if (!bp.ok) {
+    const retry = Math.min(5, Number(bp.retryAfter || ttlSec))
+    return {
+      ok: false,
+      response: new Response('model_concurrency_exceeded', {
+        status: 429,
+        headers: { 'Retry-After': String(retry) },
+      }),
+    }
+  }
   return { ok: true }
 }
 
@@ -240,6 +256,17 @@ export async function enterUserConcurrency(
   const maxActive =
     kind === 'stream' ? cfg.userMaxActive.stream : cfg.userMaxActive.batch
   const key = buildUserActiveKey(userId, kind)
+  const bp = await bumpPending(key, ttlSec, maxActive)
+  if (!bp.ok) {
+    const retry = Math.min(5, Number(bp.retryAfter || ttlSec))
+    return {
+      ok: false,
+      response: new Response('user_concurrency_exceeded', {
+        status: 429,
+        headers: { 'Retry-After': String(retry) },
+      }),
+    }
+  }
   return { ok: true }
 }
 
@@ -387,16 +414,16 @@ export async function publishEvent(
     const isTerminal = t === 'done' || t === 'error'
     // Note: Upstash Redis xadd requires object values; 'as any' is needed for string field type
     await redis.xadd(streamKey, '*', { event: payload as any })
-    if (isTerminal) {
-      const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
-      const maxlen = Math.max(0, Number(ENV.STREAM_TRIM_MAXLEN || 0))
-      if (ttl > 0) {
-        try {
-          await redis.expire(streamKey, ttl)
-        } catch {
-          // non-fatal: TTL set error
-        }
+    const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
+    if (ttl > 0) {
+      try {
+        await redis.expire(streamKey, ttl)
+      } catch {
+        // non-fatal: TTL set error
       }
+    }
+    if (isTerminal) {
+      const maxlen = Math.max(0, Number(ENV.STREAM_TRIM_MAXLEN || 0))
       if (maxlen > 0) {
         try {
           // Note: Upstash Redis xtrim options type mismatch, 'as any' is required

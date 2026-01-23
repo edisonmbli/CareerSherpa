@@ -1,14 +1,16 @@
-import { ENV } from '@/lib/env'
 import {
   parseWorkerBody,
   getUserHasQuota,
   getTtlSec,
   getChannel,
   publishEvent,
+  exitModelConcurrency,
+  exitUserConcurrency,
 } from '@/lib/worker/common'
-import { buildQueueCounterKey } from '@/lib/config/concurrency'
+import { buildQueueCounterKey, queueMaxSizeFor } from '@/lib/config/concurrency'
 import { isServiceScoped } from '@/lib/llm/task-router'
 import { getTaskConfig } from '@/lib/llm/config'
+import { ENV } from '@/lib/env'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { logEvent } from '@/lib/observability/logger'
 import { publishStart, emitStreamIdle } from '@/lib/worker/pipeline'
@@ -21,7 +23,11 @@ import { getStrategy } from '@/lib/worker/strategies'
 import { markTimeline } from '@/lib/observability/timeline'
 import { logError } from '@/lib/logger'
 import { getProvider } from '@/lib/llm/utils'
-import { recordRefund, markDebitFailed, markDebitSuccess } from '@/lib/dal/coinLedger'
+import {
+  recordRefund,
+  markDebitFailed,
+  markDebitSuccess,
+} from '@/lib/dal/coinLedger'
 import { setInterviewTipsJson, setMatchSummaryJson } from '@/lib/dal/services'
 import { pushTask } from '@/lib/queue/producer'
 import type { DeferredTask } from '@/lib/worker/strategies/interface'
@@ -44,6 +50,16 @@ function extractBillingVars(vars: Record<string, unknown>): BillingVars {
     cost: Number(vars['cost'] || 0),
     debitId: String(vars['debitId'] || ''),
   }
+}
+
+function isTimeoutError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('timeout') ||
+    normalized.includes('timed out') ||
+    normalized.includes('deadline') ||
+    normalized.includes('abort')
+  )
 }
 
 /**
@@ -143,7 +159,7 @@ export async function onToken(
   taskId: string,
   text: string,
   requestId: string,
-  traceId: string
+  traceId: string,
 ) {
   await publishEvent(channel, {
     type: 'token',
@@ -232,7 +248,7 @@ export async function streamHandleTransactions(
 
 export async function handleStream(
   req: Request,
-  _params: { service: string }
+  _params: { service: string },
 ): Promise<Response> {
   return withRequestSampling(
     '/api/worker/stream/[service]',
@@ -283,12 +299,27 @@ export async function handleStream(
           modelId: decision.modelId,
           isStream: true,
           queueId: String(decision.queueId),
-        }
+        },
       )
 
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
+      const maxSize = queueMaxSizeFor(String(decision.queueId))
       const channel = getChannel(userId, serviceId, taskId)
+      let userGuarded = false
+      let modelGuarded = false
+      const releaseGuardsOnFailure = async () => {
+        const tasks: Promise<unknown>[] = []
+        if (modelGuarded) {
+          tasks.push(
+            exitModelConcurrency(decision.modelId, String(decision.queueId)),
+          )
+        }
+        if (userGuarded) {
+          tasks.push(exitUserConcurrency(userId, 'stream'))
+        }
+        if (tasks.length > 0) await Promise.allSettled(tasks)
+      }
 
       // 2. Guards & Start
       await publishStart(
@@ -299,7 +330,7 @@ export async function handleStream(
         'guards',
         requestId,
         traceId,
-        'stream'
+        'stream',
       )
       await markTimeline(serviceId, 'worker_stream_start', {
         taskId,
@@ -313,7 +344,7 @@ export async function handleStream(
         ttlSec,
         channel,
         requestId,
-        traceId
+        traceId,
       )
       if (!gUser.ok)
         return handleGuardFailure({
@@ -328,6 +359,7 @@ export async function handleStream(
           billing,
           kind: 'stream',
         })
+      userGuarded = true
 
       const gModel = await guardModel(
         decision.modelId,
@@ -335,9 +367,10 @@ export async function handleStream(
         ttlSec,
         channel,
         requestId,
-        traceId
+        traceId,
       )
-      if (!gModel.ok)
+      if (!gModel.ok) {
+        await releaseGuardsOnFailure()
         return handleGuardFailure({
           reason: gModel.reason,
           userId,
@@ -350,18 +383,44 @@ export async function handleStream(
           billing,
           kind: 'stream',
         })
+      }
+      modelGuarded = true
 
       const gQueue = await guardQueue(
         userId,
         'stream',
         counterKey,
         ttlSec,
-        ENV.QUEUE_MAX_SIZE,
+        maxSize,
         channel,
         requestId,
-        traceId
+        traceId,
+        false,
       )
-      if (!gQueue.ok)
+      if (!gQueue.ok) {
+        if (gQueue.reason === 'backpressure') {
+          logEvent(
+            'TASK_BACKPRESSURED',
+            {
+              userId,
+              serviceId,
+              taskId,
+            },
+            {
+              templateId,
+              kind: 'stream',
+              queueId: String(decision.queueId || ''),
+              maxSize,
+              ...(gQueue.pending !== undefined
+                ? { pending: gQueue.pending }
+                : {}),
+              ...(gQueue.retryAfter !== undefined
+                ? { retryAfter: gQueue.retryAfter }
+                : {}),
+            },
+          )
+        }
+        await releaseGuardsOnFailure()
         return handleGuardFailure({
           reason: gQueue.reason,
           userId,
@@ -374,6 +433,7 @@ export async function handleStream(
           billing,
           kind: 'stream',
         })
+      }
 
       await markTimeline(serviceId, 'worker_stream_guards_done', { taskId })
 
@@ -427,7 +487,7 @@ export async function handleStream(
         const options: any = {
           temperature: config.temperature,
           maxTokens: config.maxTokens,
-          timeoutMs: config.timeoutMs,
+          timeoutMs: config.timeoutMs ?? ENV.WORKER_TIMEOUT_MS,
           tier: userHasQuota ? 'paid' : 'free',
         }
 
@@ -438,7 +498,7 @@ export async function handleStream(
           preparedVars,
           { userId, serviceId },
           options,
-          (text) => onToken(channel, taskId, text, requestId, traceId)
+          (text) => onToken(channel, taskId, text, requestId, traceId),
         )
         await markTimeline(serviceId, 'worker_stream_done', {
           taskId,
@@ -447,8 +507,9 @@ export async function handleStream(
 
         // Debug: Log phase transition and raw content
         console.log(
-          `[Stream] Phase: LLM_EXECUTE complete, raw length: ${execResult.result.raw?.length ?? 0
-          }`
+          `[Stream] Phase: LLM_EXECUTE complete, raw length: ${
+            execResult.result.raw?.length ?? 0
+          }`,
         )
 
         // Phase 2: Write Results
@@ -486,7 +547,9 @@ export async function handleStream(
         }
         const completedStatus = completedStatusMap[templateId]
         const wasSuccessful = execResult?.result?.ok !== false
-        console.log(`[Stream] CLEANUP: templateId=${templateId}, wasSuccessful=${wasSuccessful}, completedStatus=${completedStatus || 'NONE'}`)
+        console.log(
+          `[Stream] CLEANUP: templateId=${templateId}, wasSuccessful=${wasSuccessful}, completedStatus=${completedStatus || 'NONE'}`,
+        )
         if (completedStatus && wasSuccessful) {
           await publishEvent(channel, {
             type: 'status',
@@ -499,7 +562,9 @@ export async function handleStream(
             traceId,
           })
         } else if (!wasSuccessful) {
-          console.log(`[Stream] CLEANUP: Skipping completion emission - task failed`)
+          console.log(
+            `[Stream] CLEANUP: Skipping completion emission - task failed`,
+          )
         }
 
         await emitStreamIdle(
@@ -507,7 +572,7 @@ export async function handleStream(
           taskId,
           decision.modelId,
           requestId,
-          traceId
+          traceId,
         )
         await cleanupFinal(
           decision.modelId,
@@ -516,7 +581,7 @@ export async function handleStream(
           'stream',
           counterKey,
           serviceId,
-          taskId
+          taskId,
         )
         await markTimeline(serviceId, 'worker_stream_finalize_end', { taskId })
         console.log(`[Stream] Phase: CLEANUP complete`)
@@ -537,17 +602,22 @@ export async function handleStream(
               phase: 'llm_execute_failed',
               serviceId,
             })
+            const streamTimeout = isTimeoutError(errMsg)
+            const streamErrorCode = streamTimeout
+              ? 'retry_available'
+              : 'llm_error'
+            const streamUserError = streamTimeout ? 'retry_available' : errMsg
             await publishEvent(channel, {
               type: 'error',
               taskId,
-              code: 'llm_error',
-              error: errMsg,
+              code: streamErrorCode,
+              error: streamUserError,
               stage: 'invoke_or_stream',
               requestId,
               traceId,
             })
             await strategy.writeResults(
-              { ok: false, error: errMsg },
+              { ok: false, error: streamUserError },
               preparedVars,
               {
                 serviceId,
@@ -556,7 +626,7 @@ export async function handleStream(
                 requestId,
                 traceId,
                 taskId,
-              }
+              },
             )
             break
 
@@ -594,15 +664,35 @@ export async function handleStream(
             return Response.json({ ok: true, warning: 'cleanup_failed' })
         }
 
+        try {
+          await cleanupFinal(
+            decision.modelId,
+            String(decision.queueId),
+            userId,
+            'stream',
+            counterKey,
+            serviceId,
+            taskId,
+          )
+        } catch (cleanupError) {
+          logError({
+            reqId: requestId,
+            route: 'worker/stream',
+            error: String(cleanupError),
+            phase: 'cleanup_failed',
+            serviceId,
+          })
+        }
+
         return Response.json({ ok: false, error: errMsg }, { status: 500 })
       }
-    }
+    },
   )
 }
 
 export async function handleBatch(
   req: Request,
-  _params: { service: string }
+  _params: { service: string },
 ): Promise<Response> {
   return withRequestSampling(
     '/api/worker/batch/[service]',
@@ -647,7 +737,22 @@ export async function handleBatch(
 
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
+      const maxSize = queueMaxSizeFor(String(decision.queueId))
       const channel = getChannel(userId, serviceId, taskId)
+      let userGuarded = false
+      let modelGuarded = false
+      const releaseGuardsOnFailure = async () => {
+        const tasks: Promise<unknown>[] = []
+        if (modelGuarded) {
+          tasks.push(
+            exitModelConcurrency(decision.modelId, String(decision.queueId)),
+          )
+        }
+        if (userGuarded) {
+          tasks.push(exitUserConcurrency(userId, 'batch'))
+        }
+        if (tasks.length > 0) await Promise.allSettled(tasks)
+      }
 
       // 2. Guards & Start
       await publishStart(
@@ -658,7 +763,7 @@ export async function handleBatch(
         'guards',
         requestId,
         traceId,
-        'batch'
+        'batch',
       )
       await markTimeline(serviceId, 'worker_batch_start', {
         taskId,
@@ -672,7 +777,7 @@ export async function handleBatch(
         ttlSec,
         channel,
         requestId,
-        traceId
+        traceId,
       )
       if (!gUser.ok)
         return handleGuardFailure({
@@ -687,6 +792,7 @@ export async function handleBatch(
           billing,
           kind: 'batch',
         })
+      userGuarded = true
 
       const gModel = await guardModel(
         decision.modelId,
@@ -694,9 +800,10 @@ export async function handleBatch(
         ttlSec,
         channel,
         requestId,
-        traceId
+        traceId,
       )
-      if (!gModel.ok)
+      if (!gModel.ok) {
+        await releaseGuardsOnFailure()
         return handleGuardFailure({
           reason: gModel.reason,
           userId,
@@ -709,18 +816,44 @@ export async function handleBatch(
           billing,
           kind: 'batch',
         })
+      }
+      modelGuarded = true
 
       const gQueue = await guardQueue(
         userId,
         'batch',
         counterKey,
         ttlSec,
-        ENV.QUEUE_MAX_SIZE,
+        maxSize,
         channel,
         requestId,
-        traceId
+        traceId,
+        false,
       )
-      if (!gQueue.ok)
+      if (!gQueue.ok) {
+        if (gQueue.reason === 'backpressure') {
+          logEvent(
+            'TASK_BACKPRESSURED',
+            {
+              userId,
+              serviceId,
+              taskId,
+            },
+            {
+              templateId,
+              kind: 'batch',
+              queueId: String(decision.queueId || ''),
+              maxSize,
+              ...(gQueue.pending !== undefined
+                ? { pending: gQueue.pending }
+                : {}),
+              ...(gQueue.retryAfter !== undefined
+                ? { retryAfter: gQueue.retryAfter }
+                : {}),
+            },
+          )
+        }
+        await releaseGuardsOnFailure()
         return handleGuardFailure({
           reason: gQueue.reason,
           userId,
@@ -733,6 +866,7 @@ export async function handleBatch(
           billing,
           kind: 'batch',
         })
+      }
 
       await markTimeline(serviceId, 'worker_batch_guards_done', { taskId })
 
@@ -760,7 +894,7 @@ export async function handleBatch(
         // Phase 1.5: Skip LLM if Baidu OCR was already used (Paid tier OCR bypass)
         const baiduOcrUsed = !!(preparedVars as any)['_baidu_ocr_used']
         const baiduOcrText = String(
-          (preparedVars as any)['_baidu_ocr_text'] || ''
+          (preparedVars as any)['_baidu_ocr_text'] || '',
         )
 
         let execResult: {
@@ -787,7 +921,7 @@ export async function handleBatch(
           const options: any = {
             temperature: config.temperature,
             maxTokens: config.maxTokens,
-            timeoutMs: config.timeoutMs,
+            timeoutMs: config.timeoutMs ?? ENV.WORKER_TIMEOUT_MS,
             tier: userHasQuota ? 'paid' : 'free',
           }
 
@@ -797,7 +931,7 @@ export async function handleBatch(
             locale,
             preparedVars,
             { userId, serviceId },
-            options
+            options,
           )
         }
 
@@ -823,7 +957,7 @@ export async function handleBatch(
             requestId,
             traceId,
             taskId,
-          }
+          },
         )
         console.log(`[Batch] Phase: WRITE_RESULTS complete`)
 
@@ -837,7 +971,7 @@ export async function handleBatch(
           'batch',
           counterKey,
           serviceId,
-          taskId
+          taskId,
         )
         await markTimeline(serviceId, 'worker_batch_finalize_end', { taskId })
         console.log(`[Batch] Phase: CLEANUP complete`)
@@ -845,7 +979,7 @@ export async function handleBatch(
         // Phase 4: Enqueue deferred tasks (AFTER cleanup to avoid lock contention)
         if (deferredTasks && deferredTasks.length > 0) {
           console.log(
-            `[Batch] Phase: DEFERRED_ENQUEUE starting, count=${deferredTasks.length}`
+            `[Batch] Phase: DEFERRED_ENQUEUE starting, count=${deferredTasks.length}`,
           )
           for (const task of deferredTasks) {
             try {
@@ -890,8 +1024,22 @@ export async function handleBatch(
               serviceId,
               templateId,
             })
+            const batchTimeout = isTimeoutError(errMsg)
+            const batchErrorCode = batchTimeout
+              ? 'retry_available'
+              : 'llm_error'
+            const batchUserError = batchTimeout ? 'retry_available' : errMsg
+            await publishEvent(channel, {
+              type: 'error',
+              taskId,
+              code: batchErrorCode,
+              error: batchUserError,
+              stage: 'invoke_or_stream',
+              requestId,
+              traceId,
+            })
             await strategy.writeResults(
-              { ok: false, error: errMsg },
+              { ok: false, error: batchUserError },
               preparedVars,
               {
                 serviceId,
@@ -900,7 +1048,7 @@ export async function handleBatch(
                 requestId,
                 traceId,
                 taskId,
-              }
+              },
             )
             break
 
@@ -928,8 +1076,28 @@ export async function handleBatch(
             return Response.json({ ok: true, warning: 'cleanup_failed' })
         }
 
+        try {
+          await cleanupFinal(
+            decision.modelId,
+            String(decision.queueId),
+            userId,
+            'batch',
+            counterKey,
+            serviceId,
+            taskId,
+          )
+        } catch (cleanupError) {
+          logError({
+            reqId: requestId,
+            route: 'worker/batch',
+            error: String(cleanupError),
+            phase: 'cleanup_failed',
+            serviceId,
+          })
+        }
+
         return new Response('internal_error', { status: 500 })
       }
-    }
+    },
   )
 }

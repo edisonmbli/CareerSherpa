@@ -14,7 +14,6 @@ import {
   BaseMessage,
   SystemMessage,
   HumanMessage,
-  AIMessage,
 } from '@langchain/core/messages'
 import {
   getTaskSchema,
@@ -39,6 +38,7 @@ import {
   extractTokenUsageFromMessage,
   extractTokenUsageFromModel,
 } from '@/lib/llm/usage-extractor'
+import { FailureCode } from '@prisma/client'
 
 export interface RunTaskOptions {
   tier?: 'free' | 'paid'
@@ -179,6 +179,7 @@ export async function runEmbedding(
       },
     }
   } catch (error) {
+    const errorCode = mapErrorToCode(error)
     await createLlmUsageLogDetailed({
       taskTemplateId: 'rag_embedding',
       provider: 'zhipu',
@@ -189,6 +190,7 @@ export async function runEmbedding(
       isStream: false,
       isSuccess: false,
       errorMessage: error instanceof Error ? error.message : String(error),
+      ...(errorCode ? { errorCode } : {}),
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
@@ -254,6 +256,7 @@ export async function runEmbeddingBatch(
       },
     }
   } catch (error) {
+    const errorCode = mapErrorToCode(error)
     await createLlmUsageLogDetailed({
       taskTemplateId: 'rag_embedding',
       provider: 'zhipu',
@@ -264,6 +267,7 @@ export async function runEmbeddingBatch(
       isStream: false,
       isSuccess: false,
       errorMessage: error instanceof Error ? error.message : String(error),
+      ...(errorCode ? { errorCode } : {}),
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
@@ -378,6 +382,9 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         schema,
         {
           maxOutputTokens: options.maxTokens ?? limits.maxTokens,
+          ...(options.timeoutMs !== undefined
+            ? { timeoutMs: options.timeoutMs }
+            : {}),
           ...(options.temperature !== undefined
             ? { temperature: options.temperature }
             : {}),
@@ -428,6 +435,9 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         schema,
         {
           maxOutputTokens: options.maxTokens ?? limits.maxTokens,
+          ...(options.timeoutMs !== undefined
+            ? { timeoutMs: options.timeoutMs }
+            : {}),
           ...(options.temperature !== undefined
             ? { temperature: options.temperature }
             : {}),
@@ -783,6 +793,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       usageLogId: (log as any)?.id, // M5: Return unified usage log ID
     }
   } catch (error) {
+    const errorCode = mapErrorToCode(error)
     const log = await createLlmUsageLogDetailed({
       taskTemplateId: templateId,
       provider: getProvider(modelId),
@@ -793,6 +804,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       isStream: false,
       isSuccess: false,
       errorMessage: mapErrorToMessage(error),
+      ...(errorCode ? { errorCode } : {}),
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
@@ -812,6 +824,22 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 // Helper to parse specific error codes
 function mapErrorToMessage(error: any): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function mapErrorToCode(error: any): FailureCode | undefined {
+  const message = error instanceof Error ? error.message : String(error)
+  const normalized = message.toLowerCase()
+  if (
+    normalized.includes('timeout') ||
+    normalized.includes('timed out') ||
+    normalized.includes('deadline')
+  ) {
+    return FailureCode.MODEL_TOO_BUSY
+  }
+  if (normalized.includes('parse') || normalized.includes('json')) {
+    return FailureCode.JSON_PARSE_FAILED
+  }
+  return undefined
 }
 
 export async function runStreamingLlmTask<T extends TaskTemplateId>(
@@ -863,6 +891,9 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       schema,
       {
         maxOutputTokens: limits.maxTokens,
+        ...(options.timeoutMs !== undefined
+          ? { timeoutMs: options.timeoutMs }
+          : {}),
         ...(options.temperature !== undefined
           ? { temperature: options.temperature }
           : {}),
@@ -900,6 +931,10 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     }
     if (geminiResult.error) {
       logParams.errorMessage = geminiResult.error
+      const code = mapErrorToCode(geminiResult.error)
+      if (code) {
+        logParams.errorCode = code
+      }
     }
 
     const log = await createLlmUsageLogDetailed(logParams)
@@ -1000,6 +1035,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   } catch (error) {
     const end = Date.now()
     const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorCode = mapErrorToCode(error)
 
     // Fail-safe Debug Log: Capture error details
     logDebugData(`${String(templateId)}_stream_output`, {
@@ -1019,10 +1055,10 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       isStream: true,
       isSuccess: false,
       errorMessage,
+      ...(errorCode ? { errorCode } : {}),
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
-
     console.error('Streaming LLM error', {
       templateId,
       modelId,
