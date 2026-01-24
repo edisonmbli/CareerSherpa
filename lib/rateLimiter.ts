@@ -5,10 +5,10 @@ import { getRedis } from '@/lib/redis/client'
 type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
 
 // Configurable rate limits from environment
-const windowSec = ENV.RATE_LIMIT_PAID_WINDOW_SEC || 300 // 5 minutes for paid
 const trialLimit = 3 // Legacy: for trial users
+const windowSec = ENV.RATE_LIMIT_PAID_WINDOW_SEC || 300 // 5 minutes for paid
 const boundLimit = ENV.RATE_LIMIT_PAID_MAX || 10 // Paid: 10 calls per window
-const dailyFreeLimit = ENV.RATE_LIMIT_FREE_DAILY || 1 // Free: 1 calls per day
+const dailyFreeLimit = ENV.RATE_LIMIT_FREE_DAILY || 2 // Free: 2 calls per day
 const UPSTASH_TIMEOUT_MS = 5000 // 5s timeout for Redis operations to handle network latency
 
 const mem = new Map<string, { count: number; resetAt: number }>()

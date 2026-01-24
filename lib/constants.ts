@@ -33,6 +33,11 @@ export const TASK_COSTS: Record<string, number> = {
 export const RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC = 60
 export const CONCURRENCY_PERSISTENT_TTL_SECONDS = 30 * 24 * 60 * 60
 
+export const UI_LOCALE_LABELS = {
+  zh: '中文',
+  en: 'English',
+} as const
+
 export const DEFAULT_SECTION_ORDER = [
   'basics',
   'summary',

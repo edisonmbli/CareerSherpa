@@ -3,8 +3,6 @@
  */
 import type { PromptTemplateMap, JsonSchema } from './types'
 import { SCHEMAS, JOB_SUMMARY_SCHEMA, DETAILED_RESUME_SCHEMA } from './schemas'
-import { ENV } from '@/lib/env'
-
 // 1. 复用 prototype 的 System Base
 const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者优化简历、分析职位匹配度和准备面试。
 
@@ -12,21 +10,17 @@ const SYSTEM_BASE = `你是一位资深的求职助手，专门帮助求职者�
 1. 基于事实分析，不夸大不编造
 2. 提供结构化、可操作的建议
 3. 优先使用要点列表和分节组织
-4. 严格按照要求的JSON格式输出
-5. 保护用户隐私，不泄露敏感信息
+4. 保护用户隐私，不泄露敏感信息
 
 输出要求：
-- 必须返回有效的JSON格式
-- 内容简洁明了，避免冗余
-- 使用与用户输入一致的语言（中文/英文）
-- 请确保输出标准的 JSON 格式。如果字符串内部包含引号，请务必使用反斜杠转义（\"）。
-
-### JSON 输出规范（必须严格遵循）
-- 你的输出必须是**有效的 JSON 对象**，可被 JSON.parse() 直接解析
-- **禁止**包含 markdown 代码块（如 \`\`\`json ... \`\`\`）
-- **禁止**使用中文引号 "..." '...'，必须使用标准 ASCII 双引号 "..."
-- **禁止**在 JSON 前后添加任何说明文字或注释
-- 如果字符串内部包含引号，请务必使用反斜杠转义（\\"）`
+- 输出语言使用当前界面语言（{ui_locale}），不受输入语言影响
+- 公司名/岗位名/产品名/技术术语/标准缩写保留原文，不强制翻译
+- 当前日期：{current_date}
+- 涉及时间判断一律以当前日期为准，不以模型训练时间为准；过去日期不要误判为未来
+- 你的输出必须是可被 JSON.parse() 解析的**单一 JSON 对象**
+- 禁止包含 markdown 代码块；禁止在 JSON 前后添加任何说明文字或注释
+- 必须使用标准 ASCII 双引号；字符串内部引号需使用反斜杠转义（\\"）
+- 内容简洁明了，避免冗余`
 
 // 2. 复用 prototype 的 Schemas (用于资产提取)
 const SCHEMAS_V1 = {
@@ -36,8 +30,6 @@ const SCHEMAS_V1 = {
 
 // 3. 新架构的 Schemas (用于核心服务)
 const SCHEMAS_V2 = SCHEMAS
-
-
 
 // 4. 模板合集
 export const ZH_TEMPLATES: PromptTemplateMap = {
@@ -122,9 +114,12 @@ metrics: ["新用户7日留存 +3.2%","播放完成率 +5.6%"]
     userPrompt: `请解析以下岗位描述（JD）原文，**严格按照 JSON Schema 输出完整的结构化结果**。
 
 **完整提取规则（重要）：**
-1. 必须填充 JSON Schema 中的**所有字段**，包括：title、company、location、requirements、nice_to_haves、tech_stack、benefits、company_info 等
+1. 必须填充 JSON Schema 中的**所有字段**，包括：jobTitle、company、department、team、seniority、salaryRange、reportingLine、responsibilities、mustHaves、niceToHaves、techStack、tools、methodologies、domainKnowledge、industry、education、experience、certifications、languages、softSkills、businessGoals、relocation、companyInfo、otherRequirements、rawSections
 2. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
-3. 重点是区分"必须项"（Must-haves / requirements）和"加分项"（Nice-to-haves）
+3. 重点区分 mustHaves（必须项）与 niceToHaves（加分项）
+4. 无法归类的信息放入 rawSections，title 为原文标题，points 为原文要点；若无标题，title 填"其他"
+5. 零散要求或补充信息可放入 otherRequirements
+6. 输出内容必须使用 {ui_locale} 语言；若原文为其他语言，请翻译为 {ui_locale}，但公司名/岗位名/产品名/技术术语/标准缩写保留原文
 
 JD原文:
 """
@@ -236,8 +231,8 @@ JD原文:
 """
 
 【前置风险审计 (红队测试 - 仅供参考)】
-Context: 以下是"红队测试"（Red Teaming）生成的极限施压视角。
-Instruction: 这些风险点是为了让候选人做好"防御准备"，而非用于直接拒绝。请作为"私人教练"，针对这些潜在攻击点，在 weaknesses 部分给出具体的化解话术或改进建议。不要被这些负面视角带偏，保持建设性的辅导基调。
+Context: 以下是"红队测试"（Red Teaming）生成的极限施压视角，仅用于模拟面试官可能的质疑。
+Instruction: 这些风险点的唯一用途是帮助候选人提前准备防守策略，而不是打击信心或直接拒绝。你是"私人求职教练"，核心任务是帮助用户拿到心仪 Offer；请在 weaknesses 中提供可执行的化解话术与应对策略，并保持积极、建设性的辅导基调。
 """
 {pre_match_risks}
 """
@@ -556,21 +551,22 @@ Instruction: 这些风险点是为了让候选人做好"防御准备"，而非�
 
 说明：
 1. 仔细阅读截图中的所有文字
-2. 提取岗位名称、公司名称（如可见）和关键需求
-3. 区分"必须项"（硬性要求）和"加分项"（可选技能）
+2. 尽可能完整提取所有岗位信息，不做改写
+3. 区分 mustHaves（硬性要求）与 niceToHaves（加分项）
 4. 如果文字不清晰，根据上下文做合理推断
-5. 严格按照指定的 JSON 格式输出
+5. 严格按照指定的 JSON Schema 输出
+6. 输出内容必须使用 {ui_locale} 语言；若原文为其他语言，请翻译为 {ui_locale}，但公司名/岗位名/产品名/技术术语/标准缩写保留原文
+
+**完整提取规则（重要）：**
+1. 必须填充 JSON Schema 中的**所有字段**，包括：jobTitle、company、department、team、seniority、salaryRange、reportingLine、responsibilities、mustHaves、niceToHaves、techStack、tools、methodologies、domainKnowledge、industry、education、experience、certifications、languages、softSkills、businessGoals、relocation、companyInfo、otherRequirements、rawSections
+2. 如果图片中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
+3. 无法归类的信息放入 rawSections，title 为图片中的标题，points 为要点；若无标题，title 填"其他"
+4. 零散要求或补充信息可放入 otherRequirements
 
 输入图片 (Base64):
 """
 {image}
 """
-
-输出必须遵循以下结构：
-- jobTitle: 职位名称（必填）
-- company: 公司名称（如可见，选填）
-- mustHaves: 必须技能/经验数组（至少3项）
-- niceToHaves: 加分技能数组（至少2项）
 
 仅输出有效 JSON，不要包含额外说明。`,
     variables: ['image'],

@@ -3,8 +3,6 @@
  */
 import type { PromptTemplateMap, JsonSchema } from './types'
 import { SCHEMAS, JOB_SUMMARY_SCHEMA, DETAILED_RESUME_SCHEMA } from './schemas'
-import { ENV } from '@/lib/env'
-
 // 1. i18n System Base (Translated from prototype)
 const SYSTEM_BASE = `You are a senior job assistant specializing in helping job seekers optimize resumes, analyze job matching, and prepare for interviews.
 
@@ -12,15 +10,16 @@ Core Principles:
 1.  Analyze based on facts; do not exaggerate or fabricate.
 2.  Provide structured, actionable advice.
 3.  Prioritize using bullet points and section organization.
-4.  Strictly output in the required JSON format.
-5.  Protect user privacy and do not leak sensitive information.
+4.  Protect user privacy and do not leak sensitive information.
 
-### JSON Output Specification (MUST STRICTLY FOLLOW)
-- Your output MUST be a **valid JSON object** that can be parsed by JSON.parse()
-- **FORBIDDEN**: Do NOT include markdown code fences (such as \`\`\`json ... \`\`\`)
-- **FORBIDDEN**: Do NOT use smart/curly quotes (" " ' '), MUST use standard ASCII double quotes (")
-- **FORBIDDEN**: Do NOT add any explanatory text before or after the JSON
-- If a string contains quotes internally, you MUST escape them with backslash (\\")
+Output Requirements:
+- Output language must follow the current UI locale ({ui_locale}), regardless of input language
+- Keep proper nouns (company names, role titles, product names, technical terms, standard abbreviations) in their original form; do not force-translate
+- Current date: {current_date}
+- For time judgments, use the current date above, not the model training cutoff; do not mark past dates as future
+- Your output MUST be a single valid JSON object that JSON.parse() can parse
+- FORBIDDEN: markdown code fences; do not add any text before or after the JSON
+- FORBIDDEN: smart/curly quotes; MUST use standard ASCII double quotes; escape internal quotes with backslash (\\")
 - Content must be concise and avoid redundancy.`
 
 // 2. Prototype Schemas (for Asset Extraction)
@@ -117,9 +116,11 @@ Raw Text:
     userPrompt: `Please parse the following Job Description (JD) text and **output the complete structured result according to the JSON Schema**.
 
 **Complete Extraction Rules (IMPORTANT):**
-1. You MUST populate **ALL fields** defined in the JSON Schema, including: title, company, location, requirements, nice_to_haves, tech_stack, benefits, company_info, etc.
+1. You MUST populate **ALL fields** defined in the JSON Schema, including: jobTitle, company, department, team, seniority, salaryRange, reportingLine, responsibilities, mustHaves, niceToHaves, techStack, tools, methodologies, domainKnowledge, industry, education, experience, certifications, languages, softSkills, businessGoals, relocation, companyInfo, otherRequirements, rawSections
 2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
-3. Focus on distinguishing "Must-haves" (requirements) from "Nice-to-haves"
+3. Clearly distinguish mustHaves from niceToHaves
+4. Put any unclassified information into rawSections with title as the original heading and points as the original bullets; if there is no heading, use title "Other"
+5. Additional scattered requirements can go into otherRequirements
 
 Raw JD Text:
 """
@@ -233,8 +234,8 @@ Your mission is not simple keyword matching, but to act as the user's **Personal
 """
 
 【Pre-Match Audit (Red Teaming - For Reference Only)】
-Context: The following are "Red Team" insights generated under extreme pressure.
-Instruction: These risks are for candidate "Defense Preparation", NOT for rejection. As a "Personal Coach", use these to provide constructive defense strategies in the 'weaknesses' section. Do not be biased by the negative tone; maintain a supportive coaching stance.
+Context: The following are "Red Team" insights generated under extreme pressure, simulating skeptical interviewer reactions.
+Instruction: These risks are ONLY for defense preparation, not rejection. You are a "Personal Coach" whose core job is to help the user win the offer; provide actionable defense scripts and mitigation strategies in the weaknesses section, and keep a constructive, confidence-building tone.
 """
 {pre_match_risks}
 """
@@ -550,21 +551,22 @@ Your task is to extract and structure the key job requirements directly from the
 
 Instructions:
 1. Carefully read all text visible in the screenshot
-2. Extract the job title, company (if visible), and key requirements
-3. Distinguish between "Must-have" (hard requirements) and "Nice-to-have" skills
+2. Extract as much JD content as possible without paraphrasing
+3. Distinguish between mustHaves (hard requirements) and niceToHaves (preferred)
 4. If text is unclear, make reasonable inferences from context
-5. Output in the exact JSON format specified
+5. Output in the exact JSON Schema specified
+6. Output content must be in {ui_locale}. If the JD is in another language, translate to {ui_locale} while keeping proper nouns (company, role, product names, technical terms, standard abbreviations) in original language
+
+**Complete Extraction Rules (IMPORTANT):**
+1. You MUST populate **ALL fields** defined in the JSON Schema, including: jobTitle, company, department, team, seniority, salaryRange, reportingLine, responsibilities, mustHaves, niceToHaves, techStack, tools, methodologies, domainKnowledge, industry, education, experience, certifications, languages, softSkills, businessGoals, relocation, companyInfo, otherRequirements, rawSections
+2. If information is not present in the image, return an **empty array []** or **empty string ""** - do NOT omit any fields
+3. Put any unclassified information into rawSections with title as the original heading and points as the original bullets; if there is no heading, use title "Other"
+4. Additional scattered requirements can go into otherRequirements
 
 Input Image (Base64):
 """
 {image}
 """
-
-Output must follow this exact structure:
-- jobTitle: The position title (required)
-- company: Company name if visible (optional)
-- mustHaves: Array of required skills/experience (at least 3 items)
-- niceToHaves: Array of preferred skills (at least 2 items)
 
 Respond ONLY with valid JSON, no additional text.`,
     variables: ['image'],

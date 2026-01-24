@@ -23,6 +23,7 @@ import {
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
 import { getProvider, getCost } from '@/lib/llm/utils'
+import { UI_LOCALE_LABELS } from '@/lib/constants'
 import { glmEmbeddingProvider } from '@/lib/llm/embeddings'
 import { ENV } from '@/lib/env'
 import { getTaskLimits } from '@/lib/llm/config'
@@ -93,6 +94,10 @@ function renderVariables(template: string, variables: Record<string, string>) {
     rendered = rendered.replace(singleBracePattern, val ?? '')
   }
   return rendered
+}
+
+function getUiLocaleLabel(locale: Locale) {
+  return UI_LOCALE_LABELS[locale] ?? locale
 }
 
 export async function runLlmTask<T extends TaskTemplateId>(
@@ -297,19 +302,28 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       null,
       2,
     )
+    const runtimeVariables = {
+      ...variables,
+      current_date: new Date().toISOString().slice(0, 10),
+      ui_locale: getUiLocaleLabel(locale),
+    }
+    const renderedSystemPrompt = renderVariables(
+      template.systemPrompt,
+      runtimeVariables,
+    )
 
     // Debug Log: Input
     logDebugData(`${String(templateId)}_input`, {
       input: JSON.stringify({
-        system: template.systemPrompt,
+        system: renderedSystemPrompt,
         user: template.userPrompt,
-        variables,
+        variables: runtimeVariables,
       }),
       meta: { modelId, limits },
     })
 
     const prompt = ChatPromptTemplate.fromMessages([
-      SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
+      SystemMessagePromptTemplate.fromTemplate(renderedSystemPrompt),
       new SystemMessage(
         `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`,
       ),
@@ -360,7 +374,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       )
 
       const renderedUserPrompt = renderVariables(template.userPrompt, {
-        ...variables,
+        ...runtimeVariables,
         image: '[attached]',
       })
 
@@ -376,7 +390,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       }
 
       const geminiResult = await runGeminiVision(
-        template.systemPrompt,
+        renderedSystemPrompt,
         renderedUserPrompt,
         imageData,
         schema,
@@ -427,10 +441,13 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       console.log('[Structured] Using Gemini Direct API for:', templateId)
 
       // Render prompts with variables
-      const renderedUserPrompt = renderVariables(template.userPrompt, variables)
+      const renderedUserPrompt = renderVariables(
+        template.userPrompt,
+        runtimeVariables,
+      )
 
       const geminiResult = await runGeminiStructured(
-        template.systemPrompt,
+        renderedSystemPrompt,
         renderedUserPrompt,
         schema,
         {
@@ -488,7 +505,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 
           // Build message array dynamically based on vision presence
           const messages: BaseMessage[] = [
-            new SystemMessage(template.systemPrompt),
+            new SystemMessage(renderedSystemPrompt),
           ]
 
           if (hasVisionImage) {
@@ -498,7 +515,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
                   {
                     type: 'text',
                     text: renderVariables((template as any).userPrompt, {
-                      ...variables,
+                      ...runtimeVariables,
                       image: '[attached]',
                     }),
                   },
@@ -512,7 +529,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
           } else {
             messages.push(
               new HumanMessage(
-                renderVariables((template as any).userPrompt, variables),
+                renderVariables((template as any).userPrompt, runtimeVariables),
               ),
             )
           }
@@ -526,7 +543,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
           // This aligns with how ChatPromptTemplate is constructed for text tasks
           // and relies on the model's ability to handle multiple system messages (common in modern providers)
           const legacyMessages: BaseMessage[] = [
-            new SystemMessage(template.systemPrompt),
+            new SystemMessage(renderedSystemPrompt),
             new SystemMessage(
               `You MUST output a single valid JSON object that conforms to the following JSON Schema. Do NOT include any prose or code fences.\n\nJSON Schema:\n${schemaJson}`,
             ),
@@ -538,7 +555,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
                 {
                   type: 'text',
                   text: renderVariables((template as any).userPrompt, {
-                    ...variables,
+                    ...runtimeVariables,
                     image: '[attached]',
                   }),
                 },
@@ -554,7 +571,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         }
 
         // Standard Text Task (Legacy)
-        return chain.invoke(variables)
+        return chain.invoke(runtimeVariables)
       },
       tier,
       retryContext,
@@ -853,13 +870,22 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
 ) {
   const start = Date.now()
   const template = getTemplate(locale, templateId)
+  const runtimeVariables = {
+    ...variables,
+    current_date: new Date().toISOString().slice(0, 10),
+    ui_locale: getUiLocaleLabel(locale),
+  }
+  const renderedSystemPrompt = renderVariables(
+    template.systemPrompt,
+    runtimeVariables,
+  )
 
   // Debug Log: Input (Streaming)
   logDebugData(`${String(templateId)}_stream_input`, {
     input: JSON.stringify({
-      system: template.systemPrompt,
+      system: renderedSystemPrompt,
       user: template.userPrompt,
-      variables,
+      variables: runtimeVariables,
     }),
     meta: { modelId },
   })
@@ -879,14 +905,14 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       variables['image'] && typeof variables['image'] === 'string'
 
     const renderedUserPrompt = renderVariables(template.userPrompt, {
-      ...variables,
+      ...runtimeVariables,
       ...(hasImage ? { image: '[attached]' } : {}),
     })
 
     const schema = getTaskSchema(templateId)
 
     const geminiResult = await runGeminiStreaming(
-      template.systemPrompt,
+      renderedSystemPrompt,
       renderedUserPrompt,
       schema,
       {
@@ -963,7 +989,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
   // PHASE 2: LangChain Streaming Path (for other models)
   try {
     const prompt = ChatPromptTemplate.fromMessages([
-      SystemMessagePromptTemplate.fromTemplate(template.systemPrompt),
+      SystemMessagePromptTemplate.fromTemplate(renderedSystemPrompt),
       HumanMessagePromptTemplate.fromTemplate(template.userPrompt),
     ])
     const limits = getTaskLimits(String(templateId))
@@ -976,7 +1002,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     const chain = prompt.pipe(model)
 
     // Stream tokens to consumer; when finished, log usage
-    const stream = await chain.stream(variables)
+    const stream = await chain.stream(runtimeVariables)
     let fullText = ''
     for await (const chunk of stream) {
       const text = (chunk as any)?.content ?? (chunk as any)?.text ?? ''

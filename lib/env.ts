@@ -127,11 +127,11 @@ export const ENV = {
   // 模型×tier并发上限（覆盖值）
   MAX_DS_REASONER_PAID: Number(process.env['MAX_DS_REASONER_PAID'] ?? '20'),
   MAX_DS_CHAT_PAID: Number(process.env['MAX_DS_CHAT_PAID'] ?? '20'),
+  MAX_GEMINI_FLASH_PAID: Number(process.env['MAX_GEMINI_FLASH_PAID'] ?? '20'),
+  MAX_GEMINI_FLASH_FREE: Number(process.env['MAX_GEMINI_FLASH_FREE'] ?? '10'),
   MAX_GLM_FLASH_FREE: Number(process.env['MAX_GLM_FLASH_FREE'] ?? '2'),
   MAX_GLM_VISION_PAID: Number(process.env['MAX_GLM_VISION_PAID'] ?? '3'),
   MAX_GLM_VISION_FREE: Number(process.env['MAX_GLM_VISION_FREE'] ?? '2'),
-  MAX_GEMINI_FLASH_PAID: Number(process.env['MAX_GEMINI_FLASH_PAID'] ?? '20'),
-  MAX_GEMINI_FLASH_FREE: Number(process.env['MAX_GEMINI_FLASH_FREE'] ?? '5'),
   MAX_TOTAL_WAIT_MS_STREAM: Number(
     process.env['MAX_TOTAL_WAIT_MS_STREAM'] ?? '480000',
   ),

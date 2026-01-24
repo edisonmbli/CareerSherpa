@@ -89,12 +89,12 @@ const resumeSummarySchema = z
       (Array.isArray(d.education) && d.education.length > 0) ||
       Boolean(
         d.skills &&
-          ((d.skills as any).technical?.length ||
-            (d.skills as any).soft?.length ||
-            (d.skills as any).tools?.length ||
-            (d.skills as any).other?.length)
+        ((d.skills as any).technical?.length ||
+          (d.skills as any).soft?.length ||
+          (d.skills as any).tools?.length ||
+          (d.skills as any).other?.length),
       ),
-    { message: 'empty_resume_summary' }
+    { message: 'empty_resume_summary' },
   )
 
 // V4: Flattened schema for Gemini compatibility (max 3 levels nesting)
@@ -123,7 +123,7 @@ const detailedResumeV4Schema = z
           metrics: z.array(z.string()).optional(),
           // Keep contributions as flat array
           contributions: z.array(z.string()).optional(),
-        })
+        }),
       )
       .optional(),
 
@@ -148,7 +148,7 @@ const detailedResumeV4Schema = z
         z.object({
           title: z.string().optional(),
           points: z.array(z.string()).optional(),
-        })
+        }),
       )
       .optional(),
   })
@@ -163,12 +163,12 @@ const detailedResumeV4Schema = z
       (Array.isArray(d.rawSections) && d.rawSections.length > 0) ||
       Boolean(
         d.skills &&
-          ((d.skills as any).technical?.length ||
-            (d.skills as any).soft?.length ||
-            (d.skills as any).tools?.length ||
-            (d.skills as any).other?.length)
+        ((d.skills as any).technical?.length ||
+          (d.skills as any).soft?.length ||
+          (d.skills as any).tools?.length ||
+          (d.skills as any).other?.length),
       ),
-    { message: 'empty_detailed_resume_summary' }
+    { message: 'empty_detailed_resume_summary' },
   )
 
 // [NEW] Deep Schema for Paid Tier / DeepSeek (supports nested projects)
@@ -204,16 +204,16 @@ export const detailedResumeDeepSchema = z
                       value: z.union([z.number(), z.string()]),
                       unit: z.string().optional(),
                       period: z.string().optional(),
-                    })
+                    }),
                   )
                   .optional(),
                 highlights: z.array(z.string()).optional(),
-              })
+              }),
             )
             .optional(),
 
           contributions: z.array(z.string()).optional(),
-        })
+        }),
       )
       .optional(),
     // [PATCH] Allow rich capabilities (object with name/points) to match prompt instruction
@@ -225,7 +225,7 @@ export const detailedResumeDeepSchema = z
             name: z.string().optional(),
             points: z.array(z.string()).optional(),
           }),
-        ])
+        ]),
       )
       .optional(),
     education: z.array(educationItemSchema).optional(),
@@ -243,20 +243,46 @@ export const detailedResumeDeepSchema = z
         z.object({
           title: z.string().optional(),
           points: z.array(z.string()).optional(),
-        })
+        }),
       )
       .optional(),
   })
   .refine(
     (d) => Boolean(d.summary || d.experiences?.length || d.education?.length),
-    { message: 'empty_detailed_resume_summary' }
+    { message: 'empty_detailed_resume_summary' },
   )
 
 const jobSummarySchema = z.object({
   jobTitle: z.string(),
   company: z.string(),
-  mustHaves: z.array(z.string()).min(1),
-  niceToHaves: z.array(z.string()).min(1),
+  department: z.string(),
+  team: z.string(),
+  seniority: z.string(),
+  salaryRange: z.string(),
+  reportingLine: z.string(),
+  responsibilities: z.array(z.string()),
+  mustHaves: z.array(z.string()),
+  niceToHaves: z.array(z.string()),
+  techStack: z.array(z.string()),
+  tools: z.array(z.string()),
+  methodologies: z.array(z.string()),
+  domainKnowledge: z.array(z.string()),
+  industry: z.array(z.string()),
+  education: z.array(z.string()),
+  experience: z.array(z.string()),
+  certifications: z.array(z.string()),
+  languages: z.array(z.string()),
+  softSkills: z.array(z.string()),
+  businessGoals: z.array(z.string()),
+  relocation: z.string(),
+  companyInfo: z.string(),
+  otherRequirements: z.array(z.string()),
+  rawSections: z.array(
+    z.object({
+      title: z.string(),
+      points: z.array(z.string()),
+    }),
+  ),
 })
 
 // V2：新设计任务（match/customize/interview）
@@ -269,7 +295,7 @@ const jobMatchSchema = z.object({
         point: z.string(),
         evidence: z.string(),
         section: z.string().optional(),
-      })
+      }),
     )
     .min(1),
   weaknesses: z
@@ -282,7 +308,7 @@ const jobMatchSchema = z.object({
           resume: z.string(), // 简历微调
         }),
         section: z.string().optional(),
-      })
+      }),
     )
     .min(1),
   cover_letter_script: z.object({
@@ -303,7 +329,7 @@ const interviewPrepSchema = z.object({
       z.object({
         question: z.string(),
         answer_guideline: z.string(),
-      })
+      }),
     )
     .min(1),
   reverse_questions: z.array(z.string()).min(1),
@@ -331,7 +357,7 @@ const preMatchAuditSchema = z.object({
       risk_point: z.string(),
       severity: z.enum(['HIGH', 'MEDIUM', 'LOW']),
       reasoning: z.string(),
-    })
+    }),
   ),
   overall_risk_level: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'SAFE']),
   audit_summary: z.string(),
