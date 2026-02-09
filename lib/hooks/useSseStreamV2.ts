@@ -62,6 +62,7 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
     // Both tiers
     appendMatchContent,
     setMatchResult,
+    appendInterviewContent,
     // Connection
     setConnected,
     recordEvent,
@@ -151,6 +152,9 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
       case 'match':
         appendMatchContent(buffer)
         break
+      case 'interview':
+        appendInterviewContent(buffer)
+        break
     }
   }, [
     appendVisionContent,
@@ -158,6 +162,7 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
     appendSummaryContent,
     appendPreMatchContent,
     appendMatchContent,
+    appendInterviewContent,
   ])
 
   /**
@@ -204,7 +209,7 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
       currentTier: 'free' | 'paid',
     ) => {
       if (tokenTaskId?.startsWith('customize_')) return null
-      if (tokenTaskId?.startsWith('interview_')) return null
+      if (tokenTaskId?.startsWith('interview_')) return 'interview'
       if (tokenTaskId?.startsWith('match_')) return 'match'
       const statusTarget = getTokenTarget(currentStatus, currentTier)
       if (tokenTaskId?.startsWith('job_')) {
@@ -530,6 +535,11 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
               currentStatus === 'PREMATCH_PENDING'
             ) {
               setStatus('PREMATCH_COMPLETED')
+            } else if (
+              currentStatus === 'INTERVIEW_STREAMING' ||
+              currentStatus === 'INTERVIEW_PENDING'
+            ) {
+              setStatus('INTERVIEW_COMPLETED')
             }
 
             if (

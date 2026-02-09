@@ -227,6 +227,8 @@ export function ServiceDisplay({
       return 'match'
     },
   )
+  const lastServiceIdRef = useRef<string | null>(null)
+  const lastExecutionSessionIdRef = useRef<string | null>(null)
   // Duplicate local state removed
   // streamRef removed
 
@@ -290,6 +292,15 @@ export function ServiceDisplay({
     (isPending || customizeStatus === 'PENDING')
 
   const interviewStatus = (() => {
+    const hasInterviewStage =
+      storeStatus === 'INTERVIEW_PENDING' ||
+      storeStatus === 'INTERVIEW_STREAMING' ||
+      storeStatus === 'INTERVIEW_COMPLETED' ||
+      storeStatus === 'INTERVIEW_FAILED' ||
+      String(initialService?.currentStatus || '').startsWith('INTERVIEW')
+
+    if (!hasInterviewStage) return 'IDLE'
+
     if (
       storeStatus === 'INTERVIEW_PENDING' ||
       storeStatus === 'INTERVIEW_STREAMING'
@@ -982,23 +993,72 @@ export function ServiceDisplay({
   const hasRefreshedInterviewRef = useRef(false)
   const interviewDataRetryRef = useRef(0)
   useEffect(() => {
-    const hasInterviewAction =
-      storeStatus === 'INTERVIEW_PENDING' ||
-      storeStatus === 'INTERVIEW_STREAMING' ||
-      storeStatus === 'INTERVIEW_COMPLETED' ||
-      storeStatus === 'INTERVIEW_FAILED' ||
-      interviewExecutionTier !== null
+    if (!serviceId) return
+    const currentSessionId = initialService?.executionSessionId || null
+    const serviceChanged = lastServiceIdRef.current !== serviceId
+    const sessionChanged =
+      lastExecutionSessionIdRef.current !== currentSessionId
+    const v2Status = v2Bridge?.status
+    const isActiveStatus =
+      v2Status?.includes('PENDING') || v2Status?.includes('STREAMING')
+
+    if (serviceChanged || (sessionChanged && !isActiveStatus)) {
+      setTabValue(() => {
+        if (initialService?.interview?.status === 'COMPLETED')
+          return 'interview'
+        if (initialService?.customizedResume?.status === 'COMPLETED')
+          return 'customize'
+        return 'match'
+      })
+      setMatchTaskId(null)
+      setNotification(null)
+      setMatchLive(null)
+
+      if (typeof window !== 'undefined') {
+        const cachedTier = serviceId
+          ? localStorage.getItem(`executionTier_${serviceId}`)
+          : null
+        setExecutionTier(
+          cachedTier === 'free' || cachedTier === 'paid' ? cachedTier : null,
+        )
+        const cachedInterviewTier = serviceId
+          ? localStorage.getItem(`executionTier_interview_${serviceId}`)
+          : null
+        setInterviewExecutionTier(
+          cachedInterviewTier === 'free' || cachedInterviewTier === 'paid'
+            ? cachedInterviewTier
+            : null,
+        )
+      }
+
+      hasRefreshedJobSummaryRef.current = false
+      hasRefreshedCustomizeRef.current = false
+      hasRefreshedInterviewRef.current = false
+      interviewDataRetryRef.current = 0
+      v2Bridge?.reset?.()
+    }
+
+    lastServiceIdRef.current = serviceId
+    lastExecutionSessionIdRef.current = currentSessionId
+  }, [
+    serviceId,
+    initialService?.executionSessionId,
+    initialService?.customizedResume?.status,
+    initialService?.interview?.status,
+    v2Bridge,
+  ])
+  useEffect(() => {
+    const serverInterviewStatus = initialService?.interview?.status
     if (
-      (interviewStatus === 'COMPLETED' || interviewStatus === 'FAILED') &&
+      (serverInterviewStatus === 'COMPLETED' ||
+        serverInterviewStatus === 'FAILED') &&
       !hasRefreshedInterviewRef.current
     ) {
       hasRefreshedInterviewRef.current = true
       router.refresh()
-      if (hasInterviewAction) {
-        setTabValue('interview')
-      }
+      setTabValue('interview')
     }
-  }, [interviewStatus, router, storeStatus, interviewExecutionTier])
+  }, [initialService?.interview?.status, router])
 
   useEffect(() => {
     if (interviewStatus !== 'COMPLETED') {
@@ -1468,6 +1528,24 @@ export function ServiceDisplay({
                         </div>
                       </div>
                     </aside>
+                  </div>
+                </div>
+              ) : USE_SSE_V2 &&
+                v2Bridge &&
+                (v2Bridge.status === 'INTERVIEW_PENDING' ||
+                  v2Bridge.status === 'INTERVIEW_STREAMING' ||
+                  v2Bridge.status === 'INTERVIEW_COMPLETED') &&
+                (v2Bridge.interviewContent || v2Bridge.interviewJson) ? (
+                <div className="w-full px-1 sm:px-4 md:px-6">
+                  <div className="mx-auto w-full max-w-[1180px]">
+                    <StreamPanelV2
+                      status={v2Bridge.status}
+                      tier={v2Bridge.tier}
+                      interviewContent={v2Bridge.interviewContent}
+                      interviewJson={v2Bridge.interviewJson}
+                      errorMessage={localizedError}
+                      dict={dict?.workbench?.streamPanel}
+                    />
                   </div>
                 </div>
               ) : (

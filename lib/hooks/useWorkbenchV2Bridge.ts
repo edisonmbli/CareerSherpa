@@ -218,6 +218,9 @@ export function useWorkbenchV2Bridge(options: WorkbenchBridgeOptions) {
         matchContent: content.matchContent,
         matchJson: content.matchJson,
 
+        interviewContent: content.interviewContent,
+        interviewJson: content.interviewJson,
+
         // Connection
         isConnected,
         currentTaskId,
@@ -243,4 +246,3 @@ export function useWorkbenchV2Bridge(options: WorkbenchBridgeOptions) {
 function mapInitialStatus(serverStatus: string): WorkbenchStatusV2 | null {
     return mapToStatus(serverStatus)
 }
-

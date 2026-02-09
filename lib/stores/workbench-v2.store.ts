@@ -98,6 +98,9 @@ export interface ContentBuffers {
   // Both tiers - Match phase streaming output
   matchContent: string
   matchJson: Record<string, unknown> | null
+
+  interviewContent: string
+  interviewJson: Record<string, unknown> | null
 }
 
 /**
@@ -162,6 +165,8 @@ export interface WorkbenchV2State {
   // Both tiers
   appendMatchContent: (chunk: string) => void
   setMatchResult: (json: Record<string, unknown>) => void
+  appendInterviewContent: (chunk: string) => void
+  setInterviewResult: (json: Record<string, unknown>) => void
   // Connection
   setConnected: (connected: boolean, taskId?: string) => void
   recordEvent: () => void
@@ -203,6 +208,9 @@ function createInitialContent(): ContentBuffers {
     // Both tiers
     matchContent: '',
     matchJson: null,
+
+    interviewContent: '',
+    interviewJson: null,
   }
 }
 
@@ -466,6 +474,28 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
         isActive: false,
         baseProgress: 100,
         targetProgress: 100,
+      },
+    }))
+  },
+
+  appendInterviewContent: (chunk) => {
+    set((s) => {
+      const current = s.content.interviewContent
+      const newContent = mergeContent(current, chunk)
+      sseLog.content('interview', newContent.length)
+      return {
+        content: { ...s.content, interviewContent: newContent },
+      }
+    })
+  },
+
+  setInterviewResult: (json) => {
+    sseLog.event('interview_result', { keys: Object.keys(json) })
+    set((s) => ({
+      content: {
+        ...s.content,
+        interviewJson: json,
+        interviewContent: JSON.stringify(json, null, 2),
       },
     }))
   },

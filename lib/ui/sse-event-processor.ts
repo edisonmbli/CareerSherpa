@@ -367,7 +367,7 @@ export function processSseEvent(raw: unknown): ProcessedEvent | null {
 export function getTokenTarget(
   status: WorkbenchStatusV2,
   tier: ExecutionTier = 'free',
-): 'vision' | 'ocr' | 'summary' | 'preMatch' | 'match' | null {
+): 'vision' | 'ocr' | 'summary' | 'preMatch' | 'match' | 'interview' | null {
   // Free tier - Vision
   if (status === 'JOB_VISION_STREAMING' || status === 'JOB_VISION_PENDING') {
     return 'vision'
@@ -391,6 +391,10 @@ export function getTokenTarget(
   // Both tiers - Match
   if (status === 'MATCH_STREAMING' || status === 'MATCH_PENDING') {
     return 'match'
+  }
+
+  if (status === 'INTERVIEW_STREAMING' || status === 'INTERVIEW_PENDING') {
+    return 'interview'
   }
 
   return null

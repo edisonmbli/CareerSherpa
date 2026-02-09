@@ -79,7 +79,10 @@ export const sseLog = {
         log('debug', 'PROGRESS', `${value}% (${stage})`),
 
     // Content updates
-    content: (type: 'vision' | 'match' | 'ocr' | 'summary' | 'preMatch', length: number) =>
+    content: (
+        type: 'vision' | 'match' | 'ocr' | 'summary' | 'preMatch' | 'interview',
+        length: number,
+    ) =>
         log('debug', 'CONTENT', `${type} buffer: ${length} chars`),
 
     // Errors

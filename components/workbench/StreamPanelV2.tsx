@@ -24,6 +24,7 @@ type StreamMode =
   | 'summary'
   | 'preMatch'
   | 'match'
+  | 'interview'
   | 'error'
   | 'init'
   | 'waiting'
@@ -44,6 +45,8 @@ interface StreamPanelV2Props {
   // Both tiers
   matchContent?: string | undefined
   matchJson?: Record<string, unknown> | null | undefined
+  interviewContent?: string | undefined
+  interviewJson?: Record<string, unknown> | null | undefined
   errorMessage?: string | undefined
   className?: string | undefined
   /** i18n dictionary for streamPanel strings */
@@ -53,15 +56,19 @@ interface StreamPanelV2Props {
     summary?: string
     preMatch?: string
     match?: string
+    interview?: string
     error?: string
     waiting?: string
     waitingVision?: string
     waitingOcr?: string
     waitingSummary?: string
     waitingPreMatch?: string
+    waitingInterview?: string
     waitingDefault?: string
     analyzingMatch?: string
     matchPending?: string
+    interviewPending?: string
+    analyzingInterview?: string
     errorDefault?: string
   }
   onRetry?: () => void
@@ -86,6 +93,7 @@ function deriveMode(
     hasPreMatchContent: boolean
     hasSummaryContent: boolean
     hasOcrContent: boolean
+    hasInterviewContent: boolean
   },
 ): StreamMode {
   const {
@@ -93,11 +101,21 @@ function deriveMode(
     hasPreMatchContent = false,
     hasSummaryContent = false,
     hasOcrContent = false,
+    hasInterviewContent = false,
   } = contentState || {}
   if (status.endsWith('_FAILED')) return 'error'
 
   // Init state - task not yet started
   if (status === 'IDLE') return 'init'
+
+  if (
+    status === 'INTERVIEW_PENDING' ||
+    status === 'INTERVIEW_STREAMING' ||
+    status === 'INTERVIEW_COMPLETED'
+  ) {
+    if (hasInterviewContent) return 'interview'
+    return 'interview'
+  }
 
   // Paid tier - separate modes for each phase
   if (tier === 'paid') {
@@ -194,6 +212,7 @@ const DEFAULT_MODE_LABELS: Record<StreamMode, string> = {
   summary: 'Job Summary',
   preMatch: 'HR Review',
   match: 'Match Analysis',
+  interview: 'Interview Tips',
   error: 'Task Failed',
   init: 'Initializing',
   waiting: 'Waiting',
@@ -215,6 +234,8 @@ export function StreamPanelV2({
   // Both tiers
   matchContent = '',
   matchJson,
+  interviewContent = '',
+  interviewJson,
   errorMessage,
   dict,
   onRetry,
@@ -226,12 +247,14 @@ export function StreamPanelV2({
   const hasPreMatchContent = !!(preMatchContent || preMatchJson)
   const hasSummaryContent = !!(summaryContent || summaryJson)
   const hasOcrContent = !!(ocrContent || ocrJson)
+  const hasInterviewContent = !!(interviewContent || interviewJson)
 
   const mode = deriveMode(status, tier, {
     hasMatchContent,
     hasPreMatchContent,
     hasSummaryContent,
     hasOcrContent,
+    hasInterviewContent,
   })
 
   const modeLabels: Record<StreamMode, string> = useMemo(
@@ -241,6 +264,7 @@ export function StreamPanelV2({
       summary: dict?.summary || DEFAULT_MODE_LABELS.summary,
       preMatch: dict?.preMatch || DEFAULT_MODE_LABELS.preMatch,
       match: dict?.match || DEFAULT_MODE_LABELS.match,
+      interview: dict?.interview || DEFAULT_MODE_LABELS.interview,
       error: dict?.error || DEFAULT_MODE_LABELS.error,
       init: DEFAULT_MODE_LABELS.init,
       waiting: dict?.waiting || DEFAULT_MODE_LABELS.waiting,
@@ -322,6 +346,19 @@ export function StreamPanelV2({
     return preMatchContent
   }, [preMatchContent])
 
+  const formattedInterviewContent = useMemo(() => {
+    if (!interviewContent) return ''
+    try {
+      const cleaned = interviewContent.replace(/```json\n?|\n?```/g, '').trim()
+      if (cleaned.startsWith('{') || cleaned.startsWith('[')) {
+        return JSON.stringify(JSON.parse(cleaned), null, 2)
+      }
+    } catch {
+      /* keep original */
+    }
+    return interviewContent
+  }, [interviewContent])
+
   // Typewriter buffer for OCR content (Paid tier)
   // OCR is NOT final - Summary task follows
   // Flush when summaryJson arrives
@@ -393,6 +430,18 @@ export function StreamPanelV2({
       fastSpeed: 2, // Moderate speed for readable output (was 50)
     })
 
+  const interviewFlush = status === 'INTERVIEW_COMPLETED' && !!interviewContent
+  const {
+    displayedContent: displayedInterviewContent,
+    isTyping: isInterviewTyping,
+  } = useTypewriterBuffer({
+    content: formattedInterviewContent,
+    isFinalTask: true,
+    shouldFlush: interviewFlush,
+    baseSpeed: 1,
+    fastSpeed: 2,
+  })
+
   // Auto-scroll to bottom
   useEffect(() => {
     const viewport = scrollerRef.current?.closest(
@@ -410,11 +459,13 @@ export function StreamPanelV2({
     displayedOcrContent,
     displayedSummaryContent,
     displayedPreMatchContent,
+    displayedInterviewContent,
     visionJson,
     ocrJson,
     summaryJson,
     preMatchJson,
     matchJson,
+    interviewJson,
   ])
 
   // Display content logic
@@ -494,6 +545,29 @@ export function StreamPanelV2({
         }
         return dict?.analyzingMatch || '正在分析匹配度...'
 
+      case 'interview':
+        if (interviewJson) {
+          return JSON.stringify(interviewJson, null, 2)
+        }
+        if (isInterviewTyping) {
+          return displayedInterviewContent
+        }
+        if (displayedInterviewContent) {
+          return displayedInterviewContent
+        }
+        if (status === 'INTERVIEW_PENDING') {
+          return (
+            dict?.interviewPending ||
+            dict?.waitingInterview ||
+            '面试建议任务已在排队，请稍候...'
+          )
+        }
+        return (
+          dict?.analyzingInterview ||
+          dict?.waitingInterview ||
+          '正在生成面试建议...'
+        )
+
       case 'init':
         return dict?.waitingDefault || 'Initializing...'
 
@@ -520,12 +594,17 @@ export function StreamPanelV2({
     matchJson,
     matchHasFinal,
     matchStreamStarted,
+    displayedInterviewContent,
+    interviewJson,
+    isInterviewTyping,
     errorMessage,
     dict,
   ])
 
   // Show cursor only during streaming
-  const showCursor = mode === 'match' && isMatchTyping && !matchJson
+  const showCursor =
+    ((mode === 'match' && isMatchTyping && !matchJson) ||
+      (mode === 'interview' && isInterviewTyping && !interviewJson)) ?? false
 
   return (
     <div
