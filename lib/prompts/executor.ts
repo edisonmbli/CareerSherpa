@@ -99,12 +99,12 @@ export async function executeJobMatch(
       error: res.error ?? 'upstream_error',
       ...(res.usage
         ? {
-            llmResult: {
-              response: toUsagePayload(res.usage)
-                ? { usage: toUsagePayload(res.usage)! }
-                : {},
-            },
-          }
+          llmResult: {
+            response: toUsagePayload(res.usage)
+              ? { usage: toUsagePayload(res.usage)! }
+              : {},
+          },
+        }
         : {}),
     }
   }
@@ -116,27 +116,27 @@ export async function executeJobMatch(
   const highlights: string[] = Array.isArray(d?.strengths)
     ? d.strengths.map((s: any) => String(s?.point ?? s?.evidence ?? s ?? ''))
     : Array.isArray(d?.highlights)
-    ? d.highlights.map((h: any) => String(h))
-    : []
+      ? d.highlights.map((h: any) => String(h))
+      : []
   const gaps: string[] = Array.isArray(d?.weaknesses)
     ? d.weaknesses.map((w: any) =>
-        String(w?.risk ?? w?.gap ?? w?.point ?? w ?? '')
-      )
+      String(w?.risk ?? w?.gap ?? w?.point ?? w ?? '')
+    )
     : Array.isArray(d?.gaps)
-    ? d.gaps.map((g: any) => String(g))
-    : []
+      ? d.gaps.map((g: any) => String(g))
+      : []
 
   return {
     success: true,
     data: { score, highlights, gaps, dm_script },
     ...(res.usage
       ? {
-          llmResult: {
-            response: toUsagePayload(res.usage)
-              ? { usage: toUsagePayload(res.usage)! }
-              : {},
-          },
-        }
+        llmResult: {
+          response: toUsagePayload(res.usage)
+            ? { usage: toUsagePayload(res.usage)! }
+            : {},
+        },
+      }
       : {}),
   }
 }
@@ -182,12 +182,12 @@ export async function executeResumeEdit(
       error: res.error ?? 'upstream_error',
       ...(res.usage
         ? {
-            llmResult: {
-              response: toUsagePayload(res.usage)
-                ? { usage: toUsagePayload(res.usage)! }
-                : {},
-            },
-          }
+          llmResult: {
+            response: toUsagePayload(res.usage)
+              ? { usage: toUsagePayload(res.usage)! }
+              : {},
+          },
+        }
         : {}),
     }
   }
@@ -195,13 +195,13 @@ export async function executeResumeEdit(
   const d: any = res.data
   const summary: string = Array.isArray(d?.customization_summary)
     ? d.customization_summary
-        .map(
-          (c: any) =>
-            `Section: ${String(c?.section ?? '')} — ${String(
-              c?.change_reason ?? ''
-            )}`
-        )
-        .join('\n')
+      .map(
+        (c: any) =>
+          `Section: ${String(c?.section ?? '')} — ${String(
+            c?.change_reason ?? ''
+          )}`
+      )
+      .join('\n')
     : String(d?.summary ?? 'Customization completed.')
 
   const ops: Array<{
@@ -212,25 +212,25 @@ export async function executeResumeEdit(
     from?: string
     to?: string
   }> = Array.isArray(d?.customization_summary)
-    ? d.customization_summary.map((c: any) => ({
+      ? d.customization_summary.map((c: any) => ({
         type: 'edit',
         target: String(c?.section ?? ''),
         content: undefined,
         reason: String(c?.change_reason ?? ''),
       }))
-    : []
+      : []
 
   return {
     success: true,
     data: { summary, ops },
     ...(res.usage
       ? {
-          llmResult: {
-            response: toUsagePayload(res.usage)
-              ? { usage: toUsagePayload(res.usage)! }
-              : {},
-          },
-        }
+        llmResult: {
+          response: toUsagePayload(res.usage)
+            ? { usage: toUsagePayload(res.usage)! }
+            : {},
+        },
+      }
       : {}),
   }
 }
@@ -240,23 +240,54 @@ export async function executeInterviewPrep(
   resumeSummaryJson: string,
   jobSummaryJson: string,
   detailedSummaryJson: string,
+  matchAnalysisJson: string,
+  customizedResumeJson: string,
   userId: string,
   serviceId: string,
   options: ExecOptions = {}
 ): Promise<
   UpstreamResult<{
-    intro: string
-    qa_items: Array<{ question: string; framework: string; hints: string[] }>
+    // V2 schema fields
+    radar?: any
+    hook?: any
+    evidence?: any[]
+    defense?: any[]
+    reverse_questions?: any[]
+    knowledge_refresh?: any[]
+    // Legacy fields for backward compatibility
+    intro?: string
+    qa_items?: Array<{ question: string; framework: string; hints: string[] }>
   }>
 > {
+  // Extract jobTitle for RAG retrieval
+  let jobTitle = 'unknown position'
+  try {
+    const jobData = JSON.parse(jobSummaryJson)
+    jobTitle = jobData?.jobTitle || jobData?.title || 'unknown position'
+  } catch (e) {
+    // Fallback to default if parsing fails
+  }
+
+  // Retrieve RAG context for interview strategies and self introduction
+  let ragContext = ''
+  try {
+    const { retrieveInterviewContext } = await import('@/lib/rag/retriever')
+    ragContext = await retrieveInterviewContext(jobTitle, DEFAULT_LOCALE)
+  } catch (e) {
+    // RAG retrieval failed, proceed with empty context
+    console.error('[executeInterviewPrep] RAG retrieval failed:', e)
+  }
+
   const res = await runLlmTask(
     'interview_prep',
     DEFAULT_LOCALE,
     {
-      rag_context: '',
-      customized_resume_md: '', // Not available in this call; keep minimal tokens for MVP
       job_summary_json: jobSummaryJson,
-      match_analysis_json: '',
+      match_analysis_json: matchAnalysisJson,
+      customized_resume_json: customizedResumeJson,
+      resume_summary_json: resumeSummaryJson,
+      detailed_resume_summary_json: detailedSummaryJson,
+      rag_context: ragContext,
     },
     options.tier !== undefined ? { tier: options.tier } : {}
   )
@@ -267,24 +298,51 @@ export async function executeInterviewPrep(
       error: res.error ?? 'upstream_error',
       ...(res.usage
         ? {
-            llmResult: {
-              response: toUsagePayload(res.usage)
-                ? { usage: toUsagePayload(res.usage)! }
-                : {},
-            },
-          }
+          llmResult: {
+            response: toUsagePayload(res.usage)
+              ? { usage: toUsagePayload(res.usage)! }
+              : {},
+          },
+        }
         : {}),
     }
   }
 
   const d: any = res.data
+
+  // Support both V2 and legacy schema
+  if (d?.radar || d?.hook || d?.evidence) {
+    // V2 schema response
+    return {
+      success: true,
+      data: {
+        radar: d.radar,
+        hook: d.hook,
+        evidence: d.evidence || [],
+        defense: d.defense || [],
+        reverse_questions: d.reverse_questions || [],
+        knowledge_refresh: d.knowledge_refresh,
+      },
+      ...(res.usage
+        ? {
+          llmResult: {
+            response: toUsagePayload(res.usage)
+              ? { usage: toUsagePayload(res.usage)! }
+              : {},
+          },
+        }
+        : {}),
+    }
+  }
+
+  // Legacy schema response
   const intro: string = String(d?.self_introduction_script ?? d?.intro ?? '')
   const qa_items: Array<{
     question: string
     framework: string
     hints: string[]
   }> = Array.isArray(d?.potential_questions)
-    ? d.potential_questions.map((q: any) => ({
+      ? d.potential_questions.map((q: any) => ({
         question: String(q?.question ?? ''),
         framework: q?.star_example_suggestion ? 'STAR' : 'Guideline',
         hints: [
@@ -294,27 +352,27 @@ export async function executeInterviewPrep(
             : []),
         ],
       }))
-    : Array.isArray(d?.qa_items)
-    ? d.qa_items.map((q: any) => ({
-        question: String(q?.question ?? ''),
-        framework: String(q?.framework ?? ''),
-        hints: Array.isArray(q?.hints)
-          ? q.hints.map((h: any) => String(h))
-          : [],
-      }))
-    : []
+      : Array.isArray(d?.qa_items)
+        ? d.qa_items.map((q: any) => ({
+          question: String(q?.question ?? ''),
+          framework: String(q?.framework ?? ''),
+          hints: Array.isArray(q?.hints)
+            ? q.hints.map((h: any) => String(h))
+            : [],
+        }))
+        : []
 
   return {
     success: true,
     data: { intro, qa_items },
     ...(res.usage
       ? {
-          llmResult: {
-            response: toUsagePayload(res.usage)
-              ? { usage: toUsagePayload(res.usage)! }
-              : {},
-          },
-        }
+        llmResult: {
+          response: toUsagePayload(res.usage)
+            ? { usage: toUsagePayload(res.usage)! }
+            : {},
+        },
+      }
       : {}),
   }
 }

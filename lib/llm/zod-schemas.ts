@@ -335,6 +335,86 @@ const interviewPrepSchema = z.object({
   reverse_questions: z.array(z.string()).min(1),
 })
 
+const interviewPrepV2Schema = z.object({
+  radar: z.object({
+    core_challenges: z
+      .array(
+        z.object({
+          challenge: z.string(),
+          why_important: z.string(),
+          your_angle: z.string(),
+        }),
+      )
+      .min(1),
+    interview_rounds: z
+      .array(
+        z.object({
+          round_name: z.string(),
+          interviewer_role: z.string(),
+          focus_points: z.array(z.string()).min(1),
+        }),
+      )
+      .min(1),
+    hidden_requirements: z.array(z.string()).min(1),
+  }),
+  hook: z.object({
+    ppf_script: z.string(),
+    key_hooks: z
+      .array(
+        z.object({
+          hook: z.string(),
+          evidence_source: z.string(),
+        }),
+      )
+      .min(1),
+    delivery_tips: z.array(z.string()).min(1),
+  }),
+  evidence: z
+    .array(
+      z.object({
+        story_title: z.string(),
+        matched_pain_point: z.string(),
+        star: z.object({
+          situation: z.string(),
+          task: z.string(),
+          action: z.string(),
+          result: z.string(),
+        }),
+        quantified_impact: z.string(),
+        source: z.enum(['resume', 'detailed_resume']),
+      }),
+    )
+    .min(1),
+  defense: z
+    .array(
+      z.object({
+        weakness: z.string(),
+        anticipated_question: z.string(),
+        defense_script: z.string(),
+        supporting_evidence: z.string(),
+      }),
+    )
+    .min(1),
+  reverse_questions: z
+    .array(
+      z.object({
+        question: z.string(),
+        ask_intent: z.string(),
+        listen_for: z.string(),
+      }),
+    )
+    .min(1),
+  knowledge_refresh: z
+    .array(
+      z.object({
+        topic: z.string(),
+        key_points: z.array(z.string()).min(1),
+        relevance: z.string(),
+      }),
+    )
+    .optional(),
+})
+
 // OCR extraction schema (vision task)
 const ocrExtractSchema = z.object({
   extracted_text: z.string().min(1),
@@ -372,7 +452,7 @@ const SCHEMA_MAP: Record<TaskTemplateId, z.ZodTypeAny> = {
   job_match: jobMatchSchema,
   resume_customize: resumeCustomizeSchema,
   // resume_customize_lite: resumeCustomizeSchema, // [DEPRECATED] Same schema as full customize
-  interview_prep: interviewPrepSchema,
+  interview_prep: interviewPrepV2Schema,
   ocr_extract: ocrExtractSchema,
   pre_match_audit: preMatchAuditSchema,
   // 非生成型任务（嵌入/RAG流水线）占位

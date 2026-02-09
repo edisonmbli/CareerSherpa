@@ -479,6 +479,249 @@ export const SCHEMAS = {
     required: ['fact_check', 'optimizeSuggestion', 'resumeData'],
   } as JsonSchema,
 
+  INTERVIEW_PREP_V2: {
+    type: 'object',
+    properties: {
+      radar: {
+        type: 'object',
+        properties: {
+          core_challenges: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                challenge: {
+                  type: 'string',
+                  description: 'Core business challenge derived from JD',
+                },
+                why_important: {
+                  type: 'string',
+                  description: 'Why this challenge is critical',
+                },
+                your_angle: {
+                  type: 'string',
+                  description: 'How the candidate can approach this challenge',
+                },
+              },
+              required: ['challenge', 'why_important', 'your_angle'],
+            },
+            description: '3 core business challenges',
+          },
+          interview_rounds: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                round_name: {
+                  type: 'string',
+                  description:
+                    'Interview round name (e.g., "HR初筛", "技术面试", "业务面试", "高管面试")',
+                },
+                interviewer_role: {
+                  type: 'string',
+                  description:
+                    'Interviewer role persona(e.g., "HR Recruiter", "Hands-on Tech Lead", "Business Director", "VP/C-level")',
+                },
+                focus_points: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description:
+                    'What this interviewer role cares about most (3-5 points)',
+                },
+              },
+              required: ['round_name', 'interviewer_role', 'focus_points'],
+            },
+            description:
+              'Predicted interview rounds and what each interviewer role will focus on',
+          },
+          hidden_requirements: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Implicit requirements not explicitly stated in JD but likely to be tested',
+          },
+        },
+        required: [
+          'core_challenges',
+          'interview_rounds',
+          'hidden_requirements',
+        ],
+        description: 'Module 1: Intelligence Briefing (The Radar)',
+      },
+      hook: {
+        type: 'object',
+        properties: {
+          ppf_script: {
+            type: 'string',
+            description:
+              '1-minute self-introduction script using P-P-F structure (Present-Past-Future)',
+          },
+          key_hooks: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                hook: {
+                  type: 'string',
+                  description: 'A key attention-grabbing point',
+                },
+                evidence_source: {
+                  type: 'string',
+                  description: 'Which resume experience supports this hook',
+                },
+              },
+              required: ['hook', 'evidence_source'],
+            },
+            description: '3 key hooks to grab attention',
+          },
+          delivery_tips: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Delivery tips for effective presentation',
+          },
+        },
+        required: ['ppf_script', 'key_hooks', 'delivery_tips'],
+        description: 'Module 2: Opening Statement (The Hook)',
+      },
+      evidence: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            story_title: {
+              type: 'string',
+              description: 'Title of the STAR story (e.g., project name)',
+            },
+            matched_pain_point: {
+              type: 'string',
+              description: 'Which JD pain point this story addresses',
+            },
+            star: {
+              type: 'object',
+              properties: {
+                situation: {
+                  type: 'string',
+                  description: 'Situation: Background context',
+                },
+                task: {
+                  type: 'string',
+                  description: 'Task: Your responsibility/challenge',
+                },
+                action: {
+                  type: 'string',
+                  description: 'Action: What you specifically did',
+                },
+                result: {
+                  type: 'string',
+                  description: 'Result: Measurable outcome',
+                },
+              },
+              required: ['situation', 'task', 'action', 'result'],
+            },
+            quantified_impact: {
+              type: 'string',
+              description: 'Quantified impact (e.g., "Revenue +30%")',
+            },
+            source: {
+              type: 'string',
+              enum: ['resume', 'detailed_resume'],
+              description: 'Data source for this story',
+            },
+          },
+          required: [
+            'story_title',
+            'matched_pain_point',
+            'star',
+            'quantified_impact',
+            'source',
+          ],
+        },
+        description: 'Module 3: Core Arguments (The Evidence) - 3 STAR stories',
+      },
+      defense: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            weakness: {
+              type: 'string',
+              description: 'Weakness from match_analysis.weaknesses',
+            },
+            anticipated_question: {
+              type: 'string',
+              description: 'How the interviewer might question this weakness',
+            },
+            defense_script: {
+              type: 'string',
+              description:
+                'Defense script: acknowledge + reframe as growth opportunity',
+            },
+            supporting_evidence: {
+              type: 'string',
+              description: 'Concrete evidence supporting this defense script',
+            },
+          },
+          required: [
+            'weakness',
+            'anticipated_question',
+            'defense_script',
+            'supporting_evidence',
+          ],
+        },
+        description:
+          'Module 4: Offense & Defense (Sword & Shield) - Weakness mitigation',
+      },
+      reverse_questions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            question: {
+              type: 'string',
+              description: 'A high-quality question to ask the interviewer',
+            },
+            ask_intent: {
+              type: 'string',
+              description: 'Strategic intent behind asking this question',
+            },
+            listen_for: {
+              type: 'string',
+              description: 'What to pay attention to in the interviewer\'s answer',
+            },
+          },
+          required: ['question', 'ask_intent', 'listen_for'],
+        },
+        description: 'Module 5: Reverse Questions - Strategic questions to ask',
+      },
+      knowledge_refresh: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            topic: {
+              type: 'string',
+              description: 'Topic to brush up on (e.g., "Douyin API ecosystem")',
+            },
+            key_points: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '3-5 key points to remember',
+            },
+            relevance: {
+              type: 'string',
+              description: 'Why this knowledge is relevant to the JD',
+            },
+          },
+          required: ['topic', 'key_points', 'relevance'],
+        },
+        description:
+          'Optional Module: Knowledge Refresh - Quick catch-up on industry/tech concepts',
+      },
+    },
+    required: ['radar', 'hook', 'evidence', 'defense', 'reverse_questions'],
+  } as JsonSchema,
+
+  // Keep legacy INTERVIEW_PREP for backward compatibility during migration
   INTERVIEW_PREP: {
     type: 'object',
     properties: {

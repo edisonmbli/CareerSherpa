@@ -32,8 +32,12 @@ export function WorkbenchColumns({
   const cols = collapsed
     ? 'lg:grid-cols-[48px_1fr]'
     : 'lg:grid-cols-[280px_1fr]'
+  const sidebarWidth = collapsed ? '48px' : '280px'
   return (
-    <div className={`grid grid-cols-1 ${cols} gap-6`}>
+    <div
+      className={`grid grid-cols-1 ${cols} gap-6`}
+      style={{ ['--workbench-sidebar-width' as any]: sidebarWidth }}
+    >
       <aside className="hidden lg:block lg:sticky lg:top-20 lg:h-[calc(100vh-8rem)]">
         {sidebar}
       </aside>

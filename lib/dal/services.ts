@@ -9,7 +9,7 @@ import {
 export async function createService(
   userId: string,
   resumeId: string,
-  detailedResumeId?: string
+  detailedResumeId?: string,
 ) {
   return prisma.service.create({
     data: {
@@ -46,7 +46,7 @@ export async function createJobForService(
   serviceId: string,
   originalText?: string,
   originalImage?: string,
-  imageUrl?: string
+  imageUrl?: string,
 ) {
   return prisma.job.create({
     data: {
@@ -61,7 +61,7 @@ export async function createJobForService(
 
 export async function getServiceSummariesReadOnly(
   serviceId: string,
-  userId?: string
+  userId?: string,
 ) {
   const svc = await prisma.service.findUnique({
     where: { id: serviceId },
@@ -119,27 +119,33 @@ export async function getServiceForUser(serviceId: string, userId: string) {
 export async function getServiceWithContext(serviceId: string) {
   return prisma.service.findUnique({
     where: { id: serviceId },
-    include: { resume: true, detailedResume: true, job: true, match: true },
+    include: {
+      resume: true,
+      detailedResume: true,
+      job: true,
+      match: true,
+      interview: true,
+    },
   })
 }
 
 export async function updateJobStatus(
   serviceId: string,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.job.update({ where: { serviceId }, data: { status } })
 }
 
 export async function updateMatchStatus(
   serviceId: string,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.match.update({ where: { serviceId }, data: { status } })
 }
 
 export async function updateCustomizedResumeStatus(
   serviceId: string,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.customizedResume.update({
     where: { serviceId },
@@ -149,21 +155,21 @@ export async function updateCustomizedResumeStatus(
 
 export async function updateInterviewStatus(
   serviceId: string,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.interview.update({ where: { serviceId }, data: { status } })
 }
 
 export async function updateResumeStatus(
   resumeId: string,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.resume.update({ where: { id: resumeId }, data: { status } })
 }
 
 export async function updateDetailedResumeStatus(
   detailedResumeId: string,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.detailedResume.update({
     where: { id: detailedResumeId },
@@ -174,7 +180,7 @@ export async function updateDetailedResumeStatus(
 export async function setJobSummaryJson(
   serviceId: string,
   json: any,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.job.update({
     where: { serviceId },
@@ -185,7 +191,7 @@ export async function setJobSummaryJson(
 export async function setMatchSummaryJson(
   serviceId: string,
   json: any,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.match.update({
     where: { serviceId },
@@ -196,7 +202,7 @@ export async function setMatchSummaryJson(
 export async function setResumeSummaryJson(
   resumeId: string,
   json: any,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.resume.update({
     where: { id: resumeId },
@@ -207,7 +213,7 @@ export async function setResumeSummaryJson(
 export async function setDetailedResumeSummaryJson(
   detailedResumeId: string,
   json: any,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.detailedResume.update({
     where: { id: detailedResumeId },
@@ -219,7 +225,7 @@ export async function setCustomizedResumeResult(
   serviceId: string,
   optimizeSuggestion: string | undefined,
   customizedResumeJson: any | undefined,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   const data: any = { status }
   if (typeof optimizeSuggestion !== 'undefined') {
@@ -242,7 +248,7 @@ export async function setCustomizedResumeResult(
 export async function setInterviewTipsJson(
   serviceId: string,
   json: any,
-  status: AsyncTaskStatus
+  status: AsyncTaskStatus,
 ) {
   return prisma.interview.update({
     where: { serviceId },
@@ -250,11 +256,73 @@ export async function setInterviewTipsJson(
   })
 }
 
+/**
+ * Get all contextual data required for generating Interview Tips
+ * @param serviceId - The service ID
+ * @returns Object containing job summary, match analysis, customized resume, resume summary, and detailed resume
+ */
+export async function getInterviewContext(serviceId: string) {
+  const service = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: {
+      resume: {
+        select: {
+          resumeSummaryJson: true,
+        },
+      },
+      detailedResume: {
+        select: {
+          detailedSummaryJson: true,
+        },
+      },
+      job: {
+        select: {
+          jobSummaryJson: true,
+        },
+      },
+      match: {
+        select: {
+          matchSummaryJson: true,
+        },
+      },
+      customizedResume: {
+        select: {
+          customizedResumeJson: true,
+        },
+      },
+    },
+  })
+
+  if (!service) {
+    throw new Error(`Service ${serviceId} not found`)
+  }
+
+  if (!service.job?.jobSummaryJson) {
+    throw new Error('Job summary not available (Step 1 not completed)')
+  }
+
+  if (!service.match?.matchSummaryJson) {
+    throw new Error('Match analysis not available (Step 1 not completed)')
+  }
+
+  if (!service.customizedResume?.customizedResumeJson) {
+    throw new Error('Customized resume not available (Step 2 not completed)')
+  }
+
+  return {
+    jobSummaryJson: service.job.jobSummaryJson,
+    matchSummaryJson: service.match.matchSummaryJson,
+    customizedResumeJson: service.customizedResume.customizedResumeJson,
+    resumeSummaryJson: service.resume?.resumeSummaryJson || null,
+    detailedSummaryJson: service.detailedResume?.detailedSummaryJson || null,
+  }
+}
+
 export async function updateCustomizedResumeEditedData(
   serviceId: string,
   editedResumeJson?: any,
   sectionConfig?: any,
-  opsJson?: any
+  opsJson?: any,
 ) {
   // Build update data object dynamically - only include provided fields
   const updateData: {
@@ -303,7 +371,7 @@ export async function resetCustomizedResumeEditedData(serviceId: string) {
 }
 
 export async function getJobOriginalTextById(
-  jobId: string
+  jobId: string,
 ): Promise<string | null> {
   const rec = await prisma.job.findUnique({
     where: { id: jobId },
@@ -314,7 +382,7 @@ export async function getJobOriginalTextById(
 
 export async function updateJobOriginalText(
   serviceId: string,
-  originalText: string
+  originalText: string,
 ) {
   return prisma.job.update({ where: { serviceId }, data: { originalText } })
 }
@@ -333,7 +401,7 @@ export async function updateServiceExecutionStatus(
   options?: {
     failureCode?: FailureCode | null
     executionSessionId?: string | null
-  }
+  },
 ) {
   const data: any = {
     currentStatus: status,
@@ -373,7 +441,7 @@ export async function txMarkSummaryCompleted(serviceId: string) {
 
 export async function txMarkSummaryFailed(
   serviceId: string,
-  failureCode?: FailureCode | null
+  failureCode?: FailureCode | null,
 ) {
   // Safe handling of failure code to ensure it's a valid enum or null
   const validFailureCode =
@@ -428,7 +496,7 @@ export async function txMarkMatchStreaming(serviceId: string) {
 
 export async function txMarkMatchCompleted(
   serviceId: string,
-  matchSummaryJson?: any
+  matchSummaryJson?: any,
 ) {
   return prisma.$transaction([
     prisma.match.update({
@@ -451,7 +519,7 @@ export async function txMarkMatchCompleted(
 
 export async function txMarkMatchFailed(
   serviceId: string,
-  failureCode?: FailureCode | null
+  failureCode?: FailureCode | null,
 ) {
   // Safe handling of failure code to ensure it's a valid enum or null
   const validFailureCode =

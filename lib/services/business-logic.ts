@@ -8,6 +8,7 @@ import {
   getServiceById,
   getResumeByIdForUser,
   getJobByIdForUser,
+  getInterviewContext,
 } from '@/lib/dal'
 import { prisma } from '@/lib/prisma'
 import { ApiContext } from '@/lib/api/utils'
@@ -69,7 +70,7 @@ export class BusinessLogicService {
   ): Promise<JobMatchResult> {
     const { service_id, tier } = request
     const { reqId, route, userKey } = context
-    
+
     // 如果没有明确指定tier，根据用户quota动态确定
     let finalTier = tier
     if (!finalTier) {
@@ -88,7 +89,7 @@ export class BusinessLogicService {
 
     // 获取服务数据
     const serviceData = await this.getServiceData(service_id, userKey)
-    
+
     // 执行职位匹配
     const result = await executeJobMatch(
       JSON.stringify(serviceData.resumeSummary),
@@ -132,7 +133,7 @@ export class BusinessLogicService {
   ): Promise<ResumeEditResult> {
     const { service_id, tier } = request
     const { reqId, route, userKey } = context
-    
+
     // 如果没有明确指定tier，根据用户quota动态确定
     let finalTier = tier
     if (!finalTier) {
@@ -151,7 +152,7 @@ export class BusinessLogicService {
 
     // 获取服务数据
     const serviceData = await this.getServiceData(service_id, userKey)
-    
+
     // 执行简历编辑
     const result = await executeResumeEdit(
       JSON.stringify(serviceData.resumeSummary),
@@ -194,7 +195,7 @@ export class BusinessLogicService {
   ): Promise<InterviewPrepResult> {
     const { service_id, tier } = request
     const { reqId, route, userKey } = context
-    
+
     // 如果没有明确指定tier，根据用户quota动态确定
     let finalTier = tier
     if (!finalTier) {
@@ -211,14 +212,16 @@ export class BusinessLogicService {
       tier: finalTier,
     })
 
-    // 获取服务数据
-    const serviceData = await this.getServiceData(service_id, userKey)
-    
-    // 执行面试准备
+    // 获取完整的面试准备上下文（包含Match Analysis和Customized Resume）
+    const interviewContext = await getInterviewContext(service_id)
+
+    // 执行面试准备 - 传递完整上下文
     const result = await executeInterviewPrep(
-      JSON.stringify(serviceData.resumeSummary),
-      JSON.stringify(serviceData.jobSummary),
-      JSON.stringify(serviceData.detailedSummary),
+      JSON.stringify(interviewContext.resumeSummaryJson),
+      JSON.stringify(interviewContext.jobSummaryJson),
+      JSON.stringify(interviewContext.detailedSummaryJson),
+      JSON.stringify(interviewContext.matchSummaryJson),
+      JSON.stringify(interviewContext.customizedResumeJson),
       userKey,
       service_id,
       { tier: finalTier }

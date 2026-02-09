@@ -44,7 +44,10 @@ export async function GET(req: NextRequest) {
     const taskId = searchParams.get('taskId') || ''
     const fromLatest = searchParams.get('fromLatest') === '1'
 
-    const lastEventId = req.headers.get('last-event-id') || null
+    const lastEventId =
+      req.headers.get('last-event-id') ||
+      searchParams.get('lastEventId') ||
+      null
 
     if (!userId || !serviceId || !taskId) {
       return new Response('missing_params', { status: 400 })
@@ -63,7 +66,7 @@ export async function GET(req: NextRequest) {
           // if (process.env.NODE_ENV !== 'production') {
           //   console.info('sse_start', { channel, streamKey })
           // }
-        } catch { }
+        } catch {}
 
         let lastId: string | null = lastEventId
         let closed = false
@@ -114,7 +117,7 @@ export async function GET(req: NextRequest) {
               //     entries: entries.length,
               //   })
               // }
-            } catch { }
+            } catch {}
             if (entries.length === 0) {
               consecutiveIdle = Math.min(consecutiveIdle + 1, 5)
             } else {
@@ -145,8 +148,13 @@ export async function GET(req: NextRequest) {
                     new TextEncoder().encode(toSseEvent(enriched, entry.id)),
                   )
                 } catch (e) {
-                  // If enqueue fails, the stream is likely closed by the client
                   console.warn('sse_enqueue_error', (e as any)?.message || e)
+                  console.info('sse_close', {
+                    reason: 'enqueue_error',
+                    streamKey,
+                    lastId,
+                    entryId: entry.id,
+                  })
                   closed = true
                   if (timer) clearTimeout(timer)
                   return
@@ -171,12 +179,12 @@ export async function GET(req: NextRequest) {
                       const debugDir = path.join(
                         process.cwd(),
                         'tmp',
-                        'llm-debug'
+                        'llm-debug',
                       )
                       await fsp.mkdir(debugDir, { recursive: true })
                       const file = path.join(
                         debugDir,
-                        `sse_event_${taskId || 'unknown'}.log`
+                        `sse_event_${taskId || 'unknown'}.log`,
                       )
                       await fsp.appendFile(
                         file,
@@ -189,16 +197,18 @@ export async function GET(req: NextRequest) {
                           code: (data as any)?.code,
                           len,
                           // Log preview of text content to check for empty tokens
-                          preview: (data as any)?.text?.substring(0, 50) || (data as any)?.data?.substring(0, 50) || ''
-                        }) + '\n'
+                          preview:
+                            (data as any)?.text?.substring(0, 50) ||
+                            (data as any)?.data?.substring(0, 50) ||
+                            '',
+                        }) + '\n',
                       )
-                    } catch { }
+                    } catch {}
                   }
-                } catch { }
+                } catch {}
 
                 // 若收到终止事件或终止状态，主动关闭连接，减少后续读取
                 const isTerminal =
-                  data?.type === 'done' ||
                   (data?.type === 'status' &&
                     [
                       'MATCH_COMPLETED',
@@ -214,6 +224,16 @@ export async function GET(req: NextRequest) {
                       String(data?.stage),
                     ))
                 if (isTerminal) {
+                  console.info('sse_close', {
+                    reason: 'terminal_event',
+                    streamKey,
+                    lastId,
+                    entryId: entry.id,
+                    type: String((data as any)?.type || ''),
+                    status: (data as any)?.status,
+                    code: (data as any)?.code,
+                    taskId: (data as any)?.taskId,
+                  })
                   closed = true
                   if (timer) clearTimeout(timer)
                   controller.close()
@@ -264,6 +284,11 @@ export async function GET(req: NextRequest) {
           if (timer) clearTimeout(timer)
           clearInterval(keepAlive)
           try {
+            console.info('sse_close', {
+              reason: 'abort',
+              streamKey,
+              lastId,
+            })
             controller.close()
           } catch (e) {
             console.warn('sse_close_error', (e as any)?.message || e)

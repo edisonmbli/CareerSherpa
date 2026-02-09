@@ -36,6 +36,7 @@ import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import { markTimeline } from '@/lib/observability/timeline'
 import { nanoid } from 'nanoid'
 import { after } from 'next/server'
+import { buildTaskId } from '@/lib/types/task-context'
 
 export type CustomizeResumeActionResult =
   | {
@@ -491,11 +492,17 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
       { executionSessionId },
     )
 
+    const interviewTaskId = buildTaskId(
+      'interview',
+      params.serviceId,
+      executionSessionId,
+    )
+
     {
       const enq = await ensureEnqueued({
         kind: 'stream',
         serviceId: params.serviceId,
-        taskId: `interview_${params.serviceId}`,
+        taskId: interviewTaskId,
         userId,
         locale: params.locale,
         templateId: 'interview_prep',

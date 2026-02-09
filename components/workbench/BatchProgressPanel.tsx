@@ -33,7 +33,7 @@ export function BatchProgressPanel({
           )}
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
-        <p className="text-sm text-muted-foreground max-w-[85%] mx-auto [text-wrap:balance] leading-relaxed">
+        <p className="text-sm text-muted-foreground max-w-[85%] mx-auto leading-relaxed sm:max-w-none sm:whitespace-nowrap">
           {description}
         </p>
 
@@ -58,4 +58,3 @@ export function BatchProgressPanel({
     </div>
   )
 }
-

@@ -78,7 +78,7 @@ export function StepperProgress({
             {/* Mobile: Show Label */}
             <span
               className={cn(
-                'text-sm font-medium whitespace-nowrap lg:hidden',
+                'text-sm font-medium whitespace-nowrap md:hidden',
                 isCurrent ? 'text-primary' : 'text-muted-foreground',
                 !isLocked && !isCurrent && 'group-hover:text-foreground',
               )}
@@ -92,7 +92,7 @@ export function StepperProgress({
 
             {/* Desktop: Show Action (Seamlessly Embedded) */}
             <div
-              className="hidden lg:block ml-1"
+              className="hidden md:block ml-1"
               onClick={(e) => e.stopPropagation()}
             >
               {customAction}

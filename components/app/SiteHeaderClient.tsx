@@ -27,7 +27,12 @@ export function SiteHeaderClient({
   const isWorkbench = pathname?.includes('/workbench')
 
   return (
-    <header className="w-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b border-border/40">
+    <header
+      className={cn(
+        'w-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b border-border/40 print:hidden',
+        isWorkbench && 'hidden md:block',
+      )}
+    >
       <div
         className={cn(
           'container mx-auto px-4 py-3 flex items-center justify-between transition-all',

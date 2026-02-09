@@ -489,21 +489,25 @@ Instruction: 这些风险点的唯一用途是帮助候选人提前准备防守�
   },
   interview_prep: {
     id: 'interview_prep',
-    name: '面试定向准备',
-    description: '生成自我介绍、高频问题和反问问题。',
-    systemPrompt: SYSTEM_BASE,
-    userPrompt: `请你扮演面试官和求职教练的角色。
-基于这份“定制化简历”和“匹配度报告”，为用户准备一份完整的面试要点清单。
+    name: '面试作战手卡',
+    description: '基于匹配度分析和定制简历，生成高度个人化的面试准备材料。',
+    systemPrompt: `你是一位拥有20年经验的**私人面试教练**。你的任务是帮助用户生成一份"面试作战手卡"——这不是泛泛的建议，而是基于用户的真实简历和目标岗位JD，生成可以直接拿去面试用的"开卷答案"。
 
-【RAG 知识库 - 面试技巧 (STAR, P-P-F, 常见问题)】
-"""
-{rag_context}
-"""
+### 核心原则
+1. **高度个人化**：所有内容必须引用用户的真实经历，严禁套话
+2. **可执行性**：每个话术都可以直接背诵使用
+3. **攻防兼备**：既要放大优势，也要准备弱点防御
+4. **证据链完整**：每个论点都有简历中的具体案例支撑
 
-【用户的定制化简历 (Markdown)】
-"""
-{customized_resume_md}
-"""
+### RAG 知识库使用指引
+- **面试技巧 (category=interview_strategies)**: 用于生成 STAR 故事结构、防御话术的标准范式
+- **自我介绍 (category=self_introduction)**: 用于生成 P-P-F 结构的自我介绍模板
+- **参考模式**: 参照 resume_customize prompt 中的 RAG 使用方式，仅作为表达技巧参考，严禁将 RAG 示例直接套用
+
+${SYSTEM_BASE}`,
+    userPrompt: `你现在要为用户生成一份完整的"面试作战手卡"。用户已经完成了 Step 1 (岗位匹配度分析) 和 Step 2 (简历定制化)，你需要充分利用这些数据资产。
+
+### 上下文资料
 
 【目标岗位 - 结构化摘要】
 """
@@ -515,19 +519,118 @@ Instruction: 这些风险点的唯一用途是帮助候选人提前准备防守�
 {match_analysis_json}
 """
 
-请执行以下操作：
-1.  **自我介绍**：结合 RAG 知识库中的“P-P-F”结构，生成一段 1 分钟的自我介绍，**必须**突出简历中最匹配 JD 的亮点。
-2.  **高频问题**：预测 5-7 个**最可能**被问到的问题。
-    * **必须**包含针对 \`match_analysis_json\` 中 \`weaknesses\`（劣势） 的压力测试问题（例如：“我看到你只有 2 年经验，我们这个岗位要求 5 年，你如何胜任？”）。
-    * **必须**结合 RAG 知识库，为每个问题提供“回答思路”和“STAR 案例建议”。
-3.  **反问问题**：结合 RAG 知识库，提供 3 个高质量的反问问题。`,
+【定制化简历 (JSON)】
+"""
+{customized_resume_json}
+"""
+
+【用户简历摘要】
+"""
+{resume_summary_json}
+"""
+
+【用户详细履历】
+"""
+{detailed_resume_summary_json}
+"""
+
+【RAG 知识库 - 面试技巧与自我介绍模板】
+"""
+{rag_context}
+"""
+
+---
+
+### 生成任务
+
+请按以下思维链生成"面试作战手卡"的 5 个核心模块：
+
+#### Step 1: 情报透视 (radar)
+从 \`job_summary_json\` 推断整个面试链路：
+- **识别 3 个核心业务痛点**（从 JD 的 responsibilities 和 requirements 推断）
+  - 每个痛点说明：挑战是什么、为什么重要、候选人可从哪个角度切入
+- **推断面试链路**（interview_rounds）：根据岗位层级和公司规模，典型的面试流程可能包含以下角色：
+  1. **HR 初筛**（round_name: "HR初筛", interviewer_role: "招聘专员/HRBP"）
+     - 关注点（focus_points）：稳定性、薪资预期、基本匹配度、软技能、离职原因
+  2. **技术/专业面试**（round_name: "专业面试", interviewer_role: 根据 JD 推断，例如"技术总监"/"产品负责人"）
+     - 关注点：硬技能深度、项目经验、问题解决能力、技术选型思路
+  3. **业务面试**（round_name: "业务面试", interviewer_role: "业务部门负责人"）
+     - 关注点：业务理解、跨部门协作、结果导向、商业sense
+  4. **高管面试**（round_name: "高管面试", interviewer_role: "VP/总监"，如果岗位是高级别）
+     - 关注点：战略思维、领导力、文化契合、长期潜力
+  - **注意**：根据岗位实际情况调整面试轮次（初级岗可能只有 2-3 轮，高级岗可能有 4-5 轮）
+  - **输出格式**：interview_rounds 数组，每个元素包含 round_name, interviewer_role, focus_points（3-5 个关注点）
+- **列出 JD 中隐藏的软性要求**（例如：JD 提到"快速迭代"意味着需要抗压能力）
+
+#### Step 2: 开场定调 (hook)
+基于 RAG 知识库中的 P-P-F 结构：
+- **Present**: 当前角色 + 核心技能标签（从 \`customized_resume_json\` 提取，必须与 JD 高度相关）
+- **Past**: 1-2 个最有说服力的成就（从 \`match_analysis_json.strengths\` 中选择）
+- **Future**: 为什么想加入这家公司做这个岗位（结合 JD 的业务挑战）
+- 提炼 3 个"关键钩子"（能让面试官眼睛一亮的点）
+- 给出演讲技巧（节奏、停顿、重点）
+
+#### Step 3: 核心论据 (evidence)
+从 \`customized_resume_json\` 和 \`detailed_resume_summary_json\` 中选择 **3 个最匹配 JD 的项目/经历**：
+- 每个经历必须用 STAR 结构展开（参考 RAG 知识库）
+  - **S (Situation)**: 背景（公司规模、业务阶段、具体问题）
+  - **T (Task)**: 你的职责或挑战
+  - **A (Action)**: 你具体做了什么（技术选型、团队协作、流程优化等）
+  - **R (Result)**: 可量化的结果（性能提升 X%、用户增长 Y 万、成本降低 Z 元）
+- 每个 STAR 故事必须明确对应 \`job_summary_json\` 中的某个核心需求
+- 注明数据来源（resume 或 detailed_resume）
+
+#### Step 4: 攻防演练 (defense)
+从 \`match_analysis_json.weaknesses\` 中提取用户的短板：
+- 针对每个弱点，**预判**面试官可能的追问（例如："我看到你只有 2 年经验，但我们要求 5 年，你如何证明自己能胜任？"）
+- 设计防御话术：
+  1. **坦诚承认**（不回避）
+  2. **重新定义**（将劣势转化为成长机会）
+  3. **桥接优势**（"虽然经验年限不长，但我在 XX 项目中独立承担了 YY 职责，相当于 3 年的经验密度"）
+- 每个防御话术必须有具体案例支撑
+
+#### Step 5: 反问利器 (reverse_questions)
+结合 JD 和 RAG 知识库，设计 **3 个高质量反问**：
+- 避免问"公司福利""加班情况"等低价值问题
+- 问题类型：
+  - **业务洞察型**（"贵团队目前在 XX 方向的最大挑战是什么？"）
+  - **团队协作型**（"这个岗位在团队中扮演什么角色？与其他部门如何协作？"）
+  - **个人成长型**（"您认为这个岗位在未来一年最需要突破的能力是什么？"）
+- 每个问题必须说明：
+  - **提问意图**（你为什么问这个？）
+  - **倾听重点**（面试官的回答中，哪些信息是关键信号？）
+
+#### （可选）Step 6: 知识补课 (knowledge_refresh)
+如果 \`job_summary_json\` 中提到了用户简历中没有明确体现的技术栈或行业知识（例如 JD 要求"熟悉抖音开放平台"，但用户简历未提及），则输出"知识补课"模块：
+- 列出需要快速补习的主题（2-3 个）
+- 每个主题给出 3-5 个核心要点
+- 说明为什么这个知识点与 JD 相关
+
+---
+
+### 输出格式（必须是单一 JSON 对象，字段严格如下）
+- radar: {{ core_challenges: [{{ challenge, why_important, your_angle }}], interview_rounds: [{{ round_name, interviewer_role, focus_points }}], hidden_requirements: [] }}
+- hook: {{ ppf_script, key_hooks: [{{ hook, evidence_source }}], delivery_tips: [] }}
+- evidence: [{{ story_title, matched_pain_point, star: {{ situation, task, action, result }}, quantified_impact, source }}]
+- defense: [{{ weakness, anticipated_question, defense_script, supporting_evidence }}]
+- reverse_questions: [{{ question, ask_intent, listen_for }}]
+- knowledge_refresh: [{{ topic, key_points, relevance }}]（可选，没有则输出空数组 []）
+
+### 输出要求
+- 所有内容必须基于 \`customized_resume_json\` 和 \`detailed_resume_summary_json\` 的真实数据，**严禁编造**
+- STAR 故事必须有具体的公司名/项目名/数据指标
+- 防御话术必须自然、真诚，避免套路感
+- 反问问题必须体现对岗位的深度思考，而非敷衍了事
+`,
     variables: [
-      'rag_context',
-      'customized_resume_md',
       'job_summary_json',
       'match_analysis_json',
+      'customized_resume_json',
+      'resume_summary_json',
+      'detailed_resume_summary_json',
+      'rag_context',
     ],
-    outputSchema: SCHEMAS_V2.INTERVIEW_PREP,
+    outputSchema: SCHEMAS.INTERVIEW_PREP_V2,
   },
   // 非生成型任务（嵌入/RAG流水线）占位模板
   rag_embedding: {

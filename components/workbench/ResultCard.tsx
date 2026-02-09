@@ -1,13 +1,12 @@
 'use client'
 
 import React, { useRef, useState, useEffect } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, getMatchScore, getMatchThemeColor } from '@/lib/utils'
 import { ChevronDown } from 'lucide-react'
 import { ResultHeader } from './result/ResultHeader'
 import { ExpertVerdict } from './result/ExpertVerdict'
 import { AnalysisAccordion } from './result/AnalysisAccordion'
 import { SmartPitch } from './result/SmartPitch'
-import { MATCH_SCORE_THRESHOLDS } from '@/lib/constants'
 
 interface ResultCardProps {
   data: any
@@ -86,12 +85,7 @@ export function ResultCard({
   className,
 }: ResultCardProps) {
   // --- Data Parsing Logic (Preserved from old component) ---
-  const score =
-    typeof data?.score !== 'undefined'
-      ? Number(data?.score)
-      : typeof data?.match_score !== 'undefined'
-      ? Number(data?.match_score)
-      : 0
+  const score = getMatchScore(data)
 
   // Strengths
   const strengths = (
@@ -179,19 +173,14 @@ export function ResultCard({
   }, [data])
 
   // Theme Logic
-  const getThemeColor = (s: number) => {
-    if (s >= MATCH_SCORE_THRESHOLDS.HIGHLY_MATCHED) return 'emerald'
-    if (s >= MATCH_SCORE_THRESHOLDS.GOOD_FIT) return 'amber' // Use amber for mid-tier (matches the reference image orange/yellow feel)
-    return 'rose'
-  }
-  const themeColor = getThemeColor(score)
+  const themeColor = getMatchThemeColor(score)
 
   return (
     <div
       className={cn(
         // V5 Measured Document Styling:
         // 1. Centered "Page" with max-width (Letterhead feel)
-        'max-w-[880px] mx-auto w-full relative mt-4',
+        'max-w-[880px] mx-auto w-full relative mt-4 animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
         // 2. Tinted Neutral Background
         'bg-card/50',
         // 3. Double Border Effect
@@ -207,7 +196,7 @@ export function ResultCard({
     >
       <div
         ref={scrollRef}
-        className="flex-1 overflow-visible p-5 md:p-8 space-y-6 md:space-y-8"
+        className="flex-1 overflow-visible p-4 sm:p-5 md:p-8 space-y-6 md:space-y-8"
       >
         {/* Module A: Hero Header (Now handles CTA) */}
         <ResultHeader

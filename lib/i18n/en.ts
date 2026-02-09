@@ -11,12 +11,17 @@ const dict = {
   // Namespaced additions (backward compatible)
   rag: {
     match_job_analysis:
-      '{{title}} Job Match Analysis Methods Strengths Identification Weaknesses Mitigation Professional Assessment Framework {{skills}}',
+      'How to analyze {{title}} position recruiting intent and core requirements',
     match_resume_fit:
-      '{{title}} HR DM Scripts Templates Concise Impactful Precise High Match DM script Opening and Closing {{skills}}',
-    customize_general: 'resume writing best practices STAR method action verbs',
+      'How to find the fit between resume and {{title}} position',
+    customize_general:
+      'Resume optimization best practices and professional expressions',
     customize_role:
-      '{{title}} core skills keywords quantifiable metrics resume examples',
+      '{{title}} position-specific resume optimization suggestions',
+    interview_self_intro:
+      'How to prepare self-introduction for {{title}} position (P-P-F structure)',
+    interview_strategies:
+      '{{title}} position interview strategies, STAR story structure, and defense scripts',
   },
   designSystem: {
     title: 'Design System',
@@ -218,6 +223,74 @@ const dict = {
     },
     interviewUi: {
       start: 'Interview Tips',
+      ready: 'Interview tips generated, loading…',
+      readyDesc:
+        'Generate personalized interview Q&A and tips based on the job match analysis',
+      backToTop: 'Back to Top',
+      toc: 'Contents',
+    },
+    interviewBattlePlan: {
+      title: 'Interview Battle Plan',
+      print: 'Print',
+      copy: 'Copy All',
+      copied: 'Copied',
+      regenerate: 'Regenerate',
+      // Radar Module
+      radar: {
+        title: 'Intel Radar',
+        coreChallenges: 'Core Challenges',
+        challenge: 'Challenge',
+        whyImportant: 'Why Important',
+        yourAngle: 'Your Approach',
+        interviewRounds: 'Interview Rounds',
+        round: 'Round {round}',
+        focus: 'Focus Areas',
+        hiddenRequirements: 'Hidden Requirements',
+      },
+      // Hook Module
+      hook: {
+        title: 'Opening Hook',
+        ppfScript: 'P-P-F Self-Intro Script',
+        keyHooks: 'Key Hooks',
+        hook: 'Hook',
+        evidenceSource: 'Source',
+        deliveryTips: 'Delivery Tips',
+      },
+      // Evidence Module
+      evidence: {
+        title: 'Core Evidence',
+        storyTitle: 'Story Title',
+        storyLabel: 'Story',
+        storyCount: '{count} stories',
+        matchedPainPoint: 'Matched JD Pain Point',
+        situation: 'Situation',
+        task: 'Task',
+        action: 'Action',
+        result: 'Result',
+        impact: 'Quantified Impact',
+        source: 'Source',
+        sourceResume: 'Resume',
+        sourceDetailedResume: 'Detailed Resume',
+      },
+      // Defense Module
+      defense: {
+        title: 'Weakness Drills',
+        weakness: 'Weakness',
+        anticipatedQuestion: 'Anticipated Question',
+        defenseScript: 'Defense Script',
+        supportingEvidence: 'Supporting Evidence',
+        weaknessCount: '{count} weaknesses',
+      },
+      // Reverse Module
+      reverse: {
+        title: 'Question Arsenal',
+        question: 'Question',
+        askIntent: 'Intent',
+        listenFor: 'Listen For',
+      },
+      knowledgeRefresh: {
+        title: 'Knowledge Refresh',
+      },
     },
     statusText: {
       analyzing: 'AI is analyzing...',
@@ -241,6 +314,28 @@ const dict = {
       readyToCustomize: 'Ready to Customize',
       readyToCustomizeDesc:
         'Click "Start Customization" below to generate a tailored resume based on the job description.',
+      CUSTOMIZE_STARTING: 'Starting resume customization...',
+      CUSTOMIZE_STARTING_DESC:
+        'Request submitted. Allocating compute resources.',
+      CUSTOMIZE_PENDING: 'Customizing resume...',
+      CUSTOMIZE_PENDING_DESC:
+        'Analyzing requirements and rewriting your resume content.',
+      // Interview states
+      INTERVIEW_STARTING: 'Starting interview tips task...',
+      INTERVIEW_STARTING_DESC:
+        'Request submitted. Allocating compute resources.',
+      INTERVIEW_PENDING: 'Generating interview battle card...',
+      INTERVIEW_PENDING_DESC:
+        'Synthesizing match results and resume highlights into tailored Q&A and strategies.',
+      INTERVIEW_STREAMING: 'Generating personalized interview advice...',
+      INTERVIEW_COMPLETED: 'Interview prep completed!',
+      INTERVIEW_COMPLETED_WISH: 'Wishing you success in your job search!',
+      INTERVIEW_FAILED: 'Interview tips generation failed',
+      INTERVIEW_FAILED_DESC: 'Coins refunded, please retry',
+      INTERVIEW_FAILED_DESC_FREE: 'Free model is busy, please retry later',
+      INTERVIEW_FAILED_DESC_PAID: 'Coins refunded, please retry',
+      loading: 'Loading...',
+      loadingDesc: 'Loading data, please wait...',
     },
     notification: {
       freeModeTitle: 'Current Free Experience Mode',
@@ -297,7 +392,10 @@ const dict = {
       summaryFailed: 'Job Summary Extraction Failed',
       matchFailed: 'Match Analysis Failed',
       customizeStarting: 'Starting customization service...',
+      customizePending: 'Customizing resume...',
       customizing: 'Customizing resume...',
+      interviewPending: 'Generating interview tips...',
+      interviewing: 'Generating interview tips...',
       customizeCompleted: 'Customization Completed',
       customizeFailed: 'Customization Failed',
       customizeRefunded: 'Coins refunded, please retry',

@@ -488,22 +488,26 @@ Strictly follow Output Schema for JSON output.`,
   },
   interview_prep: {
     id: 'interview_prep',
-    name: 'Interview Preparation',
+    name: 'Interview Battle Plan',
     description:
-      'Generates a self-intro, likely questions, and reverse questions.',
-    systemPrompt: SYSTEM_BASE,
-    userPrompt: `Act as an Interviewer and Career Coach.
-Based on this "Customized Resume" and "Match Report," prepare a complete interview prep sheet for the user.
+      'Generate highly personalized interview prep materials based on match analysis and customized resume.',
+    systemPrompt: `You are a **Personal Interview Coach** with 20 years of experience. Your mission is to help the user generate an "Interview Battle Plan"—not generic advice, but ready-to-use "cheat sheets" tailored to their real resume and target JD.
 
-【RAG Knowledge Base - Interview Skills (STAR, P-P-F, Common Qs)】
-"""
-{rag_context}
-"""
+### Core Principles
+1. **Highly Personalized**: All content must reference the user's real experiences; no generic fluff
+2. **Actionable**: Every script should be ready to memorize and use
+3. **Offense & Defense**: Amplify strengths AND prepare weaknesses mitigation
+4. **Evidence Chain**: Every point must be backed by specific resume cases
 
-【User's Customized Resume (Markdown)】
-"""
-{customized_resume_md}
-"""
+### RAG Knowledge Base Usage Guidelines
+- **Interview Strategies (category=interview_strategies)**: Use for STAR story structure and defense script frameworks
+- **Self-Introduction (category=self_introduction)**: Use for P-P-F structure templates
+- **Reference Pattern**: Follow the same RAG usage approach as resume_customize prompt—use only as phrasing reference, never directly copy RAG examples
+
+${SYSTEM_BASE}`,
+    userPrompt: `You are now generating a complete "Interview Battle Plan" for the user. They have completed Step 1 (Job Match Analysis) and Step 2 (Resume Customization). You must fully leverage these data assets.
+
+### Input Context
 
 【Target Job - Structured Summary】
 """
@@ -515,19 +519,118 @@ Based on this "Customized Resume" and "Match Report," prepare a complete intervi
 {match_analysis_json}
 """
 
-Please perform the following actions:
-1.  **Self-Introduction**: Generate a 1-minute self-introduction script using the "P-P-F" structure from the RAG context. It MUST highlight the resume points most relevant to the JD.
-2.  **Potential Questions**: Predict 5-7 of the MOST LIKELY questions.
-    * **Must** include stress-test questions targeting the \`weaknesses\` from \`match_analysis_json\`.
-    * **Must** provide an "Answer Guideline" and "STAR Example Suggestion" for each, using the RAG context.
-3.  **Reverse Questions**: Provide 3 high-quality questions for the user to ask the interviewer, based on the RAG context.`,
+【Customized Resume (JSON)】
+"""
+{customized_resume_json}
+"""
+
+【User Resume Summary】
+"""
+{resume_summary_json}
+"""
+
+【User Detailed History】
+"""
+{detailed_resume_summary_json}
+"""
+
+【RAG Knowledge Base - Interview Skills & Self-Intro Templates】
+"""
+{rag_context}
+"""
+
+---
+
+### Generation Tasks
+
+Please generate the 5 core modules of the "Interview Battle Plan" following this chain of thought:
+
+#### Step 1: Intelligence Briefing (radar)
+Infer the complete interview process from \`job_summary_json\`:
+- **Identify 3 core business challenges** (infer from JD responsibilities and requirements)
+  - For each challenge: what it is, why it matters, and how the candidate can approach it
+- **Infer interview rounds** (interview_rounds): Based on role level and company size, typical interview process may include:
+  1. **HR Screening** (round_name: "HR Screening", interviewer_role: "HR Recruiter/HRBP")
+     - Focus points: Stability, salary expectations, basic fit, soft skills, reason for leaving
+  2. **Technical/Professional Interview** (round_name: "Technical Interview", interviewer_role: infer from JD, e.g., "Tech Director"/"Product Lead")
+     - Focus points: Hard skill depth, project experience, problem-solving, technical decision-making
+  3. **Business Interview** (round_name: "Business Interview", interviewer_role: "Business Department Head")
+     - Focus points: Business acumen, cross-functional collaboration, results orientation, commercial sense
+  4. **Executive Interview** (round_name: "Executive Interview", interviewer_role: "VP/C-level", if high-level role)
+     - Focus points: Strategic thinking, leadership, culture fit, long-term potential
+  - **Note**: Adjust rounds based on actual role (junior roles may have 2-3 rounds, senior roles may have 4-5)
+  - **Output format**: interview_rounds array, each element contains round_name, interviewer_role, focus_points (3-5 focus points)
+- **List hidden soft requirements** in JD (e.g., "rapid iteration" implies stress tolerance)
+
+#### Step 2: Opening Statement (hook)
+Based on P-P-F structure from RAG knowledge base:
+- **Present**: Current role + core skill tags (from \`customized_resume_json\`, highly JD-relevant)
+- **Past**: 1-2 most persuasive achievements (select from \`match_analysis_json.strengths\`)
+- **Future**: Why you want to join this company for this role (connect to JD business challenges)
+- Distill 3 "key hooks" (points that make interviewer's eyes light up)
+- Provide delivery tips (pace, pauses, emphasis)
+
+#### Step 3: Core Arguments (evidence)
+Select **3 most JD-matched projects/experiences** from \`customized_resume_json\` and \`detailed_resume_summary_json\`:
+- Each experience must use STAR structure (refer to RAG knowledge base)
+  - **S (Situation)**: Background (company scale, business stage, specific problem)
+  - **T (Task)**: Your responsibility or challenge
+  - **A (Action)**: What you specifically did (tech choices, team collaboration, process optimization)
+  - **R (Result)**: Quantified outcome (performance +X%, user growth +Y, cost reduction $Z)
+- Each STAR story must clearly map to a core requirement in \`job_summary_json\`
+- Note data source (resume or detailed_resume)
+
+#### Step 4: Offense & Defense (defense)
+Extract user's gaps from \`match_analysis_json.weaknesses\`:
+- For each weakness, **predict** interviewer's likely follow-up (e.g., "I see you only have 2 years experience, but we require 5. How can you prove your capability?")
+- Design defense scripts:
+  1. **Honest Acknowledgment** (don't dodge)
+  2. **Reframe** (turn weakness into growth opportunity)
+  3. **Bridge to Strength** ("While my years are fewer, I independently handled XX responsibility in YY project, equivalent to 3 years of concentrated experience")
+- Every defense script must be backed by concrete examples
+
+#### Step 5: Reverse Questions (reverse_questions)
+Design **3 high-quality reverse questions** based on JD and RAG knowledge base:
+- Avoid low-value questions like "company benefits" or "overtime culture"
+- Question types:
+  - **Business Insight** ("What's the team's biggest challenge in XX direction?")
+  - **Team Collaboration** ("What role does this position play? How does it collaborate with other departments?")
+  - **Personal Growth** ("What capabilities do you think this role needs to breakthrough in the next year?")
+- For each question, specify:
+  - **Ask Intent** (Why ask this?)
+  - **Listen For** (What info in interviewer's answer is key signal?)
+
+#### (Optional) Step 6: Knowledge Refresh (knowledge_refresh)
+If \`job_summary_json\` mentions tech stack or industry knowledge not explicitly in user's resume (e.g., JD requires "Familiar with Douyin Open Platform" but user resume doesn't mention it), output "Knowledge Refresh" module:
+- List topics to quickly brush up on (2-3)
+- Provide 3-5 key points for each topic
+- Explain why this knowledge is JD-relevant
+
+---
+
+### Output Format (single JSON object, strict fields)
+- radar: {{ core_challenges: [{{ challenge, why_important, your_angle }}], interview_rounds: [{{ round_name, interviewer_role, focus_points }}], hidden_requirements: [] }}
+- hook: {{ ppf_script, key_hooks: [{{ hook, evidence_source }}], delivery_tips: [] }}
+- evidence: [{{ story_title, matched_pain_point, star: {{ situation, task, action, result }}, quantified_impact, source }}]
+- defense: [{{ weakness, anticipated_question, defense_script, supporting_evidence }}]
+- reverse_questions: [{{ question, ask_intent, listen_for }}]
+- knowledge_refresh: [{{ topic, key_points, relevance }}] (optional, output [] if none)
+
+### Output Requirements
+- All content must be based on \`customized_resume_json\` and \`detailed_resume_summary_json\` real data, **strictly no fabrication**
+- STAR stories must have specific company/project names and data metrics
+- Defense scripts must be natural and sincere, avoid clichés
+- Reverse questions must demonstrate depth of thought about the role, not perfunctory
+`,
     variables: [
-      'rag_context',
-      'customized_resume_md',
       'job_summary_json',
       'match_analysis_json',
+      'customized_resume_json',
+      'resume_summary_json',
+      'detailed_resume_summary_json',
+      'rag_context',
     ],
-    outputSchema: SCHEMAS_V2.INTERVIEW_PREP,
+    outputSchema: SCHEMAS.INTERVIEW_PREP_V2,
   },
   // Placeholder for non-generative embedding task (logging only)
   rag_embedding: {

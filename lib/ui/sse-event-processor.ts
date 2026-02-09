@@ -140,6 +140,7 @@ export function mapToStatus(
     CUSTOMIZE_FAILED: 'CUSTOMIZE_FAILED',
     // Interview
     INTERVIEW_PENDING: 'INTERVIEW_PENDING',
+    INTERVIEW_STREAMING: 'INTERVIEW_STREAMING',
     INTERVIEW_COMPLETED: 'INTERVIEW_COMPLETED',
     INTERVIEW_FAILED: 'INTERVIEW_FAILED',
   }
@@ -196,6 +197,8 @@ export function mapToStatus(
     // Interview variants
     interview_pending: 'INTERVIEW_PENDING',
     interview_queued: 'INTERVIEW_PENDING',
+    interview_streaming: 'INTERVIEW_STREAMING',
+    interview_started: 'INTERVIEW_STREAMING',
     interview_completed: 'INTERVIEW_COMPLETED',
     interview_failed: 'INTERVIEW_FAILED',
   }
@@ -210,6 +213,7 @@ export function mapToStatus(
       if (c.includes('vision')) return 'JOB_VISION_STREAMING'
       if (c.includes('prematch')) return 'PREMATCH_STREAMING'
       if (c.includes('match')) return 'MATCH_STREAMING'
+      if (c.includes('interview')) return 'INTERVIEW_STREAMING'
     }
   }
 
@@ -365,27 +369,27 @@ export function getTokenTarget(
   tier: ExecutionTier = 'free',
 ): 'vision' | 'ocr' | 'summary' | 'preMatch' | 'match' | null {
   // Free tier - Vision
-  if (status === 'JOB_VISION_STREAMING') {
+  if (status === 'JOB_VISION_STREAMING' || status === 'JOB_VISION_PENDING') {
     return 'vision'
   }
 
   // Paid tier - OCR
-  if (status === 'OCR_STREAMING') {
+  if (status === 'OCR_STREAMING' || status === 'OCR_PENDING') {
     return 'ocr'
   }
 
   // Summary (Paid tier + Free tier text JD)
-  if (status === 'SUMMARY_STREAMING') {
+  if (status === 'SUMMARY_STREAMING' || status === 'SUMMARY_PENDING') {
     return tier === 'paid' ? 'summary' : 'vision'
   }
 
   // Paid tier - PreMatch
-  if (status === 'PREMATCH_STREAMING') {
+  if (status === 'PREMATCH_STREAMING' || status === 'PREMATCH_PENDING') {
     return 'preMatch'
   }
 
   // Both tiers - Match
-  if (status === 'MATCH_STREAMING') {
+  if (status === 'MATCH_STREAMING' || status === 'MATCH_PENDING') {
     return 'match'
   }
 

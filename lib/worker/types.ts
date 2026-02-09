@@ -98,6 +98,13 @@ export const interviewPrepVars = z.object({
   debitId: z.string().optional(),
   tierOverride: paidTier,
   prompt: z.string().optional(),
+  executionSessionId: z.string().optional(),
+  job_summary_json: z.string().optional(),
+  match_analysis_json: z.string().optional(),
+  customized_resume_json: z.string().optional(),
+  resume_summary_json: z.string().optional(),
+  detailed_resume_summary_json: z.string().optional(),
+  rag_context: z.string().optional(),
 })
 
 export const preMatchAuditVars = z.object({

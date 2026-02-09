@@ -27,13 +27,13 @@ export function MobileDrawer({
   const [open, setOpen] = useState(false)
 
   return (
-    <>
+    <div className="print:hidden">
       <Button
         variant="ghost"
         size="icon"
         className={cn(
-          'fixed top-[14px] left-2 z-[60] lg:hidden h-9 w-9 text-muted-foreground hover:text-foreground',
-          open && 'hidden'
+          'fixed top-[14px] left-2 z-[60] lg:hidden h-9 w-9 text-muted-foreground hover:text-foreground print:hidden',
+          open && 'hidden',
         )}
         onClick={() => setOpen(true)}
       >
@@ -80,7 +80,11 @@ export function MobileDrawer({
           {/* History List (Scrollable) */}
           <div className="flex-1 overflow-y-auto px-2 py-2">
             {/* Removed duplicate history label */}
-            <SidebarHistory locale={locale} services={services} labels={dict.workbench.sidebar} />
+            <SidebarHistory
+              locale={locale}
+              services={services}
+              labels={dict.workbench.sidebar}
+            />
           </div>
 
           {/* Bottom Footer */}
@@ -106,6 +110,6 @@ export function MobileDrawer({
           </div>
         </SheetContent>
       </Sheet>
-    </>
+    </div>
   )
 }

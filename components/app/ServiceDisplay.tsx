@@ -9,6 +9,13 @@ import {
   AppCardTitle,
 } from '@/components/app/AppCard'
 import { Button } from '@/components/ui/button'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 // V2 Components (conditionally imported for bundle optimization when V2 is disabled)
 import {
@@ -24,11 +31,16 @@ import {
   type StepId,
 } from '@/components/workbench/StepperProgress'
 import { ResultCard } from '@/components/workbench/ResultCard'
+import { InterviewBattlePlan } from '@/components/workbench/interview/InterviewBattlePlan'
 import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
-import { Coins, PenLine, Loader2 } from 'lucide-react'
+import { Coins, PenLine, Loader2, Menu } from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
-import { cn } from '@/lib/utils'
+import { cn, getMatchScore } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
+import { createPortal } from 'react-dom'
+import { ThemeToggle } from '@/components/app/ThemeToggle'
+import { I18nToggleCompact } from '@/components/app/I18nToggleCompact'
+import { UserMenu } from '@/components/app/UserMenu'
 import {
   Dialog,
   DialogContent,
@@ -241,6 +253,18 @@ export function ServiceDisplay({
     },
   )
 
+  const [interviewExecutionTier, setInterviewExecutionTier] = useState<
+    'free' | 'paid' | null
+  >(() => {
+    if (typeof window !== 'undefined' && initialService?.id) {
+      const cached = localStorage.getItem(
+        `executionTier_interview_${initialService.id}`,
+      )
+      if (cached === 'free' || cached === 'paid') return cached
+    }
+    return null
+  })
+
   // Derived state - serviceId now comes from useServiceStatus hook
 
   // Derive customizeStatus from store AND server (store takes precedence for active states)
@@ -265,7 +289,20 @@ export function ServiceDisplay({
     !hasReceivedSseConfirmation &&
     (isPending || customizeStatus === 'PENDING')
 
-  const interviewStatus = initialService?.interview?.status || 'IDLE'
+  const interviewStatus = (() => {
+    if (
+      storeStatus === 'INTERVIEW_PENDING' ||
+      storeStatus === 'INTERVIEW_STREAMING'
+    ) {
+      return 'PENDING'
+    }
+    if (storeStatus === 'INTERVIEW_COMPLETED') return 'COMPLETED'
+    if (storeStatus === 'INTERVIEW_FAILED') return 'FAILED'
+    return initialService?.interview?.status || 'IDLE'
+  })()
+
+  const isInterviewTransitionState =
+    tabValue === 'interview' && interviewStatus === 'IDLE' && isPending
 
   // Note: isStarting state removed in favor of deriving transition state from isPending + customizeStatus
 
@@ -392,7 +429,14 @@ export function ServiceDisplay({
 
   // Core interview action
   const doInterview = () => {
+    const isFree = (quotaBalance ?? 0) < getTaskCost('interview_prep')
+    const tierToUse = isFree ? 'free' : 'paid'
+    setInterviewExecutionTier(tierToUse)
+    if (serviceId) {
+      localStorage.setItem(`executionTier_interview_${serviceId}`, tierToUse)
+    }
     setNotification(null)
+    setTabValue('interview')
     startTransition(async () => {
       try {
         const res = await generateInterviewTipsAction({
@@ -409,7 +453,6 @@ export function ServiceDisplay({
             )
             setMatchTaskId(newTaskId)
           }
-          setTabValue('interview')
           // Set status and start progress simulation immediately (before SSE confirms)
           setBridgeStatus?.('INTERVIEW_PENDING')
         } else {
@@ -445,6 +488,7 @@ export function ServiceDisplay({
   }
 
   const retryMatchAction = () => {
+    setBridgeStatus?.('MATCH_PENDING')
     startTransition(async () => {
       const { retryMatchAction: serverRetry } =
         await import('@/lib/actions/service.actions')
@@ -498,6 +542,15 @@ export function ServiceDisplay({
     }
   }, [customizeStatus, serviceId])
 
+  useEffect(() => {
+    if (interviewStatus === 'COMPLETED') {
+      setInterviewExecutionTier(null)
+      if (serviceId) {
+        localStorage.removeItem(`executionTier_interview_${serviceId}`)
+      }
+    }
+  }, [interviewStatus, serviceId])
+
   // Parse streaming response into live object
   const [matchLive, setMatchLive] = useState<any>(null)
   useEffect(() => {
@@ -528,6 +581,307 @@ export function ServiceDisplay({
   } catch {
     // non-fatal: malformed interviewJson should not crash render
   }
+
+  const interviewBattlePlanLabels = useMemo(
+    () => ({
+      title: dict.workbench?.interviewBattlePlan?.title || '面试作战手卡',
+      print: dict.workbench?.interviewBattlePlan?.print || '打印',
+      copy: dict.workbench?.interviewBattlePlan?.copy || '复制全文',
+      copied: dict.workbench?.interviewBattlePlan?.copied || '已复制',
+      regenerate: dict.workbench?.interviewBattlePlan?.regenerate || '重新生成',
+      radar: {
+        title: dict.workbench?.interviewBattlePlan?.radar?.title || '情报透视',
+        coreChallenges:
+          dict.workbench?.interviewBattlePlan?.radar?.coreChallenges ||
+          '核心挑战',
+        challenge:
+          dict.workbench?.interviewBattlePlan?.radar?.challenge || '挑战',
+        whyImportant:
+          dict.workbench?.interviewBattlePlan?.radar?.whyImportant ||
+          '为何重要',
+        yourAngle:
+          dict.workbench?.interviewBattlePlan?.radar?.yourAngle || '你的切入点',
+        interviewRounds:
+          dict.workbench?.interviewBattlePlan?.radar?.interviewRounds ||
+          '面试链路',
+        round:
+          dict.workbench?.interviewBattlePlan?.radar?.round || '第{round}轮',
+        focus: dict.workbench?.interviewBattlePlan?.radar?.focus || '考察重点',
+        hiddenRequirements:
+          dict.workbench?.interviewBattlePlan?.radar?.hiddenRequirements ||
+          '隐藏要求',
+      },
+      hook: {
+        title: dict.workbench?.interviewBattlePlan?.hook?.title || '开场定调',
+        ppfScript:
+          dict.workbench?.interviewBattlePlan?.hook?.ppfScript ||
+          'P-P-F 自我介绍脚本',
+        keyHooks:
+          dict.workbench?.interviewBattlePlan?.hook?.keyHooks || '关键钩子',
+        hook: dict.workbench?.interviewBattlePlan?.hook?.hook || '钩子',
+        evidenceSource:
+          dict.workbench?.interviewBattlePlan?.hook?.evidenceSource || '来源',
+        deliveryTips:
+          dict.workbench?.interviewBattlePlan?.hook?.deliveryTips || '演讲技巧',
+        copy: dict.workbench?.interviewBattlePlan?.copy || '复制',
+        copied: dict.workbench?.interviewBattlePlan?.copied || '已复制',
+      },
+      evidence: {
+        title:
+          dict.workbench?.interviewBattlePlan?.evidence?.title || '核心论据',
+        storyTitle:
+          dict.workbench?.interviewBattlePlan?.evidence?.storyTitle ||
+          '故事标题',
+        storyLabel:
+          dict.workbench?.interviewBattlePlan?.evidence?.storyLabel || '故事',
+        storyCount:
+          dict.workbench?.interviewBattlePlan?.evidence?.storyCount ||
+          '{count} 个故事',
+        matchedPainPoint:
+          dict.workbench?.interviewBattlePlan?.evidence?.matchedPainPoint ||
+          '对应 JD 痛点',
+        situation:
+          dict.workbench?.interviewBattlePlan?.evidence?.situation || '背景',
+        task: dict.workbench?.interviewBattlePlan?.evidence?.task || '任务',
+        action: dict.workbench?.interviewBattlePlan?.evidence?.action || '行动',
+        result: dict.workbench?.interviewBattlePlan?.evidence?.result || '结果',
+        impact:
+          dict.workbench?.interviewBattlePlan?.evidence?.impact || '量化影响',
+        source: dict.workbench?.interviewBattlePlan?.evidence?.source || '来源',
+        sourceResume:
+          dict.workbench?.interviewBattlePlan?.evidence?.sourceResume || '简历',
+        sourceDetailedResume:
+          dict.workbench?.interviewBattlePlan?.evidence?.sourceDetailedResume ||
+          '详细履历',
+      },
+      defense: {
+        title:
+          dict.workbench?.interviewBattlePlan?.defense?.title || '弱项演练',
+        weakness:
+          dict.workbench?.interviewBattlePlan?.defense?.weakness || '弱点',
+        anticipatedQuestion:
+          dict.workbench?.interviewBattlePlan?.defense?.anticipatedQuestion ||
+          '预判追问',
+        defenseScript:
+          dict.workbench?.interviewBattlePlan?.defense?.defenseScript ||
+          '防御话术',
+        supportingEvidence:
+          dict.workbench?.interviewBattlePlan?.defense?.supportingEvidence ||
+          '支撑证据',
+        weaknessCount:
+          dict.workbench?.interviewBattlePlan?.defense?.weaknessCount ||
+          '{count} 个弱点',
+      },
+      reverse: {
+        title:
+          dict.workbench?.interviewBattlePlan?.reverse?.title || '提问利器',
+        question:
+          dict.workbench?.interviewBattlePlan?.reverse?.question || '问题',
+        askIntent:
+          dict.workbench?.interviewBattlePlan?.reverse?.askIntent || '提问意图',
+        listenFor:
+          dict.workbench?.interviewBattlePlan?.reverse?.listenFor || '倾听重点',
+      },
+      knowledgeRefresh: {
+        title:
+          dict.workbench?.interviewBattlePlan?.knowledgeRefresh?.title ||
+          '知识补课',
+      },
+    }),
+    [dict],
+  )
+
+  const interviewScrollRef = useRef<HTMLDivElement | null>(null)
+  const ibpTocItems = useMemo(() => {
+    if (!interviewParsed) return [] as Array<{ id: string; label: string }>
+
+    const items: Array<{ id: string; label: string }> = []
+    if (interviewParsed?.radar)
+      items.push({
+        id: 'ibp-radar',
+        label: interviewBattlePlanLabels.radar.title,
+      })
+    if (interviewParsed?.hook)
+      items.push({
+        id: 'ibp-hook',
+        label: interviewBattlePlanLabels.hook.title,
+      })
+    if (interviewParsed?.evidence?.length)
+      items.push({
+        id: 'ibp-evidence',
+        label: interviewBattlePlanLabels.evidence.title,
+      })
+    if (interviewParsed?.defense?.length)
+      items.push({
+        id: 'ibp-defense',
+        label: interviewBattlePlanLabels.defense.title,
+      })
+    if (interviewParsed?.reverse_questions?.length)
+      items.push({
+        id: 'ibp-reverse',
+        label: interviewBattlePlanLabels.reverse.title,
+      })
+    if (interviewParsed?.knowledge_refresh?.length)
+      items.push({
+        id: 'ibp-knowledge',
+        label: interviewBattlePlanLabels.knowledgeRefresh.title,
+      })
+    return items
+  }, [interviewParsed, interviewBattlePlanLabels])
+  const [activeIbpSection, setActiveIbpSection] = useState<string>('')
+  const [tocOpen, setTocOpen] = useState(false)
+  const ibpRecalcRef = useRef<(() => void) | null>(null)
+
+  const scrollToIbpSection = (id: string) => {
+    const root = interviewScrollRef.current
+    const el = root?.querySelector(`#${id}`) as HTMLElement | null
+    if (root && el) {
+      const rootRect = root.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      root.scrollTo({
+        top: root.scrollTop + (elRect.top - rootRect.top) - 16,
+        behavior: 'smooth',
+      })
+    }
+    const fallback = document.getElementById(id)
+    if (!root || !el || root.scrollHeight <= root.clientHeight + 4) {
+      fallback?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const handleIbpTop = () => {
+    if (tabValue !== 'interview') setTabValue('interview')
+    const scrollToTop = () => {
+      const root = interviewScrollRef.current
+      if (root) root.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    scrollToTop()
+    window.setTimeout(scrollToTop, 240)
+  }
+
+  const handleIbpToc = (id: string) => {
+    if (tabValue !== 'interview') setTabValue('interview')
+    const run = () => scrollToIbpSection(id)
+    window.requestAnimationFrame(run)
+    window.setTimeout(run, 240)
+  }
+
+  useEffect(() => {
+    if (tabValue !== 'interview') {
+      setActiveIbpSection('')
+      return
+    }
+    if (ibpTocItems[0]?.id) setActiveIbpSection(ibpTocItems[0].id)
+  }, [tabValue, ibpTocItems])
+
+  useEffect(() => {
+    if (tabValue !== 'interview') return
+    if (interviewStatus !== 'COMPLETED') return
+    let root: HTMLDivElement | null = null
+    let raf = 0
+    let initRaf = 0
+    let retryRaf = 0
+    let timeoutId: number | undefined
+    let resizeObserver: ResizeObserver | null = null
+    let mutationObserver: MutationObserver | null = null
+    let handleScroll: (() => void) | null = null
+    let handleResize: (() => void) | null = null
+
+    const setup = () => {
+      root = interviewScrollRef.current
+      if (!root) {
+        retryRaf = window.requestAnimationFrame(setup)
+        return
+      }
+      if (ibpTocItems.length === 0) return
+
+      if (ibpTocItems[0]?.id) {
+        setActiveIbpSection(ibpTocItems[0].id)
+      }
+
+      const getSections = () => {
+        const rootRect = root!.getBoundingClientRect()
+        return ibpTocItems
+          .map((item) => {
+            const el = root!.querySelector(`#${item.id}`) as HTMLElement | null
+            if (!el) return null
+            const rect = el.getBoundingClientRect()
+            return {
+              id: item.id,
+              top: rect.top - rootRect.top + root!.scrollTop,
+            }
+          })
+          .filter(Boolean) as Array<{ id: string; top: number }>
+      }
+
+      const onScroll = () => {
+        if (raf) return
+        raf = window.requestAnimationFrame(() => {
+          raf = 0
+          const sections = getSections()
+          if (sections.length === 0) return
+
+          const atBottom =
+            root!.scrollHeight - (root!.scrollTop + root!.clientHeight) <= 24
+          if (atBottom) {
+            const last = sections[sections.length - 1]
+            if (last?.id) setActiveIbpSection(last.id)
+            return
+          }
+
+          const anchor = root!.scrollTop + 24
+          let current = sections[0]
+          for (const section of sections) {
+            if (section.top <= anchor) current = section
+            else break
+          }
+          if (current?.id) setActiveIbpSection(current.id)
+        })
+      }
+
+      handleScroll = onScroll
+      ibpRecalcRef.current = onScroll
+      handleResize = () => onScroll()
+      resizeObserver = new ResizeObserver(() => onScroll())
+      resizeObserver.observe(root)
+      mutationObserver = new MutationObserver(() => onScroll())
+      mutationObserver.observe(root, { childList: true, subtree: true })
+
+      onScroll()
+      initRaf = window.requestAnimationFrame(onScroll)
+      timeoutId = window.setTimeout(onScroll, 120)
+      root.addEventListener('scroll', onScroll, { passive: true })
+      window.addEventListener('resize', handleResize)
+    }
+
+    setup()
+    return () => {
+      if (root && handleScroll) root.removeEventListener('scroll', handleScroll)
+      if (handleResize) window.removeEventListener('resize', handleResize)
+      if (resizeObserver) resizeObserver.disconnect()
+      if (mutationObserver) mutationObserver.disconnect()
+      if (raf) window.cancelAnimationFrame(raf)
+      if (initRaf) window.cancelAnimationFrame(initRaf)
+      if (retryRaf) window.cancelAnimationFrame(retryRaf)
+      if (timeoutId) window.clearTimeout(timeoutId)
+      if (ibpRecalcRef.current === handleScroll) ibpRecalcRef.current = null
+    }
+  }, [tabValue, interviewStatus, ibpTocItems])
+
+  useEffect(() => {
+    if (tabValue !== 'interview') return
+    if (interviewStatus !== 'COMPLETED') return
+    if (!ibpTocItems.length) return
+    const recalc = ibpRecalcRef.current
+    if (!recalc) return
+    const rafId = window.requestAnimationFrame(() => recalc())
+    const timeoutId = window.setTimeout(() => recalc(), 200)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(timeoutId)
+    }
+  }, [tabValue, interviewStatus, ibpTocItems])
 
   // Get simulated progress from store
   // Get simulated progress from V2 Bridge
@@ -611,6 +965,58 @@ export function ServiceDisplay({
     }
   }, [router, shouldRefreshJobSummary])
 
+  const hasRefreshedCustomizeRef = useRef(false)
+  useEffect(() => {
+    if (customizeStatus === 'PENDING' || customizeStatus === 'IDLE') {
+      hasRefreshedCustomizeRef.current = false
+    }
+    if (
+      (customizeStatus === 'COMPLETED' || customizeStatus === 'FAILED') &&
+      !hasRefreshedCustomizeRef.current
+    ) {
+      hasRefreshedCustomizeRef.current = true
+      router.refresh()
+    }
+  }, [customizeStatus, router])
+
+  const hasRefreshedInterviewRef = useRef(false)
+  const interviewDataRetryRef = useRef(0)
+  useEffect(() => {
+    const hasInterviewAction =
+      storeStatus === 'INTERVIEW_PENDING' ||
+      storeStatus === 'INTERVIEW_STREAMING' ||
+      storeStatus === 'INTERVIEW_COMPLETED' ||
+      storeStatus === 'INTERVIEW_FAILED' ||
+      interviewExecutionTier !== null
+    if (
+      (interviewStatus === 'COMPLETED' || interviewStatus === 'FAILED') &&
+      !hasRefreshedInterviewRef.current
+    ) {
+      hasRefreshedInterviewRef.current = true
+      router.refresh()
+      if (hasInterviewAction) {
+        setTabValue('interview')
+      }
+    }
+  }, [interviewStatus, router, storeStatus, interviewExecutionTier])
+
+  useEffect(() => {
+    if (interviewStatus !== 'COMPLETED') {
+      interviewDataRetryRef.current = 0
+      return
+    }
+    if (interviewParsed) {
+      interviewDataRetryRef.current = 0
+      return
+    }
+    if (interviewDataRetryRef.current >= 3) return
+    const timeoutId = window.setTimeout(() => {
+      interviewDataRetryRef.current += 1
+      router.refresh()
+    }, 2000)
+    return () => window.clearTimeout(timeoutId)
+  }, [interviewStatus, interviewParsed, router])
+
   const shouldHideConsole =
     (tabValue === 'match' &&
       (status === 'MATCH_COMPLETED' ||
@@ -623,23 +1029,21 @@ export function ServiceDisplay({
     (tabValue === 'customize' && customizeStatus === 'COMPLETED') ||
     (tabValue === 'interview' && interviewStatus === 'COMPLETED')
 
-  // Auto-expand sidebar when on Match or Interview tab (restore navigation)
   useEffect(() => {
-    const syncSidebarState = () => {
-      if (tabValue === 'match' || tabValue === 'interview') {
-        const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
-        if (isCollapsed) {
-          localStorage.removeItem('sidebar_collapsed')
-          // Dispatch event to force sidebar re-render if it's listening
-          window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
-        }
+    if (tabValue === 'match') {
+      const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
+      if (isCollapsed) {
+        localStorage.removeItem('sidebar_collapsed')
+        window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
       }
     }
-
-    // Sync immediately
-    syncSidebarState()
-
-    // No timer needed with useLayoutEffect as it blocks paint
+    if (tabValue === 'interview') {
+      const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
+      if (!isCollapsed) {
+        localStorage.setItem('sidebar_collapsed', '1')
+        window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
+      }
+    }
   }, [tabValue])
 
   // CTA Node for Desktop Headers - now uses extracted component
@@ -683,16 +1087,31 @@ export function ServiceDisplay({
   const stepActions = stepActionNode
     ? { [activeActionStep]: stepActionNode }
     : undefined
+  const step3Label = String(dict.workbench?.tabs?.interview || 'Step 3')
+
+  const [mobileBarRoot, setMobileBarRoot] = useState<Element | null>(null)
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    let el = document.getElementById('mobile-bottom-bar-root')
+    if (!el) {
+      el = document.createElement('div')
+      el.id = 'mobile-bottom-bar-root'
+      document.body.appendChild(el)
+    }
+    setMobileBarRoot(el)
+    return () => {}
+  }, [])
 
   return (
     <>
       <div
         className={cn(
-          'h-full flex flex-col space-y-4 md:space-y-2', // Increased mobile spacing to prevent overlap
+          'h-full flex flex-col space-y-4 md:space-y-2 pt-2 md:pt-0',
         )}
       >
+        <div className="md:hidden fixed top-0 inset-x-0 h-12 z-[50] bg-background/70 backdrop-blur border-border/40 print:hidden" />
         {notification && (
-          <div className="flex justify-center w-full px-1">
+          <div className="flex justify-center w-full px-1 print:hidden">
             <div className="w-auto max-w-xl animate-in slide-in-from-top-2 fade-in duration-300">
               <ServiceNotification
                 type={notification.type}
@@ -706,38 +1125,50 @@ export function ServiceDisplay({
           </div>
         )}
 
-        <StepperProgress
-          currentStep={currentStep as any}
-          maxUnlockedStep={maxUnlockedStep as any}
-          onStepClick={(s) => {
-            if (s === 1) setTabValue('match')
-            else if (s === 2) setTabValue('customize')
-            else setTabValue('interview')
-          }}
-          labels={{
-            step1: String(dict.workbench?.tabs?.match || 'Step 1'),
-            step2: String(dict.workbench?.tabs?.customize || 'Step 2'),
-            step3: String(dict.workbench?.tabs?.interview || 'Step 3'),
-          }}
-          {...(stepActions ? { stepActions } : {})}
-          className="shrink-0"
-        />
+        <div className="w-full px-1 sm:px-4 md:px-6 pt-6 md:pt-0 print:hidden">
+          <div className="mx-auto w-full max-w-[1180px]">
+            <div className="md:hidden fixed top-[14px] right-3 z-[60] flex items-center gap-1">
+              <I18nToggleCompact />
+              <ThemeToggle />
+              <UserMenu locale={locale} dict={{ shell: dict }} />
+            </div>
+            <StepperProgress
+              currentStep={currentStep as any}
+              maxUnlockedStep={maxUnlockedStep as any}
+              onStepClick={(s) => {
+                if (s === 1) setTabValue('match')
+                else if (s === 2) setTabValue('customize')
+                else setTabValue('interview')
+              }}
+              labels={{
+                step1: String(dict.workbench?.tabs?.match || 'Step 1'),
+                step2: String(dict.workbench?.tabs?.customize || 'Step 2'),
+                step3: step3Label,
+              }}
+              {...(stepActions ? { stepActions } : {})}
+              className="shrink-0"
+            />
+          </div>
+        </div>
 
         {!shouldHideConsole &&
           USE_SSE_V2 &&
           v2Bridge &&
           tabValue === 'match' && (
-            // V2 StatusConsole - cleaner props, real-time progress from V2 store
-            <StatusConsoleV2
-              status={v2Bridge.status}
-              statusMessage={v2Bridge.statusMessage || statusMessage}
-              progress={v2Bridge.progress || 0}
-              tier={tier}
-              cost={displayCost}
-              isConnected={v2Bridge.isConnected}
-              lastEventAt={v2Bridge.lastEventAt}
-              errorMessage={localizedError}
-            />
+            <div className="w-full px-1 sm:px-4 md:px-6 print:hidden">
+              <div className="mx-auto w-full max-w-[1180px]">
+                <StatusConsoleV2
+                  status={v2Bridge.status}
+                  statusMessage={v2Bridge.statusMessage || statusMessage}
+                  progress={v2Bridge.progress || 0}
+                  tier={tier}
+                  cost={displayCost}
+                  isConnected={v2Bridge.isConnected}
+                  lastEventAt={v2Bridge.lastEventAt}
+                  errorMessage={localizedError}
+                />
+              </div>
+            </div>
           )}
 
         <Tabs
@@ -750,114 +1181,117 @@ export function ServiceDisplay({
         >
           <TabsContent
             value="match"
-            className="flex-1 flex flex-col min-h-0 overflow-y-auto"
+            className="flex-1 flex flex-col min-h-0 overflow-y-auto print:hidden"
           >
-            {/* V2 StreamPanel - uses V2 store content for real-time streaming */}
-            {USE_SSE_V2 &&
-              v2Bridge &&
-              (v2Bridge.status === 'IDLE' ||
-                v2Bridge.status === 'OCR_PENDING' ||
-                v2Bridge.status === 'OCR_STREAMING' ||
-                v2Bridge.status === 'OCR_COMPLETED' ||
-                v2Bridge.status === 'JOB_VISION_PENDING' ||
-                v2Bridge.status === 'JOB_VISION_STREAMING' ||
-                v2Bridge.status === 'JOB_VISION_COMPLETED' ||
-                v2Bridge.status === 'PREMATCH_PENDING' ||
-                v2Bridge.status === 'PREMATCH_STREAMING' ||
-                v2Bridge.status === 'PREMATCH_COMPLETED' ||
-                v2Bridge.status === 'SUMMARY_PENDING' ||
-                v2Bridge.status === 'SUMMARY_STREAMING' ||
-                v2Bridge.status === 'SUMMARY_COMPLETED' ||
-                v2Bridge.status === 'MATCH_PENDING' ||
-                v2Bridge.status === 'MATCH_STREAMING' ||
-                // Also show on failure states to display error message
-                v2Bridge.status === 'OCR_FAILED' ||
-                v2Bridge.status === 'JOB_VISION_FAILED' ||
-                v2Bridge.status === 'SUMMARY_FAILED' ||
-                v2Bridge.status === 'PREMATCH_FAILED' ||
-                v2Bridge.status === 'MATCH_FAILED') && (
-                <div>
-                  <StreamPanelV2
-                    status={v2Bridge.status}
-                    tier={v2Bridge.tier}
-                    // Free tier content
-                    visionContent={v2Bridge.visionContent}
-                    visionJson={v2Bridge.visionJson}
-                    // Paid tier content
-                    ocrContent={v2Bridge.ocrContent}
-                    ocrJson={v2Bridge.ocrJson}
-                    summaryContent={v2Bridge.summaryContent}
-                    summaryJson={v2Bridge.summaryJson}
-                    preMatchContent={v2Bridge.preMatchContent}
-                    preMatchJson={v2Bridge.preMatchJson}
-                    // Both tiers
-                    matchContent={v2Bridge.matchContent}
-                    matchJson={v2Bridge.matchJson}
-                    errorMessage={localizedError}
-                    dict={dict?.workbench?.streamPanel}
-                    onRetry={retryMatchAction}
-                  />
-                </div>
-              )}
+            <div className="w-full px-1 sm:px-4 md:px-6">
+              <div className="mx-auto w-full max-w-[1180px]">
+                {USE_SSE_V2 &&
+                  v2Bridge &&
+                  (v2Bridge.status === 'IDLE' ||
+                    v2Bridge.status === 'OCR_PENDING' ||
+                    v2Bridge.status === 'OCR_STREAMING' ||
+                    v2Bridge.status === 'OCR_COMPLETED' ||
+                    v2Bridge.status === 'JOB_VISION_PENDING' ||
+                    v2Bridge.status === 'JOB_VISION_STREAMING' ||
+                    v2Bridge.status === 'JOB_VISION_COMPLETED' ||
+                    v2Bridge.status === 'PREMATCH_PENDING' ||
+                    v2Bridge.status === 'PREMATCH_STREAMING' ||
+                    v2Bridge.status === 'PREMATCH_COMPLETED' ||
+                    v2Bridge.status === 'SUMMARY_PENDING' ||
+                    v2Bridge.status === 'SUMMARY_STREAMING' ||
+                    v2Bridge.status === 'SUMMARY_COMPLETED' ||
+                    v2Bridge.status === 'MATCH_PENDING' ||
+                    v2Bridge.status === 'MATCH_STREAMING' ||
+                    v2Bridge.status === 'OCR_FAILED' ||
+                    v2Bridge.status === 'JOB_VISION_FAILED' ||
+                    v2Bridge.status === 'SUMMARY_FAILED' ||
+                    v2Bridge.status === 'PREMATCH_FAILED' ||
+                    v2Bridge.status === 'MATCH_FAILED') && (
+                    <div>
+                      <StreamPanelV2
+                        status={v2Bridge.status}
+                        tier={v2Bridge.tier}
+                        visionContent={v2Bridge.visionContent}
+                        visionJson={v2Bridge.visionJson}
+                        ocrContent={v2Bridge.ocrContent}
+                        ocrJson={v2Bridge.ocrJson}
+                        summaryContent={v2Bridge.summaryContent}
+                        summaryJson={v2Bridge.summaryJson}
+                        preMatchContent={v2Bridge.preMatchContent}
+                        preMatchJson={v2Bridge.preMatchJson}
+                        matchContent={v2Bridge.matchContent}
+                        matchJson={v2Bridge.matchJson}
+                        errorMessage={localizedError}
+                        dict={dict?.workbench?.streamPanel}
+                      />
+                    </div>
+                  )}
 
-            {(status === 'MATCH_COMPLETED' || matchResult || matchParsed) &&
-              !(
-                status === 'MATCH_PENDING' ||
-                status === 'MATCH_STREAMING' ||
-                status === 'OCR_PENDING' ||
-                status === 'JOB_VISION_PENDING' ||
-                status === 'JOB_VISION_STREAMING' ||
-                status === 'JOB_VISION_COMPLETED' ||
-                status === 'PREMATCH_PENDING' ||
-                status === 'SUMMARY_PENDING'
-              ) && (
-                <ResultCard
-                  data={matchResult || matchParsed}
-                  company={displayCompany}
-                  jobTitle={displayJob}
-                  labels={{
-                    title: dict.workbench?.resultCard?.title,
-                    loading: dict.workbench?.resultCard?.loading,
-                    empty: dict.workbench?.resultCard?.empty,
-                    matchScore: dict.workbench?.resultCard?.matchScore,
-                    overallAssessment:
-                      dict.workbench?.resultCard?.overallAssessment,
-                    highlights: dict.workbench?.resultCard?.highlights,
-                    gapsAndSuggestions:
-                      dict.workbench?.resultCard?.gapsAndSuggestions,
-                    smartPitch: dict.workbench?.resultCard?.smartPitch?.label,
-                    copyTooltip:
-                      dict.workbench?.resultCard?.smartPitch?.copyTooltip,
-                    copy: dict.workbench?.resultCard?.copy,
-                    copied: dict.workbench?.resultCard?.copied,
-                    copySuccess: dict.workbench?.resultCard?.copySuccess,
-                    highlyMatched: dict.workbench?.resultCard?.highlyMatched,
-                    goodFit: dict.workbench?.resultCard?.goodFit,
-                    lowMatch: dict.workbench?.resultCard?.lowMatch,
-                    targetCompany: dict.workbench?.resultCard?.targetCompany,
-                    targetPosition: dict.workbench?.resultCard?.targetPosition,
-                    noHighlights: dict.workbench?.resultCard?.noHighlights,
-                    noGaps: dict.workbench?.resultCard?.noGaps,
-                    tip: dict.workbench?.resultCard?.tip,
-                    expertVerdict: dict.workbench?.resultCard?.expertVerdict,
-                    recommendations:
-                      dict.workbench?.resultCard?.recommendations,
-                    resumeTweak: dict.workbench?.analysis?.resumeTweak,
-                    interviewPrep: dict.workbench?.analysis?.interviewPrep,
-                    cleanCopied:
-                      dict.workbench?.resultCard?.smartPitch?.cleanCopied,
-                    definitions: dict.workbench?.resultCard?.definitions,
-                    smartPitchDefs:
-                      dict.workbench?.resultCard?.smartPitch?.definitions,
-                  }}
-                />
-              )}
-            {/* Error-state StreamPanelV2 is now handled by the main panel at L786-828 */}
+                {(status === 'MATCH_COMPLETED' || matchResult || matchParsed) &&
+                  !(
+                    status === 'MATCH_PENDING' ||
+                    status === 'MATCH_STREAMING' ||
+                    status === 'OCR_PENDING' ||
+                    status === 'JOB_VISION_PENDING' ||
+                    status === 'JOB_VISION_STREAMING' ||
+                    status === 'JOB_VISION_COMPLETED' ||
+                    status === 'PREMATCH_PENDING' ||
+                    status === 'SUMMARY_PENDING'
+                  ) && (
+                    <ResultCard
+                      data={matchResult || matchParsed}
+                      company={displayCompany}
+                      jobTitle={displayJob}
+                      className="mt-0"
+                      labels={{
+                        title: dict.workbench?.resultCard?.title,
+                        loading: dict.workbench?.resultCard?.loading,
+                        empty: dict.workbench?.resultCard?.empty,
+                        matchScore: dict.workbench?.resultCard?.matchScore,
+                        overallAssessment:
+                          dict.workbench?.resultCard?.overallAssessment,
+                        highlights: dict.workbench?.resultCard?.highlights,
+                        gapsAndSuggestions:
+                          dict.workbench?.resultCard?.gapsAndSuggestions,
+                        smartPitch:
+                          dict.workbench?.resultCard?.smartPitch?.label,
+                        copyTooltip:
+                          dict.workbench?.resultCard?.smartPitch?.copyTooltip,
+                        copy: dict.workbench?.resultCard?.copy,
+                        copied: dict.workbench?.resultCard?.copied,
+                        copySuccess: dict.workbench?.resultCard?.copySuccess,
+                        highlyMatched:
+                          dict.workbench?.resultCard?.highlyMatched,
+                        goodFit: dict.workbench?.resultCard?.goodFit,
+                        lowMatch: dict.workbench?.resultCard?.lowMatch,
+                        targetCompany:
+                          dict.workbench?.resultCard?.targetCompany,
+                        targetPosition:
+                          dict.workbench?.resultCard?.targetPosition,
+                        noHighlights: dict.workbench?.resultCard?.noHighlights,
+                        noGaps: dict.workbench?.resultCard?.noGaps,
+                        tip: dict.workbench?.resultCard?.tip,
+                        expertVerdict:
+                          dict.workbench?.resultCard?.expertVerdict,
+                        recommendations:
+                          dict.workbench?.resultCard?.recommendations,
+                        resumeTweak: dict.workbench?.analysis?.resumeTweak,
+                        interviewPrep: dict.workbench?.analysis?.interviewPrep,
+                        cleanCopied:
+                          dict.workbench?.resultCard?.smartPitch?.cleanCopied,
+                        definitions: dict.workbench?.resultCard?.definitions,
+                        smartPitchDefs:
+                          dict.workbench?.resultCard?.smartPitch?.definitions,
+                      }}
+                    />
+                  )}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent
             value="customize"
-            className="flex-1 flex flex-col min-h-0"
+            className="flex-1 flex flex-col min-h-0 print:hidden"
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
@@ -886,18 +1320,31 @@ export function ServiceDisplay({
               />
             ) : (
               <>
-                {(customizeStatus as string) === 'PENDING' ||
-                isTransitionState ? (
+                {isTransitionState ? (
                   <BatchProgressPanel
                     title={
-                      dict.workbench?.statusText?.analyzing ||
-                      'AI is analyzing...'
+                      dict.workbench?.statusText?.CUSTOMIZE_STARTING ||
+                      dict.workbench?.statusConsole?.customizeStarting ||
+                      '正在启动定制任务...'
                     }
                     description={
-                      dict.workbench?.statusText?.analyzingDesc ||
-                      'Analyzing your profile against the JD and applying professional resume writing strategies. This usually takes 30-60 seconds.'
+                      dict.workbench?.statusText?.CUSTOMIZE_STARTING_DESC ||
+                      '已提交请求，正在排队分配计算资源。'
                     }
-                    progress={66}
+                    progress={12}
+                  />
+                ) : (customizeStatus as string) === 'PENDING' ? (
+                  <BatchProgressPanel
+                    title={
+                      dict.workbench?.statusText?.CUSTOMIZE_PENDING ||
+                      dict.workbench?.statusConsole?.customizePending ||
+                      '正在定制简历...'
+                    }
+                    description={
+                      dict.workbench?.statusText?.CUSTOMIZE_PENDING_DESC ||
+                      '正在分析岗位要求并重写你的简历内容。'
+                    }
+                    progress={30}
                   />
                 ) : (customizeStatus as string) === 'CUSTOMIZE_FAILED' ||
                   (customizeStatus as string) === 'FAILED' ? (
@@ -955,130 +1402,278 @@ export function ServiceDisplay({
             )}
           </TabsContent>
 
-          <TabsContent value="interview">
-            {interviewStatus === 'COMPLETED' ? (
-              <AppCard>
-                <AppCardHeader>
-                  <AppCardTitle>Interview Tips</AppCardTitle>
-                </AppCardHeader>
-                <AppCardContent>
-                  {interviewParsed ? (
-                    <div className="space-y-4">
-                      {interviewParsed.intro && (
-                        <div className="prose whitespace-pre-wrap">
-                          {String(interviewParsed.intro)}
-                        </div>
-                      )}
-                      {Array.isArray(interviewParsed.qa_items) &&
-                        interviewParsed.qa_items.length > 0 && (
-                          <div>
-                            <div className="text-sm text-muted-foreground mb-2">
-                              Q&A
-                            </div>
-                            <ul className="space-y-2">
-                              {interviewParsed.qa_items.map(
-                                (q: any, i: number) => (
-                                  <li key={i} className="space-y-1">
-                                    <div className="font-medium">
-                                      {String(q.question)}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {String(q.framework)}
-                                    </div>
-                                    {Array.isArray(q.hints) && (
-                                      <ul className="list-disc pl-6 text-sm">
-                                        {q.hints.map((h: any, j: number) => (
-                                          <li key={j}>{String(h)}</li>
-                                        ))}
-                                      </ul>
-                                    )}
-                                  </li>
-                                ),
-                              )}
-                            </ul>
+          <TabsContent
+            value="interview"
+            className="flex-1 flex flex-col min-h-0 overflow-hidden print:overflow-visible"
+          >
+            <div
+              ref={interviewScrollRef}
+              className="flex-1 min-h-0 overflow-y-auto print:overflow-visible"
+              style={{ scrollbarGutter: 'stable' }}
+            >
+              {interviewStatus === 'COMPLETED' && interviewParsed ? (
+                <div className="w-full px-1 sm:px-4 md:px-6 pt-0 pb-6 print:px-0 print:py-2">
+                  <div className="mx-auto w-full max-w-[1180px] relative">
+                    <div className="mx-auto w-full max-w-[880px] relative print:max-w-none print:mx-0 print:w-full">
+                      <InterviewBattlePlan
+                        data={interviewParsed}
+                        matchScore={getMatchScore(matchParsed)}
+                        labels={interviewBattlePlanLabels}
+                        className="mt-0"
+                      />
+                    </div>
+                    <aside className="hidden xl:block print:hidden w-[240px]">
+                      <div className="fixed top-36 w-[240px] left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)]">
+                        <div className="w-full max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
+                          <div className="text-[11px] font-semibold text-foreground/60 tracking-[0.24em]">
+                            {dict.workbench?.interviewUi?.toc || 'Contents'}
                           </div>
-                        )}
-                      {interviewParsed.markdown && (
-                        <div className="prose whitespace-pre-wrap">
-                          {String(interviewParsed.markdown)}
+                          <div className="mt-4 space-y-2.5">
+                            {ibpTocItems.map((item) => {
+                              const isActive =
+                                (activeIbpSection &&
+                                  activeIbpSection === item.id) ||
+                                (!activeIbpSection &&
+                                  ibpTocItems[0]?.id === item.id)
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveIbpSection(item.id)
+                                    scrollToIbpSection(item.id)
+                                  }}
+                                  aria-current={isActive ? 'true' : undefined}
+                                  className={cn(
+                                    'group w-full text-left text-[12px] leading-5 flex items-center gap-2.5 transition-colors',
+                                    'text-foreground/60 hover:text-foreground',
+                                    isActive && 'text-foreground font-semibold',
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      'h-1.5 w-1.5 rounded-full transition-colors shrink-0',
+                                      isActive
+                                        ? 'bg-primary'
+                                        : 'bg-slate-300/70 dark:bg-slate-700/70',
+                                    )}
+                                  />
+                                  <span className="block truncate">
+                                    {item.label}
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
+                      </div>
+                    </aside>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {isInterviewTransitionState ? (
+                    <BatchProgressPanel
+                      title={
+                        dict.workbench?.statusText?.INTERVIEW_STARTING ||
+                        '正在启动面试建议任务...'
+                      }
+                      description={
+                        dict.workbench?.statusText?.INTERVIEW_STARTING_DESC ||
+                        '已提交请求，正在排队分配计算资源。'
+                      }
+                      progress={12}
+                    />
+                  ) : interviewStatus === 'PENDING' ? (
+                    <BatchProgressPanel
+                      title={
+                        dict.workbench?.statusText?.INTERVIEW_PENDING ||
+                        '准备生成面试作战手卡...'
+                      }
+                      description={
+                        dict.workbench?.statusText?.INTERVIEW_PENDING_DESC ||
+                        '正在分析匹配度结果和定制简历，准备个性化面试建议。'
+                      }
+                      progress={30}
+                    />
+                  ) : interviewStatus === 'FAILED' ? (
+                    <BatchProgressPanel
+                      mode="error"
+                      title={
+                        dict.workbench?.statusText?.INTERVIEW_FAILED ||
+                        '面试建议生成失败'
+                      }
+                      description={
+                        interviewExecutionTier === 'free'
+                          ? dict.workbench?.statusText
+                              ?.INTERVIEW_FAILED_DESC_FREE ||
+                            '免费模型暂时繁忙，请稍后重试'
+                          : dict.workbench?.statusText
+                              ?.INTERVIEW_FAILED_DESC_PAID ||
+                            dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
+                            '金币已自动返还，请点击重试'
+                      }
+                      onRetry={onInterview}
+                      isRetryLoading={isPending}
+                      retryLabel={
+                        dict.workbench?.interviewUi?.start || '生成面试建议'
+                      }
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
+                      <div className="text-center space-y-2">
+                        <h3 className="text-lg font-semibold">
+                          {dict.workbench?.interviewUi?.ready ||
+                            'Ready to Generate Interview Tips'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                          {dict.workbench?.interviewUi?.readyDesc ||
+                            'Generate personalized interview Q&A and tips based on the job match analysis.'}
+                        </p>
+                      </div>
+                      {/* Desktop CTA for Ready State */}
+                      {!isPending && (
+                        <div className="hidden md:block">{ctaNode}</div>
                       )}
                     </div>
-                  ) : (
-                    <div className="prose whitespace-pre-wrap"> </div>
                   )}
-                </AppCardContent>
-              </AppCard>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
-                <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">
-                    {dict.workbench?.interviewUi?.ready ||
-                      'Ready to Generate Interview Tips'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                    {dict.workbench?.interviewUi?.readyDesc ||
-                      'Generate personalized interview Q&A and tips based on your customized resume.'}
-                  </p>
-                </div>
-                {/* Desktop CTA for Ready State */}
-                <div className="hidden md:block">{ctaNode}</div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
 
-        <div
-          className={cn(
-            // Mobile: Fixed bottom, blurred background, border top
-            'fixed bottom-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-center gap-3',
-            // Increased opacity and darkened color for better visibility
-            // Light mode: Neutral gray background for contrast (not white)
-            // Dark mode: Dark zinc background
-            // Opacity reduced to 20% to allow content to be visible underneath
-            'bg-zinc-300/20 dark:bg-zinc-800/30 backdrop-blur-xs border-t border-border/10 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]',
-            // Desktop: Static, transparent background, no border, aligned left, HIDDEN because we moved CTA to header
-            'md:hidden',
-          )}
-        >
-          <div className="flex items-center gap-3 relative z-50">
-            {cta && (
-              <Button
-                onClick={() => {
-                  if (cta.action === 'customize') onCustomize()
-                  else if (cta.action === 'interview') {
-                    setTabValue('interview')
-                    onInterview()
-                  } else if (cta.action === 'retry_match') retryMatchAction()
-                }}
-                disabled={cta.disabled}
-                aria-label={cta.label}
-              >
-                {cta.label}
-              </Button>
-            )}
-            <span
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground"
-              title={(dict.workbench?.costTooltip || '').replace(
-                '{cost}',
-                String(
-                  getTaskCost(
-                    tabValue === 'interview'
-                      ? 'interview_prep'
-                      : 'resume_customize',
-                  ),
-                ),
+        {mobileBarRoot &&
+          createPortal(
+            <div
+              className={cn(
+                'fixed left-0 right-0 bottom-0 z-50 px-4 pt-2 pb-[env(safe-area-inset-bottom)] flex items-center justify-center h-[calc(48px+env(safe-area-inset-bottom))]',
+                interviewStatus !== 'COMPLETED' && 'gap-3',
+                'bg-zinc-300/20 dark:bg-zinc-800/30 backdrop-blur-xs border-t border-border/10 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]',
+                'md:hidden print:hidden',
               )}
             >
-              <Coins className="w-3 h-3 text-yellow-500" />
-              {getTaskCost(
-                tabValue === 'interview'
-                  ? 'interview_prep'
-                  : 'resume_customize',
+              {interviewStatus !== 'COMPLETED' ? (
+                <div className="flex items-center gap-3 relative z-50">
+                  {cta &&
+                    !(
+                      tabValue === 'interview' &&
+                      (interviewStatus === 'PENDING' ||
+                        isInterviewTransitionState)
+                    ) && (
+                      <Button
+                        onClick={() => {
+                          if (cta.action === 'customize') onCustomize()
+                          else if (cta.action === 'interview') {
+                            setTabValue('interview')
+                            onInterview()
+                          } else if (cta.action === 'retry_match')
+                            retryMatchAction()
+                        }}
+                        disabled={cta.disabled}
+                        aria-label={cta.label}
+                      >
+                        {cta.label}
+                      </Button>
+                    )}
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground"
+                    title={(dict.workbench?.costTooltip || '').replace(
+                      '{cost}',
+                      String(
+                        getTaskCost(
+                          tabValue === 'interview'
+                            ? 'interview_prep'
+                            : 'resume_customize',
+                        ),
+                      ),
+                    )}
+                  >
+                    <Coins className="w-3 h-3 text-yellow-500" />
+                    {getTaskCost(
+                      tabValue === 'interview'
+                        ? 'interview_prep'
+                        : 'resume_customize',
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-full text-center">
+                  <span className="text-xs text-muted-foreground leading-relaxed text-center w-full">
+                    {dict.workbench?.statusText?.INTERVIEW_COMPLETED_WISH ||
+                      'Wishing you success in your job search!'}
+                  </span>
+                </div>
               )}
-            </span>
-          </div>
-        </div>
+            </div>,
+            mobileBarRoot,
+          )}
+
+        {tabValue === 'interview' && interviewStatus === 'COMPLETED' && (
+          <Drawer open={tocOpen} onOpenChange={setTocOpen}>
+            <DrawerTrigger asChild>
+              <Button
+                size="icon"
+                className={cn(
+                  'fixed bottom-[85px] right-4 h-10 w-10 rounded-full shadow-lg z-40 transition-all duration-300 md:hidden',
+                  'active:scale-95 bg-gradient-to-r from-blue-200 to-blue-300 text-blue-600 hover:from-blue-200 hover:to-blue-300 border border-blue-200',
+                  'print:hidden',
+                )}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="print:hidden">
+              <DrawerHeader className="pb-2">
+                <DrawerTitle className="text-sm">
+                  {dict.workbench?.interviewUi?.toc || 'Contents'}
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-xs h-8"
+                  onClick={() => {
+                    setTocOpen(false)
+                    handleIbpTop()
+                  }}
+                >
+                  {dict.workbench?.interviewUi?.backToTop || 'Back to Top'}
+                </Button>
+                {ibpTocItems.map((item) => {
+                  const isActive =
+                    (activeIbpSection && activeIbpSection === item.id) ||
+                    (!activeIbpSection && ibpTocItems[0]?.id === item.id)
+                  return (
+                    <Button
+                      key={item.id}
+                      variant="ghost"
+                      className={cn(
+                        'w-full justify-start text-xs h-8',
+                        isActive && 'text-foreground',
+                      )}
+                      onClick={() => {
+                        setActiveIbpSection(item.id)
+                        setTocOpen(false)
+                        handleIbpToc(item.id)
+                      }}
+                    >
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full mr-2',
+                          isActive
+                            ? 'bg-primary'
+                            : 'bg-slate-300/70 dark:bg-slate-700/70',
+                        )}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </Button>
+                  )
+                })}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        )}
       </div>
 
       {/* Lightweight Free Tier Warning Dialogs */}

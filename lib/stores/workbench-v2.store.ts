@@ -66,6 +66,7 @@ export type WorkbenchStatusV2 =
   | 'CUSTOMIZE_FAILED'
   // Interview Phase
   | 'INTERVIEW_PENDING'
+  | 'INTERVIEW_STREAMING'
   | 'INTERVIEW_COMPLETED'
   | 'INTERVIEW_FAILED'
 
@@ -227,7 +228,12 @@ function createInitialConnection(): ConnectionState {
 // Helper to check terminal status
 function isTerminal(status: string): boolean {
   return (
-    status.endsWith('COMPLETED') ||
+    status === 'MATCH_COMPLETED' ||
+    status === 'MATCH_FAILED' ||
+    status === 'CUSTOMIZE_COMPLETED' ||
+    status === 'CUSTOMIZE_FAILED' ||
+    status === 'INTERVIEW_COMPLETED' ||
+    status === 'INTERVIEW_FAILED' ||
     status.endsWith('FAILED') ||
     status === 'COMPLETED' ||
     status === 'FAILED'
@@ -386,6 +392,9 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
   // Set error state
   setError: (message) => {
     const state = get()
+    if (state.status.endsWith('COMPLETED')) {
+      return
+    }
     sseLog.error('Task failed', { status: state.status, message })
 
     // Map current status to failed variant
@@ -652,6 +661,7 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
       CUSTOMIZE_COMPLETED: 'Customization Completed',
       CUSTOMIZE_FAILED: 'Customization Failed',
       INTERVIEW_PENDING: 'Generating Interview Tips...',
+      INTERVIEW_STREAMING: 'Generating Interview Tips...',
       INTERVIEW_COMPLETED: 'Interview Tips Generated',
       INTERVIEW_FAILED: 'Interview Tips Failed',
     }

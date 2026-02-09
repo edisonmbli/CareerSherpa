@@ -11,11 +11,12 @@ const dict = {
   // 命名空间结构（保持兼容）
   rag: {
     match_job_analysis:
-      '{{title}} 岗位匹配度分析方法 优势识别 劣势规避 专业评估框架 {{skills}}',
-    match_resume_fit:
-      '{{title}} HR私聊话术 模板 简洁 有力 精准 高匹配 DM script 开场与收尾 {{skills}}',
-    customize_general: '优秀简历写作指南 STAR法则 简历优化原则 动作动词列表',
-    customize_role: '{{title}} 核心技能关键词 岗位量化指标 简历描述范例',
+      '如何帮候选人分析 {{title}} 这个岗位的招聘意图和核心要求',
+    match_resume_fit: '怎样帮候选人找到履历与 {{title}} 岗位的契合点',
+    customize_general: '简历优化最佳实践和专业表达技巧',
+    customize_role: '针对 {{title}} 岗位的简历优化建议',
+    interview_self_intro: '如何准备 {{title}} 岗位的自我介绍（P-P-F 结构）',
+    interview_strategies: '{{title}} 岗位的面试技巧、STAR 故事结构和防御话术',
   },
   designSystem: {
     title: '设计系统',
@@ -213,6 +214,73 @@ const dict = {
     },
     interviewUi: {
       start: '面试 Tips',
+      ready: '面试建议已生成，加载中...',
+      readyDesc: '根据岗位匹配分析生成个性化的面试Q&A和建议',
+      backToTop: '回到顶部',
+      toc: '目录',
+    },
+    interviewBattlePlan: {
+      title: '面试作战手卡',
+      print: '打印',
+      copy: '复制全文',
+      copied: '已复制',
+      regenerate: '重新生成',
+      // Radar Module
+      radar: {
+        title: '情报透视',
+        coreChallenges: '核心挑战',
+        challenge: '挑战',
+        whyImportant: '为何重要',
+        yourAngle: '你的切入点',
+        interviewRounds: '面试链路',
+        round: '第{round}轮',
+        focus: '考察重点',
+        hiddenRequirements: '隐藏要求',
+      },
+      // Hook Module
+      hook: {
+        title: '开场定调',
+        ppfScript: 'P-P-F 自我介绍脚本',
+        keyHooks: '关键钩子',
+        hook: '钩子',
+        evidenceSource: '来源',
+        deliveryTips: '演讲技巧',
+      },
+      // Evidence Module
+      evidence: {
+        title: '核心论据',
+        storyTitle: '故事标题',
+        storyLabel: '故事',
+        storyCount: '{count} 个故事',
+        matchedPainPoint: '对应 JD 痛点',
+        situation: '背景',
+        task: '任务',
+        action: '行动',
+        result: '结果',
+        impact: '量化影响',
+        source: '来源',
+        sourceResume: '简历',
+        sourceDetailedResume: '详细履历',
+      },
+      // Defense Module
+      defense: {
+        title: '弱项演练',
+        weakness: '弱点',
+        anticipatedQuestion: '预判追问',
+        defenseScript: '防御话术',
+        supportingEvidence: '支撑证据',
+        weaknessCount: '{count} 个弱点',
+      },
+      // Reverse Module
+      reverse: {
+        title: '提问利器',
+        question: '问题',
+        askIntent: '提问意图',
+        listenFor: '倾听重点',
+      },
+      knowledgeRefresh: {
+        title: '知识补课',
+      },
     },
     statusText: {
       analyzing: 'AI 正在分析...',
@@ -234,7 +302,26 @@ const dict = {
       frequency_limit: '操作太频繁啦，喝杯咖啡休息一下吧 ☕️',
       readyToCustomize: '准备定制简历',
       readyToCustomizeDesc:
-        '点击下方“定制简历”按钮，根据岗位要求生成个性化简历。',
+        '点击下方"定制简历"按钮，根据岗位要求生成个性化简历。',
+      CUSTOMIZE_STARTING: '正在启动简历定制...',
+      CUSTOMIZE_STARTING_DESC: '已提交请求，正在排队中',
+      CUSTOMIZE_PENDING: '正在定制简历...',
+      CUSTOMIZE_PENDING_DESC: '正在分析岗位要求并重写你的简历内容',
+      // Interview states
+      INTERVIEW_STARTING: '正在启动面试建议任务...',
+      INTERVIEW_STARTING_DESC: '已提交请求，正在排队中',
+      INTERVIEW_PENDING: '正在生成面试作战手卡...',
+      INTERVIEW_PENDING_DESC:
+        '正在整合匹配度结果与简历亮点，生成个性化问答与应对策略',
+      INTERVIEW_STREAMING: '正在生成个性化面试建议...',
+      INTERVIEW_COMPLETED: '面试准备完成！',
+      INTERVIEW_COMPLETED_WISH: '祝求职顺利，马到功成！',
+      INTERVIEW_FAILED: '面试建议生成失败',
+      INTERVIEW_FAILED_DESC: '金币已自动返还，请点击重试',
+      INTERVIEW_FAILED_DESC_FREE: '免费模型暂时繁忙，请稍后重试',
+      INTERVIEW_FAILED_DESC_PAID: '金币已自动返还，请点击重试',
+      loading: '加载中...',
+      loadingDesc: '数据加载中，请稍候...',
       service_unavailable: '服务暂时不可用',
       service_unavailable_desc: '请稍后再试',
     },
@@ -295,6 +382,8 @@ const dict = {
       customizeStarting: '正在启动定制服务...',
       customizePending: '正在定制简历...',
       customizing: '正在定制简历...',
+      interviewPending: '生成面试建议...',
+      interviewing: '生成面试建议...',
       customizeCompleted: '简历定制完成',
       customizeFailed: '简历定制失败',
       customizeRefunded: '金币已自动返还，请点击重试',

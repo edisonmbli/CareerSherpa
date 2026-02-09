@@ -47,7 +47,6 @@ export function CtaButton({
         if (cta.action === 'customize') {
             onCustomize()
         } else if (cta.action === 'interview') {
-            setTabValue('interview')
             onInterview()
         } else if (cta.action === 'retry_match') {
             onRetryMatch()

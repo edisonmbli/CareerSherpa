@@ -139,6 +139,7 @@ export function deriveStage(
     isCustomizeFailed,
     isCustomizeDone,
     isInterviewPending,
+    isInterviewFailed,
     isInterviewDone,
     dict,
     simulatedProgress,
@@ -246,7 +247,7 @@ function calculateCta(params: CtaParams): CtaConfig | null {
   if (isCustomizePending) {
     return {
       show: true,
-      label: dict.workbench?.statusConsole?.['customizing'] || 'Customizing...',
+      label: dict.workbench?.customize?.start || 'Customize Resume',
       action: 'none',
       disabled: true,
     }
@@ -273,7 +274,7 @@ function calculateCta(params: CtaParams): CtaConfig | null {
   if (isInterviewPending) {
     return {
       show: true,
-      label: 'Generating Tips...',
+      label: dict.workbench?.interviewUi?.start || 'Generate Interview Tips',
       action: 'none',
       disabled: true,
     }
@@ -303,6 +304,7 @@ interface StatusParams {
   isCustomizeFailed: boolean
   isCustomizeDone: boolean
   isInterviewPending: boolean
+  isInterviewFailed: boolean
   isInterviewDone: boolean
   dict: WorkbenchDict
   simulatedProgress: number // Time-based simulated progress (0-100)
@@ -321,6 +323,7 @@ function calculateStatusAndProgress(params: StatusParams): {
     isCustomizeFailed,
     isCustomizeDone,
     isInterviewPending,
+    isInterviewFailed,
     isInterviewDone,
     dict,
     simulatedProgress,
@@ -350,11 +353,22 @@ function calculateStatusAndProgress(params: StatusParams): {
     }
   } else if (tabValue === 'interview') {
     if (isInterviewPending) {
-      statusMessage = 'Generating Interview Tips...'
+      statusMessage =
+        dict.workbench?.statusConsole?.['interviewing'] ||
+        dict.workbench?.statusConsole?.['interviewPending'] ||
+        dict.workbench?.statusText?.['INTERVIEW_PENDING'] ||
+        'Generating Interview Tips...'
       // Use time-based simulated progress
       progressValue = simulatedProgress || 10
+    } else if (isInterviewFailed) {
+      statusMessage =
+        dict.workbench?.statusText?.['INTERVIEW_FAILED'] ||
+        'Interview Tips Generation Failed'
+      progressValue = 0
     } else if (isInterviewDone) {
-      statusMessage = 'Interview Tips Generated'
+      statusMessage =
+        dict.workbench?.statusText?.['INTERVIEW_COMPLETED'] ||
+        'Interview Tips Generated'
       progressValue = 100
     }
   }
@@ -525,6 +539,15 @@ function deriveGlobalStatusMessage(
         statusConsole['matchPending'] || 'Analyzing match degree...',
       MATCH_STREAMING:
         statusConsole['matchStreaming'] || 'Streaming analysis results...',
+
+      INTERVIEW_PENDING:
+        stext['INTERVIEW_PENDING'] || 'Generating Interview Tips...',
+      INTERVIEW_STREAMING:
+        stext['INTERVIEW_STREAMING'] || 'Generating Interview Tips...',
+      INTERVIEW_COMPLETED:
+        stext['INTERVIEW_COMPLETED'] || 'Interview Tips Generated',
+      INTERVIEW_FAILED:
+        stext['INTERVIEW_FAILED'] || 'Interview Tips Generation Failed',
 
       OCR_COMPLETED:
         statusConsole['ocrCompleted'] || 'OCR Extraction Completed',

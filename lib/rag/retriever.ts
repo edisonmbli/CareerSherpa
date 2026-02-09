@@ -93,6 +93,42 @@ export async function retrieveCustomizeContext(
 }
 
 /**
+ * Retrieve RAG context for Interview Prep.
+ * Queries both "Self Introduction" and "Interview Strategies".
+ */
+export async function retrieveInterviewContext(
+  jobTitle: string,
+  locale: string,
+): Promise<string> {
+  const safeLocale = (
+    i18n.locales.includes(locale as Locale) ? locale : i18n.defaultLocale
+  ) as Locale
+  const dict = await getDictionary(safeLocale)
+
+  const vars = { title: jobTitle }
+
+  // Query templates from i18n dictionary
+  const queryA = formatQuery(dict.rag.interview_self_intro || '为{{title}}岗位准备自我介绍', vars)
+  const queryB = formatQuery(dict.rag.interview_strategies || '{{title}}岗位的面试策略和技巧', vars)
+
+  const [resultsA, resultsB] = await Promise.all([
+    queryRag(queryA, {
+      lang: safeLocale.startsWith('zh') ? 'zh' : 'en',
+      category: 'self_introduction',
+    }),
+    queryRag(queryB, {
+      lang: safeLocale.startsWith('zh') ? 'zh' : 'en',
+      category: 'interview_strategies',
+    }),
+  ])
+
+  const combined = [...resultsA, ...resultsB]
+  const uniqueContent = Array.from(new Set(combined.map((r) => r.content)))
+
+  return uniqueContent.join('\n\n---\n\n')
+}
+
+/**
  * Base RAG Query Function
  */
 type RagQueryOptions = {
@@ -111,12 +147,12 @@ function normalizeRagOptions(
   if (typeof localeOrOptions === 'string') {
     return category
       ? {
-          lang: localeOrOptions.startsWith('zh') ? 'zh' : 'en',
-          category,
-        }
+        lang: localeOrOptions.startsWith('zh') ? 'zh' : 'en',
+        category,
+      }
       : {
-          lang: localeOrOptions.startsWith('zh') ? 'zh' : 'en',
-        }
+        lang: localeOrOptions.startsWith('zh') ? 'zh' : 'en',
+      }
   }
   return localeOrOptions
 }

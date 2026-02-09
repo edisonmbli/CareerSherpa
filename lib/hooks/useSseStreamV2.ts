@@ -45,6 +45,7 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
   // Store actions
   const store = useWorkbenchV2Store()
   const {
+    status,
     setStatus,
     setStatusDetail,
     setError,
@@ -71,12 +72,16 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
   const currentTaskIdRef = useRef<string | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const connectedTasksRef = useRef<Set<string>>(new Set())
+  const connectionSeqRef = useRef(0)
 
   // Token buffer for batching
   const tokenBufferRef = useRef<string>('')
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tokenTargetRef = useRef<ReturnType<typeof getTokenTarget> | null>(null)
   const lastNonMatchTargetRef = useRef<NonMatchTarget | null>(null)
+  const nextTaskIdRef = useRef<string | null>(null)
+  const lastEventIdRef = useRef<string | null>(null)
+  const lastEventTaskIdRef = useRef<string | null>(null)
 
   const deriveNonMatchTarget = useCallback(
     (
@@ -210,11 +215,19 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
     [],
   )
 
+  const getResumeId = useCallback((taskId: string) => {
+    return lastEventTaskIdRef.current === taskId ? lastEventIdRef.current : null
+  }, [])
+
   /**
    * Connect to SSE stream for a task
    */
   const connect = useCallback(
-    (taskId: string, fromLatest: boolean = false) => {
+    (
+      taskId: string,
+      fromLatest: boolean = false,
+      resumeFromId: string | null = null,
+    ) => {
       if (!userId || !serviceId || !taskId) {
         sseLog.warn('Cannot connect: missing params', {
           userId,
@@ -226,13 +239,22 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
 
       // Close existing connection
       if (esRef.current) {
+        sseLog.connection('client_close', {
+          reason: 'connect_new',
+          prevTaskId: currentTaskIdRef.current,
+          nextTaskId: taskId,
+        })
+        connectionSeqRef.current += 1
         esRef.current.close()
         esRef.current = null
       }
 
       // Build URL
       const fromLatestParam = fromLatest ? '1' : '0'
-      const url = `/api/sse-stream?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&fromLatest=${fromLatestParam}`
+      const resumeParam = resumeFromId
+        ? `&lastEventId=${encodeURIComponent(resumeFromId)}`
+        : ''
+      const url = `/api/sse-stream?userId=${encodeURIComponent(userId)}&serviceId=${encodeURIComponent(serviceId)}&taskId=${encodeURIComponent(taskId)}&fromLatest=${fromLatestParam}${resumeParam}`
 
       sseLog.connection('connecting', {
         taskId,
@@ -240,12 +262,15 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
         isReconnect: connectedTasksRef.current.has(taskId),
       })
 
+      const connectionId = connectionSeqRef.current + 1
+      connectionSeqRef.current = connectionId
       const es = new EventSource(url)
       esRef.current = es
       currentTaskIdRef.current = taskId
       connectedTasksRef.current.add(taskId)
 
       es.onopen = () => {
+        if (connectionSeqRef.current !== connectionId) return
         sseLog.connection('opened', { taskId })
         setConnected(true, taskId)
 
@@ -257,16 +282,29 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
       }
 
       es.onmessage = (ev) => {
+        if (connectionSeqRef.current !== connectionId) return
         if (!ev?.data) return
 
         try {
           const raw = JSON.parse(ev.data)
           recordEvent()
 
+          if (ev.lastEventId) {
+            lastEventIdRef.current = ev.lastEventId
+            lastEventTaskIdRef.current = currentTaskIdRef.current
+          } else if ((raw as any)?._sid) {
+            lastEventIdRef.current = String((raw as any)._sid)
+            lastEventTaskIdRef.current = currentTaskIdRef.current
+          }
+
           const processed = processSseEvent(raw)
           if (!processed) return
 
           const currentState = useWorkbenchV2Store.getState()
+
+          if (processed.nextTaskId) {
+            nextTaskIdRef.current = processed.nextTaskId
+          }
 
           sseLog.event('process_event', {
             type: raw.type,
@@ -281,6 +319,11 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
               processed.matchResult
             ),
           })
+
+          const shouldCloseForTerminal =
+            raw.type === 'status' &&
+            processed.newStatus &&
+            isTerminalStatus(processed.newStatus)
 
           // Handle status change
           // Handle status change
@@ -307,13 +350,11 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
             // Check if we need to switch task
             if (shouldSwitchTask(oldStatus, processed.newStatus)) {
               // Look for next task ID in the event
-              if (
-                processed.nextTaskId &&
-                processed.nextTaskId !== currentTaskIdRef.current
-              ) {
+              const nextTaskId = processed.nextTaskId || nextTaskIdRef.current
+              if (nextTaskId && nextTaskId !== currentTaskIdRef.current) {
                 sseLog.connection('switching_task', {
                   from: currentTaskIdRef.current,
-                  to: processed.nextTaskId,
+                  to: nextTaskId,
                   reason: `${oldStatus} → ${processed.newStatus}`,
                 })
 
@@ -321,7 +362,8 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
                 flushTokenBuffer()
 
                 // Connect to new task
-                connect(processed.nextTaskId, false)
+                connect(nextTaskId, false)
+                nextTaskIdRef.current = null
                 return
               }
             }
@@ -334,7 +376,11 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
           // Handle error - always set error when errorMessage exists
           // (can be in addition to status change for _FAILED events)
           if (processed.errorMessage) {
-            setError(processed.errorMessage)
+            const shouldSetError =
+              !!processed.newStatus && processed.newStatus.endsWith('FAILED')
+            if (shouldSetError) {
+              setError(processed.errorMessage)
+            }
           }
 
           // Handle tokens
@@ -373,10 +419,16 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
               hasMatchScore: 'match_score' in processed.matchResult,
             })
             setMatchResult(processed.matchResult)
-            // Content Backfill
             const state = useWorkbenchV2Store.getState()
             if (!state.content.matchContent) {
               appendMatchContent(JSON.stringify(processed.matchResult, null, 2))
+            }
+            if (
+              state.status === 'MATCH_STREAMING' ||
+              state.status === 'MATCH_PENDING'
+            ) {
+              flushTokenBuffer()
+              setStatus('MATCH_COMPLETED')
             }
           }
 
@@ -421,6 +473,8 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
               setStatus('PREMATCH_STREAMING')
             } else if (s === 'MATCH_PENDING') {
               setStatus('MATCH_STREAMING')
+            } else if (s === 'INTERVIEW_PENDING') {
+              setStatus('INTERVIEW_STREAMING')
             }
           }
 
@@ -478,6 +532,29 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
               setStatus('PREMATCH_COMPLETED')
             }
 
+            if (
+              (currentStatus === 'JOB_VISION_STREAMING' ||
+                currentStatus === 'JOB_VISION_PENDING' ||
+                currentStatus === 'OCR_STREAMING' ||
+                currentStatus === 'OCR_PENDING' ||
+                currentStatus === 'SUMMARY_STREAMING' ||
+                currentStatus === 'SUMMARY_PENDING' ||
+                currentStatus === 'PREMATCH_STREAMING' ||
+                currentStatus === 'PREMATCH_PENDING') &&
+              nextTaskIdRef.current &&
+              nextTaskIdRef.current !== currentTaskIdRef.current
+            ) {
+              const nextTaskId = nextTaskIdRef.current
+              sseLog.connection('switching_task', {
+                from: currentTaskIdRef.current,
+                to: nextTaskId,
+                reason: `${currentStatus} → completed`,
+              })
+              connect(nextTaskId, false)
+              nextTaskIdRef.current = null
+              return
+            }
+
             // Match Phase Transitions
             else if (
               currentStatus === 'MATCH_STREAMING' ||
@@ -502,13 +579,34 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
               }
             }
           }
+
+          if (shouldCloseForTerminal && esRef.current) {
+            sseLog.connection('client_close', {
+              reason: 'terminal_event',
+              status: processed.newStatus,
+              taskId: currentTaskIdRef.current,
+            })
+            connectionSeqRef.current += 1
+            esRef.current.close()
+            esRef.current = null
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current)
+              reconnectTimeoutRef.current = null
+            }
+            setConnected(false)
+          }
         } catch (e) {
           sseLog.error('Event parse error', { error: e, data: ev.data })
         }
       }
 
       es.onerror = () => {
-        sseLog.warn('Connection error', { taskId })
+        if (connectionSeqRef.current !== connectionId) return
+        sseLog.warn('Connection error', {
+          taskId,
+          readyState: es.readyState,
+          lastEventId: lastEventIdRef.current,
+        })
         setConnected(false)
 
         // Don't close - let EventSource auto-reconnect
@@ -522,8 +620,23 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
             !state.connection.isConnected &&
             !isTerminalStatus(state.status)
           ) {
-            sseLog.connection('manual_reconnect', { taskId })
-            connect(taskId, true) // Reconnect with fromLatest=true
+            if (esRef.current && esRef.current.readyState !== 2) {
+              sseLog.connection('manual_reconnect_skip', {
+                taskId,
+                readyState: esRef.current.readyState,
+                lastEventId: lastEventIdRef.current,
+              })
+              return
+            }
+            const resumeId =
+              lastEventTaskIdRef.current === taskId
+                ? lastEventIdRef.current
+                : null
+            sseLog.connection('manual_reconnect', {
+              taskId,
+              resumeId,
+            })
+            connect(taskId, false, resumeId)
           }
         }, 5000)
       }
@@ -563,6 +676,8 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
 
     // Check if this is a new service (fresh connection needed)
     const isNewConnection = !connectedTasksRef.current.has(taskId)
+    const resumeId = getResumeId(taskId)
+    const fromLatest = !resumeId && !isNewConnection
 
     sseLog.connection('hook_init', {
       taskId,
@@ -571,11 +686,16 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
     })
 
     // Connect
-    connect(taskId, !isNewConnection)
+    connect(taskId, fromLatest, resumeId)
 
     // Cleanup
     return () => {
       if (esRef.current) {
+        sseLog.connection('client_close', {
+          reason: 'cleanup',
+          taskId: currentTaskIdRef.current,
+        })
+        connectionSeqRef.current += 1
         esRef.current.close()
         esRef.current = null
       }
@@ -592,7 +712,15 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
         flushTokenBuffer()
       }
     }
-  }, [userId, serviceId, initialTaskId, skip, connect, flushTokenBuffer])
+  }, [
+    userId,
+    serviceId,
+    initialTaskId,
+    skip,
+    connect,
+    flushTokenBuffer,
+    getResumeId,
+  ])
 
   // Return current connection state for debugging
   return {
@@ -604,9 +732,12 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
 // Helper to check terminal status
 function isTerminalStatus(status: WorkbenchStatusV2): boolean {
   return (
-    status.endsWith('_COMPLETED') ||
-    status.endsWith('_FAILED') ||
     status === 'MATCH_COMPLETED' ||
-    status === 'IDLE'
+    status === 'MATCH_FAILED' ||
+    status === 'CUSTOMIZE_COMPLETED' ||
+    status === 'CUSTOMIZE_FAILED' ||
+    status === 'INTERVIEW_COMPLETED' ||
+    status === 'INTERVIEW_FAILED' ||
+    status.endsWith('_FAILED')
   )
 }

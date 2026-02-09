@@ -26,7 +26,7 @@
   --destructive-foreground: hsl(210 40% 98%);
   --border: oklch(0.92 0.002 240);
   --input: oklch(0.92 0.002 240);
-  --ring: oklch(0.70 0.01 240);
+  --ring: oklch(0.7 0.01 240);
   --radius: 0.625rem;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -41,7 +41,7 @@
   --sidebar-accent: oklch(0.97 0.002 240);
   --sidebar-accent-foreground: oklch(0.205 0.01 240);
   --sidebar-border: oklch(0.92 0.002 240);
-  --sidebar-ring: oklch(0.70 0.01 240);
+  --sidebar-ring: oklch(0.7 0.01 240);
 }
 
 .dark {
@@ -77,8 +77,8 @@
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.985 0 0);
 
-  --border: oklch(0.20 0.006 240);
-  --input: oklch(0.20 0.006 240);
+  --border: oklch(0.2 0.006 240);
+  --input: oklch(0.2 0.006 240);
   --ring: oklch(0.44 0 0);
 
   /* Chart colors for dark mode */
@@ -96,7 +96,7 @@
   --sidebar-primary-foreground: oklch(0.98 0 0);
   --sidebar-accent: oklch(0.18 0.006 240);
   --sidebar-accent-foreground: oklch(0.98 0.002 240);
-  --sidebar-border: oklch(0.20 0.006 240);
+  --sidebar-border: oklch(0.2 0.006 240);
   --sidebar-ring: oklch(0.44 0 0);
 }
 
@@ -144,7 +144,7 @@
 
 @media print {
   @page {
-    margin: var(--resume-page-margin, 10mm);
+    margin: var(--resume-page-margin, 4mm);
     size: auto;
   }
 
@@ -152,6 +152,8 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     background-color: white;
+    margin: 0;
+    padding: 0;
   }
 
   /* Ensure page breaks behave correctly */
@@ -200,8 +202,6 @@
     @apply bg-background text-foreground;
   }
 }
-
-
 
 /* Resume export templates */
 .resume-classic {
@@ -272,7 +272,7 @@
 }
 
 /* Utility class for controllable item spacing */
-.item-gap>*+* {
+.item-gap > * + * {
   margin-top: var(--resume-item-spacing);
 }
 
@@ -329,7 +329,7 @@ li {
 
 @media print {
   @page {
-    margin: var(--resume-page-margin, 10mm);
+    margin: var(--resume-page-margin, 6mm);
   }
 
   body {

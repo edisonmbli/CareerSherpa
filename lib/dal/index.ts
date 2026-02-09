@@ -123,8 +123,8 @@ export async function getServiceById(serviceId: string): Promise<{
         jobStatus === 'FAILED' || matchStatus === 'FAILED'
           ? 'error'
           : jobStatus === 'COMPLETED' && matchStatus === 'COMPLETED'
-          ? 'done'
-          : 'pending'
+            ? 'done'
+            : 'pending'
 
       return {
         id: service.id,
@@ -174,7 +174,13 @@ export async function getServiceWithContextReadOnly(serviceId: string, userId?: 
     return await withPrismaGuard(async (client) => {
       const service = await client.service.findUnique({
         where: { id: serviceId },
-        include: { resume: true, detailedResume: true, job: true, match: true },
+        include: {
+          resume: true,
+          detailedResume: true,
+          job: true,
+          match: true,
+          interview: true,
+        },
       })
       if (!service) return null
       if (userId && service.userId !== userId) return null
@@ -184,3 +190,5 @@ export async function getServiceWithContextReadOnly(serviceId: string, userId?: 
     return null
   }
 }
+
+export { getInterviewContext } from './services'
