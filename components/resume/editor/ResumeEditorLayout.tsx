@@ -164,7 +164,7 @@ export function ResumeEditorLayout({
   return (
     <div
       className={cn(
-        'flex w-full bg-gray-50/50 dark:bg-zinc-950 relative flex-col h-full overflow-hidden'
+        'flex w-full bg-gray-50/50 dark:bg-zinc-950 relative flex-col h-full overflow-hidden',
       )}
     >
       {/* Debug Overlay - REMOVED */}
@@ -180,10 +180,10 @@ export function ResumeEditorLayout({
         {!isDrawerMode && (
           <div
             className={cn(
-              'bg-white dark:bg-popover border-r dark:border-zinc-800 z-20 shadow-sm transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
+              'bg-white dark:bg-popover border-r dark:border-zinc-800 z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
               isStructureOpen
-                ? 'w-[280px] translate-x-0 opacity-100'
-                : 'w-0 -translate-x-full opacity-0 border-none'
+                ? 'w-[280px] translate-x-0 opacity-100 shadow-sm'
+                : 'w-0 -translate-x-full opacity-0 border-none',
             )}
           >
             <div className="w-[280px] h-full relative overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-zinc-800">
@@ -196,8 +196,10 @@ export function ResumeEditorLayout({
         {isDrawerMode && (
           <div
             className={cn(
-              'absolute left-0 top-0 bottom-0 z-50 bg-white dark:bg-popover shadow-2xl border-r dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
-              isStructureOpen ? 'translate-x-0' : '-translate-x-full'
+              'absolute left-0 top-0 bottom-0 z-50 bg-white dark:bg-popover border-r dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
+              isStructureOpen
+                ? 'translate-x-0 shadow-2xl'
+                : '-translate-x-full',
             )}
             style={{ width: '280px' }}
           >
@@ -224,10 +226,10 @@ export function ResumeEditorLayout({
         <main
           ref={centerContainerRef}
           className={cn(
-            'flex-1 bg-gray-100/50 dark:bg-zinc-950/50 relative flex flex-col items-stretch md:items-center pb-32',
+            'flex-1 bg-gray-50/50 dark:bg-zinc-950 relative flex flex-col items-stretch md:items-center pb-32',
             'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent',
             // Fix mobile scrolling by enabling touch scrolling explicitly and ensuring height is constrained
-            isMobileView && 'h-full touch-auto'
+            isMobileView && 'h-full touch-auto',
           )}
           onClick={(e) => {
             // Close sidebars when clicking on the workspace background
@@ -258,7 +260,7 @@ export function ResumeEditorLayout({
           <div
             className={cn(
               'min-h-full flex flex-col items-stretch md:items-center transition-all duration-[800ms] ease-out origin-top w-full md:w-auto overflow-x-hidden md:overflow-visible',
-              isMobileView ? 'py-0' : 'py-8'
+              isMobileView ? 'py-0' : 'py-8',
             )}
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -289,7 +291,7 @@ export function ResumeEditorLayout({
               'bg-white dark:bg-popover shadow-2xs dark:border-zinc-800 z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
               isAIPanelOpen
                 ? 'w-[350px] translate-x-0 opacity-100'
-                : 'w-0 translate-x-full opacity-0 border-none'
+                : 'w-0 translate-x-full opacity-0 border-none',
             )}
           >
             <div className="w-[350px] h-full relative overflow-hidden">
@@ -303,7 +305,7 @@ export function ResumeEditorLayout({
           <div
             className={cn(
               'absolute right-0 top-0 bottom-0 z-50 bg-white dark:bg-popover shadow-xs border-l dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
-              isAIPanelOpen ? 'translate-x-0' : 'translate-x-full'
+              isAIPanelOpen ? 'translate-x-0' : 'translate-x-full',
             )}
             style={{ width: '350px' }}
           >

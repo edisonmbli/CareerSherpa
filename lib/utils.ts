@@ -22,3 +22,10 @@ export function getMatchThemeColor(
   if (score >= MATCH_SCORE_THRESHOLDS.GOOD_FIT) return "amber"
   return "rose"
 }
+
+export function getMatchThemeClass(color?: string) {
+  if (color === "emerald") return "match-theme-high"
+  if (color === "amber") return "match-theme-medium"
+  if (color === "rose") return "match-theme-low"
+  return "match-theme-neutral"
+}

@@ -14,7 +14,6 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from '@/components/ui/drawer'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 // V2 Components (conditionally imported for bundle optimization when V2 is disabled)
@@ -30,12 +29,26 @@ import {
   StepperProgress,
   type StepId,
 } from '@/components/workbench/StepperProgress'
-import { ResultCard } from '@/components/workbench/ResultCard'
-import { InterviewBattlePlan } from '@/components/workbench/interview/InterviewBattlePlan'
+import {
+  ResultCard,
+  buildMatchResultCopyText,
+} from '@/components/workbench/ResultCard'
+import {
+  InterviewBattlePlan,
+  buildInterviewBattlePlanCopyText,
+} from '@/components/workbench/interview/InterviewBattlePlan'
 import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
-import { Coins, PenLine, Loader2, Menu } from 'lucide-react'
+import {
+  Coins,
+  PenLine,
+  Loader2,
+  Menu,
+  Printer,
+  Copy,
+  Check,
+} from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
-import { cn, getMatchScore } from '@/lib/utils'
+import { cn, getMatchScore, getMatchThemeColor } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { createPortal } from 'react-dom'
 import { ThemeToggle } from '@/components/app/ThemeToggle'
@@ -49,6 +62,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import { ServiceNotification } from '@/components/common/ServiceNotification'
 
@@ -1144,12 +1163,114 @@ export function ServiceDisplay({
         : 2 // Default: step 2 (customize)
 
   const stepActionNode = cta?.show ? ctaNode : null
+  const [copiedMatch, setCopiedMatch] = useState(false)
+  const [copiedInterview, setCopiedInterview] = useState(false)
+
+  const handleCopyMatch = async () => {
+    const text = buildMatchResultCopyText(matchResult || matchParsed, {
+      company: displayCompany,
+      jobTitle: displayJob,
+      labels: dict.workbench?.resultCard,
+    })
+    await navigator.clipboard.writeText(text)
+    setCopiedMatch(true)
+    window.setTimeout(() => setCopiedMatch(false), 2000)
+  }
+
+  const handleCopyInterview = async () => {
+    if (!interviewParsed) return
+    const text = buildInterviewBattlePlanCopyText(
+      interviewParsed,
+      dict.workbench?.interviewBattlePlan,
+    )
+    await navigator.clipboard.writeText(text)
+    setCopiedInterview(true)
+    window.setTimeout(() => setCopiedInterview(false), 2000)
+  }
+
+  const matchTheme = getMatchThemeColor(
+    getMatchScore(matchResult || matchParsed),
+  )
+  const interviewTheme = getMatchThemeColor(
+    getMatchScore(matchResult || matchParsed),
+  )
+
+  const getActionThemeClasses = (theme: 'emerald' | 'amber' | 'rose') => {
+    switch (theme) {
+      case 'emerald':
+        return {
+          base: 'bg-emerald-500/45 text-white border-emerald-400/20',
+          hover: 'hover:bg-emerald-500/65',
+          ring: 'ring-emerald-200/60 dark:ring-emerald-900/30',
+        }
+      case 'amber':
+        return {
+          base: 'bg-amber-500/45 text-white border-amber-400/20',
+          hover: 'hover:bg-amber-500/65',
+          ring: 'ring-amber-200/60 dark:ring-amber-900/30',
+        }
+      default:
+        return {
+          base: 'bg-rose-500/45 text-white border-rose-400/20',
+          hover: 'hover:bg-rose-500/65',
+          ring: 'ring-rose-200/60 dark:ring-rose-900/30',
+        }
+    }
+  }
+
+  const matchActions = [
+    {
+      id: 'print',
+      label: String(dict.workbench?.interviewBattlePlan?.print || '打印'),
+      icon: Printer,
+      onClick: () => window.print(),
+      disabled: !(status === 'MATCH_COMPLETED' || matchResult || matchParsed),
+    },
+    {
+      id: 'copy',
+      label: copiedMatch
+        ? String(dict.workbench?.resultCard?.copied || '已复制')
+        : String(dict.workbench?.resultCard?.copy || '复制全文'),
+      icon: copiedMatch ? Check : Copy,
+      onClick: handleCopyMatch,
+      disabled: !(status === 'MATCH_COMPLETED' || matchResult || matchParsed),
+    },
+  ]
+
+  const interviewActions = [
+    {
+      id: 'print',
+      label: String(dict.workbench?.interviewBattlePlan?.print || '打印'),
+      icon: Printer,
+      onClick: () => window.print(),
+      disabled: !(interviewStatus === 'COMPLETED' && interviewParsed),
+    },
+    {
+      id: 'copy',
+      label: copiedInterview
+        ? String(dict.workbench?.interviewBattlePlan?.copied || '已复制')
+        : String(dict.workbench?.interviewBattlePlan?.copy || '复制全文'),
+      icon: copiedInterview ? Check : Copy,
+      onClick: handleCopyInterview,
+      disabled: !(interviewStatus === 'COMPLETED' && interviewParsed),
+    },
+    {
+      id: 'toc',
+      label: String(dict.workbench?.interviewUi?.toc || '目录'),
+      icon: Menu,
+      onClick: () => setTocOpen(true),
+      disabled: !(interviewStatus === 'COMPLETED' && interviewParsed),
+    },
+  ]
+
   const stepActions = stepActionNode
     ? { [activeActionStep]: stepActionNode }
     : undefined
   const step3Label = String(dict.workbench?.tabs?.interview || 'Step 3')
 
   const [mobileBarRoot, setMobileBarRoot] = useState<Element | null>(null)
+  const [matchFabOpen, setMatchFabOpen] = useState(false)
+  const [interviewFabOpen, setInterviewFabOpen] = useState(false)
   useEffect(() => {
     if (typeof document === 'undefined') return
     let el = document.getElementById('mobile-bottom-bar-root')
@@ -1167,6 +1288,7 @@ export function ServiceDisplay({
       <div
         className={cn(
           'h-full flex flex-col space-y-4 md:space-y-2 pt-2 md:pt-0',
+          tabValue === 'customize' && 'bg-gray-50/50 dark:bg-zinc-950',
         )}
       >
         <div className="md:hidden fixed top-0 inset-x-0 h-12 z-[50] bg-background/70 backdrop-blur border-border/40 print:hidden" />
@@ -1185,7 +1307,7 @@ export function ServiceDisplay({
           </div>
         )}
 
-        <div className="w-full px-1 sm:px-4 md:px-6 pt-6 md:pt-0 print:hidden">
+        <div className="w-full px-3 md:px-4 pt-6 md:pt-0 print:hidden">
           <div className="mx-auto w-full max-w-[1180px]">
             <div className="md:hidden fixed top-[14px] right-3 z-[60] flex items-center gap-1">
               <I18nToggleCompact />
@@ -1215,7 +1337,7 @@ export function ServiceDisplay({
           USE_SSE_V2 &&
           v2Bridge &&
           tabValue === 'match' && (
-            <div className="w-full px-1 sm:px-4 md:px-6 print:hidden">
+            <div className="w-full px-0 sm:px-4 md:px-6 print:hidden">
               <div className="mx-auto w-full max-w-[1180px]">
                 <StatusConsoleV2
                   status={v2Bridge.status}
@@ -1241,10 +1363,88 @@ export function ServiceDisplay({
         >
           <TabsContent
             value="match"
-            className="flex-1 flex flex-col min-h-0 overflow-y-auto print:hidden"
+            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-auto print:overflow-visible print:h-auto"
           >
-            <div className="w-full px-1 sm:px-4 md:px-6">
-              <div className="mx-auto w-full max-w-[1180px]">
+            <div className="w-full px-0 sm:px-3 md:px-4">
+              <div className="mx-auto w-full max-w-none sm:max-w-[1180px]">
+                {(status === 'MATCH_COMPLETED' ||
+                  matchResult ||
+                  matchParsed) && (
+                  <>
+                    <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                      <TooltipProvider>
+                        {matchActions.map((action) => {
+                          const themeClasses = getActionThemeClasses(matchTheme)
+                          const Icon = action.icon
+                          return (
+                            <Tooltip key={action.id}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  disabled={action.disabled}
+                                  onClick={action.onClick}
+                                  className={cn(
+                                    'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                    themeClasses.base,
+                                    themeClasses.hover,
+                                    themeClasses.ring,
+                                  )}
+                                >
+                                  <Icon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                {action.label}
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        })}
+                      </TooltipProvider>
+                    </div>
+                    <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                      {matchFabOpen && (
+                        <div className="flex flex-col items-center gap-2 w-10">
+                          {matchActions.map((action) => {
+                            const themeClasses =
+                              getActionThemeClasses(matchTheme)
+                            const Icon = action.icon
+                            return (
+                              <Button
+                                key={action.id}
+                                size="icon"
+                                disabled={action.disabled}
+                                onClick={() => {
+                                  action.onClick()
+                                  setMatchFabOpen(false)
+                                }}
+                                className={cn(
+                                  'h-9 w-9 rounded-full border shadow-lg',
+                                  themeClasses.base,
+                                  themeClasses.hover,
+                                  themeClasses.ring,
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                                <span className="sr-only">{action.label}</span>
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <Button
+                        size="icon"
+                        onClick={() => setMatchFabOpen((prev) => !prev)}
+                        className={cn(
+                          'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                          getActionThemeClasses(matchTheme).base,
+                          getActionThemeClasses(matchTheme).hover,
+                        )}
+                      >
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </>
+                )}
                 {USE_SSE_V2 &&
                   v2Bridge &&
                   (v2Bridge.status === 'IDLE' ||
@@ -1351,7 +1551,7 @@ export function ServiceDisplay({
 
           <TabsContent
             value="customize"
-            className="flex-1 flex flex-col min-h-0 print:hidden"
+            className="flex-1 flex flex-col min-h-0 print:hidden bg-gray-50/50 dark:bg-zinc-950"
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
@@ -1464,16 +1664,97 @@ export function ServiceDisplay({
 
           <TabsContent
             value="interview"
-            className="flex-1 flex flex-col min-h-0 overflow-hidden print:overflow-visible"
+            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-hidden print:overflow-visible"
           >
             <div
               ref={interviewScrollRef}
-              className="flex-1 min-h-0 overflow-y-auto print:overflow-visible"
+              className="flex-1 min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-auto print:overflow-visible"
               style={{ scrollbarGutter: 'stable' }}
             >
               {interviewStatus === 'COMPLETED' && interviewParsed ? (
-                <div className="w-full px-1 sm:px-4 md:px-6 pt-0 pb-6 print:px-0 print:py-2">
-                  <div className="mx-auto w-full max-w-[1180px] relative">
+                <div className="w-full px-0 sm:px-3 md:px-4 pt-0 pb-6 print:px-0 print:py-2">
+                  <div className="mx-auto w-full max-w-none sm:max-w-[1180px] relative">
+                    <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                      <TooltipProvider>
+                        {interviewActions.map((action) => {
+                          const themeClasses =
+                            getActionThemeClasses(interviewTheme)
+                          const Icon = action.icon
+                          const isToc = action.id === 'toc'
+                          const button = (
+                            <Tooltip key={action.id}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  disabled={action.disabled}
+                                  onClick={action.onClick}
+                                  className={cn(
+                                    'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                    themeClasses.base,
+                                    themeClasses.hover,
+                                    themeClasses.ring,
+                                  )}
+                                >
+                                  <Icon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                {action.label}
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                          return isToc ? (
+                            <div key={action.id} className="xl:hidden">
+                              {button}
+                            </div>
+                          ) : (
+                            button
+                          )
+                        })}
+                      </TooltipProvider>
+                    </div>
+                    <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                      {interviewFabOpen && (
+                        <div className="flex flex-col items-center gap-2 w-10">
+                          {interviewActions.map((action) => {
+                            const themeClasses =
+                              getActionThemeClasses(interviewTheme)
+                            const Icon = action.icon
+                            return (
+                              <Button
+                                key={action.id}
+                                size="icon"
+                                disabled={action.disabled}
+                                onClick={() => {
+                                  action.onClick()
+                                  setInterviewFabOpen(false)
+                                }}
+                                className={cn(
+                                  'h-9 w-9 rounded-full border shadow-lg',
+                                  themeClasses.base,
+                                  themeClasses.hover,
+                                  themeClasses.ring,
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                                <span className="sr-only">{action.label}</span>
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <Button
+                        size="icon"
+                        onClick={() => setInterviewFabOpen((prev) => !prev)}
+                        className={cn(
+                          'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                          getActionThemeClasses(interviewTheme).base,
+                          getActionThemeClasses(interviewTheme).hover,
+                        )}
+                      >
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </div>
                     <div className="mx-auto w-full max-w-[880px] relative print:max-w-none print:mx-0 print:w-full">
                       <InterviewBattlePlan
                         data={interviewParsed}
@@ -1483,8 +1764,8 @@ export function ServiceDisplay({
                       />
                     </div>
                     <aside className="hidden xl:block print:hidden w-[240px]">
-                      <div className="fixed top-36 w-[240px] left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)]">
-                        <div className="w-full max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
+                      <div className="fixed top-[120px] w-[240px] left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)]">
+                        <div className="w-full max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
                           <div className="text-[11px] font-semibold text-foreground/60 tracking-[0.24em]">
                             {dict.workbench?.interviewUi?.toc || 'Contents'}
                           </div>
@@ -1536,7 +1817,7 @@ export function ServiceDisplay({
                   v2Bridge.status === 'INTERVIEW_STREAMING' ||
                   v2Bridge.status === 'INTERVIEW_COMPLETED') &&
                 (v2Bridge.interviewContent || v2Bridge.interviewJson) ? (
-                <div className="w-full px-1 sm:px-4 md:px-6">
+                <div className="w-full px-0 sm:px-4 md:px-6">
                   <div className="mx-auto w-full max-w-[1180px]">
                     <StreamPanelV2
                       status={v2Bridge.status}
@@ -1689,18 +1970,6 @@ export function ServiceDisplay({
 
         {tabValue === 'interview' && interviewStatus === 'COMPLETED' && (
           <Drawer open={tocOpen} onOpenChange={setTocOpen}>
-            <DrawerTrigger asChild>
-              <Button
-                size="icon"
-                className={cn(
-                  'fixed bottom-[85px] right-4 h-10 w-10 rounded-full shadow-lg z-40 transition-all duration-300 md:hidden',
-                  'active:scale-95 bg-gradient-to-r from-blue-200 to-blue-300 text-blue-600 hover:from-blue-200 hover:to-blue-300 border border-blue-200',
-                  'print:hidden',
-                )}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </DrawerTrigger>
             <DrawerContent className="print:hidden">
               <DrawerHeader className="pb-2">
                 <DrawerTitle className="text-sm">

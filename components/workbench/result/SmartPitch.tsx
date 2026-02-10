@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, getMatchThemeClass } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Copy, Check, Sparkles, Info } from 'lucide-react'
 import {
@@ -38,37 +38,12 @@ export function SmartPitch({
   labels,
 }: SmartPitchProps) {
   const [isCopied, setIsCopied] = useState(false)
-
-  // Theme Logic
-  const getThemeStyles = (color: string) => {
-    switch (color) {
-      case 'emerald':
-        return {
-          highlight: 'bg-emerald-200 dark:bg-emerald-900/50',
-          text: 'text-emerald-600 dark:text-emerald-400',
-          border: 'border-emerald-500/20',
-        }
-      case 'amber':
-        return {
-          highlight: 'bg-amber-200 dark:bg-amber-900/50',
-          text: 'text-amber-600 dark:text-amber-400',
-          border: 'border-amber-500/20',
-        }
-      case 'rose':
-        return {
-          highlight: 'bg-rose-200 dark:bg-rose-900/50',
-          text: 'text-rose-600 dark:text-rose-400',
-          border: 'border-rose-500/20',
-        }
-      default:
-        return {
-          highlight: 'bg-slate-200 dark:bg-slate-800',
-          text: 'text-slate-600 dark:text-slate-400',
-          border: 'border-slate-500/20',
-        }
-    }
+  const matchThemeClass = getMatchThemeClass(themeColor)
+  const styles = {
+    highlight: 'bg-match-highlight',
+    text: 'text-match-text',
+    border: 'border-match-border',
   }
-  const styles = getThemeStyles(themeColor)
 
   const handleCopy = () => {
     const clean = script.replace(/[【\[][HVC][】\]]/g, '').trim()
@@ -81,7 +56,7 @@ export function SmartPitch({
     const parts = text.split(/([【\[][HVC][】\]])/g)
 
     return (
-      <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300 font-sans">
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-stone-800 dark:text-stone-200 font-[family-name:var(--font-noto-serif),serif]">
         {parts.map((part, i) => {
           const isTag = part.match(/^[【\[][HVC][】\]]$/)
 
@@ -89,8 +64,8 @@ export function SmartPitch({
             const tagCode = part.includes('H')
               ? 'H'
               : part.includes('V')
-              ? 'V'
-              : 'C'
+                ? 'V'
+                : 'C'
             const tagText =
               tagCode === 'H' ? 'HOOK' : tagCode === 'V' ? 'VALUE' : 'CTA'
 
@@ -104,7 +79,7 @@ export function SmartPitch({
                 <span
                   className={cn(
                     'text-[9px] font-bold tracking-widest uppercase select-none',
-                    styles.text
+                    styles.text,
                   )}
                 >
                   {tagText}
@@ -120,8 +95,13 @@ export function SmartPitch({
     )
   }
 
+  const scriptLines = script
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
   return (
-    <div className="w-full group">
+    <div className={cn('w-full group', matchThemeClass)}>
       {/* Header Row - Matches AnalysisAccordion (Half-Highlight Style) */}
       <div className="flex items-center w-full mb-6 pl-2">
         <div className="flex-1 flex items-center justify-between">
@@ -131,12 +111,12 @@ export function SmartPitch({
             <div
               className={cn(
                 'absolute bottom-4 -left-4 w-24 h-5 -z-10',
-                styles.highlight
+                styles.highlight,
               )}
             />
 
             {/* Title Text (Foreground) */}
-            <span className="font-[family-name:var(--font-playfair),serif] text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight z-10 relative">
+            <span className="font-[family-name:var(--font-playfair),serif] text-[22px] leading-[30px] font-bold text-stone-900 dark:text-stone-50 tracking-tight z-10 relative">
               {labels?.title || 'Smart Pitch'}
             </span>
           </div>
@@ -146,10 +126,10 @@ export function SmartPitch({
             {/* Success Message (Side) */}
             <span
               className={cn(
-                'text-xs text-slate-600/50 dark:text-slate-400/80 font-base transition-all duration-300',
+                'text-xs text-stone-600/50 dark:text-stone-400/80 font-base transition-all duration-300',
                 isCopied
                   ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 translate-x-4 pointer-events-none'
+                  : 'opacity-0 translate-x-4 pointer-events-none',
               )}
             >
               {labels?.cleanCopied || 'Clean text copied'}
@@ -161,7 +141,7 @@ export function SmartPitch({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="h-8 w-8 p-0 rounded-full text-stone-400 hover:text-stone-900 dark:text-stone-500 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                     onClick={handleCopy}
                   >
                     {isCopied ? (
@@ -172,30 +152,30 @@ export function SmartPitch({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left" className="max-w-xs text-xs">
-                  <p className="font-semibold mb-1 opacity-70 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2">
+                  <p className="font-semibold mb-1 opacity-70 border-b border-stone-200 dark:border-stone-800 pb-1 mb-2">
                     {labels?.definitions?.structure || 'Structure:'}
                   </p>
-                  <ul className="space-y-1.5 list-none text-slate-600 dark:text-slate-400">
+                  <ul className="space-y-1.5 list-none text-stone-600 dark:text-stone-400">
                     <li>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100 inline-block w-4">
+                      <span className="font-semibold text-stone-900 dark:text-stone-100 inline-block w-4">
                         H
                       </span>
                       {labels?.smartPitchDefs?.hook || 'Hook: Grab attention'}
                     </li>
                     <li>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100 inline-block w-4">
+                      <span className="font-semibold text-stone-900 dark:text-stone-100 inline-block w-4">
                         V
                       </span>
                       {labels?.smartPitchDefs?.value || 'Value: Showcase fit'}
                     </li>
                     <li>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100 inline-block w-4">
+                      <span className="font-semibold text-stone-900 dark:text-stone-100 inline-block w-4">
                         C
                       </span>
                       {labels?.smartPitchDefs?.cta || 'CTA: Call-to-Action'}
                     </li>
                   </ul>
-                  <p className="mt-2 text-[10px] text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-1.5 opacity-60">
+                  <p className="mt-2 text-[10px] text-stone-400 border-t border-stone-200 dark:border-stone-800 pt-1.5 opacity-60">
                     {labels?.definitions?.clickToCopy || 'Click to copy text'}
                   </p>
                 </TooltipContent>
@@ -205,18 +185,16 @@ export function SmartPitch({
         </div>
       </div>
       {/* Content Row */}
-      <div className="relative">
-        {/* Vertical Guide Line - Aligned to simple gutter */}
-        <div className="absolute left-[12px] top-[-24px] bottom-0 w-px bg-slate-200 dark:bg-slate-800" />
-
-        <div className="relative pl-[28px]">
-          {/* Plain Text Container (No Bubble) */}
-          <div className="relative py-2">{renderAnnotatedText(script)}</div>
-        </div>
-      </div>{' '}
+      <div className="space-y-2">
+        {scriptLines.map((line, index) => (
+          <div key={`${line}-${index}`} className="relative">
+            <div className="py-1.5">{renderAnnotatedText(line)}</div>
+          </div>
+        ))}
+      </div>
       {/* This closes the "Content Row" div */}
       {/* Mobile Legend (Guide) */}
-      <div className="md:hidden mt-4 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+      <div className="md:hidden mt-4 pt-3 border-t border-stone-200/50 dark:border-stone-800/50">
         <div className="flex justify-center gap-2">
           {[
             {
@@ -234,13 +212,13 @@ export function SmartPitch({
           ].map((item, idx) => (
             <div
               key={idx}
-              className="flex  gap-2 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400"
+              className="flex  gap-2 text-[10px] leading-relaxed text-stone-500 dark:text-stone-400"
             >
               <span
                 className={cn(
-                  'font-bold text-slate-900 dark:text-slate-200 min-w-[1.5ch] mt-[1px]',
+                  'font-bold text-stone-900 dark:text-stone-200 min-w-[1.5ch] mt-[1px]',
                   // Use theme color for the letter to link back to tags
-                  styles.text
+                  styles.text,
                 )}
               >
                 {item.label}

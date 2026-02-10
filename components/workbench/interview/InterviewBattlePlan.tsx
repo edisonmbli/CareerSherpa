@@ -1,15 +1,18 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { RadarModule } from './RadarModule'
 import { HookModule } from './HookModule'
 import { EvidenceModule } from './EvidenceModule'
 import { DefenseModule } from './DefenseModule'
 import { ReverseModule } from './ReverseModule'
 import { KnowledgeRefreshModule } from './KnowledgeRefreshModule'
-import { Button } from '@/components/ui/button'
-import { Printer, Copy, Check, RotateCcw } from 'lucide-react'
-import { cn, getMatchScore, getMatchThemeColor } from '@/lib/utils'
+import {
+  cn,
+  getMatchScore,
+  getMatchThemeClass,
+  getMatchThemeColor,
+} from '@/lib/utils'
 
 interface InterviewBattlePlanData {
   radar: {
@@ -127,7 +130,6 @@ interface InterviewBattlePlanProps {
     }
   }
   className?: string
-  onRegenerate?: () => void
 }
 
 const defaultLabels = {
@@ -191,12 +193,118 @@ const defaultLabels = {
   },
 }
 
+export function buildInterviewBattlePlanCopyText(
+  data: InterviewBattlePlanData,
+  labels?: InterviewBattlePlanProps['labels'],
+) {
+  const finalLabels = {
+    ...defaultLabels,
+    ...labels,
+    radar: { ...defaultLabels.radar, ...labels?.radar },
+    hook: { ...defaultLabels.hook, ...labels?.hook },
+    evidence: { ...defaultLabels.evidence, ...labels?.evidence },
+    defense: { ...defaultLabels.defense, ...labels?.defense },
+    reverse: { ...defaultLabels.reverse, ...labels?.reverse },
+    knowledgeRefresh: {
+      ...defaultLabels.knowledgeRefresh,
+      ...labels?.knowledgeRefresh,
+    },
+  }
+
+  const sections = [
+    `# ${finalLabels.title}`,
+    '',
+    `## ${finalLabels.radar.title}`,
+    `### ${finalLabels.radar.coreChallenges}`,
+    ...data.radar.core_challenges.map((c, i) =>
+      [
+        `${finalLabels.radar.challenge} ${i + 1}: ${c.challenge}`,
+        `${finalLabels.radar.whyImportant}: ${c.why_important}`,
+        `${finalLabels.radar.yourAngle}: ${c.your_angle}`,
+      ].join('\n'),
+    ),
+    '',
+    `### ${finalLabels.radar.interviewRounds}`,
+    ...data.radar.interview_rounds.map((round, i) =>
+      [
+        `${finalLabels.radar.round.replace('{round}', String(i + 1))}: ${round.round_name}`,
+        `${round.interviewer_role}`,
+        `${finalLabels.radar.focus}:`,
+        ...round.focus_points.map((point) => `- ${point}`),
+      ].join('\n'),
+    ),
+    '',
+    `### ${finalLabels.radar.hiddenRequirements}`,
+    ...data.radar.hidden_requirements.map((req, i) => `${i + 1}. ${req}`),
+    '',
+    `## ${finalLabels.hook.title}`,
+    `${finalLabels.hook.ppfScript}`,
+    data.hook.ppf_script,
+    '',
+    finalLabels.hook.keyHooks,
+    ...data.hook.key_hooks.map((hook, i) =>
+      [
+        `${i + 1}. ${hook.hook}`,
+        `${finalLabels.hook.evidenceSource}: ${hook.evidence_source}`,
+      ].join('\n'),
+    ),
+    '',
+    `## ${finalLabels.evidence.title}`,
+    ...data.evidence.map((story, i) =>
+      [
+        `${finalLabels.evidence.storyLabel} ${i + 1}: ${story.story_title}`,
+        `${finalLabels.evidence.matchedPainPoint}: ${story.matched_pain_point}`,
+        `${finalLabels.evidence.situation}: ${story.star.situation}`,
+        `${finalLabels.evidence.task}: ${story.star.task}`,
+        `${finalLabels.evidence.action}: ${story.star.action}`,
+        `${finalLabels.evidence.result}: ${story.star.result}`,
+        `${finalLabels.evidence.impact}: ${story.quantified_impact}`,
+        `${finalLabels.evidence.source}: ${
+          story.source === 'detailed_resume'
+            ? finalLabels.evidence.sourceDetailedResume
+            : finalLabels.evidence.sourceResume
+        }`,
+      ].join('\n'),
+    ),
+    '',
+    `## ${finalLabels.defense.title}`,
+    ...data.defense.map((item, i) =>
+      [
+        `${finalLabels.defense.weakness} ${i + 1}: ${item.weakness}`,
+        `${finalLabels.defense.anticipatedQuestion}: ${item.anticipated_question}`,
+        `${finalLabels.defense.defenseScript}: ${item.defense_script}`,
+        `${finalLabels.defense.supportingEvidence}: ${item.supporting_evidence}`,
+      ].join('\n'),
+    ),
+    '',
+    `## ${finalLabels.reverse.title}`,
+    ...data.reverse_questions.map((q, i) =>
+      [
+        `${finalLabels.reverse.question} ${i + 1}: ${q.question}`,
+        `${finalLabels.reverse.askIntent}: ${q.ask_intent}`,
+        `${finalLabels.reverse.listenFor}: ${q.listen_for}`,
+      ].join('\n'),
+    ),
+  ]
+
+  if (data.knowledge_refresh && data.knowledge_refresh.length > 0) {
+    sections.push('')
+    sections.push(`## ${finalLabels.knowledgeRefresh.title}`)
+    data.knowledge_refresh.forEach((topic, i) => {
+      sections.push(
+        `${i + 1}. ${topic.topic}\n${topic.relevance}\n${topic.key_points.map((p) => `- ${p}`).join('\n')}`,
+      )
+    })
+  }
+
+  return sections.join('\n')
+}
+
 export function InterviewBattlePlan({
   data,
   matchScore,
   labels = defaultLabels,
   className,
-  onRegenerate,
 }: InterviewBattlePlanProps) {
   const finalLabels = useMemo(
     () => ({
@@ -214,163 +322,27 @@ export function InterviewBattlePlan({
     }),
     [labels],
   )
-  const [copied, setCopied] = useState(false)
-
   const resolvedScore = getMatchScore({ score: matchScore })
   const themeColor = getMatchThemeColor(resolvedScore)
-
-  const handlePrint = () => {
-    window.print()
-  }
-
-  const handleCopyAll = async () => {
-    try {
-      const sections = [
-        `# ${finalLabels.title}`,
-        '',
-        `## ${finalLabels.radar.title}`,
-        `### ${finalLabels.radar.coreChallenges}`,
-        ...data.radar.core_challenges.map((c, i) =>
-          [
-            `${finalLabels.radar.challenge} ${i + 1}: ${c.challenge}`,
-            `${finalLabels.radar.whyImportant}: ${c.why_important}`,
-            `${finalLabels.radar.yourAngle}: ${c.your_angle}`,
-          ].join('\n'),
-        ),
-        '',
-        `### ${finalLabels.radar.interviewRounds}`,
-        ...data.radar.interview_rounds.map((round, i) =>
-          [
-            `${finalLabels.radar.round.replace('{round}', String(i + 1))}: ${round.round_name}`,
-            `${round.interviewer_role}`,
-            `${finalLabels.radar.focus}:`,
-            ...round.focus_points.map((point) => `- ${point}`),
-          ].join('\n'),
-        ),
-        '',
-        `### ${finalLabels.radar.hiddenRequirements}`,
-        ...data.radar.hidden_requirements.map((req, i) => `${i + 1}. ${req}`),
-        '',
-        `## ${finalLabels.hook.title}`,
-        `${finalLabels.hook.ppfScript}`,
-        data.hook.ppf_script,
-        '',
-        finalLabels.hook.keyHooks,
-        ...data.hook.key_hooks.map((hook, i) =>
-          [
-            `${i + 1}. ${hook.hook}`,
-            `${finalLabels.hook.evidenceSource}: ${hook.evidence_source}`,
-          ].join('\n'),
-        ),
-        '',
-        finalLabels.hook.deliveryTips,
-        ...data.hook.delivery_tips.map((tip, i) => `${i + 1}. ${tip}`),
-        '',
-        `## ${finalLabels.evidence.title}`,
-        ...data.evidence.map((s, i) =>
-          [
-            `${finalLabels.evidence.storyLabel || finalLabels.evidence.storyTitle} ${i + 1}: ${s.story_title}`,
-            `${finalLabels.evidence.matchedPainPoint}: ${s.matched_pain_point}`,
-            `${finalLabels.evidence.impact}: ${s.quantified_impact}`,
-            `S · ${finalLabels.evidence.situation}: ${s.star.situation}`,
-            `T · ${finalLabels.evidence.task}: ${s.star.task}`,
-            `A · ${finalLabels.evidence.action}: ${s.star.action}`,
-            `R · ${finalLabels.evidence.result}: ${s.star.result}`,
-          ].join('\n'),
-        ),
-        '',
-        `## ${finalLabels.defense.title}`,
-        ...data.defense.map((d, i) =>
-          [
-            `${finalLabels.defense.weakness} ${i + 1}: ${d.weakness}`,
-            `${finalLabels.defense.anticipatedQuestion}: ${d.anticipated_question}`,
-            `${finalLabels.defense.supportingEvidence}: ${d.supporting_evidence}`,
-            `${finalLabels.defense.defenseScript}: ${d.defense_script}`,
-          ].join('\n'),
-        ),
-        '',
-        `## ${finalLabels.reverse.title}`,
-        ...data.reverse_questions.map((q, i) =>
-          [
-            `${i + 1}. ${q.question}`,
-            `   - ${finalLabels.reverse.askIntent}: ${q.ask_intent}`,
-            `   - ${finalLabels.reverse.listenFor}: ${q.listen_for}`,
-          ].join('\n'),
-        ),
-      ]
-
-      const textContent = sections.join('\n')
-      await navigator.clipboard.writeText(textContent)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
-  }
+  const matchThemeClass = getMatchThemeClass(themeColor)
 
   return (
     <div
       className={cn(
-        'max-w-[880px] mx-auto w-full relative mt-4 print:max-w-none print:w-full print:mt-0 print:break-before-auto print:break-inside-auto animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
+        'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible print:max-w-none print:w-full print:mt-0 print:break-before-auto print:break-inside-auto animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
         'bg-card/50',
-        'border border-border',
-        'shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
-        'rounded-xl backdrop-blur-sm',
+        'border-0 sm:border sm:border-border',
+        'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
+        'rounded-sm sm:rounded-xl backdrop-blur-sm',
         'print:shadow-none print:border-0',
+        matchThemeClass,
         className,
       )}
       style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
       }}
     >
-      {/* Action Bar */}
-      <div className="hidden md:flex items-center justify-between p-5 md:p-6 border-b border-border print:hidden">
-        <h2 className="text-xl font-bold text-foreground">
-          {finalLabels.title}
-        </h2>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handlePrint}
-            className="gap-1.5 h-8 text-xs"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            {finalLabels.print}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleCopyAll}
-            className="gap-1.5 h-8 text-xs"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                {finalLabels.copied}
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                {finalLabels.copy}
-              </>
-            )}
-          </Button>
-          {onRegenerate && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onRegenerate}
-              className="gap-1.5 h-8 text-xs"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              {finalLabels.regenerate}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="relative p-4 sm:p-5 md:p-8 pb-24 md:pb-10 print:pt-4 print:pb-4 print:px-2">
+      <div className="relative px-0 py-3 sm:p-4 md:p-8 pb-24 md:pb-10 print:pt-4 print:pb-4 print:px-2">
         <div className="space-y-10">
           {data?.radar && (
             <section

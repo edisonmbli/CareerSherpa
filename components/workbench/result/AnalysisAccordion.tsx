@@ -2,10 +2,11 @@
 
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
-import { cn } from '@/lib/utils'
+import { cn, getMatchThemeClass } from '@/lib/utils'
+import * as AccordionPrimitive from '@radix-ui/react-accordion'
+import { WatermarkPrefix } from '@/components/workbench/WatermarkPrefix'
 import {
   Accordion,
-  AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
@@ -43,6 +44,19 @@ interface AnalysisAccordionProps {
   }
 }
 
+const AnalysisAccordionContent = ({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Content>) => (
+  <AccordionPrimitive.Content
+    className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-visible text-sm"
+    {...props}
+  >
+    <div className={cn('pt-0 pb-2', className)}>{children}</div>
+  </AccordionPrimitive.Content>
+)
+
 export function AnalysisAccordion({
   type,
   items,
@@ -52,49 +66,20 @@ export function AnalysisAccordion({
   labels,
 }: AnalysisAccordionProps) {
   if (!items || items.length === 0) return null
-
-  // Theme Styles Mapping
-  const getThemeStyles = (color: string) => {
-    switch (color) {
-      case 'emerald':
-        return {
-          highlight: 'bg-emerald-200 dark:bg-emerald-900/50', // Highlight Block
-          text: 'text-emerald-600 dark:text-emerald-400',
-          border: 'border-emerald-500/20',
-          decoration: 'decoration-emerald-200 dark:decoration-emerald-800',
-        }
-      case 'amber':
-        return {
-          highlight: 'bg-amber-200 dark:bg-amber-900/50',
-          text: 'text-amber-600 dark:text-amber-400',
-          border: 'border-amber-500/20',
-          decoration: 'decoration-amber-200 dark:decoration-amber-800',
-        }
-      case 'rose':
-        return {
-          highlight: 'bg-rose-200 dark:bg-rose-900/50',
-          text: 'text-rose-600 dark:text-rose-400',
-          border: 'border-rose-500/20',
-          decoration: 'decoration-rose-200 dark:decoration-rose-800',
-        }
-      default: // Slate fallback
-        return {
-          highlight: 'bg-slate-200 dark:bg-slate-800',
-          text: 'text-slate-600 dark:text-slate-400',
-          border: 'border-slate-500/20',
-          decoration: 'decoration-slate-200 dark:decoration-slate-800',
-        }
-    }
+  const matchThemeClass = getMatchThemeClass(themeColor)
+  const styles = {
+    highlight: 'bg-match-highlight',
+    text: 'text-match-text',
+    border: 'border-match-border',
+    decoration: 'decoration-match-decoration',
   }
-
-  const styles = getThemeStyles(themeColor)
 
   return (
     <Accordion
       type="single"
       collapsible
       {...(defaultOpen ? { defaultValue: 'item-1' } : {})}
-      className="w-full"
+      className={cn('w-full', matchThemeClass)}
     >
       <AccordionItem
         value="item-1"
@@ -109,20 +94,20 @@ export function AnalysisAccordion({
               <div
                 className={cn(
                   'absolute bottom-4 -left-4 w-24 h-5 -z-10',
-                  styles.highlight
+                  styles.highlight,
                 )}
               />
 
               {/* Title Text (Foreground) */}
-              <span className="font-[family-name:var(--font-playfair),serif] text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight z-10 relative">
+              <span className="font-[family-name:var(--font-playfair),serif] text-[22px] leading-[30px] font-bold text-foreground tracking-tight z-10 relative">
                 {title}
               </span>
             </div>
           </div>
         </AccordionTrigger>
 
-        <AccordionContent className="px-0 pb-2">
-          <div className="space-y-4 pt-2">
+        <AnalysisAccordionContent className="px-0">
+          <div className="space-y-2 pt-1">
             {items.map((item, idx) => {
               const isString = typeof item === 'string'
               const point = isString
@@ -134,26 +119,12 @@ export function AnalysisAccordion({
               return (
                 <div
                   key={idx}
-                  className="group/item grid grid-cols-[24px_1fr] relative"
+                  className="group/item relative pt-1 pb-4 last:pb-0"
                 >
-                  {/* Column 1: Gutter (Dot/Line) - Simple Alignment */}
-                  <div className="relative flex flex-col items-center w-6">
-                    {/* Connector Line - Runs through */}
-                    <div className="absolute top-[-24px] bottom-[-24px] w-px bg-slate-200 dark:bg-slate-800" />
-
-                    {/* Hollow Dot Indicator - On top of line */}
-                    <div
-                      className={cn(
-                        'w-1.5 h-1.5 rounded-full border-[1.5px] bg-white dark:bg-slate-950 z-10 mt-2.5 transition-colors duration-300',
-                        styles.border
-                      )}
-                    />
-                  </div>
-
-                  {/* Column 2: Content */}
-                  <div className="space-y-2 pb-2 relative pl-1">
+                  <WatermarkPrefix index={idx} themeColor={themeColor} />
+                  <div className="space-y-1.5 relative">
                     {/* Main Point */}
-                    <div className="text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                    <div className="text-sm leading-relaxed text-stone-800 dark:text-stone-200 font-[family-name:var(--font-noto-serif),serif]">
                       <ReactMarkdown
                         components={{
                           p: ({ node, ...props }) => (
@@ -163,7 +134,7 @@ export function AnalysisAccordion({
                             <span
                               className={cn(
                                 'font-semibold underline decoration-2 underline-offset-2 decoration-wavy',
-                                styles.decoration
+                                styles.decoration,
                               )}
                               {...props}
                             />
@@ -176,7 +147,7 @@ export function AnalysisAccordion({
 
                     {/* Evidence - Subtle */}
                     {evidence && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-light pl-0.5">
+                      <div className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed font-light pl-0.5">
                         <ReactMarkdown>{evidence}</ReactMarkdown>
                       </div>
                     )}
@@ -185,7 +156,7 @@ export function AnalysisAccordion({
                     {tip &&
                       typeof tip === 'object' &&
                       (tip.interview || tip.resume) && (
-                        <div className="mt-4 pt-1 flex flex-col gap-4">
+                        <div className="mt-3 flex flex-col gap-3">
                           {tip.resume && (
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
@@ -195,7 +166,7 @@ export function AnalysisAccordion({
                                 <div
                                   className={cn(
                                     'text-[9px] font-bold uppercase tracking-widest',
-                                    styles.text
+                                    styles.text,
                                   )}
                                 >
                                   {labels?.resumeTweak || 'Resume Tweak'}
@@ -203,8 +174,8 @@ export function AnalysisAccordion({
                               </div>
                               <p
                                 className={cn(
-                                  'text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-4 border-l',
-                                  styles.border
+                                  'text-xs text-stone-600 dark:text-stone-300 leading-relaxed pl-4 border-l',
+                                  styles.border,
                                 )}
                               >
                                 {tip.resume}
@@ -218,7 +189,7 @@ export function AnalysisAccordion({
                                 <div
                                   className={cn(
                                     'text-[9px] font-bold uppercase tracking-widest',
-                                    styles.text
+                                    styles.text,
                                   )}
                                 >
                                   {labels?.interviewPrep || 'Interview Prep'}
@@ -226,8 +197,8 @@ export function AnalysisAccordion({
                               </div>
                               <p
                                 className={cn(
-                                  'text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-4 border-l',
-                                  styles.border
+                                  'text-xs text-stone-600 dark:text-stone-300 leading-relaxed pl-4 border-l',
+                                  styles.border,
                                 )}
                               >
                                 {tip.interview}
@@ -241,7 +212,7 @@ export function AnalysisAccordion({
               )
             })}
           </div>
-        </AccordionContent>
+        </AnalysisAccordionContent>
       </AccordionItem>
     </Accordion>
   )

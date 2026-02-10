@@ -40,28 +40,28 @@ export function ResultHeader({
     score >= MATCH_SCORE_THRESHOLDS.HIGHLY_MATCHED
       ? labels?.highlyMatched || 'Highly Matched'
       : score >= MATCH_SCORE_THRESHOLDS.GOOD_FIT
-      ? labels?.goodFit || 'Good Fit'
-      : labels?.lowMatch || 'Low Match'
+        ? labels?.goodFit || 'Good Fit'
+        : labels?.lowMatch || 'Low Match'
 
   // Semantic Colors - Tuned for readability & comfort
   const getThemeColors = (s: number) => {
     if (s >= MATCH_SCORE_THRESHOLDS.HIGHLY_MATCHED)
       return {
-        text: 'text-emerald-600 dark:text-emerald-400',
-        glow: 'bg-emerald-500',
+        text: 'text-theme-emerald-600 dark:text-theme-emerald-400',
+        glow: 'bg-theme-emerald-500',
         stop1: '#059669', // Emerald 600
         stop2: '#34d399', // Emerald 400
       }
     if (s >= MATCH_SCORE_THRESHOLDS.GOOD_FIT)
       return {
-        text: 'text-amber-600 dark:text-amber-400',
-        glow: 'bg-amber-500',
+        text: 'text-theme-amber-600 dark:text-theme-amber-400',
+        glow: 'bg-theme-amber-500',
         stop1: '#d97706', // Amber 600
         stop2: '#fbbf24', // Amber 400
       }
     return {
-      text: 'text-rose-600 dark:text-rose-400',
-      glow: 'bg-rose-500',
+      text: 'text-theme-rose-600 dark:text-theme-rose-400',
+      glow: 'bg-theme-rose-500',
       stop1: '#e11d48', // Rose 600
       stop2: '#fb7185', // Rose 400
     }
@@ -81,11 +81,11 @@ export function ResultHeader({
       {/* 1. Left: Identity Block */}
       <div className="flex flex-col gap-1.5 flex-1 min-w-0">
         {/* Company Name */}
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-[family-name:var(--font-playfair),serif] font-bold tracking-tight text-slate-900 dark:text-slate-50 flex items-center gap-2 truncate">
+        <h2 className="text-2xl md:text-3xl lg:text-4xl font-[family-name:var(--font-playfair),serif] font-bold tracking-tight text-stone-900 dark:text-stone-50 flex items-center gap-2 truncate">
           {company || labels?.targetCompany || 'Target Company'}
         </h2>
         {/* Job Title */}
-        <div className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 tracking-wide uppercase truncate">
+        <div className="text-xs md:text-sm text-stone-600 dark:text-stone-400 font-medium flex items-center gap-1.5 tracking-wide uppercase truncate">
           {jobTitle || labels?.targetPosition || 'Target Position'}
         </div>
       </div>
@@ -98,7 +98,7 @@ export function ResultHeader({
             'text-sm md:text-base lg:text-lg font-bold uppercase tracking-wider text-right',
             theme.text,
             'transition-all duration-700 delay-500 transform',
-            mounted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+            mounted ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4',
           )}
         >
           {assessmentLabel}
@@ -111,7 +111,7 @@ export function ResultHeader({
             className={cn(
               'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[160%] h-[160%] rounded-full blur-3xl transition-opacity duration-1000 ease-out pointer-events-none',
               mounted ? 'opacity-25 dark:opacity-20' : 'opacity-0',
-              theme.glow
+              theme.glow,
             )}
           />
 
@@ -136,7 +136,7 @@ export function ResultHeader({
             viewBox="0 0 100 100"
           >
             <circle
-              className="text-slate-200 dark:text-slate-800"
+              className="text-stone-200 dark:text-stone-800"
               strokeWidth="8"
               stroke="currentColor"
               fill="transparent"
@@ -164,7 +164,7 @@ export function ResultHeader({
               className={cn(
                 'text-lg md:text-2xl font-extrabold font-mono tracking-tighter transition-all duration-700 delay-300',
                 theme.text,
-                mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-50',
               )}
             >
               {score}

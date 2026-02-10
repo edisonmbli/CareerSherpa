@@ -8,7 +8,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { cn } from '@/lib/utils'
+import { cn, getMatchThemeClass } from '@/lib/utils'
+import { WatermarkPrefix } from '@/components/workbench/WatermarkPrefix'
 
 interface DefenseScript {
   weakness: string
@@ -47,71 +48,28 @@ export function DefenseModule({
   className,
 }: DefenseModuleProps) {
   const finalLabels = { ...defaultLabels, ...labels }
+  const matchThemeClass = getMatchThemeClass(themeColor)
 
   const formatLabel = (
     template: string,
     vars: Record<string, string | number>,
   ) => template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? ''))
 
-  const getHighlightColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'bg-emerald-200 dark:bg-emerald-500/65'
-      case 'amber':
-        return 'bg-amber-200 dark:bg-amber-500/65'
-      case 'rose':
-        return 'bg-rose-200 dark:bg-rose-500/65'
-      default:
-        return 'bg-emerald-200 dark:bg-emerald-500/65'
-    }
-  }
-
-  const getAccentTextColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'text-emerald-700/80 dark:text-emerald-300'
-      case 'amber':
-        return 'text-amber-700/80 dark:text-amber-300'
-      case 'rose':
-        return 'text-rose-700/80 dark:text-rose-300'
-      default:
-        return 'text-emerald-700/80 dark:text-emerald-300'
-    }
-  }
-
-  const getWatermarkColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'text-emerald-300/70 dark:text-emerald-500/65'
-      case 'amber':
-        return 'text-amber-300/70 dark:text-amber-500/65'
-      case 'rose':
-        return 'text-rose-300/70 dark:text-rose-500/65'
-      default:
-        return 'text-emerald-300/70 dark:text-emerald-500/65'
-    }
-  }
-
   if (!defenses || defenses.length === 0) {
     return null
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-3', matchThemeClass, className)}>
       {/* Section Title */}
       <div className="flex items-center gap-3">
         <div className="relative inline-block">
-          <div
-            className={cn(
-              'absolute bottom-4 -left-4 w-20 h-5 -z-10',
-              getHighlightColor(),
-            )}
-          />
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight relative">
+          <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
+          <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-stone-900 dark:text-stone-50 tracking-tight relative">
             {finalLabels.title}
           </h3>
         </div>
-        <span className={cn('text-xs font-medium', getAccentTextColor())}>
+        <span className="text-xs font-medium text-match-text">
           {formatLabel(finalLabels.weaknessCount, { count: defenses.length })}
         </span>
       </div>
@@ -130,15 +88,8 @@ export function DefenseModule({
           >
             <AccordionTrigger className="px-0 py-3 hover:no-underline group">
               <div className="relative w-full text-left pt-1">
-                <span
-                  className={cn(
-                    'absolute -left-4 -top-3 text-3xl font-semibold tabular-nums select-none pointer-events-none',
-                    getWatermarkColor(),
-                  )}
-                >
-                  {index + 1}
-                </span>
-                <span className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                <WatermarkPrefix index={index} themeColor={themeColor} />
+                <span className="text-base font-semibold text-stone-900 dark:text-stone-100">
                   {defense.weakness}
                 </span>
               </div>
@@ -146,36 +97,31 @@ export function DefenseModule({
             <AccordionContent className="px-0 pb-4">
               <div className="space-y-3 pt-2">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400/80 dark:text-slate-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400/80">
                     {finalLabels.anticipatedQuestion}
                   </p>
-                  <p className="text-sm text-slate-600/60 dark:text-slate-400 leading-relaxed">
+                  <p className="text-sm text-stone-600/80 dark:text-stone-400 leading-relaxed">
                     &ldquo;{defense.anticipated_question}&rdquo;
                   </p>
                 </div>
 
                 {defense.supporting_evidence && (
                   <div className="space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400/80 dark:text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400/80">
                       {finalLabels.supportingEvidence}
                     </p>
-                    <p className="text-sm text-slate-600/80 dark:text-slate-400 leading-relaxed">
+                    <p className="text-sm text-stone-600/80 dark:text-stone-400 leading-relaxed">
                       {defense.supporting_evidence}
                     </p>
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <p
-                    className={cn(
-                      'text-[11px] font-semibold uppercase tracking-[0.18em] flex items-center gap-2',
-                      getAccentTextColor(),
-                    )}
-                  >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] flex items-center gap-2 text-match-text">
                     <ShieldCheck className="h-3 w-3" />
                     {finalLabels.defenseScript}
                   </p>
-                  <p className="text-sm text-slate-900/80 dark:text-slate-100 leading-relaxed font-normal">
+                  <p className="text-sm text-stone-900/90 dark:text-stone-100 leading-relaxed font-normal">
                     {defense.defense_script}
                   </p>
                 </div>

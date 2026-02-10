@@ -10,7 +10,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
+import { cn, getMatchThemeClass } from '@/lib/utils'
+import { WatermarkPrefix } from '@/components/workbench/WatermarkPrefix'
 
 interface InterviewRound {
   round_name: string
@@ -64,59 +65,7 @@ export function RadarModule({
   className,
 }: RadarModuleProps) {
   const finalLabels = { ...defaultLabels, ...labels }
-
-  // Helper function for theme colors
-  const getHighlightColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'bg-emerald-200 dark:bg-emerald-500/65'
-      case 'amber':
-        return 'bg-amber-200 dark:bg-amber-500/65'
-      case 'rose':
-        return 'bg-rose-200 dark:bg-rose-500/65'
-      default:
-        return 'bg-emerald-200 dark:bg-emerald-500/65'
-    }
-  }
-
-  const getAccentDotColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'bg-emerald-400/70 dark:bg-emerald-500/40'
-      case 'amber':
-        return 'bg-amber-400/70 dark:bg-amber-500/40'
-      case 'rose':
-        return 'bg-rose-400/70 dark:bg-rose-500/40'
-      default:
-        return 'bg-emerald-400/70 dark:bg-emerald-500/40'
-    }
-  }
-
-  const getAccentTextColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'text-emerald-700/80 dark:text-emerald-300'
-      case 'amber':
-        return 'text-amber-700/80 dark:text-amber-300'
-      case 'rose':
-        return 'text-rose-700/80 dark:text-rose-300'
-      default:
-        return 'text-emerald-700/80 dark:text-emerald-300'
-    }
-  }
-
-  const getWatermarkColor = () => {
-    switch (themeColor) {
-      case 'emerald':
-        return 'text-emerald-300/70 dark:text-emerald-500/65'
-      case 'amber':
-        return 'text-amber-300/70 dark:text-amber-500/65'
-      case 'rose':
-        return 'text-rose-300/70 dark:text-rose-500/65'
-      default:
-        return 'text-emerald-300/70 dark:text-emerald-500/65'
-    }
-  }
+  const matchThemeClass = getMatchThemeClass(themeColor)
 
   const CoreAccordionContent = ({
     className,
@@ -132,16 +81,11 @@ export function RadarModule({
   )
 
   return (
-    <div className={cn('space-y-4', className)}>
-      {/* Section Title - M9 Style */}
+    <div className={cn('space-y-4', matchThemeClass, className)}>
+      {/* Section Title */}
       <div className="relative inline-block">
-        <div
-          className={cn(
-            'absolute bottom-4 -left-4 w-20 h-5 -z-10',
-            getHighlightColor(),
-          )}
-        />
-        <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight relative">
+        <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
+        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-foreground tracking-tight relative">
           {finalLabels.title}
         </h3>
       </div>
@@ -157,13 +101,11 @@ export function RadarModule({
           <AccordionTrigger className="px-0 py-3 hover:no-underline group">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100 relative">
+                <span className="text-sm font-semibold text-foreground relative">
                   {finalLabels.coreChallenges}
                 </span>
               </div>
-              <span
-                className={cn('ml-2 text-xs font-medium', getAccentTextColor())}
-              >
+              <span className="ml-2 text-xs font-medium text-match-text">
                 {core_challenges.length}
               </span>
             </div>
@@ -172,45 +114,31 @@ export function RadarModule({
             <div className="space-y-2">
               {core_challenges.map((challenge, index) => (
                 <div key={index} className="relative pt-1 pb-6 last:pb-0">
-                  <span
-                    className={cn(
-                      'absolute -left-4 -top-3 text-3xl font-semibold tabular-nums select-none pointer-events-none',
-                      getWatermarkColor(),
-                    )}
-                  >
-                    {index + 1}
-                  </span>
+                  <WatermarkPrefix index={index} themeColor={themeColor} />
                   <div className="space-y-3">
-                    <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    <h4 className="text-base font-semibold text-foreground">
                       {challenge.challenge}
                     </h4>
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.16em] text-slate-400/80 dark:text-slate-500">
-                          <Compass
-                            className={cn('h-3 w-3', getAccentTextColor())}
-                          />
+                        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-stone-500/80 dark:text-stone-400/80">
+                          <Compass className="h-3 w-3 text-stone-500/80 dark:text-stone-400/80" />
                           <span className="uppercase">
                             {finalLabels.whyImportant}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-600/60 dark:text-slate-400 leading-relaxed">
+                        <p className="text-sm text-stone-600/80 dark:text-stone-400 leading-relaxed">
                           {challenge.why_important}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <div
-                          className={cn(
-                            'flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em]',
-                            getAccentTextColor(),
-                          )}
-                        >
+                        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-match-text">
                           <Target className="h-3 w-3" />
                           <span className="uppercase">
                             {finalLabels.yourAngle}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-900/80 dark:text-slate-100 leading-relaxed font-normal">
+                        <p className="text-sm text-stone-900/90 dark:text-stone-100 leading-relaxed font-normal">
                           {challenge.your_angle}
                         </p>
                       </div>
@@ -227,25 +155,23 @@ export function RadarModule({
           <AccordionTrigger className="px-0 py-3 hover:no-underline group">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100 relative">
+                <span className="text-sm font-semibold text-foreground relative">
                   {finalLabels.interviewRounds}
                 </span>
               </div>
-              <span
-                className={cn('ml-2 text-xs font-medium', getAccentTextColor())}
-              >
+              <span className="ml-2 text-xs font-medium text-match-text">
                 {interview_rounds.length}
               </span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-0 pb-4">
             <Tabs defaultValue="0" className="w-full">
-              <TabsList className="w-full inline-flex justify-start bg-transparent p-0 border-b border-slate-200/70 dark:border-slate-800/70 print:hidden flex-nowrap overflow-x-auto no-scrollbar">
+              <TabsList className="w-full inline-flex justify-start bg-transparent p-0 border-b border-match-border print:hidden flex-nowrap overflow-x-auto no-scrollbar">
                 {interview_rounds.map((round, index) => (
                   <TabsTrigger
                     key={index}
                     value={String(index)}
-                    className="text-xs px-3 py-2 rounded-none data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-50 data-[state=active]:border-b-2 data-[state=active]:border-slate-900 dark:data-[state=active]:border-slate-50 max-w-[96px] truncate sm:max-w-none sm:whitespace-nowrap"
+                    className="text-xs px-3 py-2 rounded-none text-match-text-muted data-[state=active]:text-match-accent data-[state=active]:border-b-2 data-[state=active]:border-match-accent max-w-[96px] truncate sm:max-w-none sm:whitespace-nowrap"
                   >
                     <span className="truncate block" title={round.round_name}>
                       {round.round_name}
@@ -264,14 +190,9 @@ export function RadarModule({
                     {round.focus_points.map((point, idx) => (
                       <li
                         key={idx}
-                        className="flex items-start gap-2 text-sm text-slate-900/80 dark:text-slate-300"
+                        className="flex items-start gap-3 text-sm text-stone-900/80 dark:text-stone-300"
                       >
-                        <span
-                          className={cn(
-                            'h-1.5 w-1.5 rounded-full shrink-0 mt-[0.45em]',
-                            getAccentDotColor(),
-                          )}
-                        />
+                        <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
                         <span className="leading-relaxed">{point}</span>
                       </li>
                     ))}
@@ -283,7 +204,7 @@ export function RadarModule({
                 {interview_rounds.map((round, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      <h5 className="text-sm font-semibold text-foreground">
                         {round.round_name}
                       </h5>
                     </div>
@@ -291,14 +212,9 @@ export function RadarModule({
                       {round.focus_points.map((point, idx) => (
                         <li
                           key={idx}
-                          className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300"
+                          className="flex items-start gap-2 text-xs text-stone-700 dark:text-stone-300"
                         >
-                          <span
-                            className={cn(
-                              'h-1.5 w-1.5 rounded-full shrink-0 mt-[0.45em]',
-                              getAccentDotColor(),
-                            )}
-                          />
+                          <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
                           <span className="leading-relaxed">{point}</span>
                         </li>
                       ))}
@@ -315,13 +231,11 @@ export function RadarModule({
           <AccordionTrigger className="px-0 py-3 hover:no-underline group">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100 relative">
+                <span className="text-sm font-semibold text-foreground relative">
                   {finalLabels.hiddenRequirements}
                 </span>
               </div>
-              <span
-                className={cn('ml-2 text-xs font-medium', getAccentTextColor())}
-              >
+              <span className="ml-2 text-xs font-medium text-match-text">
                 {hidden_requirements.length}
               </span>
             </div>
@@ -330,13 +244,8 @@ export function RadarModule({
             <div className="space-y-2">
               {hidden_requirements.map((req, index) => (
                 <div key={index} className="flex items-start gap-3">
-                  <span
-                    className={cn(
-                      'h-1.5 w-1.5 rounded-full shrink-0 mt-[0.45em]',
-                      getAccentDotColor(),
-                    )}
-                  />
-                  <span className="text-sm text-slate-900/80 dark:text-slate-300 leading-relaxed flex-1">
+                  <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
+                  <span className="text-sm text-stone-900/80 dark:text-stone-300 leading-relaxed flex-1">
                     {req}
                   </span>
                 </div>

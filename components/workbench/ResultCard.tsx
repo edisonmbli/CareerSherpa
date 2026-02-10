@@ -1,7 +1,12 @@
 'use client'
 
 import React, { useRef, useState, useEffect } from 'react'
-import { cn, getMatchScore, getMatchThemeColor } from '@/lib/utils'
+import {
+  cn,
+  getMatchScore,
+  getMatchThemeClass,
+  getMatchThemeColor,
+} from '@/lib/utils'
 import { ChevronDown } from 'lucide-react'
 import { ResultHeader } from './result/ResultHeader'
 import { ExpertVerdict } from './result/ExpertVerdict'
@@ -75,6 +80,173 @@ const defaultLabels = {
   preview: '',
 }
 
+type MatchStrength = { point: string; evidence: string; section?: string }
+type MatchWeakness = {
+  point: string
+  evidence: string
+  tip?: { interview: string; resume: string } | string
+}
+
+function parseMatchData(data: any) {
+  const score = getMatchScore(data)
+
+  const strengths: MatchStrength[] = (
+    Array.isArray(data?.highlights)
+      ? data.highlights.map((s: any) => ({ point: String(s), evidence: '' }))
+      : Array.isArray(data?.strengths)
+        ? data.strengths.map((s: any) => {
+            if (typeof s === 'string') return { point: s, evidence: '' }
+            const point = s?.Point ?? s?.point ?? ''
+            const evidence = s?.Evidence ?? s?.evidence ?? ''
+            const section = s?.Section ?? s?.section
+            return {
+              point: String(point),
+              evidence: evidence ? String(evidence) : '',
+              section,
+            }
+          })
+        : []
+  ).slice(0, 6)
+
+  const weaknesses: MatchWeakness[] = (
+    Array.isArray(data?.gaps)
+      ? data.gaps.map((s: any) => ({ point: String(s), evidence: '' }))
+      : Array.isArray(data?.weaknesses)
+        ? data.weaknesses.map((w: any) => {
+            if (typeof w === 'string') return { point: w, evidence: '' }
+            const point = w?.Point ?? w?.point ?? ''
+            const evidence = w?.Evidence ?? w?.evidence ?? w?.suggestion ?? ''
+            const tip = w?.Tip ?? w?.tip ?? null
+
+            const tipObj:
+              | { interview: string; resume: string }
+              | string
+              | undefined =
+              typeof tip === 'object' && tip !== null
+                ? { interview: tip.interview ?? '', resume: tip.resume ?? '' }
+                : typeof tip === 'string'
+                  ? { interview: tip, resume: '' }
+                  : undefined
+
+            return {
+              point: String(point),
+              evidence: evidence ? String(evidence) : '',
+              tip: tipObj,
+            }
+          })
+        : []
+  ).slice(0, 6)
+
+  const recommendations = Array.isArray(data?.recommendations)
+    ? data.recommendations
+    : []
+
+  const dmScript =
+    typeof data?.dm_script === 'string'
+      ? data.dm_script
+      : typeof data?.cover_letter_script === 'string'
+        ? data.cover_letter_script
+        : typeof data?.cover_letter_script === 'object' &&
+            data?.cover_letter_script !== null
+          ? typeof data.cover_letter_script.script === 'string'
+            ? data.cover_letter_script.script
+            : typeof data.cover_letter_script.H === 'string'
+              ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${
+                  data.cover_letter_script.V || ''
+                }\n\n【C】${data.cover_letter_script.C || ''}`
+              : null
+          : null
+
+  const expertVerdict = data?.overall_assessment as string | undefined
+
+  return {
+    score,
+    strengths,
+    weaknesses,
+    recommendations,
+    dmScript,
+    expertVerdict,
+  }
+}
+
+export function buildMatchResultCopyText(
+  data: any,
+  options?: {
+    company?: string
+    jobTitle?: string
+    labels?: ResultCardProps['labels']
+  },
+) {
+  const parsed = parseMatchData(data)
+  const labels = options?.labels
+  const company = options?.company || labels?.targetCompany || 'Target Company'
+  const jobTitle =
+    options?.jobTitle || labels?.targetPosition || 'Target Position'
+
+  const overallLabel = labels?.overallAssessment || 'Overall Assessment'
+  const highlightsLabel = labels?.highlights || 'Highlights'
+  const gapsLabel = labels?.gapsAndSuggestions || 'Risks & Challenges'
+  const recommendationsLabel = labels?.recommendations || 'Recommendations'
+  const smartPitchLabel = labels?.smartPitch || 'Smart Pitch'
+
+  const sections = [
+    `# ${company}`,
+    jobTitle,
+    '',
+    `## ${overallLabel}`,
+    parsed.expertVerdict || '',
+    '',
+    `## ${highlightsLabel}`,
+    ...(parsed.strengths.length
+      ? parsed.strengths.map((s, i) =>
+          [
+            `${i + 1}. ${s.point}`,
+            s.evidence ? `- ${s.evidence}` : '',
+            s.section ? `- ${s.section}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        )
+      : [labels?.noHighlights || '']),
+    '',
+    `## ${gapsLabel}`,
+    ...(parsed.weaknesses.length
+      ? parsed.weaknesses.map((w, i) => {
+          const tipObj =
+            typeof w.tip === 'string' ? { interview: w.tip, resume: '' } : w.tip
+          return [
+            `${i + 1}. ${w.point}`,
+            w.evidence ? `- ${w.evidence}` : '',
+            tipObj?.resume
+              ? `- ${labels?.resumeTweak || 'Resume'}: ${tipObj.resume}`
+              : '',
+            tipObj?.interview
+              ? `- ${labels?.interviewPrep || 'Interview'}: ${tipObj.interview}`
+              : '',
+          ]
+            .filter(Boolean)
+            .join('\n')
+        })
+      : [labels?.noGaps || '']),
+  ]
+
+  if (parsed.recommendations.length > 0) {
+    sections.push('')
+    sections.push(`## ${recommendationsLabel}`)
+    parsed.recommendations.forEach((rec: any, i: number) => {
+      sections.push(`${i + 1}. ${String(rec)}`)
+    })
+  }
+
+  if (parsed.dmScript) {
+    sections.push('')
+    sections.push(`## ${smartPitchLabel}`)
+    sections.push(parsed.dmScript)
+  }
+
+  return sections.join('\n').trim()
+}
+
 export function ResultCard({
   data,
   company,
@@ -84,78 +256,14 @@ export function ResultCard({
   actionButton,
   className,
 }: ResultCardProps) {
-  // --- Data Parsing Logic (Preserved from old component) ---
-  const score = getMatchScore(data)
-
-  // Strengths
-  const strengths = (
-    Array.isArray(data?.highlights)
-      ? data.highlights.map((s: any) => ({ point: String(s), evidence: '' }))
-      : Array.isArray(data?.strengths)
-      ? data.strengths.map((s: any) => {
-          if (typeof s === 'string') return { point: s, evidence: '' }
-          const point = s?.Point ?? s?.point ?? ''
-          const evidence = s?.Evidence ?? s?.evidence ?? ''
-          const section = s?.Section ?? s?.section
-          return {
-            point: String(point),
-            evidence: evidence ? String(evidence) : '',
-            section,
-          }
-        })
-      : []
-  ).slice(0, 6)
-
-  // Weaknesses
-  const weaknesses = (
-    Array.isArray(data?.gaps)
-      ? data.gaps.map((s: any) => ({ point: String(s), evidence: '' }))
-      : Array.isArray(data?.weaknesses)
-      ? data.weaknesses.map((w: any) => {
-          if (typeof w === 'string')
-            return { point: w, evidence: '', tip: null }
-          const point = w?.Point ?? w?.point ?? ''
-          const evidence = w?.Evidence ?? w?.evidence ?? w?.suggestion ?? ''
-          const tip = w?.Tip ?? w?.tip ?? null
-
-          const tipObj =
-            typeof tip === 'object' && tip !== null
-              ? { interview: tip.interview ?? '', resume: tip.resume ?? '' }
-              : typeof tip === 'string'
-              ? { interview: tip, resume: '' }
-              : null
-
-          return {
-            point: String(point),
-            evidence: evidence ? String(evidence) : '',
-            tip: tipObj,
-          }
-        })
-      : []
-  ).slice(0, 6)
-
-  const recommendations = Array.isArray(data?.recommendations)
-    ? data.recommendations
-    : []
-
-  // Pitch Script
-  const dmScript =
-    typeof data?.dm_script === 'string'
-      ? data.dm_script
-      : typeof data?.cover_letter_script === 'string'
-      ? data.cover_letter_script
-      : typeof data?.cover_letter_script === 'object' &&
-        data?.cover_letter_script !== null
-      ? typeof data.cover_letter_script.script === 'string'
-        ? data.cover_letter_script.script
-        : typeof data.cover_letter_script.H === 'string'
-        ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${
-            data.cover_letter_script.V || ''
-          }\n\n【C】${data.cover_letter_script.C || ''}`
-        : null
-      : null
-
-  const expertVerdict = data?.overall_assessment as string | undefined
+  const {
+    score,
+    strengths,
+    weaknesses,
+    recommendations,
+    dmScript,
+    expertVerdict,
+  } = parseMatchData(data)
 
   // --- Scroll Hint Logic ---
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -174,20 +282,22 @@ export function ResultCard({
 
   // Theme Logic
   const themeColor = getMatchThemeColor(score)
+  const matchThemeClass = getMatchThemeClass(themeColor)
 
   return (
     <div
       className={cn(
         // V5 Measured Document Styling:
         // 1. Centered "Page" with max-width (Letterhead feel)
-        'max-w-[880px] mx-auto w-full relative mt-4 animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
+        'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
         // 2. Tinted Neutral Background
         'bg-card/50',
         // 3. Double Border Effect
-        'border border-border',
-        'shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
-        'rounded-xl backdrop-blur-sm',
-        className
+        'border-0 sm:border sm:border-border',
+        'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
+        'rounded-sm sm:rounded-xl backdrop-blur-sm',
+        matchThemeClass,
+        className,
       )}
       style={{
         // Subtle noise texture overlay
@@ -196,7 +306,7 @@ export function ResultCard({
     >
       <div
         ref={scrollRef}
-        className="flex-1 overflow-visible p-4 sm:p-5 md:p-8 space-y-6 md:space-y-8"
+        className="flex-1 overflow-visible px-0 py-3 sm:p-4 md:p-8 space-y-5 md:space-y-8"
       >
         {/* Module A: Hero Header (Now handles CTA) */}
         <ResultHeader
@@ -280,7 +390,7 @@ export function ResultCard({
       {/* Scroll Hint */}
       {showScrollHint && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none hidden md:flex flex-col items-center gap-1 opacity-60 animate-bounce">
-          <ChevronDown className="w-4 h-4 text-slate-400" />
+          <ChevronDown className="w-4 h-4 text-stone-400" />
         </div>
       )}
     </div>
