@@ -64,17 +64,17 @@ export function RechargeWaitlistClient({
         type="button"
         variant="outline"
         size="sm"
-        className="gap-1 opacity-80 w-24 justify-center"
+        className="gap-1 w-24 justify-center text-xs font-medium text-muted-foreground border-muted/40 hover:text-foreground hover:border-border/60"
         onClick={onOpen}
       >
-        <Coins className="h-4 w-4 text-amber-500/80" />
-        {dict.billing?.recharge?.title || 'Top-up'}
+        <Coins className="h-3.5 w-3.5 text-amber-500/70" />
+        {dict.recharge?.title || dict.billing?.recharge?.title || 'Top-up'}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[420px] border-border/40 bg-card/95 shadow-[0_12px_28px_rgba(0,0,0,0.12)]">
           <DialogHeader>
-            <DialogTitle>
-              {dict.billing?.recharge?.waitlist?.title || 'Top-up coming soon'}
+            <DialogTitle className="text-base font-medium tracking-tight">
+              {dict.waitlist?.title || dict.billing?.recharge?.waitlist?.title || 'Top-up coming soon'}
             </DialogTitle>
             <div className="sr-only">
               <DialogDescription>
@@ -83,14 +83,15 @@ export function RechargeWaitlistClient({
             </div>
           </DialogHeader>
           <div className="py-2 space-y-3">
-            <div className="text-sm text-muted-foreground">
-              {dict.billing?.recharge?.waitlist?.desc}
+            <div className="text-xs text-muted-foreground/80">
+              {dict.waitlist?.desc || dict.billing?.recharge?.waitlist?.desc}
             </div>
             <Input
               type="email"
               autoFocus
-              className="border-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-amber-300/40 focus-visible:ring-offset-0"
+              className="border-border/40 focus-visible:ring-1 focus-visible:ring-amber-200/50 focus-visible:ring-offset-0"
               placeholder={
+                dict.waitlist?.emailPlaceholder ||
                 dict.billing?.recharge?.waitlist?.emailPlaceholder ||
                 'you@example.com'
               }
@@ -103,18 +104,20 @@ export function RechargeWaitlistClient({
               type="button"
               variant="outline"
               size="sm"
+              className="text-xs font-medium"
               onClick={() => setOpen(false)}
             >
-              {dict.billing?.recharge?.common?.cancel || 'Close'}
+              {dict.common?.cancel || dict.billing?.recharge?.common?.cancel || 'Close'}
             </Button>
             <Button
               type="button"
               variant="default"
               size="sm"
+              className="text-xs font-medium"
               onClick={onSubmit}
               disabled={loading}
             >
-              {dict.billing?.recharge?.waitlist?.submit || 'Notify me'}
+              {dict.waitlist?.submit || dict.billing?.recharge?.waitlist?.submit || 'Notify me'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -122,4 +125,3 @@ export function RechargeWaitlistClient({
     </>
   )
 }
-

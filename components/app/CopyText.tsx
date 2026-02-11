@@ -12,9 +12,17 @@ export function CopyText({ text, dict, mode = 'full' }: { text: string; dict: an
   }
   return (
     <div className="flex items-center gap-2">
-      {mode === 'full' && <span className="font-mono truncate max-w-[12rem]">{text}</span>}
-      <Button variant="ghost" size="icon" onClick={onCopy} aria-label={dict.toast?.copyAria || 'Copy'}>
-        <Copy className="h-4 w-4" />
+      {mode === 'full' && (
+        <span className="font-mono truncate max-w-[12rem]">{text}</span>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onCopy}
+        aria-label={dict.toast?.copyAria || 'Copy'}
+        className="h-7 w-7 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-muted/50"
+      >
+        <Copy className="h-3.5 w-3.5" />
       </Button>
     </div>
   )

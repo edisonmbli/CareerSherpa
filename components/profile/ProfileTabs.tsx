@@ -17,7 +17,6 @@ export function ProfileTabs({
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams)
     params.set('tab', value)
-    // Reset page when switching tabs
     params.delete('page')
     router.push(`${pathname}?${params.toString()}`)
   }
@@ -29,9 +28,19 @@ export function ProfileTabs({
       onValueChange={handleTabChange}
       className="w-full"
     >
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="assets" className="cursor-pointer transition-all">{labels.assets}</TabsTrigger>
-        <TabsTrigger value="billing" className="cursor-pointer transition-all">{labels.billing}</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-2 rounded-xl border border-border/60 bg-card/50 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm">
+        <TabsTrigger
+          value="assets"
+          className="cursor-pointer text-[13px] font-medium transition-all data-[state=active]:bg-background/90 data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+        >
+          {labels.assets}
+        </TabsTrigger>
+        <TabsTrigger
+          value="billing"
+          className="cursor-pointer text-[13px] font-medium transition-all data-[state=active]:bg-background/90 data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+        >
+          {labels.billing}
+        </TabsTrigger>
       </TabsList>
     </Tabs>
   )

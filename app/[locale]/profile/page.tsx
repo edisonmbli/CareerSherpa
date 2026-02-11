@@ -6,21 +6,20 @@ import {
   AppCardContent,
   AppCardHeader,
   AppCardTitle,
-  AppCardDescription,
 } from '@/components/app/AppCard'
 import { AssetUploader } from '@/components/app/AssetUploader'
-import { FileText, NotebookText, Sparkles, Asterisk } from 'lucide-react'
+import { FileText, NotebookText, Asterisk } from 'lucide-react'
 import { stackServerApp } from '@/stack/server'
 import { getLatestResume, getLatestDetailedResume } from '@/lib/dal/resume'
 import { listLedgerByUser } from '@/lib/dal/coinLedger'
 import { LEDGER_PAGE_SIZE } from '@/lib/constants'
 import { BillingFiltersClient } from '@/components/app/BillingFiltersClient'
 import { RechargeWaitlistClient } from '@/components/app/RechargeWaitlistClient'
-import { Badge } from '@/components/ui/badge'
 import { ResumeGuidanceTooltip } from '@/components/resume/ResumeGuidanceTooltip'
 import { Button } from '@/components/ui/button'
 import { LedgerGroupList } from '@/components/app/LedgerGroupList'
 import { ProfileTabs } from '@/components/profile/ProfileTabs'
+import { cn } from '@/lib/utils'
 
 export default async function ProfilePage({
   params,
@@ -67,8 +66,8 @@ export default async function ProfilePage({
 
   const ledgerData = user
     ? await listLedgerByUser(user.id, page, LEDGER_PAGE_SIZE, {
-      type:
-        fType &&
+        type:
+          fType &&
           [
             'SIGNUP_BONUS',
             'PURCHASE',
@@ -76,22 +75,32 @@ export default async function ProfilePage({
             'FAILURE_REFUND',
             'MANUAL_ADJUST',
           ].includes(fType)
-          ? fType
-          : undefined,
-      status:
-        fStatus &&
+            ? fType
+            : undefined,
+        status:
+          fStatus &&
           ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'].includes(fStatus)
-          ? fStatus
-          : undefined,
-      templateId: fTemplate || undefined,
-      serviceId: fService || undefined,
-      after: fAfter,
-      before: fBefore,
-    })
+            ? fStatus
+            : undefined,
+        templateId: fTemplate || undefined,
+        serviceId: fService || undefined,
+        after: fAfter,
+        before: fBefore,
+      })
     : { items: [], total: 0 }
   const ledger = (ledgerData as any).items || []
   const total = Number((ledgerData as any).total || 0)
   const pageCount = Math.max(1, Math.ceil(total / LEDGER_PAGE_SIZE))
+  const surfaceClass = cn(
+    'w-full relative overflow-visible',
+    'bg-card/50',
+    'border border-border/60',
+    'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
+    'rounded-xl backdrop-blur-sm',
+  )
+  const surfaceStyle = {
+    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
+  }
 
   return (
     <div className="container mx-auto px-4 py-4">
@@ -106,107 +115,123 @@ export default async function ProfilePage({
           <div className="w-full">
             <ProfileTabs defaultValue={tab} labels={p.tabs} />
 
-            <div
-              className={tab === 'assets' ? 'block space-y-6 pt-6' : 'hidden'}
-            >
-              <AppCard>
-                <AppCardHeader>
-                  <AppCardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    {p.resume.title}
-                    <Asterisk className="h-3 w-3 text-red-500" />
-                  </AppCardTitle>
-                  <AppCardDescription>
+            <div className={tab === 'assets' ? 'grid gap-12 mt-10' : 'hidden'}>
+              <div className={surfaceClass} style={surfaceStyle}>
+                <div className="p-6 sm:p-8">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center justify-center w-6 h-6 shrink-0">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-lg sm:text-xl font-[family-name:var(--font-playfair),serif] font-bold tracking-tight">
+                      {p.resume.title}
+                    </span>
+                    <Asterisk className="h-3 w-3 text-red-500 shrink-0 self-start mt-1.5" />
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">
                     {p.resume.description}
-                  </AppCardDescription>
-                </AppCardHeader>
-                <AppCardContent>
-                  <AssetUploader
-                    locale={locale}
-                    taskTemplateId="resume_summary"
-                    initialStatus={
-                      latestResume ? (latestResume.status as any) : 'IDLE'
-                    }
-                    initialFileName={
-                      latestResume && latestResume.status === 'COMPLETED'
-                        ? p.resume.defaultFileName
-                        : null
-                    }
-                    initialSummaryJson={latestResume?.resumeSummaryJson || null}
-                    dict={p.uploader}
-                    pdfNotice={dict.designSystem.samples.pdfNotice}
-                    labels={{
-                      ...p.previewLabels,
-                      actionPreview: p.uploader.preview,
-                      actionReupload: p.uploader.reupload,
-                    }}
-                    quotaBalance={quotaBalance}
-                    statusTextDict={w.statusText}
-                    notificationDict={w.notification}
-                    resumeTitle={p.resume.title}
-                    detailedTitle={p.detailed.title}
-                  />
-                </AppCardContent>
-              </AppCard>
-
-              <AppCard>
-                <AppCardHeader>
-                  <AppCardTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <div className="flex items-center gap-2">
-                      <NotebookText className="h-5 w-5 text-primary" />
-                      <span className="whitespace-nowrap">{p.detailed.title}</span>
+                  </div>
+                  <div className="mt-6">
+                    <AssetUploader
+                      locale={locale}
+                      taskTemplateId="resume_summary"
+                      initialStatus={
+                        latestResume ? (latestResume.status as any) : 'IDLE'
+                      }
+                      initialFileName={
+                        latestResume && latestResume.status === 'COMPLETED'
+                          ? p.resume.defaultFileName
+                          : null
+                      }
+                      initialSummaryJson={
+                        latestResume?.resumeSummaryJson || null
+                      }
+                      dict={p.uploader}
+                      pdfNotice={dict.designSystem.samples.pdfNotice}
+                      labels={{
+                        ...p.previewLabels,
+                        actionPreview: p.uploader.preview,
+                        actionReupload: p.uploader.reupload,
+                      }}
+                      quotaBalance={quotaBalance}
+                      statusTextDict={w.statusText}
+                      notificationDict={w.notification}
+                      resumeTitle={p.resume.title}
+                      detailedTitle={p.detailed.title}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className={surfaceClass} style={surfaceStyle}>
+                <div className="p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center w-6 h-6 shrink-0">
+                        <NotebookText className="h-5 w-5 text-primary" />
+                      </div>
+                      <span className="text-lg sm:text-xl font-[family-name:var(--font-playfair),serif] font-bold tracking-tight whitespace-nowrap">
+                        {p.detailed.title}
+                      </span>
                     </div>
                     <ResumeGuidanceTooltip
                       triggerClassName="inline-flex items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-light text-blue-500 ring-1 ring-inset ring-blue-100/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/10"
-                      examples={{ ...(p.detailed.examples as any), tips: p.resume.tips }}
+                      examples={{
+                        ...(p.detailed.examples as any),
+                        tips: p.resume.tips,
+                      }}
                     >
                       {p.detailed.badge}
                     </ResumeGuidanceTooltip>
-                  </AppCardTitle>
-                  <AppCardDescription className="flex items-center gap-2 text-sm text-muted-foreground">
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                     {p.detailed.description}
-                  </AppCardDescription>
-                </AppCardHeader>
-                <AppCardContent>
-                  <AssetUploader
-                    locale={locale}
-                    taskTemplateId="detailed_resume_summary"
-                    initialStatus={
-                      latestDetailed ? (latestDetailed.status as any) : 'IDLE'
-                    }
-                    initialFileName={
-                      latestDetailed && latestDetailed.status === 'COMPLETED'
-                        ? p.detailed.defaultFileName
-                        : null
-                    }
-                    initialSummaryJson={
-                      latestDetailed?.detailedSummaryJson || null
-                    }
-                    dict={p.uploader}
-                    pdfNotice={dict.designSystem.samples.pdfNotice}
-                    labels={{
-                      ...p.previewLabels,
-                      actionPreview: p.uploader.preview,
-                      actionReupload: p.uploader.reupload,
-                    }}
-                    quotaBalance={quotaBalance}
-                    statusTextDict={w.statusText}
-                    notificationDict={w.notification}
-                    resumeTitle={p.resume.title}
-                    detailedTitle={p.detailed.title}
-                  />
-                </AppCardContent>
-              </AppCard>
+                  </div>
+                  <div className="mt-6">
+                    <AssetUploader
+                      locale={locale}
+                      taskTemplateId="detailed_resume_summary"
+                      initialStatus={
+                        latestDetailed ? (latestDetailed.status as any) : 'IDLE'
+                      }
+                      initialFileName={
+                        latestDetailed && latestDetailed.status === 'COMPLETED'
+                          ? p.detailed.defaultFileName
+                          : null
+                      }
+                      initialSummaryJson={
+                        latestDetailed?.detailedSummaryJson || null
+                      }
+                      dict={p.uploader}
+                      pdfNotice={dict.designSystem.samples.pdfNotice}
+                      labels={{
+                        ...p.previewLabels,
+                        actionPreview: p.uploader.preview,
+                        actionReupload: p.uploader.reupload,
+                      }}
+                      quotaBalance={quotaBalance}
+                      statusTextDict={w.statusText}
+                      notificationDict={w.notification}
+                      resumeTitle={p.resume.title}
+                      detailedTitle={p.detailed.title}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div
-              className={tab === 'billing' ? 'block space-y-6 pt-6' : 'hidden'}
+              className={tab === 'billing' ? 'block mt-6 space-y-4' : 'hidden'}
             >
-              <AppCard>
-                <AppCardHeader className="relative">
+              <AppCard
+                padded={false}
+                className={surfaceClass}
+                style={surfaceStyle}
+              >
+                <AppCardHeader className="relative pt-3 pb-2 sm:pt-4 sm:pb-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <AppCardTitle>{p.billing.cardTitle}</AppCardTitle>
+                      <AppCardTitle className="text-[15px] font-medium tracking-tight text-foreground/90">
+                        {p.billing.cardTitle}
+                      </AppCardTitle>
                     </div>
                     <div className="flex items-center gap-2">
                       <BillingFiltersClient
@@ -221,8 +246,8 @@ export default async function ProfilePage({
                     </div>
                   </div>
                 </AppCardHeader>
-                <AppCardContent>
-                  <div className="mb-6 md:mb-8">
+                <AppCardContent className="pt-0">
+                  <div className="mb-2 md:mb-4">
                     <BillingFiltersClient
                       mode="panel"
                       locale={locale}
@@ -259,20 +284,24 @@ export default async function ProfilePage({
                       <div className="text-xs text-muted-foreground">
                         {p.billing.pagination.total.replace(
                           '{total}',
-                          String(total)
+                          String(total),
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/${locale}/profile?tab=billing&page=${Math.max(
                             1,
-                            page - 1
-                          )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
-                            }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
-                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
-                            }`}
-                          className={`px-2 py-0.5 rounded border text-xs ${page <= 1 ? 'opacity-40 pointer-events-none' : ''
-                            }`}
+                            page - 1,
+                          )}${fType ? `&type=${fType}` : ''}${
+                            fStatus ? `&status=${fStatus}` : ''
+                          }${fTemplate ? `&tpl=${fTemplate}` : ''}${
+                            fService ? `&svc=${fService}` : ''
+                          }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${
+                            fBefore ? `&before=${fBefore.toISOString()}` : ''
+                          }`}
+                          className={`px-2 py-0.5 rounded border text-xs ${
+                            page <= 1 ? 'opacity-40 pointer-events-none' : ''
+                          }`}
                         >
                           {p.billing.pagination.prev}
                         </Link>
@@ -284,15 +313,19 @@ export default async function ProfilePage({
                         <Link
                           href={`/${locale}/profile?tab=billing&page=${Math.min(
                             pageCount,
-                            page + 1
-                          )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
-                            }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
-                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
-                            }`}
-                          className={`px-2 py-0.5 rounded border text-xs ${page >= pageCount
-                            ? 'opacity-40 pointer-events-none'
-                            : ''
-                            }`}
+                            page + 1,
+                          )}${fType ? `&type=${fType}` : ''}${
+                            fStatus ? `&status=${fStatus}` : ''
+                          }${fTemplate ? `&tpl=${fTemplate}` : ''}${
+                            fService ? `&svc=${fService}` : ''
+                          }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${
+                            fBefore ? `&before=${fBefore.toISOString()}` : ''
+                          }`}
+                          className={`px-2 py-0.5 rounded border text-xs ${
+                            page >= pageCount
+                              ? 'opacity-40 pointer-events-none'
+                              : ''
+                          }`}
                         >
                           {p.billing.pagination.next}
                         </Link>

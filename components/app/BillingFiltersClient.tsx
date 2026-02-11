@@ -116,8 +116,13 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
             ))}
           </div>
         )}
-        <Button variant="outline" size="sm" className="gap-1 w-24 justify-center" onClick={openPanel}>
-          <Filter className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 w-24 justify-center text-xs font-medium text-muted-foreground border-muted/40 hover:text-foreground hover:border-border/60"
+          onClick={openPanel}
+        >
+          <Filter className="h-3.5 w-3.5" />
           {`${dict.filters.toggle}${active.length ? `(${active.length})` : ''}`}
         </Button>
       </div>
@@ -135,15 +140,15 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
       )}
       {open && (
         <div className="w-full sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-3 border border-muted/30 rounded-lg bg-muted/20 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-3 border border-border/30 rounded-lg bg-muted/[0.18] shadow-[0_6px_18px_rgba(0,0,0,0.06)]">
             <div className="md:col-span-3 sm:hidden">
               <Accordion type="multiple">
                 <AccordionItem value="type">
-                  <AccordionTrigger className="pl-2">{dict.filters.type}</AccordionTrigger>
+                  <AccordionTrigger className="pl-2 text-xs font-medium text-muted-foreground/80">{dict.filters.type}</AccordionTrigger>
                   <AccordionContent>
                     <div className="flex flex-wrap gap-2 pl-2 pb-2">
                       {Object.keys(dict.type).map((k) => (
-                        <Button key={k} variant={'ghost'} size="sm" className={`text-xs font-normal ${nextType === k ? 'bg-muted/30' : ''}`} onClick={() => setNextType(nextType === k ? '' : k)}>
+                        <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextType === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextType(nextType === k ? '' : k)}>
                           {nextType === k && <Check className="h-3 w-3 mr-1" />}
                           {dict.type[k]}
                         </Button>
@@ -152,11 +157,11 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="status">
-                  <AccordionTrigger className="pl-2">{dict.filters.status}</AccordionTrigger>
+                  <AccordionTrigger className="pl-2 text-xs font-medium text-muted-foreground/80">{dict.filters.status}</AccordionTrigger>
                   <AccordionContent>
                     <div className="flex flex-wrap gap-2 pl-2 pb-2">
                       {Object.keys(dict.status).map((k) => (
-                        <Button key={k} variant={'ghost'} size="sm" className={`text-xs font-normal ${nextStatus === k ? 'bg-muted/30' : ''}`} onClick={() => setNextStatus(nextStatus === k ? '' : k)}>
+                        <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextStatus === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextStatus(nextStatus === k ? '' : k)}>
                           {nextStatus === k && <Check className="h-3 w-3 mr-1" />}
                           {dict.status[k]}
                         </Button>
@@ -165,11 +170,11 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="tpl">
-                  <AccordionTrigger className="pl-2">{dict.filters.template}</AccordionTrigger>
+                  <AccordionTrigger className="pl-2 text-xs font-medium text-muted-foreground/80">{dict.filters.template}</AccordionTrigger>
                   <AccordionContent>
                     <div className="flex flex-wrap gap-2 pl-2 pb-2">
                       {Object.keys(dict.templates).map((k) => (
-                        <Button key={k} variant={'ghost'} size="sm" className={`text-xs font-normal ${nextTpl === k ? 'bg-muted/30' : ''}`} onClick={() => setNextTpl(nextTpl === k ? '' : k)}>
+                        <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextTpl === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextTpl(nextTpl === k ? '' : k)}>
                           {nextTpl === k && <Check className="h-3 w-3 mr-1" />}
                           {dict.templates[k]}
                         </Button>
@@ -181,10 +186,10 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
             </div>
 
             <div className="hidden sm:block">
-              <div className="text-xs text-muted-foreground mb-2 border-b border-border pb-1 pl-3">{dict.filters.type}</div>
+              <div className="text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.type}</div>
               <div className="flex flex-wrap gap-2 justify-start pl-3">
                 {Object.keys(dict.type).map((k) => (
-                  <Button key={k} variant={'ghost'} size="sm" className={`text-xs font-normal ${nextType === k ? 'bg-muted/30' : ''}`} onClick={() => setNextType(nextType === k ? '' : k)}>
+                  <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextType === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextType(nextType === k ? '' : k)}>
                     {nextType === k && <Check className="h-3 w-3 mr-1" />}
                     {dict.type[k]}
                   </Button>
@@ -192,10 +197,10 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
               </div>
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs text-muted-foreground mb-2 border-b border-border pb-1 pl-3">{dict.filters.status}</div>
+              <div className="text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.status}</div>
               <div className="flex flex-wrap gap-2 justify-start pl-3">
                 {Object.keys(dict.status).map((k) => (
-                  <Button key={k} variant={'ghost'} size="sm" className={`text-xs font-normal ${nextStatus === k ? 'bg-muted/30' : ''}`} onClick={() => setNextStatus(nextStatus === k ? '' : k)}>
+                  <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextStatus === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextStatus(nextStatus === k ? '' : k)}>
                     {nextStatus === k && <Check className="h-3 w-3 mr-1" />}
                     {dict.status[k]}
                   </Button>
@@ -203,10 +208,10 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
               </div>
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs text-muted-foreground mb-2 border-b border-border pb-1 pl-3">{dict.filters.template}</div>
+              <div className="text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.template}</div>
               <div className="flex flex-wrap gap-2 justify-start pl-3">
                 {Object.keys(dict.templates).map((k) => (
-                  <Button key={k} variant={'ghost'} size="sm" className={`text-xs font-normal ${nextTpl === k ? 'bg-muted/30' : ''}`} onClick={() => setNextTpl(nextTpl === k ? '' : k)}>
+                  <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextTpl === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextTpl(nextTpl === k ? '' : k)}>
                     {nextTpl === k && <Check className="h-3 w-3 mr-1" />}
                     {dict.templates[k]}
                   </Button>
@@ -215,44 +220,44 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
             </div>
 
             <div className="md:col-span-3">
-              <div className="hidden sm:block text-xs text-muted-foreground mb-2 border-b border-border pb-1 pl-3">{dict.filters.date}</div>
+              <div className="hidden sm:block text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.date}</div>
               <div className="hidden sm:flex items-center gap-2 pl-3">
-                <Input aria-label={locale === 'zh' ? '开始日期' : 'Start date'} type="date" value={nextAfter || ''} onChange={(e) => setNextAfter(e.target.value)} className="h-7 text-xs w-32" />
+                <Input aria-label={locale === 'zh' ? '开始日期' : 'Start date'} type="date" lang={locale} value={nextAfter || ''} onChange={(e) => setNextAfter(e.target.value)} className="h-7 text-[11px] w-32" />
                 <span className="text-xs">—</span>
-                <Input aria-label={locale === 'zh' ? '结束日期' : 'End date'} type="date" value={nextBefore || ''} onChange={(e) => setNextBefore(e.target.value)} className="h-7 text-xs w-32" />
+                <Input aria-label={locale === 'zh' ? '结束日期' : 'End date'} type="date" lang={locale} value={nextBefore || ''} onChange={(e) => setNextBefore(e.target.value)} className="h-7 text-[11px] w-32" />
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="text-xs font-normal" onClick={() => setDateRangeDays(0)}>{dict.filters.today}</Button>
-                  <Button variant="ghost" size="sm" className="text-xs font-normal" onClick={() => setDateRangeDays(7)}>{dict.filters.last7}</Button>
-                  <Button variant="ghost" size="sm" className="text-xs font-normal" onClick={() => setDateRangeDays(30)}>{dict.filters.last30}</Button>
-                  <Button variant="ghost" size="sm" className="text-xs font-normal" onClick={() => setDateRangeDays(90)}>{dict.filters.last90}</Button>
-                  <Button variant="ghost" size="sm" className="text-xs font-normal" onClick={clearDateRange}>{dict.filters.clearDate}</Button>
+                  <Button variant="ghost" size="sm" className="text-[11px] font-medium text-muted-foreground hover:text-foreground" onClick={() => setDateRangeDays(0)}>{dict.filters.today}</Button>
+                  <Button variant="ghost" size="sm" className="text-[11px] font-medium text-muted-foreground hover:text-foreground" onClick={() => setDateRangeDays(7)}>{dict.filters.last7}</Button>
+                  <Button variant="ghost" size="sm" className="text-[11px] font-medium text-muted-foreground hover:text-foreground" onClick={() => setDateRangeDays(30)}>{dict.filters.last30}</Button>
+                  <Button variant="ghost" size="sm" className="text-[11px] font-medium text-muted-foreground hover:text-foreground" onClick={() => setDateRangeDays(90)}>{dict.filters.last90}</Button>
+                  <Button variant="ghost" size="sm" className="text-[11px] font-medium text-muted-foreground hover:text-foreground" onClick={clearDateRange}>{dict.filters.clearDate}</Button>
                 </div>
               </div>
               <div className="sm:hidden flex items-center gap-3 pl-1 mt-0 mb-2">
-                <Input aria-label={locale === 'zh' ? '开始日期' : 'Start date'} type="date" value={nextAfter || ''} onChange={(e) => setNextAfter(e.target.value)} className="h-7 text-[11px] w-[105px] shrink-0 px-2 pr-1" />
+                <Input aria-label={locale === 'zh' ? '开始日期' : 'Start date'} type="date" lang={locale} value={nextAfter || ''} onChange={(e) => setNextAfter(e.target.value)} className="h-7 text-[11px] w-[105px] shrink-0 px-2 pr-1" />
                 <span className="text-xs">—</span>
-                <Input aria-label={locale === 'zh' ? '结束日期' : 'End date'} type="date" value={nextBefore || ''} onChange={(e) => setNextBefore(e.target.value)} className="h-7 text-[11px] w-[105px] shrink-0 px-2 pr-1" />
+                <Input aria-label={locale === 'zh' ? '结束日期' : 'End date'} type="date" lang={locale} value={nextBefore || ''} onChange={(e) => setNextBefore(e.target.value)} className="h-7 text-[11px] w-[105px] shrink-0 px-2 pr-1" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button aria-label={locale === 'zh' ? '快捷选择' : 'Quick'} variant="outline" size="icon" className="shrink-0">
-                      <Calendar className="h-2 w-2" />
+                    <Button aria-label={locale === 'zh' ? '快捷选择' : 'Quick'} variant="outline" size="icon" className="shrink-0 h-7 w-7 text-muted-foreground border-muted/40">
+                      <Calendar className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem className="text-[10px]" onClick={() => setDateRangeDays(0)}>{dict.filters.today}</DropdownMenuItem>
-                    <DropdownMenuItem className="text-[10px]" onClick={() => setDateRangeDays(7)}>{dict.filters.last7}</DropdownMenuItem>
-                    <DropdownMenuItem className="text-[10px]" onClick={() => setDateRangeDays(30)}>{dict.filters.last30}</DropdownMenuItem>
-                    <DropdownMenuItem className="text-[10px]" onClick={() => setDateRangeDays(90)}>{dict.filters.last90}</DropdownMenuItem>
-                    <DropdownMenuItem className="text-[10px]" onClick={clearDateRange}>{dict.filters.clearDate}</DropdownMenuItem>
+                  <DropdownMenuContent align="start" className="border-border/40 bg-popover/95 backdrop-blur shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+                    <DropdownMenuItem className="text-[11px] text-muted-foreground focus:text-foreground" onClick={() => setDateRangeDays(0)}>{dict.filters.today}</DropdownMenuItem>
+                    <DropdownMenuItem className="text-[11px] text-muted-foreground focus:text-foreground" onClick={() => setDateRangeDays(7)}>{dict.filters.last7}</DropdownMenuItem>
+                    <DropdownMenuItem className="text-[11px] text-muted-foreground focus:text-foreground" onClick={() => setDateRangeDays(30)}>{dict.filters.last30}</DropdownMenuItem>
+                    <DropdownMenuItem className="text-[11px] text-muted-foreground focus:text-foreground" onClick={() => setDateRangeDays(90)}>{dict.filters.last90}</DropdownMenuItem>
+                    <DropdownMenuItem className="text-[11px] text-muted-foreground focus:text-foreground" onClick={clearDateRange}>{dict.filters.clearDate}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
             </div>
             <div className="md:col-span-3 flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={() => { clearAll(); }} className="gap-1"><X className="h-4 w-4" />{dict.filters.clear}</Button>
+              <Button variant="ghost" size="sm" onClick={() => { clearAll(); }} className="gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" />{dict.filters.clear}</Button>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setOpen(false) }}>{dict.common?.cancel ?? '关闭'}</Button>
-                <Button variant="default" size="sm" onClick={applyAll}>{dict.filters.apply}</Button>
+                <Button variant="outline" size="sm" className="text-[11px] font-medium" onClick={() => { setOpen(false) }}>{dict.common?.cancel ?? '关闭'}</Button>
+                <Button variant="default" size="sm" className="text-[11px] font-medium" onClick={applyAll}>{dict.filters.apply}</Button>
               </div>
             </div>
           </div>

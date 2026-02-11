@@ -54,7 +54,7 @@ export function LedgerGroupList({
     const arr = refundsByRelated[key] || []
     arr.sort(
       (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
     refundsByRelated[key] = arr
   }
@@ -71,7 +71,7 @@ export function LedgerGroupList({
       const children = refundsByRelated[it.id] || []
       // Deduplicate children by ID to avoid double display if API returns duplicates
       const uniqueChildren = Array.from(
-        new Map(children.map((c) => [c.id, c])).values()
+        new Map(children.map((c) => [c.id, c])).values(),
       )
       groups.push({ parent: it, children: uniqueChildren })
     } else if (!(it.type === 'FAILURE_REFUND' && matchedRefundIds.has(it.id))) {
@@ -81,32 +81,47 @@ export function LedgerGroupList({
   groups.sort((a, b) => {
     const ta = Math.max(
       new Date(a.parent.createdAt).getTime(),
-      ...a.children.map((c) => new Date(c.createdAt).getTime())
+      ...a.children.map((c) => new Date(c.createdAt).getTime()),
     )
     const tb = Math.max(
       new Date(b.parent.createdAt).getTime(),
-      ...b.children.map((c) => new Date(c.createdAt).getTime())
+      ...b.children.map((c) => new Date(c.createdAt).getTime()),
     )
     return tb - ta
   })
 
   function statusView(it: LedgerItem) {
     const failed = it.status === 'FAILED' || it.usageSuccess === false
-    const success = !failed && (it.status === 'SUCCESS' || it.usageSuccess === true)
+    const success =
+      !failed && (it.status === 'SUCCESS' || it.usageSuccess === true)
     const label = success
       ? dict.status.SUCCESS
       : failed
-      ? dict.status.FAILED
-      : dict.status.PENDING
+        ? dict.status.FAILED
+        : dict.status.PENDING
     return (
       <>
-        <span className="hidden md:inline">
-          <Badge
-            className="w-16 justify-center"
-            variant={success ? 'default' : failed ? 'destructive' : 'secondary'}
+        <span className="hidden md:inline-flex items-center">
+          <span
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full border text-[11px] font-normal ${
+              success
+                ? 'text-emerald-700 border-emerald-200/70'
+                : failed
+                  ? 'text-rose-700 border-rose-200/70'
+                  : 'text-muted-foreground border-border/40'
+            }`}
           >
-            {label}
-          </Badge>
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                success
+                  ? 'bg-emerald-500'
+                  : failed
+                    ? 'bg-rose-500'
+                    : 'bg-zinc-400'
+              }`}
+            />
+            <span className="opacity-80">{label}</span>
+          </span>
         </span>
         <span className="md:hidden inline-flex items-center w-16 justify-center">
           <span
@@ -116,6 +131,29 @@ export function LedgerGroupList({
           />
         </span>
       </>
+    )
+  }
+
+  function statusCompact(it: LedgerItem) {
+    const failed = it.status === 'FAILED' || it.usageSuccess === false
+    const success =
+      !failed && (it.status === 'SUCCESS' || it.usageSuccess === true)
+    const label = success
+      ? dict.status.SUCCESS
+      : failed
+        ? dict.status.FAILED
+        : dict.status.PENDING
+    const tone = success
+      ? 'text-emerald-700 border-emerald-200/70 bg-emerald-50/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
+      : failed
+        ? 'text-rose-700 border-rose-200/70 bg-rose-50/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
+        : 'text-muted-foreground border-border/50 bg-muted/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
+    return (
+      <span
+        className={`inline-flex items-center h-5 px-2 rounded-full border text-[10px] font-medium ${tone}`}
+      >
+        {label}
+      </span>
     )
   }
 
@@ -160,164 +198,271 @@ export function LedgerGroupList({
     return parts[parts.length - 1]
   }
 
-  return (
-    <div className="space-y-3 -mx-3 sm:mx-0">
-      <div className="sticky top-0 z-10 bg-muted backdrop-blur supports-[backdrop-filter]:bg-muted border border-muted/30 rounded-md px-3 py-2 text-xs text-muted-foreground whitespace-nowrap font-medium shadow-sm">
-        <div className="grid grid-cols-6 sm:grid-cols-7 gap-x-3 sm:gap-x-5 items-center">
-          <div className="px-2">{dict.table?.type || '类型'}</div>
-          <div className="px-2">{dict.table?.service || '服务名称'}</div>
-          <div className="px-2 hidden sm:block text-center">
-            {dict.table?.taskId || '任务ID'}
-          </div>
-          <div className="px-2 text-center">{dict.table?.status || '状态'}</div>
-          <div className="px-2 text-right">{dict.table?.delta || '变化'}</div>
-          <div className="px-2 text-right">{dict.table?.balance || '余额'}</div>
-          <div className="px-2">{dict.table?.time || '时间'}</div>
-        </div>
-      </div>
-      {groups.map(({ parent, children }) => {
-        const success = parent.usageSuccess === true
-        const failed = parent.usageSuccess === false
-        const dotColor = success
-          ? 'bg-green-500'
-          : failed
-          ? 'bg-red-500'
-          : 'bg-gray-400'
-        const typeLabel =
-          dict.type?.[String(parent.type)] || String(parent.type)
-        return (
-          <div
-            key={parent.id}
-            className="relative rounded-lg border border-muted/30 bg-card shadow-sm divide-y divide-muted/20"
-          >
-            <div className="grid grid-cols-6 sm:grid-cols-7 gap-x-3 sm:gap-x-5 px-2 sm:px-3 py-0 items-center whitespace-nowrap h-12 text-xs">
-              <div className="px-2 h-12 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {typeLabelDisplay(String(parent.type))}
-                </span>
-              </div>
-              <div className="px-2 h-12 min-w-0 text-xs truncate flex items-center">
-                {serviceLabel(parent)}
-              </div>
-              <div className="px-2 h-12 hidden sm:flex items-center justify-center">
-                {parent.taskId && (
-                  <CopyText
-                    text={String(parent.taskId)}
-                    dict={dict}
-                    mode="compact"
-                  />
-                )}
-              </div>
-              <div className="px-2 h-12 flex items-center justify-center">
-                {parent.type === 'SERVICE_DEBIT' ? (
-                  statusView(parent)
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </div>
-              <div
-                className={`px-2 h-12 flex items-center justify-end font-mono ${
-                  parent.delta > 0
-                    ? 'text-emerald-600'
-                    : parent.delta < 0
-                    ? 'text-red-600'
-                    : ''
-                }`}
-              >
-                {parent.delta > 0 ? `+${parent.delta}` : String(parent.delta)}
-              </div>
-              <div className="px-2 h-12 flex items-center justify-end font-mono">
-                {parent.balanceAfter}
-              </div>
-              <div className="px-2 h-12 min-w-0 truncate text-xs text-muted-foreground flex items-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>{formatShortDate(new Date(parent.createdAt))}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {new Date(parent.createdAt).toLocaleString(locale)}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
+  const headerGridClass =
+    'grid grid-cols-[0.7fr_0.9fr_0.55fr_0.65fr_1.6fr] gap-x-3 items-center text-left'
+  const rowGridClass =
+    'grid grid-cols-[0.7fr_0.9fr_0.55fr_0.65fr_1.6fr] gap-x-3 py-0 items-center whitespace-nowrap text-xs text-left'
+  const numberGroupClass =
+    'grid grid-cols-[0.95fr_0.85fr_0.8fr] gap-x-3 items-center'
 
-            {children.length > 0 && (
-              <div className="pb-2">
-                <div className="space-y-1 divide-y divide-muted/20">
-                  {children.map((child) => {
-                    const typeChild =
-                      dict.type?.[String(child.type)] || String(child.type)
-                    return (
-                      <div
-                        key={child.id}
-                        className="grid grid-cols-6 sm:grid-cols-7 gap-x-3 sm:gap-x-5 px-2 sm:px-3 py-0 items-center rounded-md bg-muted/35 whitespace-nowrap h-12 text-xs"
-                      >
-                        <div className="px-2 h-12 flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {typeLabelDisplay(String(child.type))}
-                          </span>
-                        </div>
-                        <div className="px-2 h-12 min-w-0 text-xs truncate flex items-center">
-                          {serviceLabel(child)}
-                        </div>
-                        <div className="px-2 h-12 hidden sm:flex items-center justify-center">
-                          {child.taskId && (
-                            <CopyText
-                              text={String(child.taskId)}
-                              dict={dict}
-                              mode="compact"
-                            />
-                          )}
-                        </div>
-                        <div className="px-2 h-12 text-muted-foreground flex items-center justify-center">
-                          -
-                        </div>
-                        <div
-                          className={`px-2 h-12 flex items-center justify-end font-mono ${
-                            child.delta > 0
-                              ? 'text-emerald-600'
-                              : child.delta < 0
-                              ? 'text-red-600'
-                              : ''
-                          }`}
-                        >
-                          {child.delta > 0
-                            ? `+${child.delta}`
-                            : String(child.delta)}
-                        </div>
-                        <div className="px-2 h-12 flex items-center justify-end font-mono">
-                          {child.balanceAfter}
-                        </div>
-                        <div className="px-2 h-12 min-w-0 truncate text-xs text-muted-foreground flex items-center">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span>
-                                  {formatShortDate(new Date(child.createdAt))}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {new Date(child.createdAt).toLocaleString(
-                                  locale
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+  // Mobile: Fintech-style compact list item
+  // Row 1: [StatusDot] ServiceName ......... Delta
+  // Row 2: Type · Date ..................... Balance
+  function MobileListItem({ item }: { item: LedgerItem }) {
+    const failed = item.status === 'FAILED' || item.usageSuccess === false
+    const success =
+      !failed && (item.status === 'SUCCESS' || item.usageSuccess === true)
+
+    // Status dot color
+    const dotColor = success
+      ? 'bg-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.2)]'
+      : failed
+        ? 'bg-rose-500 shadow-[0_0_0_1px_rgba(244,63,94,0.2)]'
+        : 'bg-zinc-400'
+
+    return (
+      <div className="sm:hidden py-3 px-1 border-b border-border/40 last:border-0">
+        <div className="flex justify-between items-baseline mb-1">
+          <div className="flex items-center gap-2 min-w-0 pr-2">
+            {item.type === 'SERVICE_DEBIT' && (
+              <div
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`}
+              />
+            )}
+            <span
+              className={`text-[13px] font-medium truncate ${
+                failed
+                  ? 'text-muted-foreground line-through decoration-rose-500/50'
+                  : 'text-foreground'
+              }`}
+            >
+              {serviceLabel(item)}
+            </span>
+            {failed && (
+              <span className="text-[10px] text-rose-600 bg-rose-50/80 px-1 py-0.5 rounded font-medium ml-1 shrink-0">
+                {dict.status.FAILED}
+              </span>
             )}
           </div>
-        )
-      })}
+          <div
+            className={`text-[13px] font-mono font-medium shrink-0 tabular-nums tracking-tight ${
+              item.delta > 0
+                ? 'text-emerald-600'
+                : item.delta < 0
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
+            }`}
+          >
+            {item.delta > 0 ? `+${item.delta}` : item.delta}
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center text-[11px] text-muted-foreground/80">
+          <div className="flex items-center gap-1.5">
+            <span>{formatShortDate(new Date(item.createdAt))}</span>
+            <span className="w-0.5 h-0.5 rounded-full bg-border" />
+            <span>{typeLabelDisplay(String(item.type))}</span>
+          </div>
+          <div className="font-mono tracking-tight tabular-nums opacity-80">
+            {dict.table?.balance || 'Bal'}: {item.balanceAfter}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3 -mx-3 sm:mx-0">
+      <div className="sm:rounded-xl sm:border sm:border-border/40 sm:bg-card/60 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+        {/* Desktop Header */}
+        <div className="hidden sm:block sticky top-0 z-10 bg-muted/50 backdrop-blur supports-[backdrop-filter]:bg-muted/50 border-t border-border/20 border-b border-border/20 shadow-[inset_0_-1px_0_rgba(0,0,0,0.04)] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/70 whitespace-nowrap">
+          <div className={headerGridClass}>
+            <div className="px-2 text-left w-full">
+              {dict.table?.type || '类型'}
+            </div>
+            <div className="px-2 text-left w-full">
+              {dict.table?.service || '服务名称'}
+            </div>
+            <div className="px-2 hidden sm:block text-center w-full">
+              {dict.table?.taskId || '任务ID'}
+            </div>
+            <div className="px-2 text-center w-full">
+              {dict.table?.status || '状态'}
+            </div>
+            <div className={numberGroupClass}>
+              <div className="px-2 text-right w-full">
+                {dict.table?.delta || '变化'}
+              </div>
+              <div className="px-1 text-right w-full">
+                {dict.table?.balance || '余额'}
+              </div>
+              <div className="px-2 text-center w-full">
+                {dict.table?.time || '时间'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Header: Hidden to reduce noise, just list items */}
+
+        <div className="sm:divide-y sm:divide-border/30 px-3 sm:px-0 bg-background/50 sm:bg-transparent">
+          {groups.map(({ parent, children }) => {
+            const orderedChildren = [...children].sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            )
+            return (
+              <div key={parent.id} className="sm:py-1.5">
+                {orderedChildren.length > 0 && (
+                  <div className="space-y-2 sm:px-3 sm:pb-1">
+                    {orderedChildren.map((child) => (
+                      <div key={child.id}>
+                        <MobileListItem item={child} />
+                        <div
+                          className={`hidden sm:grid rounded-md bg-muted/30 h-11 ${rowGridClass}`}
+                        >
+                          <div className="px-2 h-12 flex items-center gap-2 text-left w-full justify-start">
+                            <span className="text-xs text-muted-foreground">
+                              {typeLabelDisplay(String(child.type))}
+                            </span>
+                          </div>
+                          <div className="px-2 h-12 min-w-0 text-xs truncate flex items-center text-left w-full justify-start">
+                            {serviceLabel(child)}
+                          </div>
+                          <div className="px-2 h-12 hidden sm:flex items-center justify-center w-full">
+                            {child.taskId && (
+                              <CopyText
+                                text={String(child.taskId)}
+                                dict={dict}
+                                mode="compact"
+                              />
+                            )}
+                          </div>
+                          <div className="px-2 h-12 text-muted-foreground flex items-center justify-center w-full">
+                            -
+                          </div>
+                          <div className={numberGroupClass}>
+                            <div className="px-1 h-12 flex items-center justify-end font-mono">
+                              <span
+                                className={`inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em] ${
+                                  child.delta > 0
+                                    ? 'text-emerald-600'
+                                    : child.delta < 0
+                                      ? 'text-red-600'
+                                      : ''
+                                }`}
+                              >
+                                {child.delta > 0
+                                  ? `+${child.delta}`
+                                  : String(child.delta)}
+                              </span>
+                            </div>
+                            <div className="px-1 h-12 flex items-center justify-end font-mono">
+                              <span className="inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em]">
+                                {child.balanceAfter}
+                              </span>
+                            </div>
+                            <div className="px-2 h-12 min-w-0 truncate text-xs text-muted-foreground flex items-center justify-center">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="w-full text-center">
+                                      {formatShortDate(
+                                        new Date(child.createdAt),
+                                      )}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {new Date(child.createdAt).toLocaleString(
+                                      locale,
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="sm:px-3">
+                  <MobileListItem item={parent} />
+                  <div className={`hidden sm:grid h-11 ${rowGridClass}`}>
+                    <div className="px-2 h-12 flex items-center gap-2 text-left w-full justify-start">
+                      <span className="text-xs text-muted-foreground">
+                        {typeLabelDisplay(String(parent.type))}
+                      </span>
+                    </div>
+                    <div className="px-2 h-12 min-w-0 text-xs truncate flex items-center text-left w-full justify-start">
+                      {serviceLabel(parent)}
+                    </div>
+                    <div className="px-2 h-12 hidden sm:flex items-center justify-center w-full">
+                      {parent.taskId && (
+                        <CopyText
+                          text={String(parent.taskId)}
+                          dict={dict}
+                          mode="compact"
+                        />
+                      )}
+                    </div>
+                    <div className="px-2 h-12 flex items-center justify-center w-full">
+                      {parent.type === 'SERVICE_DEBIT' ? (
+                        statusView(parent)
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
+                    <div className={numberGroupClass}>
+                      <div className="px-1 h-12 flex items-center justify-end font-mono">
+                        <span
+                          className={`inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em] ${
+                            parent.delta > 0
+                              ? 'text-emerald-600'
+                              : parent.delta < 0
+                                ? 'text-red-600'
+                                : ''
+                          }`}
+                        >
+                          {parent.delta > 0
+                            ? `+${parent.delta}`
+                            : String(parent.delta)}
+                        </span>
+                      </div>
+                      <div className="px-1 h-12 flex items-center justify-end font-mono">
+                        <span className="inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em]">
+                          {parent.balanceAfter}
+                        </span>
+                      </div>
+                      <div className="px-2 h-12 min-w-0 truncate text-xs text-muted-foreground flex items-center justify-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="w-full text-center">
+                                {formatShortDate(new Date(parent.createdAt))}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {new Date(parent.createdAt).toLocaleString(
+                                locale,
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
+
 function formatShortDate(d: Date) {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
