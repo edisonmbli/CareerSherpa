@@ -99,7 +99,10 @@ export function NewServiceForm({
       try {
         const res = await createServiceAction(args)
         if (!res || !('ok' in (res as any))) {
-          showError(dict.notification?.serverErrorTitle || '服务创建失败', dict.notification?.serverErrorDesc || '')
+          showError(
+            dict.notification?.serverErrorTitle || '服务创建失败',
+            dict.notification?.serverErrorDesc || '',
+          )
           return
         }
 
@@ -117,7 +120,7 @@ export function NewServiceForm({
         console.error('Service creation failed:', e)
         showError(
           dict.notification?.serverErrorTitle || 'Service Creation Failed',
-          dict.notification?.serverErrorDesc || 'An unexpected error occurred.'
+          dict.notification?.serverErrorDesc || 'An unexpected error occurred.',
         )
       }
     })
@@ -164,7 +167,7 @@ export function NewServiceForm({
       <StepperProgress
         currentStep={0 as any}
         maxUnlockedStep={0 as any}
-        onStepClick={() => { }}
+        onStepClick={() => {}}
         labels={{
           step1: String(tabsDict?.match || 'Step 1'),
           step2: String(tabsDict?.customize || 'Step 2'),
@@ -173,7 +176,7 @@ export function NewServiceForm({
         className="shrink-0"
       />
       <form onSubmit={onSubmit} className="space-y-6">
-        <AppCard className="shadow-md border-0">
+        <AppCard className="border border-border/60 bg-card/50 shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm">
           <AppCardHeader>
             <AppCardTitle>{dict.title}</AppCardTitle>
             <AppCardDescription>{dict.description}</AppCardDescription>

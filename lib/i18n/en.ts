@@ -105,11 +105,11 @@ const dict = {
     new: {
       title: 'Job Match Analysis',
       description:
-        'Analyze match degree between uploaded resume and job description, plus suggest tailored pitch lines',
+        'Analyze match between uploaded resume and job description, and suggest outreach pitch lines',
       or: 'or',
       button: 'Start Matching',
       placeholderText:
-        'Paste JD text or upload a screenshot to start matching.',
+        'Paste the job description (text) here, or drag in a JD screenshot.',
       uploadCta: 'Upload JD screenshot',
       selectedFile: 'Selected file:',
       noFile: 'No file chosen',

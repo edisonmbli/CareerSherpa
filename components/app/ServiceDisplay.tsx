@@ -1337,7 +1337,7 @@ export function ServiceDisplay({
           USE_SSE_V2 &&
           v2Bridge &&
           tabValue === 'match' && (
-            <div className="w-full px-0 sm:px-4 md:px-6 print:hidden">
+            <div className="w-full px-3 md:px-4 print:hidden">
               <div className="mx-auto w-full max-w-[1180px]">
                 <StatusConsoleV2
                   status={v2Bridge.status}

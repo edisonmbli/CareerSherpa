@@ -101,10 +101,10 @@ const dict = {
     },
     new: {
       title: '岗位匹配度',
-      description: '根据已上传简历与岗位描述，分析匹配度、建议求职话术',
+      description: '根据已上传简历与岗位描述，分析匹配度，并建议“敲门”话术',
       or: '或',
       button: '开始分析',
-      placeholderText: '可粘贴岗位描述(文本)，或直接拖入截图',
+      placeholderText: '可在此粘贴岗位描述（文本），或直接拖入 JD 截图',
       uploadCta: '上传 JD 截图',
       selectedFile: '已选择文件：',
       noFile: '未选择文件',

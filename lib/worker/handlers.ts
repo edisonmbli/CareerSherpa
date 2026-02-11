@@ -765,9 +765,13 @@ export async function handleBatch(
         traceId,
         'batch',
       )
+      const baiduOcrUsed =
+        templateId === 'ocr_extract' &&
+        !!(preparedVars as any)['_baidu_ocr_used']
       await markTimeline(serviceId, 'worker_batch_start', {
         taskId,
-        modelId: decision.modelId,
+        modelId: baiduOcrUsed ? 'baidu_ocr' : decision.modelId,
+        ...(baiduOcrUsed ? { ocrProvider: 'baidu' } : {}),
       })
 
       // Check Guards
