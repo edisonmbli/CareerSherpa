@@ -308,8 +308,7 @@ const dict = {
       job_summary_missing: 'Missing job summary, cannot match',
       enqueue_failed: 'Failed to enqueue task, try later',
       // User-centric rate limit messages
-      daily_limit:
-        'Daily free quota exhausted. Top up for more professional services.',
+      daily_limit: 'Daily free quota exhausted',
       frequency_limit: 'Too many requests! Take a short coffee break ☕️',
       readyToCustomize: 'Ready to Customize',
       readyToCustomizeDesc:
@@ -346,6 +345,7 @@ const dict = {
       rateLimitedTitle: 'Request Rate Limited',
       rateLimitedDesc:
         'System is busy, please try again later. Consider topping up for higher priority.',
+      dailyLimitDesc: 'Top up to unlock deeper professional services.',
       serverErrorTitle: 'Service Unavailable',
       serverErrorDesc:
         'Encountered an unexpected interruption, please try again later.',

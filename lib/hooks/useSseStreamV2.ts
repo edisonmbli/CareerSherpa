@@ -378,11 +378,9 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
             setStatusDetail(processed.statusDetail)
           }
 
-          // Handle error - always set error when errorMessage exists
-          // (can be in addition to status change for _FAILED events)
           if (processed.errorMessage) {
             const shouldSetError =
-              !!processed.newStatus && processed.newStatus.endsWith('FAILED')
+              processed.newStatus?.includes('FAILED') || raw.type === 'error'
             if (shouldSetError) {
               setError(processed.errorMessage)
             }

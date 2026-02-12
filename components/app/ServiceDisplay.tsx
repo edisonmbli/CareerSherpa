@@ -387,7 +387,6 @@ export function ServiceDisplay({
   // Handlers
   // Core customize action (called after free tier confirmation if needed)
   const doCustomize = () => {
-    setTabValue('customize') // Switch tab immediately for visual feedback
     setNotification(null)
     startTransition(async () => {
       try {
@@ -411,10 +410,10 @@ export function ServiceDisplay({
             }
             setMatchTaskId(newTaskId)
           }
+          setTabValue('customize')
           // Set status and start progress simulation immediately (before SSE confirms)
           setBridgeStatus?.('CUSTOMIZE_PENDING')
         } else {
-          setTabValue('match') // Revert tab on failure
           const serviceError = getServiceErrorMessage((res as any).error, {
             statusText: dict.workbench?.statusText,
             notification: dict.workbench?.notification,
@@ -422,7 +421,6 @@ export function ServiceDisplay({
           showError(serviceError.title, serviceError.description)
         }
       } catch (e) {
-        setTabValue('match')
         if (process.env.NODE_ENV === 'development') {
           console.error(e)
         }
@@ -466,7 +464,6 @@ export function ServiceDisplay({
       localStorage.setItem(`executionTier_interview_${serviceId}`, tierToUse)
     }
     setNotification(null)
-    setTabValue('interview')
     startTransition(async () => {
       try {
         const res = await generateInterviewTipsAction({
@@ -483,6 +480,7 @@ export function ServiceDisplay({
             )
             setMatchTaskId(newTaskId)
           }
+          setTabValue('interview')
           // Set status and start progress simulation immediately (before SSE confirms)
           setBridgeStatus?.('INTERVIEW_PENDING')
         } else {
@@ -1293,16 +1291,18 @@ export function ServiceDisplay({
       >
         <div className="md:hidden fixed top-0 inset-x-0 h-12 z-[50] bg-background/70 backdrop-blur border-border/40 print:hidden" />
         {notification && (
-          <div className="flex justify-center w-full px-1 print:hidden">
-            <div className="w-auto max-w-xl animate-in slide-in-from-top-2 fade-in duration-300">
-              <ServiceNotification
-                type={notification.type}
-                title={notification.title}
-                description={notification.description}
-                onClose={() => setNotification(null)}
-                autoDismiss={3000}
-                className="w-auto shadow-md"
-              />
+          <div className="fixed top-12 sm:top-10 md:top-8 left-1/2 lg:left-[calc(50%+var(--workbench-sidebar-width)/2)] -translate-x-1/2 z-[80] w-[92vw] max-w-[720px] px-1 sm:px-0 print:hidden pointer-events-none">
+            <div className="w-full flex justify-center pointer-events-none">
+              <div className="pointer-events-auto">
+                <ServiceNotification
+                  type={notification.type}
+                  title={notification.title}
+                  description={notification.description}
+                  onClose={() => setNotification(null)}
+                  autoDismiss={3000}
+                  className="w-fit max-w-[92vw] sm:max-w-[720px]"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1923,10 +1923,8 @@ export function ServiceDisplay({
                       <Button
                         onClick={() => {
                           if (cta.action === 'customize') onCustomize()
-                          else if (cta.action === 'interview') {
-                            setTabValue('interview')
-                            onInterview()
-                          } else if (cta.action === 'retry_match')
+                          else if (cta.action === 'interview') onInterview()
+                          else if (cta.action === 'retry_match')
                             retryMatchAction()
                         }}
                         disabled={cta.disabled}
