@@ -39,6 +39,7 @@ import {
   Sparkles,
   Pipette,
   Check,
+  Share2,
 } from 'lucide-react'
 import { RESUME_TEMPLATES, TemplateId } from '../constants'
 import { TemplateSelector } from './TemplateSelector'
@@ -54,6 +55,7 @@ import {
 import { HelpCircle } from 'lucide-react'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { useResumeDict } from '../ResumeDictContext'
+import { ShareResumeDialog } from '@/components/resume/share/ShareResumeDialog'
 
 interface ResumeToolbarProps {
   printRef: React.RefObject<HTMLDivElement>
@@ -114,6 +116,7 @@ const PRESET_COLORS = [
 
 export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
   const {
+    serviceId,
     resumeData,
     styleConfig,
     updateStyleConfig,
@@ -694,7 +697,23 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1 shrink-0" />
+            <div className="h-4 w-px bg-border mx-1 shrink-0" />
+
+            {serviceId && (
+              <ShareResumeDialog
+                serviceId={serviceId}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 px-2 transition-colors cursor-pointer"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span className="hidden lg:inline">{dict.share.button}</span>
+                  </Button>
+                }
+              />
+            )}
 
             {/* Save Indicator - Shows when dirty */}
             <SaveIndicator variant="inline" />

@@ -102,8 +102,17 @@ export async function ensureInterviewRecord(serviceId: string) {
   })
 }
 
+export async function hasServiceForUser(serviceId: string, userId: string) {
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, userId },
+    select: { id: true },
+  })
+  return Boolean(service)
+}
+
 export async function getServiceForUser(serviceId: string, userId: string) {
-  return prisma.service.findFirst({
+  const startedAt = Date.now()
+  const service = await prisma.service.findFirst({
     where: { id: serviceId, userId },
     include: {
       resume: true,
@@ -114,6 +123,13 @@ export async function getServiceForUser(serviceId: string, userId: string) {
       interview: true,
     },
   })
+  console.info('workbench_service_fetch', {
+    serviceId,
+    userId,
+    ms: Date.now() - startedAt,
+    ok: Boolean(service),
+  })
+  return service
 }
 
 export async function getServiceWithContext(serviceId: string) {

@@ -16,6 +16,8 @@ export type AnalyticsEventName =
   | 'PAGE_VIEW_LANDING'
   | 'TOPUP_CLICK'
   | 'TOPUP_WAITLIST_SUBMIT'
+  | 'RESUME_SHARE_VIEW'
+  | 'RESUME_SHARE_CONVERT'
 
 export interface TrackContext {
   userId?: string

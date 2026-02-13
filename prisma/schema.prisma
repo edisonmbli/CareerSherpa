@@ -154,8 +154,24 @@ model CustomizedResume {
   editedResumeJson     Json?           @map("edited_resume_json")
   sectionConfig        Json?           @map("section_config")
   service              Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  resumeShare          ResumeShare?
 
   @@map("customized_resumes")
+  @@schema("public")
+}
+
+model ResumeShare {
+  id                 String           @id @default(cuid())
+  customizedResumeId String           @unique @map("customized_resume_id")
+  shareKey           String           @unique @map("share_key")
+  isEnabled          Boolean          @default(true) @map("is_enabled")
+  expireAt           DateTime?        @map("expire_at")
+  viewCount          Int              @default(0) @map("view_count")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at")
+  customizedResume   CustomizedResume @relation(fields: [customizedResumeId], references: [id], onDelete: Cascade)
+
+  @@map("resume_shares")
   @@schema("public")
 }
 

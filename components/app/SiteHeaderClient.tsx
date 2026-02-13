@@ -25,6 +25,9 @@ export function SiteHeaderClient({
   const brandHref = isAuthenticated ? `/${locale}/workbench` : `/${locale}`
 
   const isWorkbench = pathname?.includes('/workbench')
+  const isResumeShare = pathname?.includes('/r/')
+
+  if (isResumeShare) return null
 
   return (
     <header

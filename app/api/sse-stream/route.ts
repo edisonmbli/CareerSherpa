@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
     const channel = buildEventChannel(userId, serviceId, taskId)
     const streamKey = `${channel}:stream`
 
+    let cancelStream: (() => void) | null = null
     const stream = new ReadableStream({
       async start(controller) {
         // 初始握手/心跳
@@ -72,6 +73,29 @@ export async function GET(req: NextRequest) {
         let closed = false
         let consecutiveIdle = 0
         let timer: ReturnType<typeof setTimeout> | null = null
+        let keepAlive: ReturnType<typeof setInterval> | null = null
+
+        const closeStream = (reason: string, extra?: Record<string, unknown>) => {
+          if (closed) return
+          closed = true
+          if (timer) clearTimeout(timer)
+          if (keepAlive) clearInterval(keepAlive)
+          try {
+            console.info('sse_close', {
+              reason,
+              streamKey,
+              lastId,
+              ...(extra || {}),
+            })
+            controller.close()
+          } catch (e) {
+            console.warn('sse_close_error', (e as any)?.message || e)
+          }
+        }
+
+        cancelStream = () => {
+          closeStream('cancel')
+        }
 
         // 可选：在首次连接时快进到最新一条，避免重放历史
         // 仅当没有 Last-Event-ID 时才应用 fromLatest 逻辑
@@ -149,14 +173,7 @@ export async function GET(req: NextRequest) {
                   )
                 } catch (e) {
                   console.warn('sse_enqueue_error', (e as any)?.message || e)
-                  console.info('sse_close', {
-                    reason: 'enqueue_error',
-                    streamKey,
-                    lastId,
-                    entryId: entry.id,
-                  })
-                  closed = true
-                  if (timer) clearTimeout(timer)
+                  closeStream('enqueue_error', { entryId: entry.id })
                   return
                 }
                 try {
@@ -224,19 +241,13 @@ export async function GET(req: NextRequest) {
                       String(data?.stage),
                     ))
                 if (isTerminal) {
-                  console.info('sse_close', {
-                    reason: 'terminal_event',
-                    streamKey,
-                    lastId,
+                  closeStream('terminal_event', {
                     entryId: entry.id,
                     type: String((data as any)?.type || ''),
                     status: (data as any)?.status,
                     code: (data as any)?.code,
                     taskId: (data as any)?.taskId,
                   })
-                  closed = true
-                  if (timer) clearTimeout(timer)
-                  controller.close()
                   return
                 }
               }
@@ -269,31 +280,27 @@ export async function GET(req: NextRequest) {
         // 启动自适应轮询
         timer = setTimeout(tick, 0)
 
-        const keepAlive = setInterval(() => {
+        keepAlive = setInterval(() => {
           if (closed) return
+          if (controller.desiredSize === null) {
+            closeStream('keepalive_closed')
+            return
+          }
           try {
             controller.enqueue(new TextEncoder().encode(':keepalive\n\n'))
           } catch (e) {
             console.warn('sse_keepalive_error', (e as any)?.message || e)
+            closeStream('keepalive_error')
           }
         }, 25000)
 
         // 当连接关闭时清理资源
         req.signal?.addEventListener?.('abort', () => {
-          closed = true
-          if (timer) clearTimeout(timer)
-          clearInterval(keepAlive)
-          try {
-            console.info('sse_close', {
-              reason: 'abort',
-              streamKey,
-              lastId,
-            })
-            controller.close()
-          } catch (e) {
-            console.warn('sse_close_error', (e as any)?.message || e)
-          }
+          closeStream('abort')
         })
+      },
+      cancel() {
+        if (cancelStream) cancelStream()
       },
     })
 

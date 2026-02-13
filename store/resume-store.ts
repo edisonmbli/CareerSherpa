@@ -53,6 +53,7 @@ interface ResumeState {
   // UI State
   activeSectionKey: string | null // e.g., 'workExperiences'
   activeItemId: string | null // e.g., 'work-1'
+  readOnly: boolean
   isSidebarOpen: boolean
   isStructureOpen: boolean
   isAIPanelOpen: boolean
@@ -92,7 +93,8 @@ interface ResumeState {
     originalData: ResumeData | null,
     config?: SectionConfig,
     optimizeSuggestion?: string | null,
-    opsJson?: any
+    opsJson?: any,
+    readOnly?: boolean
   ) => void
 
   updateBasics: (data: Partial<ResumeData['basics']>) => void
@@ -222,6 +224,7 @@ const createResumeSlice = (
 
   activeSectionKey: null,
   activeItemId: null,
+  readOnly: false,
   isSidebarOpen: true,
   isStructureOpen: true,
   isAIPanelOpen: true,
@@ -257,11 +260,13 @@ const createResumeSlice = (
     originalData,
     config,
     optimizeSuggestion,
-    opsJson
+    opsJson,
+    readOnly = false
   ) => {
     set((state) => {
       state.serviceId = serviceId
       state.resumeData = data
+      state.readOnly = readOnly
 
       // MVP: Check localStorage for avatar if missing in data
       // This runs on client side only
