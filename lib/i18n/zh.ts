@@ -991,6 +991,16 @@ const dict = {
         printFooter: '由 CareerShaper AI 生成',
         metaTitle: '专业简历 - CareerShaper',
         metaDesc: '查看由 AI 生成的专业简历。',
+        status: {
+          expiredBadge: '分享链接已过期',
+          disabledBadge: '分享已暂停',
+          expiredTitle: '链接已过期',
+          disabledTitle: '该链接已关闭',
+          expiredDesc: '分享者设置了有效期，当前已到期。可联系分享者重新生成链接',
+          disabledDesc: '分享者已关闭公开分享，暂时无法访问该内容',
+          cta: '免费生成我的简历',
+          ctaHint: '用 CareerShaper AI 快速生成专业简历',
+        },
       },
     },
     tips: {

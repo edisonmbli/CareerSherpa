@@ -113,12 +113,20 @@ export async function upsertResumeShareByCustomizedId(
   })
 }
 
+export type GetSharedResumeResult =
+  | { status: 'success'; data: any }
+  | { status: 'not_found' }
+  | { status: 'disabled' }
+  | { status: 'expired' }
+
 /**
  * Get full resume data by share key
  * Does NOT check for userId ownership
  * Checks for isEnabled and expireAt
  */
-export async function getSharedResumeByKey(shareKey: string) {
+export async function getSharedResumeByKey(
+  shareKey: string,
+): Promise<GetSharedResumeResult> {
   const share = await prisma.resumeShare.findUnique({
     where: { shareKey },
     include: {
@@ -137,11 +145,12 @@ export async function getSharedResumeByKey(shareKey: string) {
     },
   })
 
-  if (!share) return null
+  if (!share) return { status: 'not_found' }
 
   // Check validity
-  if (!share.isEnabled) return null
-  if (share.expireAt && share.expireAt < new Date()) return null
+  if (!share.isEnabled) return { status: 'disabled' }
+  if (share.expireAt && share.expireAt < new Date())
+    return { status: 'expired' }
 
   // Increment view count (fire and forget, or await)
   // We await to ensure it's counted, but catch error to not block view
@@ -163,9 +172,12 @@ export async function getSharedResumeByKey(shareKey: string) {
   // Return a structure compatible with what the Resume Store expects
   // We flatten it a bit or return the service object with relations
   return {
-    ...service,
-    resume,
-    customizedResume,
-    // We don't return other sensitive data like job, detailedResume unless needed
+    status: 'success',
+    data: {
+      ...service,
+      resume,
+      customizedResume,
+      // We don't return other sensitive data like job, detailedResume unless needed
+    },
   }
 }
