@@ -24,7 +24,6 @@ import {
 import { useRouter } from 'next/navigation'
 import { MarkdownEditor } from '@/components/app/MarkdownEditor'
 import { saveCustomizedResumeAction } from '@/lib/actions/service.actions'
-import { toast } from '@/components/ui/use-toast'
 import {
   StepperProgress,
   type StepId,
@@ -115,7 +114,6 @@ export function ServiceDisplay({
 
   // Local state for task switching (e.g. customizations)
   const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
-
   // Computed Task ID for connection
   const serviceId = initialService?.id || ''
   const initialTaskId = initialService?.executionSessionId
@@ -139,11 +137,14 @@ export function ServiceDisplay({
   const status = v2Bridge?.status || 'IDLE'
   // storeStatus alias for legacy compatibility
   const storeStatus = status
+  const matchBase = initialService?.match ?? null
+  const customizedResumeBase = initialService?.customizedResume ?? null
+  const interviewBase = initialService?.interview ?? null
 
   // Content extraction
   let initialMatchJson: any = null
   try {
-    const raw = initialService?.match?.matchSummaryJson
+    const raw = matchBase?.matchSummaryJson
     initialMatchJson = raw
       ? typeof raw === 'string'
         ? JSON.parse(raw)
@@ -296,7 +297,7 @@ export function ServiceDisplay({
         ? 'COMPLETED'
         : storeStatus === 'CUSTOMIZE_FAILED'
           ? 'FAILED'
-          : initialService?.customizedResume?.status || 'IDLE'
+          : customizedResumeBase?.status || 'IDLE'
 
   // Transition state: customize tab selected but SSE hasn't confirmed task started yet
   // Once store shows CUSTOMIZE_PENDING from SSE, we're no longer in transition
@@ -328,7 +329,7 @@ export function ServiceDisplay({
     }
     if (storeStatus === 'INTERVIEW_COMPLETED') return 'COMPLETED'
     if (storeStatus === 'INTERVIEW_FAILED') return 'FAILED'
-    return initialService?.interview?.status || 'IDLE'
+    return interviewBase?.status || 'IDLE'
   })()
 
   const isInterviewTransitionState =
@@ -337,9 +338,9 @@ export function ServiceDisplay({
   // Note: isStarting state removed in favor of deriving transition state from isPending + customizeStatus
 
   // Local parsing logic removed (handled by V2 Bridge)
-  const matchJson = initialService?.match?.matchSummaryJson
+  const matchJson = matchBase?.matchSummaryJson
 
-  const lastUpdatedMatch = initialService?.match?.updatedAt
+  const lastUpdatedMatch = matchBase?.updatedAt
 
   // Duplicate status decl removed
 
@@ -598,7 +599,7 @@ export function ServiceDisplay({
       }
     }
   }, [status, v2Bridge?.matchContent])
-  const interviewJson = initialService?.interview?.interviewTipsJson || null
+  const interviewJson = interviewBase?.interviewTipsJson || null
   let interviewParsed: any = null
   try {
     interviewParsed = interviewJson
@@ -933,10 +934,7 @@ export function ServiceDisplay({
   const displayCost = tier === 'free' ? 0 : currentTaskCost
 
   const lastUpdated =
-    (lastUpdatedMatch as any) ||
-    (initialService?.match?.updatedAt as any) ||
-    (initialService?.updatedAt as any) ||
-    null
+    (lastUpdatedMatch as any) || (initialService?.updatedAt as any) || null
 
   const hasRefreshedJobSummaryRef = useRef(false)
 
@@ -1555,26 +1553,21 @@ export function ServiceDisplay({
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
-            initialService?.customizedResume?.customizedResumeJson ? (
+            customizedResumeBase?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
-                  initialService.customizedResume.editedResumeJson ||
-                  initialService.customizedResume.customizedResumeJson
+                  customizedResumeBase.editedResumeJson ||
+                  customizedResumeBase.customizedResumeJson
                 }
-                initialConfig={
-                  initialService.customizedResume.sectionConfig || undefined
-                }
+                initialConfig={customizedResumeBase.sectionConfig || undefined}
                 originalData={
-                  initialService.customizedResume.customizedResumeJson ||
-                  undefined
+                  customizedResumeBase.customizedResumeJson || undefined
                 }
                 optimizeSuggestion={
-                  initialService.customizedResume.optimizeSuggestion || null
+                  customizedResumeBase.optimizeSuggestion || null
                 }
-                initialOpsJson={
-                  initialService.customizedResume.ops_json || undefined
-                }
+                initialOpsJson={customizedResumeBase.ops_json || undefined}
                 ctaAction={ctaNode}
                 dict={dict.resume}
               />

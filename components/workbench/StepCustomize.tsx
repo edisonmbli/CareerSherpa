@@ -7,6 +7,7 @@ import { ResumeEditorLayout } from '@/components/resume/editor/ResumeEditorLayou
 import { useExitProtection } from '@/hooks/use-exit-protection'
 import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { ResumeDictProvider, type ResumeDict } from '@/components/resume/ResumeDictContext'
+import { prefetchShareState } from '@/components/resume/share/ShareResumeDialog'
 
 interface StepCustomizeProps {
   serviceId: string
@@ -35,6 +36,7 @@ export function StepCustomize({
   useExitProtection()
 
   const initialized = useRef(false)
+  const sharePrefetched = useRef(false)
 
   useEffect(() => {
     if (!initialized.current) {
@@ -58,6 +60,12 @@ export function StepCustomize({
     initStore,
   ])
 
+  useEffect(() => {
+    if (!serviceId || sharePrefetched.current) return
+    sharePrefetched.current = true
+    prefetchShareState(serviceId)
+  }, [serviceId])
+
   return (
     <ResumeDictProvider dict={dict}>
       <div className="h-full w-full relative">
@@ -71,4 +79,3 @@ export function StepCustomize({
     </ResumeDictProvider>
   )
 }
-

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
+import { flushSync } from 'react-dom'
+import { usePathname } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -50,11 +52,45 @@ interface ShareResumeDialogProps {
   trigger?: React.ReactNode
 }
 
+const SHARE_CACHE_TTL = 60000
+const shareCache = new Map<
+  string,
+  {
+    data: {
+      isEnabled: boolean
+      shareKey: string | null
+      expireAt: string | null
+    } | null
+    fetchedAt: number
+  }
+>()
+
+export async function prefetchShareState(serviceId: string) {
+  if (!serviceId) return
+  const cached = shareCache.get(serviceId)
+  if (cached && Date.now() - cached.fetchedAt <= SHARE_CACHE_TTL) return
+  try {
+    const res = await getResumeShareAction({ serviceId })
+    if (!res.ok) return
+    const payload = res.data
+      ? {
+          isEnabled: res.data.isEnabled,
+          shareKey: res.data.shareKey ?? null,
+          expireAt: res.data.expireAt ?? null,
+        }
+      : null
+    shareCache.set(serviceId, { data: payload, fetchedAt: Date.now() })
+  } catch {
+    return
+  }
+}
+
 export function ShareResumeDialog({
   serviceId,
   trigger,
 }: ShareResumeDialogProps) {
   const dict = useResumeDict()
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [, startTransition] = useTransition()
@@ -100,54 +136,102 @@ export function ShareResumeDialog({
     [],
   )
 
-  const fetchShare = useCallback(
-    async (showLoading: boolean) => {
-      if (showLoading) setLoading(true)
-      const startedAt = Date.now()
-      console.info('share_ui_load_start', { serviceId })
-      const res = await getResumeShareAction({ serviceId })
-      if (res.ok) {
-        if (res.data) {
-          setIsEnabled(res.data.isEnabled)
-          if (res.data.isEnabled) {
-            setShareKey(res.data.shareKey)
-            setExpireAt(res.data.expireAt ? new Date(res.data.expireAt) : null)
-          } else {
-            setShareKey(null)
-            setExpireAt(null)
-          }
-        } else {
-          setIsEnabled(false)
-          setShareKey(null)
-          setExpireAt(null)
-        }
-      } else {
+  const getFreshCache = useCallback(() => {
+    if (!serviceId) return null
+    const entry = shareCache.get(serviceId)
+    if (!entry) return null
+    if (Date.now() - entry.fetchedAt > SHARE_CACHE_TTL) return null
+    return entry
+  }, [serviceId])
+
+  const applyShareData = useCallback(
+    (
+      data: {
+        isEnabled: boolean
+        shareKey: string | null
+        expireAt: string | null
+      } | null,
+    ) => {
+      if (!data) {
         setIsEnabled(false)
         setShareKey(null)
         setExpireAt(null)
+        return
+      }
+      setIsEnabled(data.isEnabled)
+      if (data.isEnabled) {
+        setShareKey(data.shareKey)
+        setExpireAt(data.expireAt ? new Date(data.expireAt) : null)
+      } else {
+        setShareKey(null)
+        setExpireAt(null)
+      }
+    },
+    [],
+  )
+
+  const fetchShare = useCallback(
+    async (showLoading: boolean) => {
+      if (showLoading) setLoading(true)
+      const res = await getResumeShareAction({ serviceId })
+      if (res.ok) {
+        const payload = res.data
+          ? {
+              isEnabled: res.data.isEnabled,
+              shareKey: res.data.shareKey ?? null,
+              expireAt: res.data.expireAt ?? null,
+            }
+          : null
+        applyShareData(payload)
+        if (serviceId) {
+          shareCache.set(serviceId, { data: payload, fetchedAt: Date.now() })
+        }
+      } else {
+        applyShareData(null)
         showFeedback('error', res.error || dict.share.feedback.loadFailed)
       }
       hasLoadedRef.current = true
       lastFetchedAtRef.current = Date.now()
-      console.info('share_ui_load_end', {
-        serviceId,
-        ok: res.ok,
-        ms: Date.now() - startedAt,
-      })
       if (showLoading) setLoading(false)
     },
-    [dict.share.feedback.loadFailed, serviceId, showFeedback],
+    [applyShareData, dict.share.feedback.loadFailed, serviceId, showFeedback],
   )
 
   useEffect(() => {
+    if (!serviceId) return
+    const cached = getFreshCache()
+    if (!cached) return
+    if (!hasLoadedRef.current) {
+      applyShareData(cached.data)
+      hasLoadedRef.current = true
+      lastFetchedAtRef.current = cached.fetchedAt
+    }
+  }, [serviceId, getFreshCache, applyShareData])
+
+  useEffect(() => {
     if (!open) return
-    const isStale = Date.now() - lastFetchedAtRef.current > 60000
+    const cached = getFreshCache()
+    if (cached) {
+      applyShareData(cached.data)
+      hasLoadedRef.current = true
+      lastFetchedAtRef.current = cached.fetchedAt
+      setLoading(false)
+      return
+    }
+    const isStale = Date.now() - lastFetchedAtRef.current > SHARE_CACHE_TTL
     if (!hasLoadedRef.current || isStale) {
       fetchShare(true)
     } else {
       setLoading(false)
     }
-  }, [open, fetchShare])
+  }, [open, fetchShare, getFreshCache, applyShareData])
+
+  useEffect(() => {
+    if (!serviceId || open) return
+    const cached = getFreshCache()
+    if (cached || hasLoadedRef.current) return
+    fetchShare(false)
+  }, [serviceId, open, fetchShare, getFreshCache])
 
   const handleSave = () => {
     if (!isEnabled || isMutating) return
@@ -162,6 +246,17 @@ export function ShareResumeDialog({
         if (res.ok) {
           setShareKey(res.data.shareKey)
           setExpireAt(res.data.expireAt ? new Date(res.data.expireAt) : null)
+          if (serviceId) {
+            shareCache.set(serviceId, {
+              data: {
+                isEnabled: true,
+                shareKey: res.data.shareKey,
+                expireAt: res.data.expireAt ?? null,
+              },
+              fetchedAt: Date.now(),
+            })
+            lastFetchedAtRef.current = Date.now()
+          }
           const message = shareKey
             ? dict.share.feedback.saveSuccess
             : dict.share.feedback.createSuccess
@@ -179,9 +274,13 @@ export function ShareResumeDialog({
     })
   }
 
+  const localeMatch = pathname?.match(/^\/(en|zh)(?:\/|$)/)
+  const currentLocale = localeMatch?.[1] ?? 'en'
+  const sharePath = shareKey ? `/${currentLocale}/r/${shareKey}` : ''
+
   const handleCopy = () => {
     if (!shareKey) return
-    const url = `${window.location.origin}/r/${shareKey}`
+    const url = `${window.location.origin}${sharePath}`
     navigator.clipboard
       .writeText(url)
       .then(() => {
@@ -196,10 +295,12 @@ export function ShareResumeDialog({
 
   const isExpired = expireAt && new Date() > expireAt
   const shareUrl = shareKey
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${shareKey}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}${sharePath}`
     : ''
   const feedbackClasses =
-    'bg-stone-100 text-stone-500 font-light dark:bg-stone-900/40 dark:text-stone-300'
+    feedback?.type === 'error'
+      ? 'bg-red-50 text-red-700 border border-red-100/80 font-medium dark:bg-red-950/30 dark:text-red-200 dark:border-red-900/40'
+      : 'bg-blue-50 text-blue-500/80 border border-blue-100/80 font-medium dark:bg-blue-950/80 dark:text-blue-200 dark:border-blue-900/40'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -212,7 +313,7 @@ export function ShareResumeDialog({
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-        <div className="px-5 pt-4 pb-4 border-b bg-gradient-to-b from-muted/80 via-muted/40 to-background rounded-t-lg">
+        <div className="px-5 pt-4 pb-4 border-b border-slate-200/80 bg-gradient-to-b from-slate-100/95 via-slate-100/80 to-slate-50/70 dark:border-zinc-800/80 dark:from-zinc-900/90 dark:via-zinc-900/75 dark:to-zinc-900/60 rounded-t-lg">
           <DialogHeader className="space-y-2">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -235,8 +336,38 @@ export function ShareResumeDialog({
         </div>
 
         {loading ? (
-          <div className="py-6 flex justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="px-5 py-5 space-y-4 bg-slate-200/40 dark:bg-zinc-900/50">
+            <div className="rounded-xl border border-slate-300/70 dark:border-zinc-700/70 bg-slate-200/70 dark:bg-zinc-800/60 p-3 shadow-sm animate-pulse">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-28 rounded-md bg-slate-300/80 dark:bg-zinc-700/70" />
+                  <div className="h-3 w-48 rounded-md bg-slate-300/70 dark:bg-zinc-700/60" />
+                </div>
+                <div className="h-6 w-11 rounded-full bg-slate-300/80 dark:bg-zinc-700/70" />
+              </div>
+              <div className="mt-3 h-3 w-56 rounded-md bg-slate-300/70 dark:bg-zinc-700/60" />
+            </div>
+
+            <div className="rounded-xl border border-slate-300/70 dark:border-zinc-700/70 bg-slate-200/70 dark:bg-zinc-800/60 p-3 shadow-sm space-y-3 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-20 rounded-md bg-slate-300/80 dark:bg-zinc-700/70" />
+                <div className="h-4 w-16 rounded-md bg-slate-300/70 dark:bg-zinc-700/60" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 flex-1 rounded-lg bg-slate-300/80 dark:bg-zinc-700/70" />
+                <div className="h-9 w-24 rounded-lg bg-slate-300/80 dark:bg-zinc-700/70" />
+              </div>
+              <div className="h-3 w-36 rounded-md bg-slate-300/70 dark:bg-zinc-700/60" />
+            </div>
+
+            <div className="rounded-xl border border-slate-300/70 dark:border-zinc-700/70 bg-slate-200/70 dark:bg-zinc-800/60 p-3 shadow-sm space-y-3 animate-pulse">
+              <div className="h-4 w-20 rounded-md bg-slate-300/80 dark:bg-zinc-700/70" />
+              <div className="flex items-center gap-2">
+                <div className="h-9 flex-1 rounded-lg bg-slate-300/80 dark:bg-zinc-700/70" />
+                <div className="h-9 w-9 rounded-lg bg-slate-300/80 dark:bg-zinc-700/70" />
+                <div className="h-9 w-9 rounded-lg bg-slate-300/80 dark:bg-zinc-700/70" />
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-4 px-5 py-4">
@@ -255,8 +386,8 @@ export function ShareResumeDialog({
                   disabled={isMutating}
                   onCheckedChange={(next) => {
                     if (isMutating) return
-                    setIsEnabled(next)
                     if (next) {
+                      setIsEnabled(true)
                       setDuration('7')
                       setIsMutating(true)
                       startTransition(async () => {
@@ -272,6 +403,17 @@ export function ShareResumeDialog({
                                 ? new Date(res.data.expireAt)
                                 : null,
                             )
+                            if (serviceId) {
+                              shareCache.set(serviceId, {
+                                data: {
+                                  isEnabled: true,
+                                  shareKey: res.data.shareKey,
+                                  expireAt: res.data.expireAt ?? null,
+                                },
+                                fetchedAt: Date.now(),
+                              })
+                              lastFetchedAtRef.current = Date.now()
+                            }
                             showFeedback(
                               'success',
                               dict.share.feedback.createSuccess,
@@ -291,18 +433,32 @@ export function ShareResumeDialog({
                       })
                       return
                     }
-                    setIsMutating(true)
+                    flushSync(() => {
+                      setIsEnabled(false)
+                      setIsMutating(true)
+                      showFeedback(
+                        'success',
+                        dict.share.feedback.disableSuccess,
+                        'toggle',
+                      )
+                    })
                     startTransition(async () => {
                       try {
                         const res = await disableShareLinkAction({ serviceId })
                         if (res.ok) {
                           setShareKey(null)
                           setExpireAt(null)
-                          showFeedback(
-                            'success',
-                            dict.share.feedback.disableSuccess,
-                            'toggle',
-                          )
+                          if (serviceId) {
+                            shareCache.set(serviceId, {
+                              data: {
+                                isEnabled: false,
+                                shareKey: null,
+                                expireAt: null,
+                              },
+                              fetchedAt: Date.now(),
+                            })
+                            lastFetchedAtRef.current = Date.now()
+                          }
                         } else {
                           setIsEnabled(true)
                           showFeedback(
@@ -462,7 +618,7 @@ export function ShareResumeDialog({
                               asChild
                             >
                               <a
-                                href={`/r/${shareKey}`}
+                                href={sharePath}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >

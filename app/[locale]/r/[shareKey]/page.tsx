@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation'
 import { getSharedResumeByKey } from '@/lib/dal/resumeShare'
 import { PublicResumeViewer } from '@/components/resume/share/PublicResumeViewer'
-import { PublicResumeHook } from '@/components/resume/share/PublicResumeHook'
+import { SharedResumeLayout } from '@/components/resume/share/SharedResumeLayout'
 import { ShareViewTracker } from '@/components/resume/share/ShareViewTracker'
 import { Locale } from '@/i18n-config'
 import { Metadata } from 'next'
 import { getDictionary } from '@/lib/i18n/dictionaries'
+import { stackServerApp } from '@/stack/server'
 
 interface PageProps {
   params: Promise<{
@@ -32,6 +33,7 @@ export default async function SharedResumePage({ params }: PageProps) {
 
   const dict = await getDictionary(locale)
   const data = await getSharedResumeByKey(shareKey)
+  const user = await stackServerApp.getUser()
 
   if (!data || !data.resume || !data.customizedResume) {
     notFound()
@@ -48,12 +50,17 @@ export default async function SharedResumePage({ params }: PageProps) {
   const ops = ops_json as any
   const styleConfig = ops?.styleConfig || {}
   const templateId = ops?.currentTemplate || 'standard'
+  const isOwner = user?.id && data.userId && user.id === data.userId
 
   return (
     <div className="min-h-screen bg-slate-100/50 relative pb-20 print:bg-white print:pb-0">
       <ShareViewTracker shareKey={shareKey} templateId={templateId} />
       
-      <main className="container mx-auto px-0 sm:px-4 py-8 print:p-0 print:max-w-none">
+      <SharedResumeLayout
+        locale={locale}
+        showHook={!isOwner}
+        text={dict.resume.share.public}
+      >
         <PublicResumeViewer 
           serviceId={data.id}
           resumeData={finalResumeData}
@@ -61,12 +68,7 @@ export default async function SharedResumePage({ params }: PageProps) {
           styleConfig={styleConfig}
           templateId={templateId}
         />
-      </main>
-
-      <PublicResumeHook
-        locale={locale}
-        text={dict.resume.share.public}
-      />
+      </SharedResumeLayout>
     </div>
   )
 }

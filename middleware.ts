@@ -67,9 +67,15 @@ export async function middleware(request: NextRequest) {
   // 首页作为 landing page（唯一允许匿名访问的业务页面）
   const isLandingPage = pathname === `/${currentLocale}` || pathname === `/${currentLocale}/`;
   const isLocalAuthSignIn = pathname === `/${currentLocale}/auth/sign-in`;
+  const isSharePage = pathname.startsWith(`/${currentLocale}/r/`);
   
   // 定义白名单：不需要认证的路径
-  const isPublicPath = isPublicAsset || isStackAuthHandler || isLandingPage || isLocalAuthSignIn;
+  const isPublicPath =
+    isPublicAsset ||
+    isStackAuthHandler ||
+    isLandingPage ||
+    isLocalAuthSignIn ||
+    isSharePage;
 
   // 默认保护模式：除了白名单，所有路径都需要认证
   const requiresAuth = !isPublicPath;
