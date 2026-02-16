@@ -2,6 +2,7 @@
   "name": "job-assistant-ai",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:webpack": "next dev",
@@ -69,6 +70,7 @@
     "hono": "^4.11.9",
     "html2canvas": "^1.4.1",
     "immer": "^11.0.1",
+    "import-in-the-middle": "^2.0.6",
     "jsonrepair": "^3.13.1",
     "jspdf": "^3.0.3",
     "langchain": "^1.2.6",
@@ -85,6 +87,7 @@
     "react-dom": "18.3.1",
     "react-markdown": "^10.1.0",
     "react-to-print": "^3.2.0",
+    "require-in-the-middle": "^8.0.1",
     "sharp": "^0.34.4",
     "sonner": "^2.0.7",
     "svix": "^1.77.0",
