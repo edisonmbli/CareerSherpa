@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import type { Locale } from '@/i18n-config'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import { stackServerApp } from '@/stack/server'
-import { trackEvent } from '@/lib/analytics'
 import { LandingHero } from '@/components/landing/LandingHero'
 import { PhilosophySection } from '@/components/landing/PhilosophySection'
 import { FeatureShowcase } from '@/components/landing/FeatureShowcase'
@@ -51,7 +50,6 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
     redirect(`/${locale}/workbench`)
   }
   const dict = (await getDictionary(locale)).landing
-  trackEvent('PAGE_VIEW_LANDING', { payload: { locale } })
   
   return (
     <div className="flex flex-col min-h-screen">

@@ -11,7 +11,7 @@ import {
   getLatestDetailedSummaryJson,
 } from '@/lib/dal/resume'
 import { pushTask } from '@/lib/queue/producer'
-import { trackEvent } from '@/lib/analytics/index'
+import { trackEvent, AnalyticsCategory } from '@/lib/analytics/index'
 import { checkOperationRateLimit } from '@/lib/rateLimiter'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
@@ -89,10 +89,20 @@ export const uploadResumeAction = withServerActionAuthWrite<
           isFree: !hasQuota,
           error: enq.error,
         }
+
+      trackEvent('TASK_ENQUEUED', {
+        userId,
+        serviceId: rec.id,
+        traceId: rec.id,
+        category: AnalyticsCategory.SYSTEM,
+        payload: { task: 'resume_summary', isFree: !hasQuota },
+      })
     }
-    trackEvent('ASSET_UPLOADED', {
+    trackEvent('RESUME_UPLOAD_COMPLETED', {
       userId,
-      payload: { type: 'resume', isFree: !hasQuota },
+      serviceId: rec.id,
+      category: AnalyticsCategory.BUSINESS,
+      payload: { type: 'resume', isFree: !hasQuota, length: len },
     })
     return { ok: true, taskId: rec.id, isFree: !hasQuota, taskType: 'resume' }
   }
@@ -152,10 +162,20 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
           isFree: !hasQuota,
           error: enq.error,
         }
+
+      trackEvent('TASK_ENQUEUED', {
+        userId,
+        serviceId: rec.id,
+        traceId: rec.id,
+        category: AnalyticsCategory.SYSTEM,
+        payload: { task: 'detailed_resume_summary', isFree: !hasQuota },
+      })
     }
-    trackEvent('ASSET_UPLOADED', {
+    trackEvent('RESUME_UPLOAD_COMPLETED', {
       userId,
-      payload: { type: 'detailed', isFree: !hasQuota },
+      serviceId: rec.id,
+      category: AnalyticsCategory.BUSINESS,
+      payload: { type: 'detailed', isFree: !hasQuota, length: len },
     })
     return {
       ok: true,

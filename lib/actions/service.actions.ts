@@ -28,7 +28,7 @@ import { pushTask } from '@/lib/queue/producer'
 import { ensureEnqueued } from '@/lib/actions/enqueue'
 import { acquireLock } from '@/lib/redis/lock'
 import { ENV } from '@/lib/env'
-import { trackEvent } from '@/lib/analytics/index'
+import { trackEvent, AnalyticsCategory } from '@/lib/analytics/index'
 import { checkOperationRateLimit } from '@/lib/rateLimiter'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
@@ -153,6 +153,17 @@ export const createServiceAction = withServerActionAuthWrite(
     await markTimeline(svc.id, 'create_service_debit_recorded', { cost })
     const hasQuota = debit.ok // 检查是否成功扣费（即用户是否有配额）
 
+    trackEvent('SERVICE_CREATED', {
+      userId,
+      serviceId: svc.id,
+      category: AnalyticsCategory.BUSINESS,
+      payload: {
+        isImage,
+        isPaid: hasQuota,
+        hasDetailedResume: !!detailed,
+      },
+    })
+
     // 10. 根据输入类型（图片或文本）和付费状态执行不同的任务入队逻辑
     if (isImage) {
       const tEnq = Date.now()
@@ -198,6 +209,9 @@ export const createServiceAction = withServerActionAuthWrite(
           } else {
             trackEvent('TASK_ENQUEUED', {
               userId,
+              serviceId: svc.id,
+              traceId: `job_${svc.id}_${executionSessionId}`,
+              category: AnalyticsCategory.SYSTEM,
               payload: { task: 'ocr_extract', isFree: false },
             })
           }
@@ -253,6 +267,9 @@ export const createServiceAction = withServerActionAuthWrite(
           } else {
             trackEvent('TASK_ENQUEUED', {
               userId,
+              serviceId: svc.id,
+              traceId: `job_${svc.id}_${executionSessionId}`,
+              category: AnalyticsCategory.SYSTEM,
               payload: { task: 'job_vision_summary', isFree: true },
             })
           }
@@ -317,6 +334,9 @@ export const createServiceAction = withServerActionAuthWrite(
       } else {
         trackEvent('TASK_ENQUEUED', {
           userId,
+          serviceId: svc.id,
+          traceId: `job_${svc.id}_${executionSessionId}`,
+          category: AnalyticsCategory.SYSTEM,
           payload: { task: 'job_summary', isFree: !hasQuota },
         })
       }
@@ -424,6 +444,9 @@ export const customizeResumeAction = withServerActionAuthWrite<
 
     trackEvent('TASK_ENQUEUED', {
       userId,
+      serviceId: params.serviceId,
+      traceId: `customize_${params.serviceId}_${executionSessionId}`,
+      category: AnalyticsCategory.SYSTEM,
       payload: { task: 'customize', isFree: !hasQuota },
     })
 
@@ -440,8 +463,9 @@ export const customizeResumeAction = withServerActionAuthWrite<
 export const trackCustomizeExportAction = withServerActionAuthWrite(
   'trackCustomizeExportAction',
   async (params: { serviceId: string; markdownLength: number }, ctx) => {
-    trackEvent('TASK_COMPLETED', {
+    trackEvent('CUSTOMIZE_COMPLETED', {
       userId: ctx.userId,
+      category: AnalyticsCategory.BUSINESS,
       payload: {
         task: 'customize_export',
         markdownLength: params.markdownLength,
@@ -525,7 +549,17 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
     }
     trackEvent('TASK_ENQUEUED', {
       userId,
+      serviceId: params.serviceId,
+      traceId: interviewTaskId,
+      category: AnalyticsCategory.SYSTEM,
       payload: { task: 'interview', isFree: !hasQuota },
+    })
+    
+    trackEvent('INTERVIEW_SESSION_STARTED', {
+      userId,
+      serviceId: params.serviceId,
+      category: AnalyticsCategory.BUSINESS,
+      payload: { interviewId: rec.id }
     })
     return {
       ok: true,
@@ -546,8 +580,9 @@ export const saveCustomizedResumeAction = withServerActionAuthWrite<
   async (params: { serviceId: string; resumeJson: any }, ctx) => {
     const userId = ctx.userId
     await updateCustomizedResumeEditedData(params.serviceId, params.resumeJson)
-    trackEvent('TASK_COMPLETED', {
+    trackEvent('CUSTOMIZE_COMPLETED', {
       userId,
+      category: AnalyticsCategory.BUSINESS,
       payload: { task: 'customize_save', serviceId: params.serviceId },
     })
     return { ok: true }
@@ -657,6 +692,9 @@ export const retryMatchAction = withServerActionAuthWrite<
       }
       trackEvent('TASK_ENQUEUED', {
         userId,
+        serviceId: params.serviceId,
+        traceId: `job_${params.serviceId}_${executionSessionId}`,
+        category: AnalyticsCategory.SYSTEM,
         payload: { task: 'job_summary_retry', isFree: !hasQuota },
       })
       await updateMatchStatus(params.serviceId, 'PENDING' as any)
@@ -722,6 +760,9 @@ export const retryMatchAction = withServerActionAuthWrite<
 
       trackEvent('TASK_ENQUEUED', {
         userId,
+        serviceId: params.serviceId,
+        traceId: `pre_match_${params.serviceId}_${executionSessionId}`,
+        category: AnalyticsCategory.SYSTEM,
         payload: { task: 'retry_pre_match_audit', isFree: !hasQuota },
       })
       await updateServiceExecutionStatus(
@@ -779,6 +820,9 @@ export const retryMatchAction = withServerActionAuthWrite<
     }
     trackEvent('TASK_ENQUEUED', {
       userId,
+      serviceId: params.serviceId,
+      traceId: `match_${params.serviceId}_${executionSessionId}`,
+      category: AnalyticsCategory.SYSTEM,
       payload: { task: 'retry_match', isFree: !hasQuota },
     })
     await updateServiceExecutionStatus(

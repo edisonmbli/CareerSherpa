@@ -2,10 +2,24 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import * as Sentry from '@sentry/node'
+import { nodeProfilingIntegration } from '@sentry/profiling-node'
 import { config } from './config'
 import { Receiver } from '@upstash/qstash'
 import { handleStream, handleBatch } from '@/lib/worker/handlers'
 import type { WorkerBody } from '@/lib/worker/types'
+
+// Initialize Sentry
+Sentry.init({
+  dsn: process.env['SENTRY_DSN'] || process.env['NEXT_PUBLIC_SENTRY_DSN'],
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  // Performance Monitoring
+  tracesSampleRate: 1.0, // Capture 100% of the transactions
+  // Set sampling rate for profiling - this is relative to tracesSampleRate
+  profilesSampleRate: 1.0,
+})
 
 // Define Hono Environment
 type Bindings = {
@@ -13,6 +27,13 @@ type Bindings = {
 }
 
 const app = new Hono<{ Variables: Bindings }>()
+
+// Global Error Handler
+app.onError((err, c) => {
+  console.error('Global error caught:', err)
+  Sentry.captureException(err)
+  return c.text('Internal Server Error', 500)
+})
 
 // Middleware
 app.use('*', logger())
@@ -49,6 +70,7 @@ const verifyQStash = async (c: any, next: any) => {
     }
   } catch (e) {
     console.error('QStash verification failed:', e)
+    Sentry.captureException(e)
     return c.text('Verification failed', 401)
   }
 

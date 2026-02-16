@@ -12,7 +12,8 @@ import {
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
-import { FailureCode } from '@prisma/client'
+import { FailureCode, AnalyticsCategory } from '@prisma/client'
+import { trackEvent } from '@/lib/analytics/index'
 
 import { retrieveMatchContext } from '@/lib/rag/retriever'
 import { validateJson } from '@/lib/llm/json-validator'
@@ -422,6 +423,20 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     // Step 3: Success - save and notify
     try {
       await withRetry(() => txMarkMatchCompleted(serviceId, matchJson))
+
+      const score = Number(matchJson.match_score ?? matchJson.score ?? 0)
+      trackEvent('MATCH_GENERATED', {
+        userId,
+        serviceId,
+        taskId,
+        traceId,
+        category: AnalyticsCategory.BUSINESS,
+        payload: {
+          matchScore: score,
+          jobId: (variables as any)['jobId'],
+          resumeId: (variables as any)['resumeId'],
+        },
+      })
     } catch (e) {
       logError({
         reqId: requestId,

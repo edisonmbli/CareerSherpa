@@ -65,7 +65,13 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           const mimeType = ext === 'jpg' ? 'jpeg' : ext
           imageOrUrl = `data:image/${mimeType};base64,${base64}`
         } catch (e) {
-          console.error('Failed to read local image for OCR', e)
+          logError({
+            reqId: taskId,
+            route: 'worker/ocr',
+            error: e,
+            phase: 'read_local_image_failed',
+            serviceId,
+          })
           // Fallback to original URL, which will likely fail in LLM but better than crashing here
         }
       }

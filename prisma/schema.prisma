@@ -43,6 +43,13 @@ model Quota {
   @@schema("public")
 }
 
+enum AnalyticsCategory {
+  SYSTEM
+  BUSINESS
+  SECURITY
+  @@schema("public")
+}
+
 model PaymentWaitlist {
   id        String     @id @default(cuid())
   userId    String     @unique @map("user_id")
@@ -206,15 +213,20 @@ model KnowledgeEntry {
 }
 
 model AnalyticsEvent {
-  id        String      @id @default(cuid())
-  userId    String?     @map("user_id")
-  eventName String      @map("event_name")
+  id        String            @id @default(cuid())
+  userId    String?           @map("user_id")
+  eventName String            @map("event_name")
   payload   Json?
-  createdAt DateTime    @default(now()) @map("created_at")
-  user      users_sync? @relation(fields: [userId], references: [id])
+  traceId   String?           @map("trace_id")
+  duration  Int?              @default(0)
+  category  AnalyticsCategory @default(BUSINESS)
+  createdAt DateTime          @default(now()) @map("created_at")
+  user      users_sync?       @relation(fields: [userId], references: [id])
 
   @@index([eventName, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([traceId])
+  @@index([category, createdAt(sort: Desc)])
   @@map("analytics_events")
   @@schema("public")
 }

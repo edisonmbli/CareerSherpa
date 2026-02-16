@@ -7,5 +7,9 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "@sentry/node": "^10.38.0",
+    "@sentry/profiling-node": "^10.38.0"
   }
 }

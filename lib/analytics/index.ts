@@ -1,28 +1,48 @@
-import { createAnalyticsEvent } from '@/lib/dal/analyticsEvent'
+import { createAnalyticsEvent, type CreateAnalyticsEventParams } from '@/lib/dal/analyticsEvent'
+import { AnalyticsCategory } from '@prisma/client'
 
-// 统一事件枚举（仅保留关键低频事件，避免噪音与成本）
+// Re-export for convenience
+export { AnalyticsCategory }
+
+// 统一事件枚举
 export type AnalyticsEventName =
+  // --- System & Worker (High Priority) ---
   | 'TASK_ENQUEUED'
-  | 'TASK_RATE_LIMITED'
-  | 'TASK_BACKPRESSURED'
   | 'TASK_REPLAYED'
-  | 'TASK_ROUTED'
-  | 'TASK_COMPLETED'
+  | 'TASK_BACKPRESSURED'
   | 'TASK_FAILED'
+  | 'WORKER_JOB_STARTED'      // New: Worker received task
+  | 'WORKER_JOB_COMPLETED'    // New: Worker finished task
   | 'WORKER_GUARDS_BLOCKED'
   | 'WORKER_PROVIDER_NOT_CONFIGURED'
-  | 'RAG_QUERY_COMPLETED'
-  | 'ASSET_UPLOADED'
-  | 'PAGE_VIEW_LANDING'
-  | 'TOPUP_CLICK'
-  | 'TOPUP_WAITLIST_SUBMIT'
+
+  // --- Business Flow ---
+  | 'USER_SIGNUP_COMPLETED'   // New
+  | 'SERVICE_CREATED'         // New
+  | 'ASSET_UPLOADED'          // Legacy: File uploaded to blob
+  | 'RESUME_UPLOAD_COMPLETED' // New: User uploaded resume for service
+  | 'RESUME_PARSE_COMPLETED'  // New: Parser finished
+  | 'MATCH_GENERATED'         // New
+  | 'CUSTOMIZE_COMPLETED'     // New
+  | 'INTERVIEW_SESSION_STARTED' // New
+  | 'INTERVIEW_MESSAGE_SENT'    // New
+
+  // --- Growth & Revenue ---
   | 'RESUME_SHARE_VIEW'
   | 'RESUME_SHARE_CONVERT'
+  | 'TOPUP_CLICK'
+  | 'TOPUP_WAITLIST_SUBMIT'
+  
+  // --- RAG & AI ---
+  | 'RAG_QUERY_COMPLETED'
 
 export interface TrackContext {
   userId?: string
   serviceId?: string
   taskId?: string
+  traceId?: string      // New: Correlate async events
+  duration?: number     // New: Execution time in ms
+  category?: AnalyticsCategory // New: SYSTEM | BUSINESS | SECURITY
   payload?: Record<string, any>
 }
 
@@ -50,15 +70,15 @@ export function trackEvent(
   try {
     const payload = normalizePayload(ctx)
     // 异步触发（不 await）；避免 exactOptionalPropertyTypes 下的 undefined 赋值
-    const args: {
-      eventName: AnalyticsEventName
-      payload?: Record<string, any>
-      userId?: string
-    } = {
+    const args: CreateAnalyticsEventParams = {
       eventName,
       payload,
     }
     if (ctx.userId) args.userId = ctx.userId
+    if (ctx.traceId) args.traceId = ctx.traceId
+    if (ctx.duration !== undefined) args.duration = ctx.duration
+    if (ctx.category) args.category = ctx.category
+
     void createAnalyticsEvent(args)
   } catch (error) {
     // 绝不抛到业务层

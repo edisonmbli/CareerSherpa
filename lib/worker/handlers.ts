@@ -13,6 +13,7 @@ import { getTaskConfig } from '@/lib/llm/config'
 import { ENV } from '@/lib/env'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { logEvent } from '@/lib/observability/logger'
+import { trackEvent, AnalyticsCategory } from '@/lib/analytics/index'
 import { publishStart, emitStreamIdle } from '@/lib/worker/pipeline'
 import { guardUser, guardModel, guardQueue } from '@/lib/worker/steps/guards'
 import { executeStreaming, executeStructured } from '@/lib/worker/steps/execute'
@@ -258,7 +259,17 @@ export async function handleStream(
       if (!parsed.ok) return parsed.response
       const body: Body = parsed.body
 
-      const { taskId, userId, serviceId, locale, templateId, variables } = body
+      const { taskId, userId, serviceId, locale, templateId, variables, enqueuedAt } = body
+      const startTime = Date.now()
+      const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
+      trackEvent('WORKER_JOB_STARTED', {
+        userId,
+        serviceId,
+        taskId,
+        traceId: taskId,
+        category: AnalyticsCategory.SYSTEM,
+        payload: { templateId, queueWaitTime, enqueuedAt, startedAt: startTime },
+      })
 
       const strategy = getStrategy(templateId)
       if (!strategy) {
@@ -290,17 +301,6 @@ export async function handleStream(
               ? true
               : await getUserHasQuota(userId)
       const decision = computeDecision(templateId, preparedVars, userHasQuota)
-
-      logEvent(
-        'TASK_ROUTED',
-        { userId, serviceId, taskId },
-        {
-          templateId,
-          modelId: decision.modelId,
-          isStream: true,
-          queueId: String(decision.queueId),
-        },
-      )
 
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
@@ -586,6 +586,17 @@ export async function handleStream(
         await markTimeline(serviceId, 'worker_stream_finalize_end', { taskId })
         console.log(`[Stream] Phase: CLEANUP complete`)
 
+        const execDuration = Date.now() - startTime
+        trackEvent('WORKER_JOB_COMPLETED', {
+          userId,
+          serviceId,
+          taskId,
+          traceId: taskId,
+          category: AnalyticsCategory.SYSTEM,
+          duration: execDuration,
+          payload: { templateId, success: execResult.result.ok },
+        })
+
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
@@ -684,6 +695,17 @@ export async function handleStream(
           })
         }
 
+        const execDuration = Date.now() - startTime
+        trackEvent('WORKER_JOB_COMPLETED', {
+          userId,
+          serviceId,
+          taskId,
+          traceId: taskId,
+          category: AnalyticsCategory.SYSTEM,
+          duration: execDuration,
+          payload: { templateId, success: false, error: errMsg },
+        })
+
         return Response.json({ ok: false, error: errMsg }, { status: 500 })
       }
     },
@@ -702,7 +724,17 @@ export async function handleBatch(
       if (!parsed.ok) return parsed.response
       const body: Body = parsed.body
 
-      const { taskId, userId, serviceId, locale, templateId, variables } = body
+      const { taskId, userId, serviceId, locale, templateId, variables, enqueuedAt } = body
+      const startTime = Date.now()
+      const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
+      trackEvent('WORKER_JOB_STARTED', {
+        userId,
+        serviceId,
+        taskId,
+        traceId: taskId,
+        category: AnalyticsCategory.SYSTEM,
+        payload: { templateId, queueWaitTime, enqueuedAt, startedAt: startTime },
+      })
 
       const strategy = getStrategy(templateId)
       if (!strategy) {
@@ -1012,6 +1044,17 @@ export async function handleBatch(
           console.log(`[Batch] Phase: DEFERRED_ENQUEUE complete`)
         }
 
+        const execDuration = Date.now() - startTime
+        trackEvent('WORKER_JOB_COMPLETED', {
+          userId,
+          serviceId,
+          taskId,
+          traceId: taskId,
+          category: AnalyticsCategory.SYSTEM,
+          duration: execDuration,
+          payload: { templateId, success: execResult.result.ok },
+        })
+
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
@@ -1099,6 +1142,17 @@ export async function handleBatch(
             serviceId,
           })
         }
+
+        const execDuration = Date.now() - startTime
+        trackEvent('WORKER_JOB_COMPLETED', {
+          userId,
+          serviceId,
+          taskId,
+          traceId: taskId,
+          category: AnalyticsCategory.SYSTEM,
+          duration: execDuration,
+          payload: { templateId, success: false, error: errMsg },
+        })
 
         return new Response('internal_error', { status: 500 })
       }
