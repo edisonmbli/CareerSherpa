@@ -747,44 +747,64 @@ const dict = {
         'Paste JD, upload resume, and get higher-match interviews in three steps: match analysis, resume customization, and interview tips.',
     },
     hero: {
-      title: 'AI Job Assistant — Get higher-match interviews in 3 steps',
-      subtitle: 'Match analysis · Resume customization · Interview key points',
+      title: 'Your Personal AI Career Coach',
+      subtitle: 'Stop applying blindly. Get higher-match interviews with data-driven insights.',
       cta: 'Start Free Trial (8 coins)',
     },
-    valueProps: {
+    philosophy: {
+      title: 'Success Starts with Self-Knowledge',
+      description:
+        'Most job seekers skip the most important step: organizing their own assets. By structuring your "Detailed Resume" first, our AI can dig deep into your potential and match you with the right opportunities.',
+      step1: 'Raw Experience',
+      step2: 'Structured Assets',
+      step3: 'Tailored Applications',
+    },
+    features: {
+      title: 'How It Works',
+      tabs: {
+        match: '1. Match Analysis',
+        customize: '2. Resume Customization',
+        interview: '3. Interview Prep',
+        share: '4. Share & Track',
+      },
+      match: {
+        title: 'Know Where You Stand',
+        description:
+          'Instantly analyze your fit for any job description. Get a clear score, understand key requirements, and identify gaps before you apply.',
+      },
+      customize: {
+        title: 'Tailor Your Resume in Seconds',
+        description:
+          'Generate a targeted resume that highlights exactly what the recruiter is looking for. Edit in our Markdown editor and export to PDF.',
+      },
+      interview: {
+        title: 'Walk Into Interviews with Confidence',
+        description:
+          'Get a personalized "Battle Plan" with anticipated questions, key talking points, and strategic questions to ask the interviewer.',
+      },
+      share: {
+        title: 'Share Your Story',
+        description:
+          'Create a secure, shareable link for your tailored resume. Track views and impress recruiters with a modern, digital profile.',
+      },
+    },
+    benefits: {
+      title: 'Why Choose CareerShaper?',
       items: [
         {
-          title: 'Match Analysis',
+          title: 'Precision Matching',
           description:
-            'Score and explain fit against your target JD with clear, structured output.',
+            'Stop guessing. Our AI analyzes job descriptions deeply to tell you exactly why you fit (or why you don\'t).',
         },
         {
-          title: 'Resume Customization',
-          description: 'Generate a JD-specific resume you can edit and export.',
+          title: 'Efficiency Boost',
+          description:
+            'Tailor your resume for every application in seconds, not hours. Focus your energy on networking and interviewing.',
         },
         {
-          title: 'Interview Tips',
+          title: 'Interview Confidence',
           description:
-            'Get tailored intro and key points to prepare effectively.',
-        },
-      ],
-    },
-    howItWorks: {
-      features: [
-        {
-          title: 'Async & Queue',
-          description:
-            'QStash + Redis ensure reliable async processing and fair queues.',
-        },
-        {
-          title: 'RAG Knowledge',
-          description:
-            'Retrieval-augmented prompts inject proven job hunting guidance.',
-        },
-        {
-          title: 'Streaming',
-          description:
-            'SSE streams results for minimal perceived latency on core tasks.',
+            'Never be caught off guard. Our "Battle Plan" prepares you for the toughest questions based on your specific gaps.',
         },
       ],
     },

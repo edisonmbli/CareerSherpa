@@ -52,7 +52,6 @@ export async function pushTask<T extends TaskTemplateId>(
   error?: string
 }> {
   const client = getQStash()
-  const base = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
   const quotaInfo = await checkQuotaForService(params.userId)
   const tierOverride = params.variables.tierOverride
   const hasQuota =
@@ -72,9 +71,19 @@ export async function pushTask<T extends TaskTemplateId>(
   // Phase 4: Respect the kind parameter from action layer
   // Previously had a hardcoded override forcing vision→batch, now removed to enable streaming
   const kindSegment = params.kind
-  const url = `${base}/api/worker/${kindSegment}/${encodeURIComponent(
-    params.serviceId,
-  )}`
+  // Determine dispatch URL based on configuration
+  let url: string
+  if (ENV.WORKER_BASE_URL) {
+    // New Architecture: Dispatch to Hono Worker (Independent Service)
+    // Routes: /api/execute/stream, /api/execute/batch
+    url = `${ENV.WORKER_BASE_URL}/api/execute/${kindSegment}`
+  } else {
+    // Legacy Architecture: Dispatch to Next.js API Routes
+    const base = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
+    url = `${base}/api/worker/${kindSegment}/${encodeURIComponent(
+      params.serviceId,
+    )}`
+  }
 
   // Publish Queued Event to SSE
   try {
@@ -244,7 +253,9 @@ export async function pushTask<T extends TaskTemplateId>(
           enqueuedAt: Date.now(),
           retryCount: 0,
         },
-        retries: 0,
+        // M10 Optimization: Re-enable retries with exponential backoff
+        retries: 3,
+        backoff: (retryCount: number) => Math.exp(retryCount) * 1000, // 1s, 2.7s, 7.3s
         // Delay dispatch to allow previous worker to release lock
         ...(params.delaySec && params.delaySec > 0
           ? { delay: params.delaySec }

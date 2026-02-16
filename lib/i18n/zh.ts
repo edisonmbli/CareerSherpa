@@ -723,39 +723,64 @@ const dict = {
         '粘贴岗位JD、上传简历，三步提升面试匹配度：匹配度分析、定制化简历、面试要点。',
     },
     hero: {
-      title: 'AI 求职助手——三步拿到更高匹配度的面试机会',
-      subtitle: '匹配度分析 · 简历定制化 · 面试要点清单',
-      cta: '免费试用（赠 8 金币）',
+      title: '你的 AI 求职私教',
+      subtitle: '别再盲目海投了。用数据驱动的匹配分析与简历定制，精准拿下每一次面试机会。',
+      cta: '开始免费试用（赠 8 金币）',
     },
-    valueProps: {
+    philosophy: {
+      title: '成功始于自我认知',
+      description:
+        '大多数求职者都忽略了最关键的一步：梳理自己的“资产”。我们不仅仅是改简历，而是帮你建立深度的“个人详历库”。AI 基于此，才能真正读懂你的潜能，帮你匹配最合适的机会。',
+      step1: '原始经历',
+      step2: '结构化资产',
+      step3: '定制化应用',
+    },
+    features: {
+      title: '如何运作',
+      tabs: {
+        match: '1. 匹配度分析',
+        customize: '2. 简历定制',
+        interview: '3. 面试演练',
+        share: '4. 分享追踪',
+      },
+      match: {
+        title: '知己知彼，百战不殆',
+        description:
+          '即时分析你与目标岗位的契合度。在投递前获得清晰的评分、理解核心要求并识别潜在差距。',
+      },
+      customize: {
+        title: '秒级生成定制简历',
+        description:
+          '生成一份精准命中招聘者需求的简历。支持 Markdown 在线编辑并导出为专业 PDF。',
+      },
+      interview: {
+        title: '自信从容地面对面试',
+        description:
+          '获取个性化的“面试作战手卡”，包含预判问题、核心话术以及向面试官提问的策略。',
+      },
+      share: {
+        title: '让你的简历活起来',
+        description:
+          '生成专属分享链接，随时随地展示你的专业形象。摆脱传统 PDF 的束缚，给面试官留下深刻印象。',
+      },
+    },
+    benefits: {
+      title: '为什么选择 CareerShaper？',
       items: [
         {
-          title: '匹配度分析',
-          description: '基于目标 JD 打分并解释匹配度，结构化输出更清晰。',
+          title: '精准匹配',
+          description:
+            '拒绝盲猜。我们的 AI 深度解析岗位描述，明确告诉你为什么合适（或不合适）。',
         },
         {
-          title: '简历定制化',
-          description: '生成针对 JD 的定制化简历，可编辑与导出。',
+          title: '效率倍增',
+          description:
+            '几秒钟内为每个申请定制简历，而不是几小时。把精力集中在建立人脉和面试准备上。',
         },
         {
-          title: '面试要点',
-          description: '提供自我介绍与关键要点，助你高效准备。',
-        },
-      ],
-    },
-    howItWorks: {
-      features: [
-        {
-          title: '异步与队列',
-          description: 'QStash + Redis 保证可靠异步处理与公平队列。',
-        },
-        {
-          title: 'RAG 知识库',
-          description: '检索“求职宝典”上下文，增强提示词质量。',
-        },
-        {
-          title: '流式输出',
-          description: '核心任务使用 SSE 流式返回，降低感知延迟。',
+          title: '面试自信',
+          description:
+            '不再措手不及。我们的“作战手卡”基于你的具体短板，助你应对最棘手的面试问题。',
         },
       ],
     },

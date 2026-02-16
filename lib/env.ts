@@ -12,6 +12,9 @@ export const ENV = {
   QSTASH_CURRENT_SIGNING_KEY: process.env['QSTASH_CURRENT_SIGNING_KEY'] ?? '',
   QSTASH_NEXT_SIGNING_KEY: process.env['QSTASH_NEXT_SIGNING_KEY'] ?? '',
   NEXT_PUBLIC_APP_BASE_URL: process.env['NEXT_PUBLIC_APP_BASE_URL'] ?? '',
+  // Worker Base URL (for independent Hono worker)
+  // If set, producer will dispatch tasks to this URL (e.g., http://localhost:8081 or https://worker.domain.com)
+  WORKER_BASE_URL: process.env['WORKER_BASE_URL'] ?? '',
   DATABASE_URL: process.env['DATABASE_URL'] ?? '',
   ZHIPUAI_API_KEY: process.env['ZHIPUAI_API_KEY'] ?? '',
   DEEPSEEK_API_KEY: process.env['DEEPSEEK_API_KEY'] ?? '',
@@ -30,39 +33,19 @@ export const ENV = {
   ), // 异常使用阈值
 
   // 并发控制配置
-  DEEPSEEK_MAX_WORKERS: Number(process.env['DEEPSEEK_MAX_WORKERS'] ?? '5'), // DeepSeek最大并发数
-  GLM_MAX_WORKERS: Number(process.env['GLM_MAX_WORKERS'] ?? '5'), // GLM最大并发数
+  DEEPSEEK_MAX_WORKERS: Number(process.env['DEEPSEEK_MAX_WORKERS'] ?? '5'), // Legacy fallback
+  GLM_MAX_WORKERS: Number(process.env['GLM_MAX_WORKERS'] ?? '5'), // Legacy fallback
   WORKER_TIMEOUT_MS: Number(process.env['WORKER_TIMEOUT_MS'] ?? '300000'), // Worker超时时间（毫秒）
-  QUEUE_MAX_SIZE: Number(process.env['QUEUE_MAX_SIZE'] ?? '100'), // 队列最大长度（默认）
-  QUEUE_POSITION_UPDATE_INTERVAL_MS: Number(
-    process.env['QUEUE_POSITION_UPDATE_INTERVAL_MS'] ?? '2000',
-  ), // 队列位置更新间隔
 
-  // 队列分级上限（覆盖默认）
-  QUEUE_MAX_PAID_STREAM: Number(
-    process.env['QUEUE_MAX_PAID_STREAM'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
-  ),
-  QUEUE_MAX_FREE_STREAM: Number(
-    process.env['QUEUE_MAX_FREE_STREAM'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
-  ),
-  QUEUE_MAX_PAID_BATCH: Number(
-    process.env['QUEUE_MAX_PAID_BATCH'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
-  ),
-  QUEUE_MAX_FREE_BATCH: Number(
-    process.env['QUEUE_MAX_FREE_BATCH'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
-  ),
-  QUEUE_MAX_PAID_VISION: Number(
-    process.env['QUEUE_MAX_PAID_VISION'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
-  ),
-  QUEUE_MAX_FREE_VISION: Number(
-    process.env['QUEUE_MAX_FREE_VISION'] ??
-      String(process.env['QUEUE_MAX_SIZE'] ?? '100'),
-  ),
+  // M10 Queue Limits
+  // Paid queues (Universal default: 100)
+  QUEUE_MAX_PAID: Number(process.env['QUEUE_MAX_PAID'] ?? '100'),
+
+  // Free queues (Sharded default: 20)
+  QUEUE_MAX_FREE: Number(process.env['QUEUE_MAX_FREE'] ?? '20'),
+
+  // Fallback for generic queues if needed
+  QUEUE_MAX_DEFAULT: 100,
 
   // 性能优化配置
   CACHE_TTL_SECONDS: Number(process.env['CACHE_TTL_SECONDS'] ?? '300'), // 缓存TTL（秒）
@@ -126,9 +109,12 @@ export const ENV = {
 
   // 模型×tier并发上限（覆盖值）
   MAX_DS_REASONER_PAID: Number(process.env['MAX_DS_REASONER_PAID'] ?? '20'),
+  MAX_DS_REASONER_FREE: Number(process.env['MAX_DS_REASONER_FREE'] ?? '5'),
   MAX_DS_CHAT_PAID: Number(process.env['MAX_DS_CHAT_PAID'] ?? '20'),
+  MAX_DS_CHAT_FREE: Number(process.env['MAX_DS_CHAT_FREE'] ?? '10'),
   MAX_GEMINI_FLASH_PAID: Number(process.env['MAX_GEMINI_FLASH_PAID'] ?? '20'),
   MAX_GEMINI_FLASH_FREE: Number(process.env['MAX_GEMINI_FLASH_FREE'] ?? '10'),
+  MAX_GLM_FLASH_PAID: Number(process.env['MAX_GLM_FLASH_PAID'] ?? '10'),
   MAX_GLM_FLASH_FREE: Number(process.env['MAX_GLM_FLASH_FREE'] ?? '2'),
   MAX_GLM_VISION_PAID: Number(process.env['MAX_GLM_VISION_PAID'] ?? '3'),
   MAX_GLM_VISION_FREE: Number(process.env['MAX_GLM_VISION_FREE'] ?? '2'),
@@ -207,15 +193,11 @@ export function getConcurrencyConfig() {
     deepseekMaxWorkers: ENV.DEEPSEEK_MAX_WORKERS,
     glmMaxWorkers: ENV.GLM_MAX_WORKERS,
     workerTimeoutMs: ENV.WORKER_TIMEOUT_MS,
-    queueMaxSize: ENV.QUEUE_MAX_SIZE,
-    queuePositionUpdateIntervalMs: ENV.QUEUE_POSITION_UPDATE_INTERVAL_MS,
+    queueMaxSize: ENV.QUEUE_MAX_DEFAULT,
+    queuePositionUpdateIntervalMs: 2000, // Hardcoded default
     queueLimits: {
-      paidStream: ENV.QUEUE_MAX_PAID_STREAM,
-      freeStream: ENV.QUEUE_MAX_FREE_STREAM,
-      paidBatch: ENV.QUEUE_MAX_PAID_BATCH,
-      freeBatch: ENV.QUEUE_MAX_FREE_BATCH,
-      paidVision: ENV.QUEUE_MAX_PAID_VISION,
-      freeVision: ENV.QUEUE_MAX_FREE_VISION,
+      paid: ENV.QUEUE_MAX_PAID,
+      free: ENV.QUEUE_MAX_FREE,
     },
     userMaxActive: {
       stream: ENV.USER_MAX_ACTIVE_STREAM,
@@ -223,7 +205,10 @@ export function getConcurrencyConfig() {
     },
     modelTierLimits: {
       dsReasonerPaid: ENV.MAX_DS_REASONER_PAID,
+      dsReasonerFree: ENV.MAX_DS_REASONER_FREE,
       dsChatPaid: ENV.MAX_DS_CHAT_PAID,
+      dsChatFree: ENV.MAX_DS_CHAT_FREE,
+      glmFlashPaid: ENV.MAX_GLM_FLASH_PAID,
       glmFlashFree: ENV.MAX_GLM_FLASH_FREE,
       glmVisionPaid: ENV.MAX_GLM_VISION_PAID,
       glmVisionFree: ENV.MAX_GLM_VISION_FREE,

@@ -1,11 +1,13 @@
+
 import { redirect } from 'next/navigation'
 import type { Locale } from '@/i18n-config'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import { stackServerApp } from '@/stack/server'
 import { trackEvent } from '@/lib/analytics'
-import { HeroSection } from '@/components/landing/HeroSection'
-import { ValuePropsSection } from '@/components/landing/ValuePropsSection'
-import { HowItWorksSection } from '@/components/landing/HowItWorksSection'
+import { LandingHero } from '@/components/landing/LandingHero'
+import { PhilosophySection } from '@/components/landing/PhilosophySection'
+import { FeatureShowcase } from '@/components/landing/FeatureShowcase'
+import { BenefitsSection } from '@/components/landing/BenefitsSection'
 import { FaqSection } from '@/components/landing/FaqSection'
 import { CtaSection } from '@/components/landing/CtaSection'
 
@@ -50,13 +52,16 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
   }
   const dict = (await getDictionary(locale)).landing
   trackEvent('PAGE_VIEW_LANDING', { payload: { locale } })
+  
   return (
-    <div className="flex flex-col items-center overflow-x-hidden">
-      <HeroSection dict={dict.hero} locale={locale} />
-      <ValuePropsSection dict={dict.valueProps} />
-      <HowItWorksSection dict={dict.howItWorks} />
+    <div className="flex flex-col min-h-screen">
+      <LandingHero dict={dict.hero} locale={locale} />
+      <PhilosophySection dict={dict.philosophy} />
+      <FeatureShowcase dict={dict.features} />
+      <BenefitsSection dict={dict.benefits} />
       <FaqSection dict={dict.faq} locale={locale} />
       <CtaSection dict={dict.cta} />
+      
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
