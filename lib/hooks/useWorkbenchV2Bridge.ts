@@ -38,6 +38,7 @@ export function useWorkbenchV2Bridge(options: WorkbenchBridgeOptions) {
     // V2 Store access
     const v2Store = useWorkbenchV2Store()
     const {
+        serviceId: bridgeServiceId,
         status: v2Status,
         statusDetail,
         errorMessage,
@@ -192,6 +193,7 @@ export function useWorkbenchV2Bridge(options: WorkbenchBridgeOptions) {
 
     return {
         // Status
+        bridgeServiceId,
         status: v2Status,
         statusDetail,
         statusMessage,

@@ -117,18 +117,22 @@ const pickEffectiveStatus = (
   rawStatus: WorkbenchStatusV2,
   serverStatus: WorkbenchStatusV2 | null,
   dataStatus: WorkbenchStatusV2 | null,
+  trustRawStatus: boolean,
 ): WorkbenchStatusV2 => {
-  if (rawStatus && rawStatus !== 'IDLE') return rawStatus
-  const candidates = [rawStatus, serverStatus, dataStatus].filter(
-    Boolean,
-  ) as WorkbenchStatusV2[]
-  if (!candidates.length) return rawStatus
+  if (trustRawStatus && rawStatus && rawStatus !== 'IDLE') return rawStatus
+  const fallbackStatus = serverStatus || dataStatus || 'IDLE'
+  const candidates = [
+    trustRawStatus ? rawStatus : null,
+    serverStatus,
+    dataStatus,
+  ].filter(Boolean) as WorkbenchStatusV2[]
+  if (!candidates.length) return fallbackStatus
   const maxRank = Math.max(...candidates.map(getStatusRank))
-  if (getStatusRank(rawStatus) === maxRank) return rawStatus
+  if (trustRawStatus && getStatusRank(rawStatus) === maxRank) return rawStatus
   if (serverStatus && getStatusRank(serverStatus) === maxRank)
     return serverStatus
   if (dataStatus && getStatusRank(dataStatus) === maxRank) return dataStatus
-  return rawStatus
+  return fallbackStatus
 }
 
 export function ServiceDisplay({
@@ -189,6 +193,7 @@ export function ServiceDisplay({
   const matchBase = initialService?.match ?? null
   const customizedResumeBase = initialService?.customizedResume ?? null
   const interviewBase = initialService?.interview ?? null
+  const trustRawStatus = v2Bridge?.bridgeServiceId === serviceId
   const rawStatus = v2Bridge?.status || 'IDLE'
   const serverStatus = initialService?.currentStatus
     ? mapToStatus(initialService.currentStatus)
@@ -204,12 +209,17 @@ export function ServiceDisplay({
     return null
   })()
   const hasInterviewData = Boolean(interviewBase?.interviewTipsJson)
-  const baseStatus = pickEffectiveStatus(rawStatus, serverStatus, dataStatus)
+  const baseStatus = pickEffectiveStatus(
+    rawStatus,
+    serverStatus,
+    dataStatus,
+    trustRawStatus,
+  )
   const status =
     hasInterviewData && !baseStatus.startsWith('INTERVIEW')
       ? 'INTERVIEW_COMPLETED'
       : baseStatus
-  const storeStatus = rawStatus
+  const storeStatus = trustRawStatus ? rawStatus : 'IDLE'
 
   // Content extraction
   let initialMatchJson: any = null
@@ -1682,10 +1692,13 @@ export function ServiceDisplay({
                 ) : (customizeStatus as string) === 'COMPLETED' ? (
                   // COMPLETED but data not yet loaded - show loading while router refreshes
                   <BatchProgressPanel
-                    title={dict.workbench?.statusText?.loading || '加载中...'}
+                    title={
+                      dict.workbench?.statusText?.CUSTOMIZE_LOADING ||
+                      '正在加载定制简历...'
+                    }
                     description={
-                      dict.workbench?.statusText?.loadingDesc ||
-                      '简历定制完成，正在加载...'
+                      dict.workbench?.statusText?.CUSTOMIZE_LOADING_DESC ||
+                      '定制内容已生成，正在整理与排版，请稍候。'
                     }
                     progress={100}
                   />

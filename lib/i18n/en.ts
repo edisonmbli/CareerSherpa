@@ -337,8 +337,9 @@ const dict = {
       INTERVIEW_FAILED_DESC: 'Coins refunded, please retry',
       INTERVIEW_FAILED_DESC_FREE: 'Free model is busy, please retry later',
       INTERVIEW_FAILED_DESC_PAID: 'Coins refunded, please retry',
-      loading: 'Loading...',
-      loadingDesc: 'Loading data, please wait...',
+      CUSTOMIZE_LOADING: 'Loading customized resume...',
+      CUSTOMIZE_LOADING_DESC:
+        'Your resume is ready. Formatting and polishing, please wait.',
     },
     notification: {
       freeModeTitle: 'Current Free Experience Mode',
