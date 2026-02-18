@@ -16,6 +16,10 @@ import {
   type WorkbenchStatusV2,
 } from '@/lib/stores/workbench-v2.store'
 import {
+  SSE_DEBUG_STATUS_INTERVAL_MS,
+  SSE_IDLE_WARNING_MS,
+} from '@/lib/constants'
+import {
   processSseEvent,
   getTokenTarget,
   shouldSwitchTask,
@@ -265,6 +269,11 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
         taskId,
         fromLatest: fromLatestParam,
         isReconnect: connectedTasksRef.current.has(taskId),
+      })
+      sseLog.connection('url', {
+        taskId,
+        url,
+        resumeFromId: resumeFromId ?? null,
       })
 
       const connectionId = connectionSeqRef.current + 1
@@ -729,6 +738,26 @@ export function useSseStreamV2(options: UseSseStreamV2Options) {
     flushTokenBuffer,
     getResumeId,
   ])
+
+  useEffect(() => {
+    if (skip) return
+    const intervalId = setInterval(() => {
+      const state = useWorkbenchV2Store.getState()
+      if (!state.connection.isConnected) return
+      const lastEventAt = state.connection.lastEventAt
+      if (!lastEventAt) return
+      const idleMs = Date.now() - lastEventAt
+      if (idleMs < SSE_IDLE_WARNING_MS) return
+      sseLog.warn('stream_idle', {
+        idleMs,
+        status: state.status,
+        taskId: currentTaskIdRef.current,
+        lastEventId: lastEventIdRef.current,
+        lastEventTaskId: lastEventTaskIdRef.current,
+      })
+    }, SSE_DEBUG_STATUS_INTERVAL_MS)
+    return () => clearInterval(intervalId)
+  }, [skip])
 
   // Return current connection state for debugging
   return {

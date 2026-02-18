@@ -5,9 +5,9 @@
 为了在本地最大程度模拟线上架构，我们采用以下方案：
 
 - **Next.js (Producer)**: 运行在 `http://localhost:3000`
-- **QStash (Broker)**: 使用 QStash Local Mode (Docker)，模拟线上 QStash 行为。
+- **QStash (Broker)**: 使用 QStash Local Mode (CLI)，模拟线上 QStash 行为。
 - **Worker (Consumer)**: 运行在 `http://localhost:8081` (Hono)，避免与 QStash Local (8080) 端口冲突。
-- **Redis (State)**: 使用 Docker 运行本地 Redis 实例，或连接线上 Dev Redis。
+- **Redis (State)**: 使用本地 Redis (Docker)。
 
 ---
 
@@ -59,7 +59,7 @@ npx @upstash/qstash-cli@latest dev
 
 ```bash
 # Redis (本地)
-REDIS_URL=redis://localhost:6379
+UPSTASH_REDIS_REST_URL=redis://localhost:6379
 
 # QStash (本地模拟器)
 QSTASH_URL=http://localhost:8080
@@ -80,12 +80,14 @@ NODE_ENV=development
 PORT=8081  # 修改为 8081，避开 QStash 的 8080
 
 # Redis (与 Next.js 保持一致)
-REDIS_URL=redis://localhost:6379
+UPSTASH_REDIS_REST_URL=redis://localhost:6379
 
-# QStash 签名校验
-# 填入 CLI 输出的 Signing Keys
 QSTASH_CURRENT_SIGNING_KEY=sig_...
 QSTASH_NEXT_SIGNING_KEY=sig_...
+QSTASH_SKIP_VERIFY=true
+
+# CORS
+CORS_ORIGIN=http://localhost:3000
 
 # AI Keys (复用根目录配置或单独配置)
 DEEPSEEK_API_KEY=...
@@ -133,7 +135,7 @@ Next.js 运行在 `http://localhost:3000`。
 
 ## 6. 常见问题排查
 
-- **端口冲突**: 确保 QStash 占用 8080，Worker 占用 8081。如果 8080 被占用，可以在启动 CLI 时指定端口 (如果支持) 或更改 Worker 端口。
+- **端口冲突**: 确保 QStash 占用 8080，Worker 占用 8081。如果端口被占用，请修改 `worker/.env` 中的 `PORT`，并同步更新 `.env.local` 的 `WORKER_BASE_URL`。
 - **QStash 401 Unauthorized**: 检查 `.env.local` 中的 `QSTASH_TOKEN` 是否与 CLI 输出的一致。每次重启 CLI，Token 可能会变！
 - **Worker 401 Invalid Signature**: 检查 `worker/.env` 中的 `QSTASH_CURRENT_SIGNING_KEY` 是否与 CLI 输出的一致。
 - **网络不通**: 如果 QStash 报错 "Connection refused"，尝试将 `WORKER_BASE_URL` 改为 `http://host.docker.internal:8081` (如果 QStash 在 Docker 中) 或 `http://127.0.0.1:8081` (如果 QStash 是本机进程)。通常本机进程间使用 `127.0.0.1` 即可。

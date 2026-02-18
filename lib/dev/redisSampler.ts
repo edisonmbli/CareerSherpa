@@ -1,4 +1,3 @@
-import type { Redis } from '@upstash/redis'
 import { AsyncLocalStorage } from 'node:async_hooks'
 
 // 开发环境开关：生产环境完全禁用采样逻辑
@@ -84,17 +83,11 @@ export function enablePeriodicConsoleLogging(intervalMs = 30000, minTotal = 20) 
       .filter(r => r.total >= minTotal)
       .sort((a, b) => b.total - a.total)
       .slice(0, 10)
-    // 仅在计数变化时输出，避免“连接关闭后仍持续打印”的误解
-    // const signature = rows.length > 0 ? JSON.stringify(rows) : ''
-    // if (rows.length > 0 && signature !== lastSignature) {
-    //   lastSignature = signature
-    //   console.info('[dev:redis-sampling] Top routes by total commands:', rows)
-    // }
   }, intervalMs)
 }
 
 // 将 Upstash Redis 客户端包装为带采样的代理（仅 dev）
-export function proxyRedisClient(redis: Redis): Redis {
+export function proxyRedisClient<T extends object>(redis: T): T {
   if (!enabled) return redis
   const handler: ProxyHandler<any> = {
     get(target, prop, receiver) {
@@ -113,5 +106,5 @@ export function proxyRedisClient(redis: Redis): Redis {
   }
   // 启用周期性输出但避免噪音
   try { enablePeriodicConsoleLogging() } catch {}
-  return new Proxy(redis as any, handler) as Redis
+  return new Proxy(redis as any, handler) as T
 }

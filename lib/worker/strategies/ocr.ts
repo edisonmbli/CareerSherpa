@@ -1,7 +1,11 @@
-import { WorkerStrategy, StrategyContext, ExecutionResult, DeferredTask } from './interface'
+import {
+  WorkerStrategy,
+  StrategyContext,
+  ExecutionResult,
+  DeferredTask,
+} from './interface'
 import { OcrExtractVars } from '@/lib/worker/types'
 import {
-  getJobOriginalImageById,
   updateJobOriginalText,
   updateServiceExecutionStatus,
   txMarkSummaryFailed,
@@ -31,113 +35,48 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
   async prepareVars(variables: OcrExtractVars, ctx: StrategyContext) {
     const vars: Record<string, any> = { ...variables }
     const { serviceId, taskId } = ctx
-    const jobId = String(variables.jobId || '')
-
-    if (jobId && !vars['image']) {
-      if (serviceId) {
-        await markTimeline(serviceId, 'worker_batch_vars_fetch_image_start', {
+    const image = vars['image']
+    const isPaidTier = !!variables.wasPaid
+    if (isPaidTier && isBaiduOcrReady() && image) {
+      try {
+        await markTimeline(serviceId, 'baidu_ocr_start', { taskId })
+        const t0Baidu = Date.now()
+        const compressedBase64 = await compressIfNeeded(image)
+        const ocrResult = await extractTextFromBaidu(compressedBase64)
+        const t1Baidu = Date.now()
+        await markTimeline(serviceId, 'baidu_ocr_end', {
           taskId,
+          latencyMs: t1Baidu - t0Baidu,
+          ok: ocrResult.ok,
+          wordsCount: ocrResult.wordsCount,
         })
-      }
-      const t0 = Date.now()
-      // Fetch URL or originalImage (for legacy)
-      // Note: If it's a URL, we might need to fetch the content if the LLM provider expects base64.
-      // However, many vision models (like GPT-4o, GLM-4v) accept URLs directly.
-      // Let's assume for now we pass the URL or base64 content.
-      // But wait, variables['image'] is used in prepareVars.
-      // If we return a URL string here, does the LLM executor know how to handle it?
-      // We need to check execute.ts or similar.
-      // Currently, let's just fetch the value.
-      let imageOrUrl = await getJobOriginalImageById(jobId)
-
-      // Local Development Fix:
-      // If imageOrUrl is a local path (starts with /uploads/), the LLM service (external) cannot access it.
-      // We must convert it to a Base64 Data URL.
-      if (imageOrUrl && imageOrUrl.startsWith('/uploads/')) {
-        try {
-          const fs = await import('fs/promises')
-          const path = await import('path')
-          const filePath = path.join(process.cwd(), 'public', imageOrUrl)
-          const buffer = await fs.readFile(filePath)
-          const base64 = buffer.toString('base64')
-          // Guess mime type based on extension
-          const ext = path.extname(filePath).slice(1) || 'png'
-          const mimeType = ext === 'jpg' ? 'jpeg' : ext
-          imageOrUrl = `data:image/${mimeType};base64,${base64}`
-        } catch (e) {
-          logError({
+        if (ocrResult.ok && ocrResult.text) {
+          vars['_baidu_ocr_text'] = ocrResult.text
+          vars['_baidu_ocr_used'] = true
+          logInfo({
             reqId: taskId,
             route: 'worker/ocr',
-            error: e,
-            phase: 'read_local_image_failed',
-            serviceId,
-          })
-          // Fallback to original URL, which will likely fail in LLM but better than crashing here
-        }
-      }
-
-      const t1 = Date.now()
-      if (serviceId) {
-        await markTimeline(serviceId, 'worker_batch_vars_fetch_image_end', {
-          taskId,
-          latencyMs: t1 - t0,
-          meta: imageOrUrl ? `len=${imageOrUrl.length}` : 'null',
-        })
-      }
-      if (imageOrUrl) vars['image'] = imageOrUrl
-
-      // Phase 1.5: Use Baidu OCR for Paid tier if configured
-      const isPaidTier = !!variables.wasPaid
-      if (isPaidTier && isBaiduOcrReady() && imageOrUrl) {
-        try {
-          await markTimeline(serviceId, 'baidu_ocr_start', { taskId })
-          const t0Baidu = Date.now()
-
-          // Compress image if needed (Baidu has 4MB limit)
-          const compressedBase64 = await compressIfNeeded(imageOrUrl)
-
-          // Call Baidu OCR API
-          const ocrResult = await extractTextFromBaidu(compressedBase64)
-
-          const t1Baidu = Date.now()
-          await markTimeline(serviceId, 'baidu_ocr_end', {
-            taskId,
-            latencyMs: t1Baidu - t0Baidu,
-            ok: ocrResult.ok,
+            userKey: 'system',
+            message: 'Using Baidu OCR for Paid tier',
             wordsCount: ocrResult.wordsCount,
           })
-
-          if (ocrResult.ok && ocrResult.text) {
-            // Store the Baidu OCR result directly - bypass LLM execution
-            vars['_baidu_ocr_text'] = ocrResult.text
-            vars['_baidu_ocr_used'] = true
-            logInfo({
-              reqId: taskId,
-              route: 'worker/ocr',
-              userKey: 'system',
-              message: 'Using Baidu OCR for Paid tier',
-              wordsCount: ocrResult.wordsCount,
-            })
-          } else {
-            logError({
-              reqId: taskId,
-              route: 'worker/ocr',
-              error: ocrResult.error || 'Unknown Baidu OCR error',
-              phase: 'baidu_ocr_failed',
-              serviceId,
-            })
-            // Fall through to LLM-based OCR
-          }
-        } catch (e) {
+        } else {
           logError({
             reqId: taskId,
             route: 'worker/ocr',
-            error: String(e),
-            phase: 'baidu_ocr_exception',
+            error: ocrResult.error || 'Unknown Baidu OCR error',
+            phase: 'baidu_ocr_failed',
             serviceId,
           })
-          // Fall through to LLM-based OCR
         }
+      } catch (e) {
+        logError({
+          reqId: taskId,
+          route: 'worker/ocr',
+          error: String(e),
+          phase: 'baidu_ocr_exception',
+          serviceId,
+        })
       }
     }
     return vars
@@ -178,7 +117,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
   async writeResults(
     execResult: ExecutionResult,
     variables: OcrExtractVars,
-    ctx: StrategyContext
+    ctx: StrategyContext,
   ): Promise<DeferredTask[] | void> {
     const { serviceId, userId, locale, requestId, traceId, taskId } = ctx
 
@@ -230,7 +169,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
       const wasPaid = !!variables.wasPaid
       const cost = Number(variables.cost || 0)
       const debitId = String(variables.debitId || '')
-      if (wasPaid && cost > 0 && debitId) {
+      if (ctx.shouldRefund !== false && wasPaid && cost > 0 && debitId) {
         try {
           await recordRefund({
             userId,
@@ -255,6 +194,8 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
       return
     }
 
+    const sessionId = String(variables.executionSessionId || '')
+
     // Handle Success: Parallelize DB update and Event Publishing
     try {
       await markTimeline(serviceId, 'worker_batch_write_ocr_db_start', {
@@ -264,7 +205,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
       // Define promises for parallel execution
       const dbUpdatePromise = updateJobOriginalText(serviceId, text)
         .then(() =>
-          markTimeline(serviceId, 'worker_batch_write_ocr_db_end', { taskId })
+          markTimeline(serviceId, 'worker_batch_write_ocr_db_end', { taskId }),
         )
         .catch((err) =>
           logError({
@@ -273,7 +214,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
             error: String(err),
             phase: 'write_ocr_db',
             serviceId,
-          })
+          }),
         )
 
       const channel = getChannel(userId, serviceId, taskId)
@@ -292,6 +233,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           taskId: taskId,
           code: 'ocr_completed',
           status: 'OCR_COMPLETED',
+          nextTaskId: sessionId ? `job_${serviceId}_${sessionId}` : taskId,
           lastUpdatedAt: new Date().toISOString(),
           stage: 'ocr_done',
           requestId,
@@ -304,7 +246,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           error: String(err),
           phase: 'publish_ocr_result',
           serviceId,
-        })
+        }),
       )
 
       // Run them in parallel
@@ -320,7 +262,6 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
       })
     }
 
-    const sessionId = String(variables.executionSessionId || '')
     const wasPaid = !!variables.wasPaid
     // ... lock and enqueue logic ...
     const cost = Number(variables.cost || 0)
@@ -328,7 +269,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
 
     const ttlSec = Math.max(
       1,
-      Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000)
+      Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000),
     )
     const locked = await acquireLock(serviceId, 'summary', ttlSec)
 
@@ -352,7 +293,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           {
             taskId: `job_${serviceId}_${sessionId}`,
             status: s || 'unknown',
-          }
+          },
         )
       } else {
         await markTimeline(serviceId, 'worker_batch_enqueue_summary_start', {
@@ -388,7 +329,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
             ExecutionStatus.SUMMARY_PENDING,
             {
               executionSessionId: sessionId,
-            }
+            },
           )
         } catch (err) {
           logError({
@@ -430,7 +371,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         'worker_batch_enqueue_summary_skip_locked',
         {
           taskId: `job_${serviceId}_${sessionId}`,
-        }
+        },
       )
     }
     // Return undefined (no deferred tasks) for all other code paths

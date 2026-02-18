@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob'
 import path from 'path'
 import fs from 'fs/promises'
+import { ENV } from '@/lib/env'
 
 export async function uploadFile(file: File, filename: string): Promise<string> {
   // Determine environment
@@ -49,6 +50,8 @@ export async function uploadFile(file: File, filename: string): Promise<string> 
     // If worker reads file directly, it needs path.
     // However, standardized interface returns URL.
     // Local URL: /uploads/filename
-    return `/uploads/${filename}`
+    const baseUrl = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
+    const normalizedBase = baseUrl.replace(/\/$/, '')
+    return `${normalizedBase}/uploads/${filename}`
   }
 }

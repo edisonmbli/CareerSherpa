@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { logInfo } from '@/lib/logger'
 import {
   ServiceStep,
   AsyncTaskStatus,
@@ -25,6 +26,22 @@ export async function getServiceStatus(serviceId: string) {
   return prisma.service.findUnique({
     where: { id: serviceId },
     select: { currentStatus: true },
+  })
+}
+
+export async function getServiceStatusForUser(
+  serviceId: string,
+  userId: string,
+) {
+  return prisma.service.findFirst({
+    where: { id: serviceId, userId },
+    select: {
+      currentStatus: true,
+      updatedAt: true,
+      match: { select: { updatedAt: true } },
+      customizedResume: { select: { updatedAt: true } },
+      interview: { select: { updatedAt: true } },
+    },
   })
 }
 
@@ -114,18 +131,49 @@ export async function getServiceForUser(serviceId: string, userId: string) {
   const startedAt = Date.now()
   const service = await prisma.service.findFirst({
     where: { id: serviceId, userId },
-    include: {
-      resume: true,
-      detailedResume: true,
-      job: true,
-      match: true,
-      customizedResume: true,
-      interview: true,
+    select: {
+      id: true,
+      currentStatus: true,
+      executionSessionId: true,
+      updatedAt: true,
+      job: {
+        select: {
+          jobSummaryJson: true,
+        },
+      },
+      match: {
+        select: {
+          status: true,
+          matchSummaryJson: true,
+          updatedAt: true,
+        },
+      },
+      customizedResume: {
+        select: {
+          status: true,
+          editedResumeJson: true,
+          customizedResumeJson: true,
+          sectionConfig: true,
+          optimizeSuggestion: true,
+          ops_json: true,
+          updatedAt: true,
+        },
+      },
+      interview: {
+        select: {
+          status: true,
+          interviewTipsJson: true,
+          updatedAt: true,
+        },
+      },
     },
   })
-  console.info('workbench_service_fetch', {
+  logInfo({
+    reqId: serviceId,
+    route: 'dal/services',
+    phase: 'workbench_service_fetch',
     serviceId,
-    userId,
+    ...(userId ? { userKey: userId } : {}),
     ms: Date.now() - startedAt,
     ok: Boolean(service),
   })

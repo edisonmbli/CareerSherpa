@@ -106,6 +106,22 @@ Worker 服务必须验证请求来源是 QStash。
 3.  **任务执行**: Worker 收到请求 -> 解析 Payload -> 调用 `lib/worker` 逻辑 -> 执行 LLM。
 4.  **状态同步**: Worker -> Redis Stream (写入 events) -> Next.js SSE Endpoint -> 用户前端。
 
+#### 3.3.1 Payload 设计原则 (ID 为主，必要时内联)
+
+- **默认策略**：QStash Payload 以 `taskId/serviceId/jobId` 等 ID 为主，Worker 通过 DAL 从数据库取回所需上下文。
+- **内联场景**：体积小且不易再构建的输入可内联（例如短文本、压缩后的 Base64 小图）。
+- **避免超限**：严格控制 Payload 体积，保证在 QStash Free Tier 的 1MB 限制内完成投递。
+- **Worker 依赖**：独立 Worker 需具备数据库访问能力，必须配置 `DATABASE_URL`。
+
+#### 3.3.2 MVP 图片传递策略 (方案一：客户端压缩 + Base64 直传)
+
+1. **客户端判断大小**：原图 ≤ 600KB 时直接转 Base64。
+2. **超过阈值先压缩**：压缩后再转 Base64。
+3. **压缩仍超限则拦截**：提示用户上传 ≤ 1MB 的截图后重试。
+4. **QStash 负载目标**：Base64 控制在 ~800KB 以内，留出元数据空间。
+5. **Worker 侧消费**：收到 Base64 直接调用视觉模型，不依赖外部存储。
+6. **扩展路径**：若后续出现高分辨率 OCR 场景，可切换到“对象存储 + URL 引用”方案。
+
 ### 3.4 环境隔离 (Environment Isolation)
 
 通过环境变量区分不同环境的配置：
@@ -117,6 +133,7 @@ Worker 服务必须验证请求来源是 QStash。
 | `QSTASH_TOKEN`    | `mock_token`                           | `ey...` (真实 Token)            |
 | `REDIS_URL`       | `redis://localhost:6379`               | `upstash://...`                 |
 | `WORKER_BASE_URL` | `http://host.docker.internal:8080`     | `https://worker.yourdomain.com` |
+| `DATABASE_URL`    | `postgresql://...`                     | `postgresql://...`              |
 
 ---
 

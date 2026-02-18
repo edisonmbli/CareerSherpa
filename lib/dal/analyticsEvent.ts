@@ -1,6 +1,7 @@
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
 import { prisma } from '@/lib/prisma'
 import { Prisma, AnalyticsCategory } from '@prisma/client'
+import { logError, logInfo } from '@/lib/logger'
 
 export interface CreateAnalyticsEventParams {
   userId?: string
@@ -36,7 +37,12 @@ export async function createAnalyticsEvent(
     return created
   } catch (error) {
     // 不阻塞主流程，记录失败即可
-    console.warn('[DAL] Failed to create AnalyticsEvent:', error)
+    logInfo({
+      reqId: 'analytics-event',
+      route: 'dal/analyticsEvent',
+      phase: 'create_failed',
+      error: error instanceof Error ? error : String(error),
+    })
     return null
   }
 }
@@ -83,7 +89,12 @@ export async function cleanupOldAnalyticsEvents() {
     
     return result
   } catch (error) {
-    console.error('[DAL] Failed to cleanup analytics events:', error)
+    logError({
+      reqId: 'analytics-event',
+      route: 'dal/analyticsEvent',
+      phase: 'cleanup_failed',
+      error: error instanceof Error ? error : String(error),
+    })
     throw error
   }
 }

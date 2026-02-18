@@ -248,6 +248,21 @@ function isTerminal(status: string): boolean {
   )
 }
 
+function getStatusStage(status: string): number {
+  const text = String(status || '')
+  if (text.startsWith('INTERVIEW')) return 3
+  if (text.startsWith('CUSTOMIZE')) return 2
+  if (
+    text.startsWith('MATCH') ||
+    text.startsWith('PREMATCH') ||
+    text.startsWith('SUMMARY') ||
+    text.startsWith('OCR') ||
+    text.startsWith('JOB_VISION')
+  )
+    return 1
+  return 0
+}
+
 function mergeContent(current: string, chunk: string): string {
   if (!chunk) return current
   if (!current) return chunk
@@ -310,8 +325,17 @@ export const useWorkbenchV2Store = create<WorkbenchV2State>((set, get) => ({
       return
     }
 
-    // RACE CONDITION FIX: Prevent regression from Terminal -> Active
-    // Unless it's a Retry (PENDING) or force reset (handled by initialize/startTask not using setStatus)
+    const prevStage = getStatusStage(prevStatus)
+    const nextStage = getStatusStage(status)
+    if (prevStage > 0 && nextStage > 0 && nextStage < prevStage) {
+      sseLog.warn('status_regression_blocked', {
+        prev: prevStatus,
+        next: status,
+        reason: 'stage_regression',
+      })
+      return
+    }
+
     if (isTerminal(prevStatus) && !isTerminal(status)) {
       // Allow PENDING (Retry)
       if (status.includes('PENDING')) {

@@ -1,5 +1,7 @@
 import fs from 'fs'
 import path from 'path'
+import { ENV } from '@/lib/env'
+import { logDebug, logError } from '@/lib/logger'
 
 export function logDebugData(
   phase: string,
@@ -10,8 +12,18 @@ export function logDebugData(
     latencyMs?: number
   }
 ) {
-  // Only log if we are in dev or explicitly enabled
+  if (!ENV.LOG_DEBUG) return
+
   if (process.env.NODE_ENV === 'production') {
+    logDebug({
+      reqId: String(data.meta?.requestId || data.meta?.traceId || 'system'),
+      route: 'llm/debug',
+      phase,
+      latencyMs: data.latencyMs,
+      inputSize: data.input?.length ?? 0,
+      outputSize: data.output?.length ?? 0,
+      meta: data.meta,
+    })
     return
   }
 
@@ -75,7 +87,30 @@ export function logDebugData(
     }
 
     fs.writeFileSync(filePath, mdContent)
+    const serviceId = data.meta?.serviceId
+    if (serviceId) {
+      const perfDir = path.join(process.cwd(), 'tmp', 'perf-timeline')
+      if (!fs.existsSync(perfDir)) {
+        fs.mkdirSync(perfDir, { recursive: true })
+      }
+      const perfFile = path.join(perfDir, `${serviceId}.md`)
+      const ts = new Date().toISOString()
+      const perfLine = `${ts} phase=llm_debug ${JSON.stringify({
+        phase,
+        input: data.input,
+        output: data.output,
+        meta: data.meta,
+        latencyMs: data.latencyMs,
+        debugFile: filePath,
+      })}`
+      fs.appendFileSync(perfFile, perfLine + '\n')
+    }
   } catch (e) {
-    console.error('Failed to write debug log', e)
+    logError({
+      reqId: String(data.meta?.requestId || data.meta?.traceId || 'system'),
+      route: 'llm/debug',
+      error: e instanceof Error ? e : String(e),
+      phase: 'write_debug_file',
+    })
   }
 }

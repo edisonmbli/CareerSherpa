@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stackServerApp } from '@/stack/server'
 import { prisma } from '@/lib/prisma'
+import { logError } from '@/lib/logger'
 
 export async function GET(request: Request) {
   const user = await stackServerApp.getUser()
@@ -192,7 +193,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: 'Invalid taskType' }, { status: 400 })
   } catch (error) {
-    console.error('TaskStatusError:', error)
+    logError({
+      reqId: taskId || 'task-status',
+      route: 'api/task-status',
+      userKey: user?.id,
+      error: error instanceof Error ? error : String(error),
+    })
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

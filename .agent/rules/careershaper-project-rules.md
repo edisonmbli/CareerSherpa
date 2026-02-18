@@ -115,3 +115,11 @@ trigger: always_on
 - **Clean Code**:
 - **Immutability**: Prefer non-mutating methods (`map`, `filter`, spread).
 - **Error Handling**: Wrap external calls in `try...catch`. Return user-friendly errors, don't just throw.
+
+## 8. Logging Standard (Unified Entry Points)
+
+- Server and Worker must use `lib/logger.ts` (`logInfo/logDebug/logError`)
+- Browser UI must use `lib/ui/sse-debug-logger.ts` (`uiLog/sseLog`)
+- File-based debug output must use `lib/llm/debug.ts` (`logDebugData`)
+- Do not use `console.*` in business code (tests/config and the logging modules above are allowed)
+- Logs must be structured, at minimum include `reqId`, `route`, `phase`, with required context (e.g., `serviceId`/`userKey`)

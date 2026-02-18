@@ -106,43 +106,65 @@ export async function bumpPending(
     const ttlSeconds = Math.max(1, Math.floor(ttlSec))
     const persistent = isPersistentKey(key)
     const persistentTtlSec = persistent ? getPersistentTtlSec() : ttlSeconds
-    const cRaw = await redis.incr(key)
-    const c = Number(cRaw)
-    if (Number.isNaN(c)) return { ok: false, retryAfter: ttlSeconds }
-    if (c <= 0) {
-      try {
-        await redis.set(key, '1', { ex: persistentTtlSec })
-      } catch {}
-      return { ok: true, pending: 1, remaining: Math.max(0, maxPending - 1) }
+    const script = `
+local max = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+local persistent = tonumber(ARGV[3])
+local keepAlive = tonumber(ARGV[4])
+local v = redis.call("GET", KEYS[1])
+local n = tonumber(v) or 0
+n = n + 1
+if n > max then
+  n = n - 1
+  if n <= 0 then
+    redis.call("DEL", KEYS[1])
+  else
+    redis.call("SET", KEYS[1], n, "KEEPTTL")
+  end
+  local t = redis.call("TTL", KEYS[1])
+  if not t or t <= 0 then t = ttl end
+  return {0, n, t}
+end
+if persistent == 1 then
+  local ttlToUse = keepAlive
+  if not ttlToUse or ttlToUse <= 0 then ttlToUse = ttl end
+  redis.call("SET", KEYS[1], n, "EX", ttlToUse)
+else
+  local t = redis.call("TTL", KEYS[1])
+  if not t or t <= 0 then
+    redis.call("SET", KEYS[1], n, "EX", ttl)
+  else
+    redis.call("SET", KEYS[1], n, "KEEPTTL")
+  end
+end
+return {1, n, max - n}
+`
+    const res = await redis.eval(
+      script,
+      [key],
+      [maxPending, ttlSeconds, persistent ? 1 : 0, persistentTtlSec],
+    )
+    const arr = Array.isArray(res) ? res : []
+    const ok = Number(arr[0]) === 1
+    const pending = Number(arr[1])
+    if (!Number.isFinite(pending)) {
+      return { ok: false, retryAfter: ttlSeconds }
     }
-    if (persistent) {
-      try {
-        await redis.expire(key, persistentTtlSec)
-      } catch {}
-    } else if (c === 1) {
-      try {
-        await redis.expire(key, ttlSeconds)
-      } catch {}
-    }
-    if (c > maxPending) {
-      // roll back to previous value
-      try {
-        await redis.decr(key)
-      } catch {
-        // ignore rollback failure; consumer will still see backpressure
+    if (ok) {
+      const remaining = Number(arr[2])
+      return {
+        ok: true,
+        pending,
+        remaining: Number.isFinite(remaining) ? remaining : Math.max(0, maxPending - pending),
       }
-      const pending = Math.max(0, c - 1)
-      let retryAfter = ttlSeconds
-      if (!persistent) {
-        try {
-          const tRaw = await redis.ttl(key)
-          const t = Number(tRaw)
-          if (!Number.isNaN(t) && t > 0) retryAfter = t
-        } catch {}
-      }
-      return { ok: false, pending, remaining: 0, retryAfter }
     }
-    return { ok: true, pending: c, remaining: Math.max(0, maxPending - c) }
+    const retryAfter = Number(arr[2])
+    return {
+      ok: false,
+      pending,
+      remaining: 0,
+      retryAfter: Number.isFinite(retryAfter) ? retryAfter : ttlSeconds,
+    }
   } catch {
     // network error: fall back to memory
     return memoryBump(key, ttlSec, maxPending)

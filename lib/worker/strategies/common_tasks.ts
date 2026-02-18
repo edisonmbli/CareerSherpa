@@ -169,6 +169,7 @@ export class InterviewStrategy implements WorkerStrategy<any> {
       serviceId,
       userId,
       'interview_prep',
+      ctx.shouldRefund,
     )
   }
 }
@@ -179,12 +180,13 @@ async function handleRefunds(
   serviceId: string,
   userId: string,
   templateId: string,
+  shouldRefund?: boolean,
 ) {
   const wasPaid = !!variables?.wasPaid
   const cost = Number(variables?.cost || 0)
   const debitId = String(variables?.debitId || '')
 
-  if (!execResult.ok && wasPaid && cost > 0 && debitId) {
+  if (shouldRefund !== false && !execResult.ok && wasPaid && cost > 0 && debitId) {
     try {
       await recordRefund({
         userId,

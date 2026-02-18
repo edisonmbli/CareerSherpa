@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cleanupOldAnalyticsEvents } from '@/lib/dal/analyticsEvent'
+import { logError } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic' // Ensure Vercel doesn't cache this
 
@@ -17,7 +18,12 @@ export async function GET(req: NextRequest) {
     const result = await cleanupOldAnalyticsEvents()
     return NextResponse.json({ success: true, ...result })
   } catch (error) {
-    console.error('[Cron] Cleanup failed:', error)
+    logError({
+      reqId: 'cron-cleanup-analytics',
+      route: 'api/cron/cleanup-analytics',
+      phase: 'cleanup_failed',
+      error: error instanceof Error ? error : String(error),
+    })
     return NextResponse.json(
       { success: false, error: String(error) },
       { status: 500 }

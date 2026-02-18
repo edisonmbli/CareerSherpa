@@ -1,12 +1,30 @@
 import { NextRequest } from 'next/server'
-import { promises as fsp } from 'fs'
-import path from 'path'
 import { ENV } from '@/lib/env'
+import { logError, logInfo } from '@/lib/logger'
+import { logDebugData } from '@/lib/llm/debug'
 import { getRedis, redisReady } from '@/lib/redis/client'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { buildEventChannel } from '@/lib/pubsub/channels'
 
 export const dynamic = 'force-dynamic'
+
+const SSE_DEBUG =
+  ENV.LOG_DEBUG ||
+  process.env['NEXT_PUBLIC_SSE_DEBUG'] === 'true' ||
+  process.env['SSE_DEBUG'] === 'true'
+
+async function appendSseDebug(
+  taskId: string,
+  payload: Record<string, unknown>,
+) {
+  if (!SSE_DEBUG) return
+  logDebugData(`sse_stream_${taskId || 'unknown'}`, {
+    meta: {
+      timestamp: new Date().toISOString(),
+      ...payload,
+    },
+  })
+}
 
 function toSseEvent(data: any, id?: string): string {
   let s = `data: ${JSON.stringify(data)}\n`
@@ -16,6 +34,29 @@ function toSseEvent(data: any, id?: string): string {
 
 type StreamEntry = { id: string; fields: Record<string, string> }
 
+function normalizeFields(fields: unknown): Record<string, string> {
+  if (!fields) return {}
+  if (Array.isArray(fields)) {
+    const out: Record<string, string> = {}
+    for (let i = 0; i < fields.length; i += 2) {
+      const key = String(fields[i])
+      const value = fields[i + 1]
+      out[key] = typeof value === 'string' ? value : JSON.stringify(value)
+    }
+    return out
+  }
+  if (typeof fields === 'object') {
+    const obj = fields as Record<string, unknown>
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [
+        k,
+        typeof v === 'string' ? v : JSON.stringify(v),
+      ]),
+    )
+  }
+  return {}
+}
+
 async function readStreamRange(
   streamKey: string,
   lastId: string | null,
@@ -24,15 +65,20 @@ async function readStreamRange(
   const redis = getRedis()
   // 使用排他起始，避免每次都重复读到同一条记录
   const start = lastId ? `(${lastId}` : '-'
-  // Upstash SDK 返回形如 { id: { field: value } } 的对象映射
-  const raw = (await redis.xrange(streamKey, start, '+')) as Record<
-    string,
-    Record<string, unknown>
-  > | null
+  const raw = (await redis.xrange(streamKey, start, '+')) as
+    | Record<string, Record<string, unknown>>
+    | Array<[string, Record<string, unknown> | string[]]>
+    | null
+  if (Array.isArray(raw)) {
+    return raw.map((entry) => ({
+      id: String(entry[0]),
+      fields: normalizeFields(entry[1]),
+    }))
+  }
   const obj = raw ?? {}
   return Object.entries(obj).map(([id, fields]) => ({
     id,
-    fields: fields as Record<string, string>,
+    fields: normalizeFields(fields),
   }))
 }
 
@@ -59,37 +105,75 @@ export async function GET(req: NextRequest) {
     let cancelStream: (() => void) | null = null
     const stream = new ReadableStream({
       async start(controller) {
+        logInfo({
+          reqId: taskId || 'sse',
+          route: 'api/sse-stream',
+          phase: 'sse_open',
+          meta: {
+            channel,
+            streamKey,
+            fromLatest,
+            lastEventId,
+            redisReady: redisReady(),
+          },
+        })
+        try {
+          await appendSseDebug(taskId, {
+            event: 'open',
+            channel,
+            streamKey,
+            fromLatest,
+            lastEventId,
+            redisReady: redisReady(),
+          })
+        } catch {}
         // 初始握手/心跳
         controller.enqueue(
           new TextEncoder().encode(toSseEvent({ type: 'connected', channel })),
         )
-        try {
-          // if (process.env.NODE_ENV !== 'production') {
-          //   console.info('sse_start', { channel, streamKey })
-          // }
-        } catch {}
-
         let lastId: string | null = lastEventId
         let closed = false
         let consecutiveIdle = 0
         let timer: ReturnType<typeof setTimeout> | null = null
         let keepAlive: ReturnType<typeof setInterval> | null = null
 
-        const closeStream = (reason: string, extra?: Record<string, unknown>) => {
+        const closeStream = (
+          reason: string,
+          extra?: Record<string, unknown>,
+        ) => {
           if (closed) return
           closed = true
           if (timer) clearTimeout(timer)
           if (keepAlive) clearInterval(keepAlive)
           try {
-            console.info('sse_close', {
-              reason,
-              streamKey,
-              lastId,
-              ...(extra || {}),
+            logInfo({
+              reqId: taskId || 'sse',
+              route: 'api/sse-stream',
+              phase: 'sse_close',
+              meta: {
+                reason,
+                streamKey,
+                lastId,
+                ...(extra || {}),
+              },
             })
+            try {
+              appendSseDebug(taskId, {
+                event: 'close',
+                reason,
+                streamKey,
+                lastId,
+                ...(extra || {}),
+              })
+            } catch {}
             controller.close()
           } catch (e) {
-            console.warn('sse_close_error', (e as any)?.message || e)
+            logError({
+              reqId: taskId || 'sse',
+              route: 'api/sse-stream',
+              phase: 'sse_close_error',
+              error: (e as any)?.message || e,
+            })
           }
         }
 
@@ -134,13 +218,13 @@ export async function GET(req: NextRequest) {
           try {
             const entries = await readStreamRange(streamKey, lastId)
             try {
-              // if (process.env.NODE_ENV !== 'production') {
-              //   console.info('sse_tick', {
-              //     streamKey,
-              //     lastId,
-              //     entries: entries.length,
-              //   })
-              // }
+              await appendSseDebug(taskId, {
+                event: 'tick',
+                streamKey,
+                lastId,
+                entries: entries.length,
+                consecutiveIdle,
+              })
             } catch {}
             if (entries.length === 0) {
               consecutiveIdle = Math.min(consecutiveIdle + 1, 5)
@@ -172,54 +256,62 @@ export async function GET(req: NextRequest) {
                     new TextEncoder().encode(toSseEvent(enriched, entry.id)),
                   )
                 } catch (e) {
-                  console.warn('sse_enqueue_error', (e as any)?.message || e)
+                  logError({
+                    reqId: taskId || 'sse',
+                    route: 'api/sse-stream',
+                    phase: 'sse_enqueue_error',
+                    error: (e as any)?.message || e,
+                  })
                   closeStream('enqueue_error', { entryId: entry.id })
                   return
                 }
                 try {
-                  if (process.env.NODE_ENV !== 'production') {
+                  await appendSseDebug(taskId, {
+                    event: 'sse_event',
+                    streamKey,
+                    id: entry.id,
+                    type: String((data as any)?.type || ''),
+                    status: (data as any)?.status,
+                    code: (data as any)?.code,
+                    taskId: (data as any)?.taskId,
+                  })
+                } catch {}
+                try {
+                  if (SSE_DEBUG) {
                     const len =
                       typeof (data as any)?.text === 'string'
                         ? (data as any).text.length
                         : typeof (data as any)?.data === 'string'
                           ? (data as any).data.length
                           : 0
-                    console.info('sse_event', {
-                      type: String((data as any)?.type || ''),
-                      status: (data as any)?.status,
-                      code: (data as any)?.code,
-                      taskId: (data as any)?.taskId,
-                      id: entry.id,
-                      len,
+                    logInfo({
+                      reqId: taskId || 'sse',
+                      route: 'api/sse-stream',
+                      phase: 'sse_event',
+                      meta: {
+                        type: String((data as any)?.type || ''),
+                        status: (data as any)?.status,
+                        code: (data as any)?.code,
+                        taskId: (data as any)?.taskId,
+                        id: entry.id,
+                        len,
+                      },
                     })
                     try {
-                      const debugDir = path.join(
-                        process.cwd(),
-                        'tmp',
-                        'llm-debug',
-                      )
-                      await fsp.mkdir(debugDir, { recursive: true })
-                      const file = path.join(
-                        debugDir,
-                        `sse_event_${taskId || 'unknown'}.log`,
-                      )
-                      await fsp.appendFile(
-                        file,
-                        JSON.stringify({
-                          timestamp: new Date().toISOString(),
-                          streamKey, // Log the source stream key
-                          id: entry.id,
-                          type: String((data as any)?.type || ''),
-                          status: (data as any)?.status,
-                          code: (data as any)?.code,
-                          len,
-                          // Log preview of text content to check for empty tokens
-                          preview:
-                            (data as any)?.text?.substring(0, 50) ||
-                            (data as any)?.data?.substring(0, 50) ||
-                            '',
-                        }) + '\n',
-                      )
+                      await appendSseDebug(taskId, {
+                        event: 'data',
+                        streamKey,
+                        id: entry.id,
+                        type: String((data as any)?.type || ''),
+                        status: (data as any)?.status,
+                        code: (data as any)?.code,
+                        taskId: (data as any)?.taskId,
+                        len,
+                        preview:
+                          (data as any)?.text?.substring(0, 80) ||
+                          (data as any)?.data?.substring(0, 80) ||
+                          '',
+                      })
                     } catch {}
                   }
                 } catch {}
@@ -289,7 +381,12 @@ export async function GET(req: NextRequest) {
           try {
             controller.enqueue(new TextEncoder().encode(':keepalive\n\n'))
           } catch (e) {
-            console.warn('sse_keepalive_error', (e as any)?.message || e)
+            logError({
+              reqId: taskId || 'sse',
+              route: 'api/sse-stream',
+              phase: 'sse_keepalive_error',
+              error: (e as any)?.message || e,
+            })
             closeStream('keepalive_error')
           }
         }, 25000)

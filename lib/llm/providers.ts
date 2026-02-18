@@ -5,6 +5,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { ENV } from '../env'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { generateEmbedding, generateEmbeddings, getEmbeddingDimensions } from './embeddings'
+import { logDebug } from '@/lib/logger'
 
 export interface LLMConfig {
   model: string
@@ -244,12 +245,17 @@ export class GeminiProvider implements LLMProvider {
     // See: https://ai.google.dev/gemini-api/docs/gemini-3
     const gemini3Temperature = 1.0
 
-    console.log('[GeminiProvider] Creating model with Gemini 3 config:', {
-      model: config.model || 'gemini-3-flash-preview',
-      temperature: gemini3Temperature,
-      maxOutputTokens: config.maxTokens ?? 8000,
-      ...antiRepetitionConfig,
-      jsonMode: config.jsonMode,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/providers',
+      phase: 'gemini_create_model',
+      meta: {
+        model: config.model || 'gemini-3-flash-preview',
+        temperature: gemini3Temperature,
+        maxOutputTokens: config.maxTokens ?? 8000,
+        ...antiRepetitionConfig,
+        jsonMode: config.jsonMode,
+      },
     })
 
     // frequencyPenalty/presencePenalty types may be outdated but runtime API supports them

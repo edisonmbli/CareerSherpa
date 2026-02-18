@@ -8,7 +8,7 @@
 
 ## 2. 本地开发环境 (Local Development)
 
-请参考单独的 **[04_Local_Dev_Guide.md](./04_Local_Dev_Guide.md)** 文档，其中详细说明了如何使用 Docker Compose (Redis) + QStash Local Mode 搭建与线上架构一致的本地开发闭环。
+请参考单独的 **[04_Local_Dev_Guide.md](./04_Local_Dev_Guide.md)** 文档，其中详细说明了如何使用 QStash Local Mode + 本地 Redis (Docker) 搭建与线上一致的本地开发闭环。
 
 ---
 
@@ -128,7 +128,28 @@ EXPOSE 8080
 CMD ["node", "dist/src/index.js"]
 ```
 
-### 4.2 配置应用 (Docker Compose)
+### 4.2 生产环境配置 (PRD)
+
+在服务器创建 `/opt/career-worker/.env.production`：
+
+```bash
+NODE_ENV=production
+PORT=8080
+
+QSTASH_CURRENT_SIGNING_KEY=sig_...
+QSTASH_NEXT_SIGNING_KEY=sig_...
+
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+
+DEEPSEEK_API_KEY=...
+GEMINI_API_KEY=...
+ZHIPUAI_API_KEY=...
+
+CORS_ORIGIN=https://worker.yourdomain.com
+```
+
+### 4.3 配置应用 (Docker Compose)
 
 在服务器创建 `/opt/career-worker`：
 
@@ -153,7 +174,7 @@ services:
         max-file: '3'
 ```
 
-### 4.3 深入理解 Worker 并发 (Concurrency Deep Dive)
+### 4.4 深入理解 Worker 并发 (Concurrency Deep Dive)
 
 很多开发者对 Node.js 的并发模型有误解，认为需要配置“线程池大小”。实际上：
 
@@ -175,7 +196,7 @@ services:
       - Docker Swarm 或 K8s 会自动负载均衡流量到这 N 个容器。
       - 对于单机 Docker Compose，Caddy 会自动轮询转发到 `replicas` 实例。
 
-### 4.4 配置域名 (Caddy)
+### 4.5 配置域名 (Caddy)
 
 修改 `/opt/caddy/Caddyfile`:
 

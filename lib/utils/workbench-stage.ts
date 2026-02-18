@@ -64,11 +64,8 @@ export interface WorkbenchDict {
  */
 export function deriveStage(
   status: WorkbenchStatusV2,
-  customizeStatus: string,
-  interviewStatus: string,
   dict: WorkbenchDict,
   isPending: boolean,
-  tabValue: string,
   statusDetail: string | null,
   _errorMessage: string | null, // Reserved for future use
   simulatedProgress: number = 0, // Time-based simulated progress
@@ -78,8 +75,24 @@ export function deriveStage(
   let maxUnlockedStep: StepId = 1
   let cta: CtaConfig | null = null
 
-  // 1. Status Normalization
-  const isMatchDone = status === 'MATCH_COMPLETED'
+  const isCustomizePending = status === 'CUSTOMIZE_PENDING'
+  const isCustomizeDone =
+    status === 'CUSTOMIZE_COMPLETED' || status.startsWith('INTERVIEW')
+  const isCustomizeFailed = status === 'CUSTOMIZE_FAILED'
+  const isCustomizeIdle =
+    !isCustomizePending && !isCustomizeDone && !isCustomizeFailed
+
+  const isInterviewPending =
+    status === 'INTERVIEW_PENDING' || status === 'INTERVIEW_STREAMING'
+  const isInterviewDone = status === 'INTERVIEW_COMPLETED'
+  const isInterviewFailed = status === 'INTERVIEW_FAILED'
+  const isInterviewIdle =
+    !isInterviewPending && !isInterviewDone && !isInterviewFailed
+
+  const isMatchDone =
+    status === 'MATCH_COMPLETED' ||
+    status.startsWith('CUSTOMIZE') ||
+    status.startsWith('INTERVIEW')
   const isMatchFailed =
     status === 'MATCH_FAILED' ||
     status === 'OCR_FAILED' ||
@@ -87,22 +100,10 @@ export function deriveStage(
     status === 'PREMATCH_FAILED' ||
     status === 'JOB_VISION_FAILED'
 
-  const isCustomizePending = customizeStatus === 'PENDING'
-  const isCustomizeDone = customizeStatus === 'COMPLETED'
-  const isCustomizeFailed = customizeStatus === 'FAILED'
-  const isCustomizeIdle = customizeStatus === 'IDLE'
-
-  const isInterviewPending = interviewStatus === 'PENDING'
-  const isInterviewDone = interviewStatus === 'COMPLETED'
-  const isInterviewFailed = interviewStatus === 'FAILED'
-  const isInterviewIdle = interviewStatus === 'IDLE'
-
-  // 2. Step Calculation (Tab-driven for visual consistency)
-  if (tabValue === 'interview') currentStep = 3
-  else if (tabValue === 'customize') currentStep = 2
+  if (status.startsWith('INTERVIEW')) currentStep = 3
+  else if (status.startsWith('CUSTOMIZE')) currentStep = 2
   else currentStep = 1
 
-  // 3. Max Unlocked Calculation (Status-driven unlock logic)
   maxUnlockedStep = calculateMaxUnlockedStep({
     isInterviewPending,
     isInterviewDone,
@@ -114,7 +115,6 @@ export function deriveStage(
     isMatchDone,
   })
 
-  // 4. CTA Calculation
   cta = calculateCta({
     isMatchFailed,
     isMatchDone,
@@ -130,9 +130,7 @@ export function deriveStage(
     dict,
   })
 
-  // 5. Status Message & Progress
   const { statusMessage, progressValue } = calculateStatusAndProgress({
-    tabValue,
     status,
     statusDetail,
     isCustomizePending,
@@ -297,7 +295,6 @@ function calculateCta(params: CtaParams): CtaConfig | null {
 }
 
 interface StatusParams {
-  tabValue: string
   status: WorkbenchStatusV2
   statusDetail: string | null
   isCustomizePending: boolean
@@ -316,7 +313,6 @@ function calculateStatusAndProgress(params: StatusParams): {
   progressValue: number
 } {
   const {
-    tabValue,
     status,
     statusDetail,
     isCustomizePending,
@@ -333,12 +329,10 @@ function calculateStatusAndProgress(params: StatusParams): {
   let statusMessage = ''
   let progressValue = 0
 
-  // Tab-specific messages
-  if (tabValue === 'customize') {
+  if (status.startsWith('CUSTOMIZE')) {
     if (isCustomizePending) {
       statusMessage =
         dict.workbench?.statusConsole?.['customizing'] || 'AI is customizing...'
-      // Use time-based simulated progress (updated every 5s by timer)
       progressValue = simulatedProgress || 10 // Fallback to 10% if not started
     } else if (isCustomizeFailed) {
       statusMessage =
@@ -351,14 +345,13 @@ function calculateStatusAndProgress(params: StatusParams): {
         'Customization Completed'
       progressValue = 100
     }
-  } else if (tabValue === 'interview') {
+  } else if (status.startsWith('INTERVIEW')) {
     if (isInterviewPending) {
       statusMessage =
         dict.workbench?.statusConsole?.['interviewing'] ||
         dict.workbench?.statusConsole?.['interviewPending'] ||
         dict.workbench?.statusText?.['INTERVIEW_PENDING'] ||
         'Generating Interview Tips...'
-      // Use time-based simulated progress
       progressValue = simulatedProgress || 10
     } else if (isInterviewFailed) {
       statusMessage =

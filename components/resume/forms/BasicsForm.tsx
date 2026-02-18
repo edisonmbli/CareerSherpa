@@ -34,6 +34,7 @@ import { SECTION_TITLES, SectionKey } from '../section-titles'
 import { SOCIAL_PLATFORMS } from '../social-config'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 import { useResumeDict } from '../ResumeDictContext'
 
 export function BasicsForm() {
@@ -75,7 +76,9 @@ export function BasicsForm() {
       try {
         localStorage.setItem('user_avatar', result)
       } catch (err) {
-        console.error('Failed to save avatar to localStorage', err)
+        uiLog.error('avatar_local_storage_failed', {
+          error: err instanceof Error ? err.message : String(err),
+        })
       }
     }
     reader.readAsDataURL(file)

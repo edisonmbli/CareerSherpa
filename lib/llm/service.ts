@@ -1,6 +1,5 @@
 import type { Locale } from '@/i18n-config'
 import { getTemplate } from '@/lib/prompts/index'
-import * as fs from 'fs'
 
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { getModel, type ModelId } from '@/lib/llm/providers'
@@ -284,6 +283,7 @@ export async function runEmbeddingBatch(
 }
 
 import { logDebugData } from '@/lib/llm/debug'
+import { logDebug, logError } from '@/lib/logger'
 
 export async function runStructuredLlmTask<T extends TaskTemplateId>(
   modelId: ModelId,
@@ -319,7 +319,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         user: template.userPrompt,
         variables: runtimeVariables,
       }),
-      meta: { modelId, limits },
+      meta: { modelId, limits, serviceId: context.serviceId },
     })
 
     const prompt = ChatPromptTemplate.fromMessages([
@@ -368,10 +368,12 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 
     // PHASE 1A: Gemini Direct Vision Path (for OCR/vision tasks)
     if (shouldUseGeminiDirect(modelId) && schema && hasVisionImage) {
-      console.log(
-        '[Structured] Using Gemini Direct Vision API for:',
-        templateId,
-      )
+      logDebug({
+        reqId: context.serviceId || 'llm',
+        route: 'llm/structured',
+        phase: 'gemini_direct_vision',
+        templateId: String(templateId),
+      })
 
       const renderedUserPrompt = renderVariables(template.userPrompt, {
         ...runtimeVariables,
@@ -415,6 +417,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
           ok: geminiResult.ok,
           error: geminiResult.error,
           isVision: true,
+          serviceId: context.serviceId,
         },
       })
 
@@ -438,7 +441,12 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     // PHASE 1B: Gemini Direct API Path (for text-only structured tasks)
     // For Gemini 3 models, use native API for better structured output reliability
     if (shouldUseGeminiDirect(modelId) && schema && !hasVisionImage) {
-      console.log('[Structured] Using Gemini Direct API for:', templateId)
+      logDebug({
+        reqId: context.serviceId || 'llm',
+        route: 'llm/structured',
+        phase: 'gemini_direct',
+        templateId: String(templateId),
+      })
 
       // Render prompts with variables
       const renderedUserPrompt = renderVariables(
@@ -470,6 +478,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
           usage: geminiResult.usage,
           ok: geminiResult.ok,
           error: geminiResult.error,
+          serviceId: context.serviceId,
         },
       })
 
@@ -600,42 +609,45 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
 
       // DEBUG: If parsed is null, investigate why LangChain withStructuredOutput fails
       // Key question: is it Zod validation or LangChain's internal schema conversion?
-      if (parsedData === null) {
+      if (parsedData === null && ENV.LOG_DEBUG) {
         const rawContent = (result.raw as any)?.content
-        console.log(
-          '[Structured] ERROR: LangChain withStructuredOutput returned parsed=null',
-        )
-        console.log('[Structured] DEBUG: raw.content type:', typeof rawContent)
-        console.log(
-          '[Structured] DEBUG: Schema name:',
-          schema?.description || 'no description',
-        )
+        logDebug({
+          reqId: context.serviceId || 'llm',
+          route: 'llm/structured',
+          phase: 'structured_parsed_null',
+          meta: {
+            rawContentType: typeof rawContent,
+            schemaName: schema?.description || 'no description',
+          },
+        })
 
         // Check if there's a parsing_error in the result
         if ((result as any).parsing_error) {
-          console.log(
-            '[Structured] DEBUG: LangChain parsing_error:',
-            (result as any).parsing_error,
-          )
+          logDebug({
+            reqId: context.serviceId || 'llm',
+            route: 'llm/structured',
+            phase: 'structured_parsing_error',
+            meta: { parsingError: (result as any).parsing_error },
+          })
         }
 
         // Save full raw content to file for analysis
-        // Save full raw content to file for analysis
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-        const debugPath = `tmp/debug-logs/${timestamp}_structured_raw.json`
-        try {
-          fs.writeFileSync(
-            debugPath,
-            typeof rawContent === 'string'
-              ? rawContent
-              : JSON.stringify(rawContent, null, 2),
-          )
-          console.log(
-            '[Structured] DEBUG: Full raw content saved to:',
-            debugPath,
-          )
-        } catch (e) {
-          console.log('[Structured] DEBUG: Failed to save raw content:', e)
+        if (process.env.NODE_ENV !== 'production') {
+          logDebugData(`structured_raw_${context.serviceId || 'llm'}`, {
+            meta: {
+              schemaName: schema?.description || 'no description',
+              timestamp: new Date().toISOString(),
+            },
+            output:
+              typeof rawContent === 'string'
+                ? rawContent
+                : JSON.stringify(rawContent, null, 2),
+          })
+          logDebug({
+            reqId: context.serviceId || 'llm',
+            route: 'llm/structured',
+            phase: 'structured_raw_saved',
+          })
         }
 
         // Try manual safeParse to compare with LangChain
@@ -644,20 +656,26 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
             const parsed = JSON.parse(rawContent)
             const validateResult = schema.safeParse(parsed)
             if (!validateResult.success) {
-              console.log(
-                '[Structured] DEBUG: Manual Zod safeParse FAILED:',
-                JSON.stringify(validateResult.error.issues, null, 2),
-              )
+              logDebug({
+                reqId: context.serviceId || 'llm',
+                route: 'llm/structured',
+                phase: 'manual_safeparse_failed',
+                meta: { issues: validateResult.error.issues },
+              })
             } else {
-              console.log(
-                '[Structured] DEBUG: Manual Zod safeParse SUCCEEDED - LangChain internal issue',
-              )
-              console.log(
-                '[Structured] DEBUG: This suggests passthrough() or schema conversion issue in LangChain',
-              )
+              logDebug({
+                reqId: context.serviceId || 'llm',
+                route: 'llm/structured',
+                phase: 'manual_safeparse_succeeded',
+              })
             }
           } catch (e) {
-            console.log('[Structured] DEBUG: JSON parse error:', e)
+            logDebug({
+              reqId: context.serviceId || 'llm',
+              route: 'llm/structured',
+              phase: 'manual_json_parse_error',
+              error: e instanceof Error ? e : String(e),
+            })
           }
         }
       }
@@ -679,6 +697,7 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
         inputTokens,
         outputTokens,
         mode: preValidated ? 'structured' : 'legacy',
+        serviceId: context.serviceId,
       },
     })
 
@@ -825,10 +844,12 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
-    console.error('Structured model error', {
-      templateId,
-      modelId,
+    logError({
+      reqId: context.serviceId || 'llm',
+      route: 'llm/structured',
+      phase: 'structured_error',
       error: mapErrorToMessage(error),
+      meta: { templateId, modelId },
     })
     return {
       ok: false,
@@ -887,13 +908,18 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       user: template.userPrompt,
       variables: runtimeVariables,
     }),
-    meta: { modelId },
+    meta: { modelId, serviceId: context.serviceId },
   })
 
   // PHASE 1: Gemini Direct Streaming Path (bypasses LangChain)
   // For Gemini 3 models, use native API for better streaming reliability
   if (shouldUseGeminiDirect(modelId)) {
-    console.log('[Streaming] Using Gemini Direct API for:', templateId)
+    logDebug({
+      reqId: context.serviceId || 'llm',
+      route: 'llm/stream',
+      phase: 'gemini_direct_stream',
+      templateId: String(templateId),
+    })
 
     const limits = getTaskLimits(String(templateId))
 
@@ -934,7 +960,11 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     logDebugData(`${String(templateId)}_stream_output`, {
       output: geminiResult.raw || JSON.stringify(geminiResult.data),
       latencyMs: end - start,
-      meta: { len: geminiResult.raw?.length || 0, ok: geminiResult.ok },
+      meta: {
+        len: geminiResult.raw?.length || 0,
+        ok: geminiResult.ok,
+        serviceId: context.serviceId,
+      },
     })
 
     // Log usage (estimate if not provided)
@@ -1017,7 +1047,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     logDebugData(`${String(templateId)}_stream_output`, {
       output: fullText,
       latencyMs: end - start,
-      meta: { len: fullText.length },
+      meta: { len: fullText.length, serviceId: context.serviceId },
     })
 
     // token usage may be available on model after stream; best-effort
@@ -1067,7 +1097,7 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
     logDebugData(`${String(templateId)}_stream_output`, {
       output: '',
       latencyMs: end - start,
-      meta: { len: 0, error: errorMessage },
+      meta: { len: 0, error: errorMessage, serviceId: context.serviceId },
     })
 
     // Fail-safe Usage Log: Record failure in llm_usage_logs
@@ -1085,11 +1115,16 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
-    console.error('Streaming LLM error', {
-      templateId,
-      modelId,
+    logError({
+      reqId: context.serviceId || 'llm',
+      route: 'llm/stream',
+      phase: 'stream_error',
       error: errorMessage,
-      latencyMs: end - start,
+      meta: {
+        templateId,
+        modelId,
+        latencyMs: end - start,
+      },
     })
 
     return {

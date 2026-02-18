@@ -38,11 +38,8 @@ describe('deriveStage', () => {
         it('should return step 1 when on match tab', () => {
             const result = deriveStage(
                 'MATCH_PENDING',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -51,12 +48,9 @@ describe('deriveStage', () => {
 
         it('should return step 2 when on customize tab', () => {
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'PENDING',
-                'IDLE',
+                'CUSTOMIZE_PENDING',
                 mockDict,
                 false,
-                'customize',
                 null,
                 null
             )
@@ -65,12 +59,9 @@ describe('deriveStage', () => {
 
         it('should return step 3 when on interview tab', () => {
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'COMPLETED',
-                'PENDING',
+                'INTERVIEW_PENDING',
                 mockDict,
                 false,
-                'interview',
                 null,
                 null
             )
@@ -82,11 +73,8 @@ describe('deriveStage', () => {
         it('should unlock only step 1 when match is pending', () => {
             const result = deriveStage(
                 'MATCH_PENDING',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -97,12 +85,9 @@ describe('deriveStage', () => {
             // Note: Match completion alone does NOT unlock step 2
             // Users must click the CTA button to start customization
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'PENDING',  // Customize is in progress
-                'IDLE',
+                'CUSTOMIZE_PENDING',
                 mockDict,
                 false,
-                'customize',
                 null,
                 null
             )
@@ -111,12 +96,9 @@ describe('deriveStage', () => {
 
         it('should unlock step 3 when interview is pending', () => {
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'COMPLETED',
-                'PENDING',
+                'INTERVIEW_PENDING',
                 mockDict,
                 false,
-                'interview',
                 null,
                 null
             )
@@ -128,11 +110,8 @@ describe('deriveStage', () => {
         it('should show retry CTA when match failed', () => {
             const result = deriveStage(
                 'MATCH_FAILED',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -147,11 +126,8 @@ describe('deriveStage', () => {
         it('should show customize CTA when match completed', () => {
             const result = deriveStage(
                 'MATCH_COMPLETED',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -165,12 +141,9 @@ describe('deriveStage', () => {
 
         it('should show interview CTA when customize completed', () => {
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'COMPLETED',
-                'IDLE',
+                'CUSTOMIZE_COMPLETED',
                 mockDict,
                 false,
-                'customize',
                 null,
                 null
             )
@@ -185,11 +158,8 @@ describe('deriveStage', () => {
         it('should disable CTA when isPending is true', () => {
             const result = deriveStage(
                 'MATCH_COMPLETED',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 true, // isPending
-                'match',
                 null,
                 null
             )
@@ -198,12 +168,9 @@ describe('deriveStage', () => {
 
         it('should return null CTA when interview completed', () => {
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'COMPLETED',
-                'COMPLETED',
+                'INTERVIEW_COMPLETED',
                 mockDict,
                 false,
-                'interview',
                 null,
                 null
             )
@@ -215,11 +182,8 @@ describe('deriveStage', () => {
         it('should return match pending message', () => {
             const result = deriveStage(
                 'MATCH_PENDING',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -229,11 +193,8 @@ describe('deriveStage', () => {
         it('should return match completed message', () => {
             const result = deriveStage(
                 'MATCH_COMPLETED',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -242,12 +203,9 @@ describe('deriveStage', () => {
 
         it('should return customizing message on customize tab', () => {
             const result = deriveStage(
-                'MATCH_COMPLETED',
-                'PENDING',
-                'IDLE',
+                'CUSTOMIZE_PENDING',
                 mockDict,
                 false,
-                'customize',
                 null,
                 null
             )
@@ -260,11 +218,8 @@ describe('deriveStage', () => {
             // Without simulatedProgress, should return fallback prog value
             const resultNoSim = deriveStage(
                 'MATCH_PENDING',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -274,11 +229,8 @@ describe('deriveStage', () => {
             // With simulatedProgress, should use the simulated value
             const resultWithSim = deriveStage(
                 'MATCH_PENDING',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null,
                 55  // simulatedProgress
@@ -289,11 +241,8 @@ describe('deriveStage', () => {
         it('should return 100% for match completed', () => {
             const result = deriveStage(
                 'MATCH_COMPLETED',
-                'IDLE',
-                'IDLE',
                 mockDict,
                 false,
-                'match',
                 null,
                 null
             )
@@ -303,12 +252,9 @@ describe('deriveStage', () => {
         it('should use simulatedProgress for customize pending', () => {
             // Without simulatedProgress, starts at MIN_PROGRESS (10%)
             const resultNoSim = deriveStage(
-                'MATCH_COMPLETED',
-                'PENDING',
-                'IDLE',
+                'CUSTOMIZE_PENDING',
                 mockDict,
                 false,
-                'customize',
                 null,
                 null
             )
@@ -316,12 +262,9 @@ describe('deriveStage', () => {
 
             // With simulatedProgress, should use the simulated value
             const resultWithSim = deriveStage(
-                'MATCH_COMPLETED',
-                'PENDING',
-                'IDLE',
+                'CUSTOMIZE_PENDING',
                 mockDict,
                 false,
-                'customize',
                 null,
                 null,
                 50  // simulatedProgress

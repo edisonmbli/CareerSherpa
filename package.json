@@ -71,6 +71,7 @@
     "html2canvas": "^1.4.1",
     "immer": "^11.0.1",
     "import-in-the-middle": "^2.0.6",
+    "ioredis": "^5.6.1",
     "jsonrepair": "^3.13.1",
     "jspdf": "^3.0.3",
     "langchain": "^1.2.6",

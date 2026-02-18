@@ -164,9 +164,16 @@ async function handleRefunds(
   execResult: ExecutionResult,
   variables: JobMatchVars,
   serviceId: string,
-  userId: string
+  userId: string,
+  shouldRefund?: boolean
 ): Promise<void> {
-  if (!execResult.ok && variables.wasPaid && variables.cost && variables.debitId) {
+  if (
+    shouldRefund !== false &&
+    !execResult.ok &&
+    variables.wasPaid &&
+    variables.cost &&
+    variables.debitId
+  ) {
     try {
       await recordRefund({
         userId,
@@ -395,7 +402,13 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       await publishFailure(channel, serviceId, taskId, requestId, traceId, failure.failureCode, failure.reason)
       execResult.ok = false
       execResult.error = failure.reason
-      await handleRefunds(execResult, variables, serviceId, userId)
+      await handleRefunds(
+        execResult,
+        variables,
+        serviceId,
+        userId,
+        ctx.shouldRefund,
+      )
       return
     }
 
@@ -416,7 +429,13 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       await publishFailure(channel, serviceId, taskId, requestId, traceId, logicFailure.failureCode, logicFailure.reason)
       execResult.ok = false
       execResult.error = logicFailure.reason
-      await handleRefunds(execResult, variables, serviceId, userId)
+      await handleRefunds(
+        execResult,
+        variables,
+        serviceId,
+        userId,
+        ctx.shouldRefund,
+      )
       return
     }
 
@@ -479,6 +498,12 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     // and only the DB save failed (user got value via stream tokens).
     // The current architecture refunds on ANY writeResults failure.
     // This seems acceptable for now.
-    await handleRefunds(execResult, variables, serviceId, userId)
+    await handleRefunds(
+      execResult,
+      variables,
+      serviceId,
+      userId,
+      ctx.shouldRefund,
+    )
   }
 }

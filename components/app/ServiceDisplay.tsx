@@ -1,5 +1,12 @@
 'use client'
-import { useEffect, useTransition, useState, useRef, useMemo } from 'react'
+import {
+  useEffect,
+  useTransition,
+  useState,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react'
 import type { Locale } from '@/i18n-config'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import {
@@ -24,6 +31,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { MarkdownEditor } from '@/components/app/MarkdownEditor'
 import { saveCustomizedResumeAction } from '@/lib/actions/service.actions'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 import {
   StepperProgress,
   type StepId,
@@ -76,6 +84,13 @@ import { deriveStage } from '@/lib/utils/workbench-stage'
 import { CtaButton } from '@/components/workbench/CtaButton'
 import { buildTaskId } from '@/lib/types/task-context'
 import { useServiceGuard } from '@/lib/hooks/use-service-guard'
+import { getTaskPrefix, mapToStatus } from '@/lib/ui/sse-event-processor'
+import {
+  WORKBENCH_CUSTOMIZE_REFRESH_DELAY_MS,
+  WORKBENCH_CUSTOMIZE_REFRESH_RETRY_MAX,
+  WORKBENCH_CUSTOMIZE_REFRESH_RETRY_MS,
+  WORKBENCH_REFRESH_GUARD_MS,
+} from '@/lib/constants'
 
 // V2 SSE Integration - Feature flag for gradual rollout
 const USE_SSE_V2 = process.env['NEXT_PUBLIC_USE_SSE_V2'] === 'true' || true // Default to V2
@@ -89,6 +104,31 @@ import { StreamPanelV2 } from '@/components/workbench/StreamPanelV2'
 // Helper to check terminal status (Legacy V1 Status string)
 const isTerminalStatus = (status: string | undefined | null) => {
   return status === 'COMPLETED' || status === 'FAILED'
+}
+
+const getStatusRank = (status: WorkbenchStatusV2 | null | undefined) => {
+  if (!status || status === 'IDLE') return 0
+  if (status.startsWith('INTERVIEW')) return 3
+  if (status.startsWith('CUSTOMIZE')) return 2
+  return 1
+}
+
+const pickEffectiveStatus = (
+  rawStatus: WorkbenchStatusV2,
+  serverStatus: WorkbenchStatusV2 | null,
+  dataStatus: WorkbenchStatusV2 | null,
+): WorkbenchStatusV2 => {
+  if (rawStatus && rawStatus !== 'IDLE') return rawStatus
+  const candidates = [rawStatus, serverStatus, dataStatus].filter(
+    Boolean,
+  ) as WorkbenchStatusV2[]
+  if (!candidates.length) return rawStatus
+  const maxRank = Math.max(...candidates.map(getStatusRank))
+  if (getStatusRank(rawStatus) === maxRank) return rawStatus
+  if (serverStatus && getStatusRank(serverStatus) === maxRank)
+    return serverStatus
+  if (dataStatus && getStatusRank(dataStatus) === maxRank) return dataStatus
+  return rawStatus
 }
 
 export function ServiceDisplay({
@@ -111,13 +151,26 @@ export function ServiceDisplay({
   const router = useRouter()
   // Restore useTransition for actions
   const [isPending, startTransition] = useTransition()
+  const refreshGuardRef = useRef(0)
+  const requestRefresh = useCallback(() => {
+    const now = Date.now()
+    if (now - refreshGuardRef.current < WORKBENCH_REFRESH_GUARD_MS) return
+    refreshGuardRef.current = now
+    router.refresh()
+  }, [router])
 
   // Local state for task switching (e.g. customizations)
   const [matchTaskId, setMatchTaskId] = useState<string | null>(null)
   // Computed Task ID for connection
   const serviceId = initialService?.id || ''
+  const initialStatusV2 = initialService?.currentStatus
+    ? mapToStatus(initialService.currentStatus)
+    : null
+  const initialTaskPrefix = initialStatusV2
+    ? getTaskPrefix(initialStatusV2)
+    : 'job'
   const initialTaskId = initialService?.executionSessionId
-    ? `job_${serviceId}_${initialService.executionSessionId}`
+    ? `${initialTaskPrefix}_${serviceId}_${initialService.executionSessionId}`
     : undefined
   const taskIdToUse = matchTaskId || initialTaskId
 
@@ -133,13 +186,30 @@ export function ServiceDisplay({
     skip: !serviceId || isTerminalStatus(initialService?.currentStatus),
   })
 
-  // Aliases and State Mapping
-  const status = v2Bridge?.status || 'IDLE'
-  // storeStatus alias for legacy compatibility
-  const storeStatus = status
   const matchBase = initialService?.match ?? null
   const customizedResumeBase = initialService?.customizedResume ?? null
   const interviewBase = initialService?.interview ?? null
+  const rawStatus = v2Bridge?.status || 'IDLE'
+  const serverStatus = initialService?.currentStatus
+    ? mapToStatus(initialService.currentStatus)
+    : null
+  const dataStatus: WorkbenchStatusV2 | null = (() => {
+    if (interviewBase?.status === 'COMPLETED') return 'INTERVIEW_COMPLETED'
+    if (interviewBase?.status === 'FAILED') return 'INTERVIEW_FAILED'
+    if (customizedResumeBase?.status === 'COMPLETED')
+      return 'CUSTOMIZE_COMPLETED'
+    if (customizedResumeBase?.status === 'FAILED') return 'CUSTOMIZE_FAILED'
+    if (matchBase?.status === 'COMPLETED') return 'MATCH_COMPLETED'
+    if (matchBase?.status === 'FAILED') return 'MATCH_FAILED'
+    return null
+  })()
+  const hasInterviewData = Boolean(interviewBase?.interviewTipsJson)
+  const baseStatus = pickEffectiveStatus(rawStatus, serverStatus, dataStatus)
+  const status =
+    hasInterviewData && !baseStatus.startsWith('INTERVIEW')
+      ? 'INTERVIEW_COMPLETED'
+      : baseStatus
+  const storeStatus = rawStatus
 
   // Content extraction
   let initialMatchJson: any = null
@@ -177,7 +247,7 @@ export function ServiceDisplay({
     const dicts = dict?.workbench || {}
     const { description } = getServiceErrorMessage(v2Bridge.errorMessage, dicts)
     if (process.env.NODE_ENV === 'development') {
-      console.log('[ServiceDisplay] localizedError:', {
+      uiLog.debug('ServiceDisplay localizedError', {
         raw: v2Bridge.errorMessage,
         hasNotification: !!dicts.notification,
         serverErrorDesc: dicts.notification?.serverErrorDesc,
@@ -186,56 +256,6 @@ export function ServiceDisplay({
     }
     return description
   }, [v2Bridge?.errorMessage, dict?.workbench])
-
-  // Server state sync: Detect mismatch between server state and V2 bridge
-  // If server shows terminal state but V2 still shows active, force sync
-  useEffect(() => {
-    if (!USE_SSE_V2 || !v2Bridge) return
-
-    const serverMatchStatus = initialService?.job?.matchAnalysisStatus
-    const v2Status = v2Bridge.status
-
-    // Skip if no server status available
-    if (!serverMatchStatus) return
-
-    // Check for server-V2 mismatch: server is terminal, V2 is still active
-    const serverIsTerminal =
-      serverMatchStatus === 'COMPLETED' || serverMatchStatus === 'FAILED'
-    const v2IsActive =
-      v2Status.includes('PENDING') || v2Status.includes('STREAMING')
-
-    if (serverIsTerminal && v2IsActive) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[ServiceDisplay] Server-V2 mismatch detected:', {
-          serverMatchStatus,
-          v2Status,
-          action: 'force_sync',
-        })
-      }
-
-      // Force V2 status to match server
-      // Force V2 status to match server
-      let mappedStatus: WorkbenchStatusV2 = 'MATCH_FAILED'
-
-      if (serverMatchStatus === 'COMPLETED') {
-        mappedStatus = 'MATCH_COMPLETED'
-      } else {
-        // Handle FAILURE cases: try to respect the current V2 phase
-        if (v2Status.startsWith('SUMMARY')) mappedStatus = 'SUMMARY_FAILED'
-        else if (v2Status.startsWith('JOB_VISION'))
-          mappedStatus = 'JOB_VISION_FAILED'
-        else if (v2Status.startsWith('OCR')) mappedStatus = 'OCR_FAILED'
-        else if (v2Status.startsWith('PREMATCH'))
-          mappedStatus = 'PREMATCH_FAILED'
-        else mappedStatus = 'MATCH_FAILED'
-      }
-
-      setBridgeStatus?.(mappedStatus)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialService?.job?.matchAnalysisStatus, v2Bridge?.status])
-
-  // Auto-refresh when COMPLETED to sync server state is now handled by hook
 
   // Local state
   const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
@@ -289,18 +309,16 @@ export function ServiceDisplay({
 
   // Derived state - serviceId now comes from useServiceStatus hook
 
-  // Derive customizeStatus from store AND server (store takes precedence for active states)
-  const customizeStatus =
-    storeStatus === 'CUSTOMIZE_PENDING'
-      ? 'PENDING'
-      : storeStatus === 'CUSTOMIZE_COMPLETED'
-        ? 'COMPLETED'
-        : storeStatus === 'CUSTOMIZE_FAILED'
-          ? 'FAILED'
-          : customizedResumeBase?.status || 'IDLE'
+  const customizeStatus = (() => {
+    if (status.startsWith('CUSTOMIZE')) {
+      if (status === 'CUSTOMIZE_PENDING') return 'PENDING'
+      if (status === 'CUSTOMIZE_FAILED') return 'FAILED'
+      return 'COMPLETED'
+    }
+    if (status.startsWith('INTERVIEW')) return 'COMPLETED'
+    return customizedResumeBase?.status || 'IDLE'
+  })()
 
-  // Transition state: customize tab selected but SSE hasn't confirmed task started yet
-  // Once store shows CUSTOMIZE_PENDING from SSE, we're no longer in transition
   const hasReceivedSseConfirmation =
     storeStatus === 'CUSTOMIZE_PENDING' ||
     storeStatus === 'CUSTOMIZE_COMPLETED' ||
@@ -312,28 +330,19 @@ export function ServiceDisplay({
     (isPending || customizeStatus === 'PENDING')
 
   const interviewStatus = (() => {
-    const hasInterviewStage =
-      storeStatus === 'INTERVIEW_PENDING' ||
-      storeStatus === 'INTERVIEW_STREAMING' ||
-      storeStatus === 'INTERVIEW_COMPLETED' ||
-      storeStatus === 'INTERVIEW_FAILED' ||
-      String(initialService?.currentStatus || '').startsWith('INTERVIEW')
-
-    if (!hasInterviewStage) return 'IDLE'
-
-    if (
-      storeStatus === 'INTERVIEW_PENDING' ||
-      storeStatus === 'INTERVIEW_STREAMING'
-    ) {
-      return 'PENDING'
+    if (status.startsWith('INTERVIEW')) {
+      if (status === 'INTERVIEW_PENDING' || status === 'INTERVIEW_STREAMING')
+        return 'PENDING'
+      if (status === 'INTERVIEW_FAILED') return 'FAILED'
+      if (status === 'INTERVIEW_COMPLETED') return 'COMPLETED'
     }
-    if (storeStatus === 'INTERVIEW_COMPLETED') return 'COMPLETED'
-    if (storeStatus === 'INTERVIEW_FAILED') return 'FAILED'
     return interviewBase?.status || 'IDLE'
   })()
 
   const isInterviewTransitionState =
     tabValue === 'interview' && interviewStatus === 'IDLE' && isPending
+  const isInterviewGenerating =
+    interviewStatus === 'PENDING' || isInterviewTransitionState
 
   // Note: isStarting state removed in favor of deriving transition state from isPending + customizeStatus
 
@@ -360,35 +369,43 @@ export function ServiceDisplay({
   // Match phase uses "match_" prefix
   // Customize/Interview use their respective prefixes set via actions
   const computedTaskId = useMemo(() => {
-    // If we have an explicit matchTaskId set (e.g. from customize/interview action), use it
     if (matchTaskId) return matchTaskId
 
-    // If initialService provided a taskId (rare, usually transient), use it
     if (initialService?.taskId) return initialService.taskId
 
-    // Fallback: Construct based on status and executionSessionId
-    if (serviceId && initialService?.executionSessionId) {
-      // Early stages -> job prefix
-      if (
-        status === 'IDLE' ||
-        status === 'OCR_PENDING' ||
-        status === 'OCR_COMPLETED' ||
-        status === 'JOB_VISION_PENDING' ||
-        status === 'JOB_VISION_STREAMING' ||
-        status === 'SUMMARY_PENDING'
-      ) {
-        return `job_${serviceId}_${initialService.executionSessionId}`
-      }
-      // Match stages (including SUMMARY_COMPLETED transition) -> match prefix
-      return `match_${serviceId}_${initialService.executionSessionId}`
+    const sessionId = initialService?.executionSessionId
+    if (!serviceId || !sessionId) return null
+
+    const statusSource =
+      status !== 'IDLE' ? status : initialService?.currentStatus
+    const statusText = String(statusSource || '')
+
+    if (
+      statusText.startsWith('CUSTOMIZE') ||
+      statusText.startsWith('INTERVIEW')
+    ) {
+      const prefix = statusText.startsWith('CUSTOMIZE')
+        ? 'customize'
+        : 'interview'
+      return `${prefix}_${serviceId}_${sessionId}`
     }
-    return null
+
+    if (
+      statusText.startsWith('MATCH') ||
+      statusText === 'SUMMARY_COMPLETED' ||
+      statusText.startsWith('PREMATCH')
+    ) {
+      return `match_${serviceId}_${sessionId}`
+    }
+
+    return `job_${serviceId}_${sessionId}`
   }, [matchTaskId, initialService, serviceId, status])
 
   // Handlers
   // Core customize action (called after free tier confirmation if needed)
   const doCustomize = () => {
     setNotification(null)
+    setTabValue('customize')
     startTransition(async () => {
       try {
         const res = await customizeResumeAction({
@@ -396,7 +413,7 @@ export function ServiceDisplay({
           locale,
         })
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Frontend] customizeResumeAction result:', res)
+          uiLog.debug('customizeResumeAction result', { result: res })
         }
         if (res?.ok) {
           if (res.executionSessionId) {
@@ -407,7 +424,7 @@ export function ServiceDisplay({
               res.executionSessionId,
             )
             if (process.env.NODE_ENV === 'development') {
-              console.log('[Frontend] Setting taskId to:', newTaskId)
+              uiLog.debug('customize setTaskId', { taskId: newTaskId })
             }
             setMatchTaskId(newTaskId)
           }
@@ -423,7 +440,7 @@ export function ServiceDisplay({
         }
       } catch (e) {
         if (process.env.NODE_ENV === 'development') {
-          console.error(e)
+          uiLog.error('customize action error', { error: e })
         }
         showError(
           dict.workbench?.customize?.createFailed ||
@@ -465,6 +482,7 @@ export function ServiceDisplay({
       localStorage.setItem(`executionTier_interview_${serviceId}`, tierToUse)
     }
     setNotification(null)
+    setTabValue('interview')
     startTransition(async () => {
       try {
         const res = await generateInterviewTipsAction({
@@ -493,7 +511,7 @@ export function ServiceDisplay({
         }
       } catch (e) {
         if (process.env.NODE_ENV === 'development') {
-          console.error(e)
+          uiLog.error('interview action error', { error: e })
         }
         showError(
           'Failed to generate interview tips',
@@ -518,6 +536,7 @@ export function ServiceDisplay({
 
   const retryMatchAction = () => {
     setBridgeStatus?.('MATCH_PENDING')
+    setTabValue('match')
     startTransition(async () => {
       const { retryMatchAction: serverRetry } =
         await import('@/lib/actions/service.actions')
@@ -526,7 +545,7 @@ export function ServiceDisplay({
         if (res.executionSessionId) {
           setMatchTaskId(`match_${serviceId}_${String(res.executionSessionId)}`)
         }
-        router.refresh()
+        requestRefresh()
       } else {
         setError(String(res?.error || 'retry_failed'))
       }
@@ -555,9 +574,9 @@ export function ServiceDisplay({
   // Refresh page when status becomes COMPLETED or FAILED to ensure data consistency
   useEffect(() => {
     if (isTerminalStatus(status)) {
-      router.refresh()
+      requestRefresh()
     }
-  }, [status, router])
+  }, [requestRefresh, status])
 
   // Clear executionTier only on success
   // On failure, keep it so error panel can show correct message
@@ -599,7 +618,8 @@ export function ServiceDisplay({
       }
     }
   }, [status, v2Bridge?.matchContent])
-  const interviewJson = interviewBase?.interviewTipsJson || null
+  const interviewJson =
+    interviewBase?.interviewTipsJson || v2Bridge?.interviewJson || null
   let interviewParsed: any = null
   try {
     interviewParsed = interviewJson
@@ -610,6 +630,10 @@ export function ServiceDisplay({
   } catch {
     // non-fatal: malformed interviewJson should not crash render
   }
+  const shouldShowInterviewPlan =
+    Boolean(interviewParsed) && !isInterviewGenerating
+  const shouldShowInterviewLoading =
+    interviewStatus === 'COMPLETED' && !interviewParsed
 
   const interviewBattlePlanLabels = useMemo(
     () => ({
@@ -919,11 +943,8 @@ export function ServiceDisplay({
   const { currentStep, maxUnlockedStep, cta, statusMessage, progressValue } =
     deriveStage(
       status as any,
-      customizeStatus,
-      interviewStatus,
       dict,
       isPending,
-      tabValue,
       statusDetail,
       errorMessage,
       simulatedProgress,
@@ -987,12 +1008,13 @@ export function ServiceDisplay({
   useEffect(() => {
     if (shouldRefreshJobSummary && !hasRefreshedJobSummaryRef.current) {
       hasRefreshedJobSummaryRef.current = true
-      router.refresh()
+      requestRefresh()
     }
-  }, [router, shouldRefreshJobSummary])
+  }, [requestRefresh, shouldRefreshJobSummary])
 
   const hasRefreshedCustomizeRef = useRef(false)
   useEffect(() => {
+    let timeoutId: number | undefined
     if (customizeStatus === 'PENDING' || customizeStatus === 'IDLE') {
       hasRefreshedCustomizeRef.current = false
     }
@@ -1001,9 +1023,44 @@ export function ServiceDisplay({
       !hasRefreshedCustomizeRef.current
     ) {
       hasRefreshedCustomizeRef.current = true
-      router.refresh()
+      timeoutId = window.setTimeout(() => {
+        requestRefresh()
+      }, WORKBENCH_CUSTOMIZE_REFRESH_DELAY_MS)
     }
-  }, [customizeStatus, router])
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [customizeStatus, requestRefresh])
+
+  const customizeDataRetryRef = useRef(0)
+  useEffect(() => {
+    if (customizeStatus !== 'COMPLETED') {
+      customizeDataRetryRef.current = 0
+      return
+    }
+    const hasCustomizeData = Boolean(
+      customizedResumeBase?.editedResumeJson ||
+      customizedResumeBase?.customizedResumeJson,
+    )
+    if (hasCustomizeData) {
+      customizeDataRetryRef.current = 0
+      return
+    }
+    if (customizeDataRetryRef.current >= WORKBENCH_CUSTOMIZE_REFRESH_RETRY_MAX)
+      return
+    const timeoutId = window.setTimeout(() => {
+      customizeDataRetryRef.current += 1
+      requestRefresh()
+    }, WORKBENCH_CUSTOMIZE_REFRESH_RETRY_MS)
+    return () => window.clearTimeout(timeoutId)
+  }, [
+    customizeStatus,
+    customizedResumeBase?.editedResumeJson,
+    customizedResumeBase?.customizedResumeJson,
+    requestRefresh,
+  ])
 
   const hasRefreshedInterviewRef = useRef(false)
   const interviewDataRetryRef = useRef(0)
@@ -1016,13 +1073,16 @@ export function ServiceDisplay({
     const v2Status = v2Bridge?.status
     const isActiveStatus =
       v2Status?.includes('PENDING') || v2Status?.includes('STREAMING')
+    const shouldPreserveInterview =
+      status.startsWith('INTERVIEW') || hasInterviewData
 
-    if (serviceChanged || (sessionChanged && !isActiveStatus)) {
+    if (
+      serviceChanged ||
+      (sessionChanged && !isActiveStatus && !shouldPreserveInterview)
+    ) {
       setTabValue(() => {
-        if (initialService?.interview?.status === 'COMPLETED')
-          return 'interview'
-        if (initialService?.customizedResume?.status === 'COMPLETED')
-          return 'customize'
+        if (status.startsWith('INTERVIEW')) return 'interview'
+        if (status.startsWith('CUSTOMIZE')) return 'customize'
         return 'match'
       })
       setMatchTaskId(null)
@@ -1058,9 +1118,9 @@ export function ServiceDisplay({
   }, [
     serviceId,
     initialService?.executionSessionId,
-    initialService?.customizedResume?.status,
-    initialService?.interview?.status,
+    status,
     v2Bridge,
+    hasInterviewData,
   ])
   useEffect(() => {
     const serverInterviewStatus = initialService?.interview?.status
@@ -1070,10 +1130,10 @@ export function ServiceDisplay({
       !hasRefreshedInterviewRef.current
     ) {
       hasRefreshedInterviewRef.current = true
-      router.refresh()
+      requestRefresh()
       setTabValue('interview')
     }
-  }, [initialService?.interview?.status, router])
+  }, [initialService?.interview?.status, requestRefresh])
 
   useEffect(() => {
     if (interviewStatus !== 'COMPLETED') {
@@ -1087,10 +1147,10 @@ export function ServiceDisplay({
     if (interviewDataRetryRef.current >= 3) return
     const timeoutId = window.setTimeout(() => {
       interviewDataRetryRef.current += 1
-      router.refresh()
+      requestRefresh()
     }, 2000)
     return () => window.clearTimeout(timeoutId)
-  }, [interviewStatus, interviewParsed, router])
+  }, [interviewStatus, interviewParsed, requestRefresh])
 
   const shouldHideConsole =
     (tabValue === 'match' &&
@@ -1664,7 +1724,7 @@ export function ServiceDisplay({
               className="flex-1 min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-auto print:overflow-visible"
               style={{ scrollbarGutter: 'stable' }}
             >
-              {interviewStatus === 'COMPLETED' && interviewParsed ? (
+              {shouldShowInterviewPlan ? (
                 <div className="w-full px-0 sm:px-3 md:px-4 pt-0 pb-6 print:px-0 print:py-2">
                   <div className="mx-auto w-full max-w-none sm:max-w-[1180px] relative">
                     <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
@@ -1804,6 +1864,18 @@ export function ServiceDisplay({
                     </aside>
                   </div>
                 </div>
+              ) : shouldShowInterviewLoading ? (
+                <BatchProgressPanel
+                  title={
+                    dict.workbench?.statusText?.INTERVIEW_LOADING ||
+                    '正在加载面试作战手卡...'
+                  }
+                  description={
+                    dict.workbench?.statusText?.INTERVIEW_LOADING_DESC ||
+                    '内容已生成，正在整理与排版，请稍候。'
+                  }
+                  progress={96}
+                />
               ) : USE_SSE_V2 &&
                 v2Bridge &&
                 (v2Bridge.status === 'INTERVIEW_PENDING' ||

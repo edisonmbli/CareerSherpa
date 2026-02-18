@@ -27,7 +27,7 @@ import {
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
-import { logError } from '@/lib/logger'
+import { logInfo, logError } from '@/lib/logger'
 
 /**
  * Strategy for Summary tasks (Job, Resume, Detailed Resume).
@@ -148,7 +148,13 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       })
     }
 
-    await this.handleRefunds(execResult, variables, serviceId, userId)
+    await this.handleRefunds(
+      execResult,
+      variables,
+      serviceId,
+      userId,
+      ctx.shouldRefund,
+    )
   }
 
   private async handleJobSummaryWrite(
@@ -372,7 +378,12 @@ export class SummaryStrategy implements WorkerStrategy<any> {
         })
         // If audit fails to enqueue, should we fallback to direct match?
         // Yes, for high availability.
-        console.warn('Pre-match enqueue failed, falling back to direct match.')
+        logInfo({
+          reqId: requestId,
+          route: 'worker/summary',
+          phase: 'prematch_enqueue_failed_fallback',
+          serviceId,
+        })
         // Fallthrough to direct match logic below...
         // But we need to structure this if/else carefully.
       } else {
@@ -454,13 +465,15 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     variables: any,
     serviceId: string,
     userId: string,
+    shouldRefund?: boolean,
   ) {
     const wasPaid = !!variables?.wasPaid
     const cost = Number(variables?.cost || 0)
     const debitId = String(variables?.debitId || '')
 
-    const shouldRefund = !execResult.ok && wasPaid && cost > 0 && !!debitId
-    if (shouldRefund) {
+    const canRefund =
+      shouldRefund !== false && !execResult.ok && wasPaid && cost > 0 && !!debitId
+    if (canRefund) {
       try {
         await recordRefund({
           userId,

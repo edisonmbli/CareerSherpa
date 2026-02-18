@@ -3,41 +3,56 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import * as Sentry from '@sentry/node'
-import { nodeProfilingIntegration } from '@sentry/profiling-node'
 import { config } from './config'
 import { Receiver } from '@upstash/qstash'
 import { handleStream, handleBatch } from '@/lib/worker/handlers'
 import type { WorkerBody } from '@/lib/worker/types'
+import { logError, logInfo } from '@/lib/logger'
 
-// Initialize Sentry
-Sentry.init({
-  dsn: process.env['SENTRY_DSN'] || process.env['NEXT_PUBLIC_SENTRY_DSN'],
-  integrations: [
-    nodeProfilingIntegration(),
-  ],
-  // Performance Monitoring
-  tracesSampleRate: 1.0, // Capture 100% of the transactions
-  // Set sampling rate for profiling - this is relative to tracesSampleRate
-  profilesSampleRate: 1.0,
-})
+const initSentry = async () => {
+  const profilingIntegration = await import('@sentry/profiling-node')
+    .then((mod) => mod.nodeProfilingIntegration())
+    .catch(() => null)
+
+  Sentry.init({
+    dsn: process.env['SENTRY_DSN'] || process.env['NEXT_PUBLIC_SENTRY_DSN'],
+    integrations: profilingIntegration ? [profilingIntegration] : [],
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+  })
+}
 
 // Define Hono Environment
 type Bindings = {
-  parsedBody: any
+  parsedBody?: WorkerBody
 }
 
 const app = new Hono<{ Variables: Bindings }>()
 
 // Global Error Handler
 app.onError((err, c) => {
-  console.error('Global error caught:', err)
-  Sentry.captureException(err)
+  logError({
+    reqId: 'worker',
+    route: 'worker/global',
+    error: err,
+  })
   return c.text('Internal Server Error', 500)
 })
 
 // Middleware
 app.use('*', logger())
-app.use('*', cors({ origin: '*' })) // Adjust for production
+
+const parseCorsOrigins = (value?: string) => {
+  if (!value) return '*'
+  const items = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  if (!items.length || items.includes('*')) return '*'
+  return items
+}
+
+app.use('*', cors({ origin: parseCorsOrigins(config.CORS_ORIGIN) }))
 
 // QStash Receiver
 const receiver = new Receiver({
@@ -47,9 +62,9 @@ const receiver = new Receiver({
 
 // QStash Verification Middleware
 const verifyQStash = async (c: any, next: any) => {
-  // Skip verification in development if keys are missing or NODE_ENV is development
-  if (config.NODE_ENV === 'development' && !config.QSTASH_CURRENT_SIGNING_KEY) {
-    console.warn('⚠️ Skipping QStash verification in development mode')
+  const skipVerify =
+    config.NODE_ENV === 'development' && config.QSTASH_SKIP_VERIFY === 'true'
+  if (skipVerify) {
     return next()
   }
 
@@ -69,8 +84,12 @@ const verifyQStash = async (c: any, next: any) => {
       return c.text('Invalid signature', 401)
     }
   } catch (e) {
-    console.error('QStash verification failed:', e)
-    Sentry.captureException(e)
+    logError({
+      reqId: 'worker',
+      route: 'worker/qstash',
+      phase: 'verify_failed',
+      error: e instanceof Error ? e : String(e),
+    })
     return c.text('Verification failed', 401)
   }
 
@@ -132,11 +151,19 @@ app.post('/api/execute/batch', verifyQStash, async (c) => {
   })
 })
 
-// Start Server
-const port = parseInt(config.PORT, 10)
-console.log(`🚀 Worker service running on port ${port}`)
+const startServer = async () => {
+  await initSentry()
+  const port = parseInt(config.PORT, 10)
+  logInfo({
+    reqId: 'worker',
+    route: 'worker/start',
+    message: `Worker service running on port ${port}`,
+    port,
+  })
+  serve({
+    fetch: app.fetch,
+    port,
+  })
+}
 
-serve({
-  fetch: app.fetch,
-  port,
-})
+startServer()

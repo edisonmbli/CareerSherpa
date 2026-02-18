@@ -1,6 +1,7 @@
 import { isProdRedisReady, ENV } from './env'
 import { RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC } from '@/lib/constants'
 import { getRedis } from '@/lib/redis/client'
+import { logDebug, logError, logInfo } from '@/lib/logger'
 
 type RateResult = { ok: boolean; remaining?: number; retryAfter?: number }
 
@@ -38,7 +39,13 @@ async function upstashRate(
   const cRaw = await redis.incr(key)
   const incrElapsed = Date.now() - incrStart
   if (process.env.NODE_ENV === 'development' && incrElapsed > 100) {
-    console.log('[upstashRate] INCR slow', { key, elapsedMs: incrElapsed })
+    logDebug({
+      reqId: 'rate-limit',
+      route: 'rateLimiter',
+      phase: 'upstash_incr_slow',
+      key,
+      elapsedMs: incrElapsed,
+    })
   }
 
   const c = Number(cRaw)
@@ -119,13 +126,25 @@ export async function checkDailyRateLimit(
       )
       // Debug logging for development
       if (process.env.NODE_ENV === 'development') {
-        console.log('[DailyRateLimit]', { userId, key, dailyFreeLimit, result })
+        logDebug({
+          reqId: 'rate-limit',
+          route: 'rateLimiter',
+          phase: 'daily_rate_limit',
+          userKey: userId,
+          key,
+          dailyFreeLimit,
+          result,
+        })
       }
       return result
     } catch (e) {
-      console.warn(
-        `[RateLimit] Daily check failed for ${userId}, using memory fallback`,
-      )
+      logInfo({
+        reqId: 'rate-limit',
+        route: 'rateLimiter',
+        phase: 'daily_rate_fallback',
+        userKey: userId,
+        error: e instanceof Error ? e : String(e),
+      })
       // IMPORTANT: If Redis check already ran and incremented counter,
       // we don't have visibility into the result. Fail-closed in production.
       if (process.env.NODE_ENV === 'production') {
@@ -168,8 +187,11 @@ export async function checkRateLimit(
       )
       // Debug logging for development
       if (process.env.NODE_ENV === 'development') {
-        console.log('[RateLimit:checkRateLimit]', {
-          route,
+        logDebug({
+          reqId: 'rate-limit',
+          route: 'rateLimiter',
+          phase: 'check_rate_limit',
+          targetRoute: route,
           identity,
           isTrial,
           limit,
@@ -179,21 +201,39 @@ export async function checkRateLimit(
       }
       return result
     } catch (e) {
-      console.warn(
-        `[RateLimit] Upstash latency high (${key}), failing over to local memory strategy.`,
-      )
+      logInfo({
+        reqId: 'rate-limit',
+        route: 'rateLimiter',
+        phase: 'upstash_latency_fallback',
+        key,
+        error: e instanceof Error ? e : String(e),
+      })
       if (process.env.NODE_ENV === 'production') {
         return { ok: false, retryAfter: RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC }
       }
       const fallbackResult = memoryRate(key, limit, windowSec)
-      console.log('[RateLimit:memoryFallback]', { key, limit, fallbackResult })
+      logDebug({
+        reqId: 'rate-limit',
+        route: 'rateLimiter',
+        phase: 'memory_fallback',
+        key,
+        limit,
+        result: fallbackResult,
+      })
       return fallbackResult
     }
   }
 
   const result = memoryRate(key, limit, windowSec)
   if (process.env.NODE_ENV === 'development') {
-    console.log('[RateLimit:memoryOnly]', { key, limit, result })
+    logDebug({
+      reqId: 'rate-limit',
+      route: 'rateLimiter',
+      phase: 'memory_only',
+      key,
+      limit,
+      result,
+    })
   }
   return result
 }
@@ -234,7 +274,14 @@ export async function checkOperationRateLimit(
           UPSTASH_TIMEOUT_MS,
         )
         if (process.env.NODE_ENV === 'development') {
-          console.log('[OpRateLimit:Free]', { userId, limit, result })
+          logDebug({
+            reqId: 'rate-limit',
+            route: 'rateLimiter',
+            phase: 'op_rate_limit_free',
+            userKey: userId,
+            limit,
+            result,
+          })
         }
         if (!result.ok) {
           return {
@@ -245,9 +292,13 @@ export async function checkOperationRateLimit(
         }
         return { ok: true, remaining: result.remaining }
       } catch (e) {
-        console.warn(
-          `[OpRateLimit] Daily check failed for ${userId}, using memory fallback`,
-        )
+        logInfo({
+          reqId: 'rate-limit',
+          route: 'rateLimiter',
+          phase: 'op_rate_limit_free_fallback',
+          userKey: userId,
+          error: e instanceof Error ? e : String(e),
+        })
         if (process.env.NODE_ENV === 'production') {
           return {
             ok: false,
@@ -283,7 +334,10 @@ export async function checkOperationRateLimit(
         )
         const elapsed = Date.now() - startTime
         if (process.env.NODE_ENV === 'development') {
-          console.log('[OpRateLimit:Paid]', {
+          logDebug({
+            reqId: 'rate-limit',
+            route: 'rateLimiter',
+            phase: 'op_rate_limit_paid',
             userId,
             limit,
             ttlSec,
@@ -302,14 +356,15 @@ export async function checkOperationRateLimit(
       } catch (e) {
         const elapsed = Date.now() - startTime
         const errorMsg = e instanceof Error ? e.message : String(e)
-        console.warn(
-          `[OpRateLimit] Frequency check failed for ${userId}, using memory fallback`,
-          {
-            elapsedMs: elapsed,
-            error: errorMsg,
-            timeoutMs: UPSTASH_TIMEOUT_MS,
-          },
-        )
+        logInfo({
+          reqId: 'rate-limit',
+          route: 'rateLimiter',
+          phase: 'op_rate_limit_paid_fallback',
+          userKey: userId,
+          elapsedMs: elapsed,
+          error: errorMsg,
+          timeoutMs: UPSTASH_TIMEOUT_MS,
+        })
         if (process.env.NODE_ENV === 'production') {
           return {
             ok: false,

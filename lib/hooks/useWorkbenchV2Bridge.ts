@@ -188,7 +188,6 @@ export function useWorkbenchV2Bridge(options: WorkbenchBridgeOptions) {
     // Derive UI-friendly status message
     // Use statusDetail if available (for custom server messages), otherwise allowed to be null
     // so UI can use localized fallback via deriveStage
-    // console.log('[V2Bridge] statusDetail:', statusDetail)
     const statusMessage = undefined
 
     return {

@@ -1,4 +1,4 @@
-import { isProdRedisReady } from '@/lib/env'
+import { ENV, isProdRedisReady } from '@/lib/env'
 import { getRedis } from '@/lib/redis/client'
 import { logError } from '@/lib/logger'
 
@@ -11,14 +11,16 @@ const memLocks = new Map<string, number>()
 export async function acquireLock(
   identity: string,
   taskKind: string,
-  ttlSec: number
+  ttlSec: number,
 ): Promise<boolean> {
   const key = `lock:${identity}:${taskKind}`
   if (isProdRedisReady()) {
     try {
       const redis = getRedis()
-      // NX: Set if Not eXists, EX: Expire time in seconds
-      const setRes = await redis.set(key, '1', { nx: true, ex: ttlSec })
+      const setRes =
+        ENV.UPSTASH_REDIS_REST_URL && ENV.UPSTASH_REDIS_REST_TOKEN
+          ? await redis.set(key, '1', { nx: true, ex: ttlSec })
+          : await redis.set(key, '1', 'EX', ttlSec, 'NX')
       return setRes === 'OK'
     } catch (error) {
       logError({

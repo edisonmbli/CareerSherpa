@@ -23,6 +23,7 @@ import { DesignDefaults } from '@/components/resume/templates/TemplateDesign'
 import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
 import { TemplateConfig } from '@/components/resume/templates/types'
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 
 export const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
   technical: TechnicalDefaults,
@@ -188,13 +189,17 @@ const debouncedSave = debounce(
         set((state: ResumeState) => {
           state.isSaving = false
         })
-        console.error('Auto-save failed:', 'error' in res ? res.error : 'Unknown error')
+        uiLog.error('resume_auto_save_failed', {
+          error: 'error' in res ? res.error : 'Unknown error',
+        })
       }
     } catch (e) {
       set((state: ResumeState) => {
         state.isSaving = false
       })
-      console.error('Auto-save failed:', e)
+      uiLog.error('resume_auto_save_failed', {
+        error: e instanceof Error ? e.message : String(e),
+      })
     }
   },
   2000
@@ -515,7 +520,9 @@ const createResumeSlice = (
         try {
           await resetCustomizedResumeAction(serviceId)
         } catch (e) {
-          console.error('Failed to reset remote data', e)
+          uiLog.error('resume_reset_failed', {
+            error: e instanceof Error ? e.message : String(e),
+          })
         }
       }
     }
@@ -607,7 +614,9 @@ const createResumeSlice = (
       set((state) => {
         state.isSaving = false
       })
-      console.error('Manual save failed:', e)
+      uiLog.error('resume_manual_save_failed', {
+        error: e instanceof Error ? e.message : String(e),
+      })
       return { ok: false, error: 'Network error' }
     }
   },

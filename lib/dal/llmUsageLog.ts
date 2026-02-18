@@ -2,6 +2,7 @@ import type { TaskTemplateId } from '@/lib/prompts/types'
 import type { ModelId } from '@/lib/llm/providers'
 import { prisma } from '@/lib/prisma'
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
+import { logError } from '@/lib/logger'
 
 // export interface LlmUsageLogCreateParams {
 //   modelName: string
@@ -23,7 +24,6 @@ import { withPrismaGuard } from '@/lib/guard/prismaGuard'
 //     })
 //   } catch (error) {
 //     // 记录失败不应阻塞主流程
-//     console.warn('[DAL] Failed to create LlmUsageLog:', error)
 //     return null
 //   }
 // }
@@ -48,7 +48,7 @@ export interface LlmUsageLogDetailedParams {
 }
 
 export async function createLlmUsageLogDetailed(
-  params: LlmUsageLogDetailedParams
+  params: LlmUsageLogDetailedParams,
 ) {
   try {
     const {
@@ -68,38 +68,44 @@ export async function createLlmUsageLogDetailed(
       errorMessage,
     } = params
 
-    const created = await withPrismaGuard(async (client) => {
-      return await client.llmUsageLog.create({
-        data: {
-          userId: userId ?? null,
-          serviceId: serviceId ?? null,
-          taskTemplateId,
-          provider,
-          modelId,
-          modelName: modelName ?? null,
-          inputTokens: inputTokens ?? 0,
-          outputTokens: outputTokens ?? 0,
-          totalTokens:
-            typeof totalTokens === 'number'
-              ? totalTokens
-              : (inputTokens ?? 0) + (outputTokens ?? 0),
-          latencyMs,
-          cost: typeof cost === 'number' ? cost : null,
-          isStream,
-          isSuccess,
-          errorMessage: errorMessage ?? null,
-          errorCode: (params as any)?.errorCode ?? null,
-        },
-      })
-    }, { attempts: 3, prewarm: false })
+    const created = await withPrismaGuard(
+      async (client) => {
+        return await client.llmUsageLog.create({
+          data: {
+            userId: userId ?? null,
+            serviceId: serviceId ?? null,
+            taskTemplateId,
+            provider,
+            modelId,
+            modelName: modelName ?? null,
+            inputTokens: inputTokens ?? 0,
+            outputTokens: outputTokens ?? 0,
+            totalTokens:
+              typeof totalTokens === 'number'
+                ? totalTokens
+                : (inputTokens ?? 0) + (outputTokens ?? 0),
+            latencyMs,
+            cost: typeof cost === 'number' ? cost : null,
+            isStream,
+            isSuccess,
+            errorMessage: errorMessage ?? null,
+            errorCode: (params as any)?.errorCode ?? null,
+          },
+        })
+      },
+      { attempts: 3, prewarm: false },
+    )
     return created
   } catch (error) {
     // 记录失败不应阻塞主流程，但不进行原生 SQL 降级
-    console.error('[DAL] Failed to create LlmUsageLog via Prisma:', {
-      error: error instanceof Error ? error.message : String(error),
+    logError({
+      reqId: params.serviceId || 'llm-usage',
+      route: 'dal/llmUsageLog',
+      phase: 'create_failed',
+      error: error instanceof Error ? error : String(error),
       taskTemplateId: params.taskTemplateId,
       isSuccess: params.isSuccess,
-      serviceId: params.serviceId,
+      ...(params.serviceId ? { serviceId: params.serviceId } : {}),
     })
     return null
   }

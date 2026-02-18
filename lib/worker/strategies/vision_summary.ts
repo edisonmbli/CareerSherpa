@@ -5,7 +5,6 @@ import {
   txMarkSummaryFailed,
   updateServiceExecutionStatus,
   getServiceIdsForMatch,
-  getJobOriginalImageById,
 } from '@/lib/dal/services'
 import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
@@ -29,47 +28,8 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
   /**
    * Fetches image if not provided in variables.
    */
-  async prepareVars(variables: any, ctx: StrategyContext) {
+  async prepareVars(variables: any, _ctx: StrategyContext) {
     const vars = { ...variables }
-    const { serviceId, taskId } = ctx
-    const jobId = String(vars.jobId || '')
-
-    // Fetch image for vision model
-    if (jobId && !vars.image) {
-      if (serviceId) {
-        await markTimeline(serviceId, 'worker_batch_vars_fetch_image_start', {
-          taskId,
-        })
-      }
-      const t0 = Date.now()
-      let imageOrUrl = await getJobOriginalImageById(jobId)
-
-      // Local Development Fix: Convert local path to base64
-      if (imageOrUrl && imageOrUrl.startsWith('/uploads/')) {
-        try {
-          const fs = await import('fs/promises')
-          const path = await import('path')
-          const filePath = path.join(process.cwd(), 'public', imageOrUrl)
-          const buffer = await fs.readFile(filePath)
-          const base64 = buffer.toString('base64')
-          const ext = path.extname(filePath).slice(1) || 'png'
-          const mimeType = ext === 'jpg' ? 'jpeg' : ext
-          imageOrUrl = `data:image/${mimeType};base64,${base64}`
-        } catch (e) {
-          console.error('Failed to read local image for vision summary', e)
-        }
-      }
-
-      const t1 = Date.now()
-      if (serviceId) {
-        await markTimeline(serviceId, 'worker_batch_vars_fetch_image_end', {
-          taskId,
-          latencyMs: t1 - t0,
-          meta: imageOrUrl ? `len=${imageOrUrl.length}` : 'null',
-        })
-      }
-      if (imageOrUrl) vars.image = imageOrUrl
-    }
     return vars
   }
 
@@ -227,7 +187,13 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
       }
     }
 
-    await this.handleRefunds(execResult, variables, serviceId, userId)
+    await this.handleRefunds(
+      execResult,
+      variables,
+      serviceId,
+      userId,
+      ctx.shouldRefund,
+    )
   }
 
   private async enqueueMatchTask(
@@ -306,13 +272,19 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
     variables: any,
     serviceId: string,
     userId: string,
+    shouldRefund?: boolean,
   ) {
     const wasPaid = !!variables?.wasPaid
     const cost = Number(variables?.cost || 0)
     const debitId = String(variables?.debitId || '')
 
-    const shouldRefund = !execResult.ok && wasPaid && cost > 0 && !!debitId
-    if (shouldRefund) {
+    const canRefund =
+      shouldRefund !== false &&
+      !execResult.ok &&
+      wasPaid &&
+      cost > 0 &&
+      !!debitId
+    if (canRefund) {
       try {
         await recordRefund({
           userId,

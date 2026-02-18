@@ -19,8 +19,12 @@ import {
 } from '@/lib/llm/task-router'
 import { buildQueueCounterKey, queueMaxSizeFor } from '@/lib/config/concurrency'
 import { bumpPending } from '@/lib/redis/counter'
-import { logError } from '@/lib/logger'
+import { logError, logInfo } from '@/lib/logger'
 import { getChannel, publishEvent } from '@/lib/worker/common'
+import {
+  QSTASH_RETRY_BACKOFF_BASE_MS,
+  QSTASH_WORKER_RETRIES,
+} from '@/lib/constants'
 
 export interface PushTaskParams<T extends TaskTemplateId> {
   kind: 'stream' | 'batch'
@@ -112,7 +116,15 @@ export async function pushTask<T extends TaskTemplateId>(
       requestId: params.taskId,
       traceId: params.taskId,
       lastUpdatedAt: new Date().toISOString(),
-    }).catch((e) => console.error('Failed to publish queued event', e))
+    }).catch((e) =>
+      logError({
+        reqId: params.taskId,
+        route: 'queue/producer',
+        phase: 'publish_queued_event_failed',
+        error: e instanceof Error ? e : String(e),
+        serviceId: params.serviceId,
+      }),
+    )
   } catch (e) {
     // Ignore error
   }
@@ -239,6 +251,15 @@ export async function pushTask<T extends TaskTemplateId>(
 
   let res: any
   try {
+    logInfo({
+      reqId: params.taskId,
+      route: 'pushTask',
+      userKey: params.userId,
+      phase: 'qstash_enqueue_start',
+      queueId: String(decision.queueId || ''),
+      workerUrl: url,
+      qstashUrl: ENV.QSTASH_URL || '',
+    })
     res = await client
       .queue({ queueName: String(decision.queueId) })
       .enqueueJSON({
@@ -252,19 +273,41 @@ export async function pushTask<T extends TaskTemplateId>(
           variables: params.variables,
           enqueuedAt: Date.now(),
           retryCount: 0,
+          qstashRetries: QSTASH_WORKER_RETRIES,
         },
         // M10 Optimization: Re-enable retries with exponential backoff
-        retries: 3,
-        backoff: (retryCount: number) => Math.exp(retryCount) * 1000, // 1s, 2.7s, 7.3s
+        retries: QSTASH_WORKER_RETRIES,
+        backoff: (retryCount: number) =>
+          Math.exp(retryCount) * QSTASH_RETRY_BACKOFF_BASE_MS,
         // Delay dispatch to allow previous worker to release lock
         ...(params.delaySec && params.delaySec > 0
           ? { delay: params.delaySec }
           : {}),
       })
+    logInfo({
+      reqId: params.taskId,
+      route: 'pushTask',
+      userKey: params.userId,
+      phase: 'qstash_enqueue_success',
+      queueId: String(decision.queueId || ''),
+      workerUrl: url,
+      qstashUrl: ENV.QSTASH_URL || '',
+      messageId: res?.messageId || '',
+    })
   } catch (error) {
     const wasPaid = !!(params.variables as any)?.wasPaid
     const cost = Number((params.variables as any)?.cost || 0)
     const debitId = String((params.variables as any)?.debitId || '')
+    logError({
+      reqId: params.taskId,
+      route: 'pushTask',
+      userKey: params.userId,
+      phase: 'qstash_enqueue_error',
+      queueId: String(decision.queueId || ''),
+      workerUrl: url,
+      qstashUrl: ENV.QSTASH_URL || '',
+      error,
+    })
     if (wasPaid && cost > 0) {
       try {
         if (debitId) {
@@ -358,10 +401,13 @@ export async function pushTask<T extends TaskTemplateId>(
       traceId: params.taskId,
       lastUpdatedAt: new Date().toISOString(),
     }).catch((err) => {
-      // Silent catch for queue notification errors
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[Producer] Failed to emit queued event:', err)
-      }
+      logError({
+        reqId: params.taskId,
+        route: 'queue/producer',
+        phase: 'emit_queued_event_failed',
+        error: err instanceof Error ? err : String(err),
+        serviceId: params.serviceId,
+      })
     })
   } catch (e) {
     // Ignore

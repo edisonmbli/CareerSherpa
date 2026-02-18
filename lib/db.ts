@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { ENV } from './env'
 import { ensureMigrations } from './db-migrations'
+import { logInfo } from '@/lib/logger'
 
 let _sql: ReturnType<typeof neon> | null = null
 
@@ -19,6 +20,12 @@ export function sql() {
  * @deprecated 使用 ensureMigrations() 替代直接SQL操作
  */
 export async function ensureSchema() {
-  console.warn('ensureSchema() is deprecated. Use ensureMigrations() from db-migrations.ts instead.')
+  logInfo({
+    reqId: 'db',
+    route: 'db/ensureSchema',
+    phase: 'deprecated',
+    message:
+      'ensureSchema() is deprecated. Use ensureMigrations() from db-migrations.ts instead.',
+  })
   await ensureMigrations()
 }

@@ -26,6 +26,7 @@ import {
   sectionConfigSchema,
 } from '@/lib/types/resume-schema'
 import { revalidatePath } from 'next/cache'
+import { logError } from '@/lib/logger'
 
 export type UploadResumeActionResult =
   | { ok: true; taskId: string; isFree: boolean; taskType: 'resume' }
@@ -233,7 +234,13 @@ export async function updateCustomizedResumeAction(params: {
     revalidatePath(`/workbench/${serviceId}`)
     return { ok: true }
   } catch (error) {
-    console.error('Failed to update resume data:', error)
+    logError({
+      reqId: serviceId,
+      route: 'actions/resume',
+      phase: 'update_customized_resume_failed',
+      serviceId,
+      error: error instanceof Error ? error : String(error),
+    })
     return { ok: false, error: 'Failed to save changes' }
   }
 }
@@ -244,7 +251,13 @@ export async function resetCustomizedResumeAction(serviceId: string) {
     revalidatePath(`/workbench/${serviceId}`)
     return { ok: true }
   } catch (error) {
-    console.error('Failed to reset resume data:', error)
+    logError({
+      reqId: serviceId,
+      route: 'actions/resume',
+      phase: 'reset_customized_resume_failed',
+      serviceId,
+      error: error instanceof Error ? error : String(error),
+    })
     return { ok: false, error: 'Failed to reset data' }
   }
 }

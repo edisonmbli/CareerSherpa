@@ -10,7 +10,7 @@ import {
   recordRefund,
 } from '@/lib/dal/coinLedger'
 import { getLatestResume, getLatestDetailedResume } from '@/lib/dal/resume'
-import { getTaskCost } from '@/lib/constants'
+import { getTaskCost, JOB_IMAGE_MAX_BYTES } from '@/lib/constants'
 import {
   createService,
   createJobForService,
@@ -61,8 +61,11 @@ export type GenerateInterviewTipsActionResult =
 
 export type SaveCustomizedResumeActionResult = { ok: true }
 
-import { uploadFile } from '@/lib/storage/upload'
-import { uploadJobImage } from './helpers/uploadJobImage'
+const getBase64ByteSize = (dataUrl: string) => {
+  const commaIndex = dataUrl.indexOf(',')
+  const base64 = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl
+  return Math.floor((base64.length * 3) / 4)
+}
 
 /**
  * 创建服务（Service）并初始化相关任务（Job, Match等）
@@ -77,20 +80,17 @@ export const createServiceAction = withServerActionAuthWrite(
     ctx,
   ) => {
     const userId = ctx.userId
-    const MAX_IMAGE_BYTES = 3 * 1024 * 1024
+    const MAX_IMAGE_BYTES = JOB_IMAGE_MAX_BYTES
     const MAX_TEXT_CHARS = 8000
     if (params.jobText && params.jobText.length > MAX_TEXT_CHARS) {
       return { ok: false, error: 'job_text_too_long' }
     }
 
-    let imageUrl: string | undefined
-    // If jobImage provided (base64), upload it
     if (params.jobImage) {
-      const uploadResult = await uploadJobImage(params.jobImage)
-      if (!uploadResult.ok) {
-        return { ok: false, error: uploadResult.error }
+      const sizeBytes = getBase64ByteSize(params.jobImage)
+      if (sizeBytes > MAX_IMAGE_BYTES) {
+        return { ok: false, error: 'image_too_large' }
       }
-      imageUrl = uploadResult.imageUrl
     }
 
     // 1. Check quota first to determine tier
@@ -127,13 +127,11 @@ export const createServiceAction = withServerActionAuthWrite(
       typeof crypto?.randomUUID === 'function'
         ? crypto.randomUUID()
         : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    // 6. 为服务创建工作（Job）记录，包含岗位文本或图片URL
-    // Pass imageUrl instead of originalImage (base64)
+    // 6. 为服务创建工作（Job）记录，包含岗位文本或图片
     const job = await createJobForService(
       svc.id,
       params.jobText,
-      undefined, // originalImage deprecated
-      imageUrl,
+      params.jobImage,
     )
     await markTimeline(svc.id, 'create_service_job_created')
     // 7. 确保匹配记录存在
@@ -190,6 +188,7 @@ export const createServiceAction = withServerActionAuthWrite(
             templateId: 'ocr_extract' as any,
             variables: {
               jobId: job.id,
+              image: params.jobImage,
               wasPaid: hasQuota,
               cost,
               debitId: debit.id,
@@ -250,6 +249,7 @@ export const createServiceAction = withServerActionAuthWrite(
             templateId: 'job_vision_summary' as any,
             variables: {
               jobId: job.id,
+              image: params.jobImage,
               wasPaid: false,
               cost: 0,
               executionSessionId,
@@ -554,12 +554,12 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
       category: AnalyticsCategory.SYSTEM,
       payload: { task: 'interview', isFree: !hasQuota },
     })
-    
+
     trackEvent('INTERVIEW_SESSION_STARTED', {
       userId,
       serviceId: params.serviceId,
       category: AnalyticsCategory.BUSINESS,
-      payload: { interviewId: rec.id }
+      payload: { interviewId: rec.id },
     })
     return {
       ok: true,
@@ -645,9 +645,7 @@ export const retryMatchAction = withServerActionAuthWrite<
         templateId: 'job_match',
       })
       const hasQuota = debit.ok
-      // Fix: Check imageUrl as well, since originalImage is deprecated
-      const needOcr =
-        !svc.job.originalText && (!!svc.job.originalImage || !!svc.job.imageUrl)
+      const needOcr = !svc.job.originalText && !!svc.job.originalImage
       const ttlSec = Math.max(
         1,
         Math.floor(ENV.CONCURRENCY_LOCK_TIMEOUT_MS / 1000),
@@ -670,6 +668,9 @@ export const retryMatchAction = withServerActionAuthWrite<
         templateId,
         variables: {
           jobId: svc.job.id,
+          ...(needOcr && svc.job.originalImage
+            ? { image: svc.job.originalImage }
+            : {}),
           wasPaid: hasQuota,
           cost,
           ...(hasQuota ? { debitId: debit.id } : {}),

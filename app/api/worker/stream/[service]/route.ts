@@ -5,7 +5,7 @@ import { handleStream } from '@/lib/worker/handlers'
 const handler = verifySignatureAppRouter(
   async (
     req: Request,
-    { params }: { params: Promise<{ service: string }> }
+    { params }: { params: Promise<{ service: string }> },
   ) => {
     const { service } = await params
     return handleStream(req, { service })
@@ -13,7 +13,7 @@ const handler = verifySignatureAppRouter(
   {
     currentSigningKey: ENV.QSTASH_CURRENT_SIGNING_KEY,
     nextSigningKey: ENV.QSTASH_NEXT_SIGNING_KEY,
-  }
+  },
 )
 
 export { handler as POST }

@@ -4,6 +4,7 @@
  */
 
 import { ENV } from '@/lib/env'
+import { logError } from '@/lib/logger'
 
 export interface EmbeddingConfig {
   model: string
@@ -99,7 +100,12 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
 
       return result
     } catch (error) {
-      console.error('GLM embedding error:', error)
+      logError({
+        reqId: 'llm',
+        route: 'llm/embeddings',
+        phase: 'single_error',
+        error: error instanceof Error ? error.message : String(error),
+      })
       throw error
     }
   }
@@ -161,10 +167,13 @@ export class GLMEmbeddingProvider implements EmbeddingProvider {
 
         results.push(...batchResults)
       } catch (error) {
-        console.error(
-          `GLM batch embedding error for batch ${i / batchSize + 1}:`,
-          error,
-        )
+        logError({
+          reqId: 'llm',
+          route: 'llm/embeddings',
+          phase: 'batch_error',
+          error: error instanceof Error ? error.message : String(error),
+          meta: { batchIndex: i / batchSize + 1 },
+        })
         throw error
       }
     }

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { logError } from '@/lib/logger'
 import { nanoid } from 'nanoid'
 
 /**
@@ -160,7 +161,12 @@ export async function getSharedResumeByKey(
       data: { viewCount: { increment: 1 } },
     })
     .catch((e) => {
-      console.error('Failed to increment view count', e)
+      logError({
+        reqId: share.id,
+        route: 'dal/resumeShare',
+        phase: 'increment_view_count_failed',
+        error: e instanceof Error ? e : String(e),
+      })
     })
 
   // Construct the return object similar to getServiceForUser structure

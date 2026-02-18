@@ -7,6 +7,7 @@ export const ENV = {
   OPENAI_API_KEY: process.env['OPENAI_API_KEY'] ?? '',
   UPSTASH_REDIS_REST_URL: process.env['UPSTASH_REDIS_REST_URL'] ?? '',
   UPSTASH_REDIS_REST_TOKEN: process.env['UPSTASH_REDIS_REST_TOKEN'] ?? '',
+  REDIS_URL: process.env['REDIS_URL'] ?? '',
   QSTASH_URL: process.env['QSTASH_URL'] ?? '',
   QSTASH_TOKEN: process.env['QSTASH_TOKEN'] ?? '',
   QSTASH_CURRENT_SIGNING_KEY: process.env['QSTASH_CURRENT_SIGNING_KEY'] ?? '',
@@ -82,6 +83,12 @@ export const ENV = {
   LLM_DEBUG:
     (process.env['LLM_DEBUG'] ?? '0').toLowerCase() === '1' ||
     (process.env['LLM_DEBUG'] ?? '').toLowerCase() === 'true',
+  LOG_INFO:
+    (process.env['LOG_INFO'] ?? '0').toLowerCase() === '1' ||
+    (process.env['LOG_INFO'] ?? '').toLowerCase() === 'true',
+  LOG_DEBUG:
+    (process.env['LOG_DEBUG'] ?? '0').toLowerCase() === '1' ||
+    (process.env['LOG_DEBUG'] ?? '').toLowerCase() === 'true',
   LLM_STRICT_MODE:
     (process.env['LLM_STRICT_MODE'] ?? '1').toLowerCase() === '1' ||
     (process.env['LLM_STRICT_MODE'] ?? '').toLowerCase() === 'true',
@@ -143,10 +150,14 @@ export const ENV = {
 }
 
 export function isProdRedisReady() {
+  const url = ENV.UPSTASH_REDIS_REST_URL
+  const hasLocalUrl =
+    !!url && (url.startsWith('redis://') || url.startsWith('rediss://'))
   return (
-    !!ENV.UPSTASH_REDIS_REST_URL &&
-    !!ENV.UPSTASH_REDIS_REST_TOKEN &&
-    process.env.NODE_ENV !== 'test'
+    process.env.NODE_ENV !== 'test' &&
+    ((!!url && !!ENV.UPSTASH_REDIS_REST_TOKEN) ||
+      !!ENV.REDIS_URL ||
+      (hasLocalUrl && !ENV.UPSTASH_REDIS_REST_TOKEN))
   )
 }
 

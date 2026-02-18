@@ -8,6 +8,7 @@ export interface StrategyContext {
   taskId: string
   requestId: string
   traceId: string
+  shouldRefund?: boolean
 }
 
 export interface ExecutionResult {

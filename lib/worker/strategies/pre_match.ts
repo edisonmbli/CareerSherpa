@@ -88,9 +88,13 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
       // Logic for failed audit?
       // Currently worker framework might stop here if execResult.ok is false.
       // But if we reach here, we should try to proceed to Match.
-      console.warn(
-        `[PreMatch] Audit failed or empty. Error: ${execResult.error}`
-      )
+      logError({
+        reqId: ctx.requestId,
+        route: 'worker/pre_match',
+        error: execResult.error,
+        phase: 'audit_failed',
+        serviceId,
+      })
     }
 
     if (execResult.ok && execResult.data) {

@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai'
+import { logDebug, logError } from '@/lib/logger'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import type { ZodSchema } from 'zod'
 
@@ -89,10 +90,15 @@ export async function runGeminiStructured<T>(
     // Convert Zod schema to JSON Schema for Gemini's responseJsonSchema
     const jsonSchema = zodToJsonSchema(schema)
 
-    console.log('[GeminiDirect] Executing structured output task:', {
-      model,
-      temperature,
-      maxOutputTokens: config.maxOutputTokens ?? 8000,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'structured_start',
+      meta: {
+        model,
+        temperature,
+        maxOutputTokens: config.maxOutputTokens ?? 8000,
+      },
     })
 
     // Combine system and user prompt per Gemini 3 best practices:
@@ -135,10 +141,15 @@ export async function runGeminiStructured<T>(
         }
       : undefined
 
-    console.log('[GeminiDirect] Response received:', {
-      elapsed: `${elapsed}ms`,
-      rawLength: rawText.length,
-      usage,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'structured_response',
+      meta: {
+        elapsedMs: elapsed,
+        rawLength: rawText.length,
+        usage,
+      },
     })
 
     // Parse and validate with Zod
@@ -147,14 +158,13 @@ export async function runGeminiStructured<T>(
       const jsonData = JSON.parse(rawText)
       parsed = schema.parse(jsonData)
     } catch (parseError: any) {
-      console.error(
-        '[GeminiDirect] Parse/validation error:',
-        parseError.message,
-      )
-      console.error(
-        '[GeminiDirect] Raw response (first 500 chars):',
-        rawText.slice(0, 500),
-      )
+      logError({
+        reqId: 'llm',
+        route: 'llm/gemini-direct',
+        phase: 'structured_parse_error',
+        error: parseError.message,
+        meta: { rawPreview: rawText.slice(0, 500) },
+      })
       return {
         ok: false,
         raw: rawText,
@@ -170,7 +180,12 @@ export async function runGeminiStructured<T>(
       ...(usage && { usage }),
     }
   } catch (error: any) {
-    console.error('[GeminiDirect] API error:', error.message || error)
+    logError({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'structured_api_error',
+      error: error.message || error,
+    })
     return {
       ok: false,
       error: error.message || 'Unknown Gemini API error',
@@ -226,12 +241,17 @@ export async function runGeminiVision<T>(
       base64Data = imageData
     }
 
-    console.log('[GeminiDirect] Executing vision task:', {
-      model,
-      temperature,
-      maxOutputTokens: config.maxOutputTokens ?? 8000,
-      imageSizeKB: Math.round((base64Data.length * 0.75) / 1024),
-      mimeType,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'vision_start',
+      meta: {
+        model,
+        temperature,
+        maxOutputTokens: config.maxOutputTokens ?? 8000,
+        imageSizeKB: Math.round((base64Data.length * 0.75) / 1024),
+        mimeType,
+      },
     })
 
     // Build contents array with inline image data per Gemini vision API
@@ -281,10 +301,15 @@ export async function runGeminiVision<T>(
         }
       : undefined
 
-    console.log('[GeminiDirect] Vision response:', {
-      elapsed: `${elapsed}ms`,
-      rawLength: rawText.length,
-      usage,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'vision_response',
+      meta: {
+        elapsedMs: elapsed,
+        rawLength: rawText.length,
+        usage,
+      },
     })
 
     // Parse and validate with Zod
@@ -293,11 +318,13 @@ export async function runGeminiVision<T>(
       const jsonData = JSON.parse(rawText)
       parsed = schema.parse(jsonData)
     } catch (parseError: any) {
-      console.error('[GeminiDirect] Vision parse error:', parseError.message)
-      console.error(
-        '[GeminiDirect] Vision raw response (first 500 chars):',
-        rawText.slice(0, 500),
-      )
+      logError({
+        reqId: 'llm',
+        route: 'llm/gemini-direct',
+        phase: 'vision_parse_error',
+        error: parseError.message,
+        meta: { rawPreview: rawText.slice(0, 500) },
+      })
       return {
         ok: false,
         raw: rawText,
@@ -313,7 +340,12 @@ export async function runGeminiVision<T>(
       ...(usage && { usage }),
     }
   } catch (error: any) {
-    console.error('[GeminiDirect] Vision API error:', error.message || error)
+    logError({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'vision_api_error',
+      error: error.message || error,
+    })
     return {
       ok: false,
       error: error.message || 'Unknown Gemini Vision API error',
@@ -352,11 +384,16 @@ export async function runGeminiStreaming<T>(
     // Convert Zod schema to JSON Schema if provided
     const jsonSchema = schema ? zodToJsonSchema(schema) : null
 
-    console.log('[GeminiDirect] Executing streaming task:', {
-      model,
-      temperature,
-      maxOutputTokens: config.maxOutputTokens ?? 8000,
-      hasSchema: !!schema,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'stream_start',
+      meta: {
+        model,
+        temperature,
+        maxOutputTokens: config.maxOutputTokens ?? 8000,
+        hasSchema: !!schema,
+      },
     })
 
     // Combine system and user prompt per Gemini 3 best practices
@@ -403,9 +440,14 @@ export async function runGeminiStreaming<T>(
         base64Data = cleanImageData
       }
 
-      console.log('[GeminiDirect] Streaming with Vision:', {
-        mimeType,
-        sizeKB: Math.round(base64Data.length / 1024),
+      logDebug({
+        reqId: 'llm',
+        route: 'llm/gemini-direct',
+        phase: 'stream_vision_start',
+        meta: {
+          mimeType,
+          sizeKB: Math.round(base64Data.length / 1024),
+        },
       })
 
       contents = [
@@ -465,13 +507,24 @@ export async function runGeminiStreaming<T>(
       }
       await withTimeout(consumeStream(), config.timeoutMs)
     } catch (streamErr) {
-      console.error('[GeminiDirect] Stream iteration error:', streamErr)
+      logError({
+        reqId: 'llm',
+        route: 'llm/gemini-direct',
+        phase: 'stream_iteration_error',
+        error:
+          streamErr instanceof Error ? streamErr.message : String(streamErr),
+      })
     }
 
     const elapsed = Date.now() - start
-    console.log('[GeminiDirect] Streaming complete:', {
-      elapsed: `${elapsed}ms`,
-      fullLength: fullText.length,
+    logDebug({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'stream_complete',
+      meta: {
+        elapsedMs: elapsed,
+        fullLength: fullText.length,
+      },
     })
 
     // If schema provided, parse and validate
@@ -484,10 +537,12 @@ export async function runGeminiStreaming<T>(
         const parsed = schema.parse(jsonData)
         return { ok: true, data: parsed, raw: fullText }
       } catch (parseError: any) {
-        console.error(
-          '[GeminiDirect] Streaming parse error:',
-          parseError.message,
-        )
+        logError({
+          reqId: 'llm',
+          route: 'llm/gemini-direct',
+          phase: 'stream_parse_error',
+          error: parseError.message,
+        })
         return {
           ok: false,
           raw: fullText,
@@ -499,7 +554,12 @@ export async function runGeminiStreaming<T>(
     // No schema, return raw text
     return { ok: true, data: fullText, raw: fullText }
   } catch (error: any) {
-    console.error('[GeminiDirect] Streaming API error:', error.message || error)
+    logError({
+      reqId: 'llm',
+      route: 'llm/gemini-direct',
+      phase: 'stream_api_error',
+      error: error.message || error,
+    })
     return { ok: false, error: error.message || 'Unknown Gemini API error' }
   }
 }

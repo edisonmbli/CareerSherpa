@@ -4,6 +4,7 @@ import { ENV } from './env'
 import { buildPrismaUrl } from './prismaConnection'
 import { PrismaNeon } from '@prisma/adapter-neon'
 import { neonConfig } from '@neondatabase/serverless'
+import { logError, logInfo } from '@/lib/logger'
 
 // Use fetch channel to avoid WebSocket dependency in Node
 neonConfig.poolQueryViaFetch = true
@@ -49,17 +50,35 @@ export async function ensureMigrations() {
     const missingTables = requiredTables.filter(table => !existingTables.includes(table))
     
     if (missingTables.length > 0) {
-      console.warn(`Missing tables detected: ${missingTables.join(', ')}`)
-      console.warn('Please run: npx prisma migrate deploy')
+      logInfo({
+        reqId: 'db-migrations',
+        route: 'db-migrations/ensure',
+        phase: 'missing_tables',
+        tables: missingTables,
+        message: 'Please run: npx prisma migrate deploy',
+      })
       
       // 在开发环境下，可以尝试自动运行migration
       if (process.env.NODE_ENV === 'development') {
-          console.log('Attempting to run migrations automatically...')
+        logInfo({
+          reqId: 'db-migrations',
+          route: 'db-migrations/ensure',
+          phase: 'attempt_migrate',
+        })
         try {
           execSync('npx prisma migrate deploy', { stdio: 'inherit' })
-          console.log('Migrations completed successfully')
+          logInfo({
+            reqId: 'db-migrations',
+            route: 'db-migrations/ensure',
+            phase: 'migrate_completed',
+          })
         } catch (error) {
-          console.error('Failed to run migrations automatically:', error)
+          logError({
+            reqId: 'db-migrations',
+            route: 'db-migrations/ensure',
+            phase: 'migrate_failed',
+            error: error instanceof Error ? error : String(error),
+          })
           throw new Error('Database schema not initialized. Please run: npx prisma migrate deploy')
         }
       } else {
@@ -68,10 +87,19 @@ export async function ensureMigrations() {
     }
     
     _migrated = true
-    console.log('Database schema validation completed')
+    logInfo({
+      reqId: 'db-migrations',
+      route: 'db-migrations/ensure',
+      phase: 'schema_validated',
+    })
     
   } catch (error) {
-    console.error('Database migration check failed:', error)
+    logError({
+      reqId: 'db-migrations',
+      route: 'db-migrations/ensure',
+      phase: 'migration_check_failed',
+      error: error instanceof Error ? error : String(error),
+    })
     throw error
   }
 }

@@ -9,28 +9,35 @@ import { llmResumeResponseSchema } from '@/lib/types/resume-schema'
 import { validateJson } from '@/lib/llm/json-validator'
 import { z } from 'zod'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
-import fs from 'fs'
-import path from 'path'
 import {
   recordRefund,
   markDebitSuccess,
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
-import { logError } from '@/lib/logger'
-import { getChannel, publishEvent, buildCustomizeTaskId } from '@/lib/worker/common'
+import { logError, logInfo } from '@/lib/logger'
+import { ENV } from '@/lib/env'
+import { logDebugData } from '@/lib/llm/debug'
+import {
+  getChannel,
+  publishEvent,
+  buildCustomizeTaskId,
+} from '@/lib/worker/common'
 
 // Helper for debug logging (M9 pattern)
 function logDebugFile(filename: string, content: string) {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      const logDir = path.join(process.cwd(), 'tmp', 'debug-logs')
-      if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir, { recursive: true })
-      }
-      fs.writeFileSync(path.join(logDir, filename), content)
-    }
+    if (!ENV.LOG_DEBUG) return
+    logDebugData(`worker_customize_${filename}`, {
+      output: content,
+      meta: { filename },
+    })
   } catch (e) {
-    console.error('Failed to write debug log', e)
+    logError({
+      reqId: 'system',
+      route: 'worker/customize',
+      error: e instanceof Error ? e : String(e),
+      phase: 'write_debug_file',
+    })
   }
 }
 
@@ -39,10 +46,6 @@ export const customizeStrategy: WorkerStrategy = {
 
   async prepareVars(variables: any, ctx: StrategyContext) {
     const { serviceId, locale } = ctx
-
-    // if (process.env.NODE_ENV !== 'production') {
-    //   console.log('[Worker] customizeStrategy.prepareVars', { variables, ctx })
-    // }
 
     // 1. Get Service Context
     const service = await getServiceWithContext(serviceId)
@@ -70,7 +73,13 @@ export const customizeStrategy: WorkerStrategy = {
     try {
       ragContext = await retrieveCustomizeContext(jobTitle, locale)
     } catch (e) {
-      console.warn('RAG retrieval failed, proceeding without context', e)
+      logInfo({
+        reqId: ctx.requestId,
+        route: 'worker/customize',
+        phase: 'rag_retrieval_failed',
+        serviceId,
+        error: e instanceof Error ? e.message : String(e),
+      })
     }
 
     // Debug Log: Input Context
@@ -86,8 +95,8 @@ export const customizeStrategy: WorkerStrategy = {
           ragContext,
         },
         null,
-        2
-      )
+        2,
+      ),
     )
 
     // Return variables mapped to Prompt Template keys, preserving original variables for debit/cost
@@ -122,14 +131,20 @@ export const customizeStrategy: WorkerStrategy = {
         requestId,
       })
     } catch (e) {
-      console.error('Failed to publish customize_pending event', e)
+      logError({
+        reqId: requestId,
+        route: 'worker/customize',
+        phase: 'publish_customize_pending_failed',
+        serviceId,
+        error: e instanceof Error ? e : String(e),
+      })
     }
   },
 
   async writeResults(
     execResult: ExecutionResult,
     variables: any,
-    ctx: StrategyContext
+    ctx: StrategyContext,
   ) {
     const { serviceId, userId, requestId } = ctx
     const result = execResult.data
@@ -137,19 +152,10 @@ export const customizeStrategy: WorkerStrategy = {
     const customizeTaskId = buildCustomizeTaskId(serviceId, sessionId)
     const channel = getChannel(userId, serviceId, customizeTaskId)
 
-    // if (process.env.NODE_ENV !== 'production') {
-    //   console.log('[Worker] customizeStrategy.writeResults', {
-    //     sessionId,
-    //     matchTaskId,
-    //     channel,
-    //     success: execResult.ok,
-    //   })
-    // }
-
     // Debug Log: Output Result
     logDebugFile(
       `customize_output_${serviceId}_${Date.now()}.json`,
-      JSON.stringify(execResult, null, 2)
+      JSON.stringify(execResult, null, 2),
     )
 
     if (!execResult.ok && !execResult.data?.raw) {
@@ -157,7 +163,7 @@ export const customizeStrategy: WorkerStrategy = {
         serviceId,
         undefined,
         undefined,
-        AsyncTaskStatus.FAILED
+        AsyncTaskStatus.FAILED,
       )
 
       await updateServiceExecutionStatus(
@@ -165,7 +171,7 @@ export const customizeStrategy: WorkerStrategy = {
         ExecutionStatus.CUSTOMIZE_FAILED,
         {
           executionSessionId: variables.executionSessionId,
-        }
+        },
       )
 
       try {
@@ -178,10 +184,22 @@ export const customizeStrategy: WorkerStrategy = {
           requestId,
         })
       } catch (e) {
-        console.error('Failed to publish customize_failed event', e)
+        logError({
+          reqId: requestId,
+          route: 'worker/customize',
+          phase: 'publish_customize_failed',
+          serviceId,
+          error: e instanceof Error ? e : String(e),
+        })
       }
 
-      await handleRefunds(execResult, variables, serviceId, userId)
+      await handleRefunds(
+        execResult,
+        variables,
+        serviceId,
+        userId,
+        ctx.shouldRefund,
+      )
       return
     }
 
@@ -202,7 +220,7 @@ export const customizeStrategy: WorkerStrategy = {
       if (!resultJson) {
         throw new Error(
           'Failed to parse LLM response: ' +
-          (validation.error || 'Unknown error')
+            (validation.error || 'Unknown error'),
         )
       }
 
@@ -214,7 +232,7 @@ export const customizeStrategy: WorkerStrategy = {
         serviceId,
         validatedData.optimizeSuggestion,
         validatedData.resumeData,
-        AsyncTaskStatus.COMPLETED
+        AsyncTaskStatus.COMPLETED,
       )
 
       await updateServiceExecutionStatus(
@@ -222,7 +240,7 @@ export const customizeStrategy: WorkerStrategy = {
         ExecutionStatus.CUSTOMIZE_COMPLETED,
         {
           executionSessionId: variables.executionSessionId,
-        }
+        },
       )
 
       try {
@@ -235,7 +253,13 @@ export const customizeStrategy: WorkerStrategy = {
           requestId,
         })
       } catch (e) {
-        console.error('Failed to publish customize_completed event', e)
+        logError({
+          reqId: requestId,
+          route: 'worker/customize',
+          phase: 'publish_customize_completed_failed',
+          serviceId,
+          error: e instanceof Error ? e : String(e),
+        })
       }
 
       // Mark debit success
@@ -244,16 +268,28 @@ export const customizeStrategy: WorkerStrategy = {
         try {
           await markDebitSuccess(debitId, execResult.usageLogId)
         } catch (e) {
-          console.error('Failed to mark debit success:', e)
+          logError({
+            reqId: requestId,
+            route: 'worker/customize',
+            phase: 'mark_debit_success_failed',
+            serviceId,
+            error: e instanceof Error ? e : String(e),
+          })
         }
       }
     } catch (error) {
-      console.error('Customize Strategy Write Error:', error)
+      logError({
+        reqId: requestId,
+        route: 'worker/customize',
+        phase: 'write_results_error',
+        serviceId,
+        error: error instanceof Error ? error : String(error),
+      })
       await setCustomizedResumeResult(
         serviceId,
         undefined,
         undefined,
-        AsyncTaskStatus.FAILED
+        AsyncTaskStatus.FAILED,
       )
 
       await updateServiceExecutionStatus(
@@ -261,7 +297,7 @@ export const customizeStrategy: WorkerStrategy = {
         ExecutionStatus.CUSTOMIZE_FAILED,
         {
           executionSessionId: variables.executionSessionId,
-        }
+        },
       )
 
       try {
@@ -274,13 +310,25 @@ export const customizeStrategy: WorkerStrategy = {
           requestId,
         })
       } catch (e) {
-        console.error('Failed to publish customize_failed event', e)
+        logError({
+          reqId: requestId,
+          route: 'worker/customize',
+          phase: 'publish_customize_failed',
+          serviceId,
+          error: e instanceof Error ? e : String(e),
+        })
       }
 
       // Refund on validation error (logic failure)
       // Construct a fake failed result to trigger refund logic
       const failedResult = { ...execResult, ok: false, error: String(error) }
-      await handleRefunds(failedResult, variables, serviceId, userId)
+      await handleRefunds(
+        failedResult,
+        variables,
+        serviceId,
+        userId,
+        ctx.shouldRefund,
+      )
 
       if (error instanceof z.ZodError) {
         throw new Error(`JSON Validation Failed: ${error.message}`)
@@ -294,14 +342,16 @@ async function handleRefunds(
   execResult: ExecutionResult,
   variables: any,
   serviceId: string,
-  userId: string
+  userId: string,
+  shouldRefund?: boolean,
 ) {
   const wasPaid = !!variables?.wasPaid
   const cost = Number(variables?.cost || 0)
   const debitId = String(variables?.debitId || '')
 
-  const shouldRefund = !execResult.ok && wasPaid && cost > 0 && !!debitId
-  if (shouldRefund) {
+  const canRefund =
+    shouldRefund !== false && !execResult.ok && wasPaid && cost > 0 && !!debitId
+  if (canRefund) {
     try {
       await recordRefund({
         userId,

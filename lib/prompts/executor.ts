@@ -16,6 +16,7 @@
  */
 import { i18n, type Locale } from '@/i18n-config'
 import { runLlmTask } from '@/lib/llm/service'
+import { logError } from '@/lib/logger'
 
 type Tier = 'free' | 'paid'
 
@@ -275,7 +276,12 @@ export async function executeInterviewPrep(
     ragContext = await retrieveInterviewContext(jobTitle, DEFAULT_LOCALE)
   } catch (e) {
     // RAG retrieval failed, proceed with empty context
-    console.error('[executeInterviewPrep] RAG retrieval failed:', e)
+    logError({
+      reqId: 'interview-prep',
+      route: 'prompts/executor',
+      phase: 'rag_retrieval_failed',
+      error: e instanceof Error ? e : String(e),
+    })
   }
 
   const res = await runLlmTask(

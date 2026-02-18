@@ -15,8 +15,25 @@ import {
 import type { ModelId as ModelIdType } from '@/lib/llm/providers'
 import { getQStash } from '@/lib/queue/qstash'
 import { workerBodySchema, type WorkerBody } from '@/lib/worker/types'
-import { promises as fsp } from 'fs'
-import path from 'path'
+import { logDebugData } from '@/lib/llm/debug'
+import { logError, logDebug } from '@/lib/logger'
+
+const SSE_DEBUG = ENV.LOG_DEBUG || process.env['SSE_DEBUG'] === 'true'
+
+async function appendSsePublishDebug(
+  channel: string,
+  payload: Record<string, unknown>,
+) {
+  if (!SSE_DEBUG) return
+  const parts = channel.split(':')
+  const taskId = String(payload['taskId'] || parts?.[4] || 'unknown')
+  logDebugData(`sse_publish_${taskId}`, {
+    meta: {
+      timestamp: new Date().toISOString(),
+      ...payload,
+    },
+  })
+}
 
 export type WorkerKind = 'stream' | 'batch'
 
@@ -59,6 +76,75 @@ declare global {
         }
       >
     | undefined
+  var __cs_redis_debugged_channels__: Set<string> | undefined
+}
+
+function getRedisDebugInfo() {
+  const redisUrl = ENV.REDIS_URL
+  const upstashUrl = ENV.UPSTASH_REDIS_REST_URL
+  const hasUpstashToken = Boolean(ENV.UPSTASH_REDIS_REST_TOKEN)
+  let mode = 'none'
+  let host = ''
+  let port = ''
+  if (redisUrl) {
+    mode = 'redis_url'
+    try {
+      const u = new URL(redisUrl)
+      host = u.hostname
+      port = u.port || ''
+    } catch {}
+  } else if (upstashUrl && hasUpstashToken) {
+    mode = 'upstash_rest'
+    try {
+      const u = new URL(upstashUrl)
+      host = u.hostname
+      port = u.port || ''
+    } catch {}
+  } else if (
+    upstashUrl &&
+    (upstashUrl.startsWith('redis://') || upstashUrl.startsWith('rediss://'))
+  ) {
+    mode = 'upstash_redis_url'
+    try {
+      const u = new URL(upstashUrl)
+      host = u.hostname
+      port = u.port || ''
+    } catch {}
+  }
+  return {
+    mode,
+    host,
+    port,
+    hasUpstashToken,
+  }
+}
+
+async function writeRedisDebugOnce(channel: string) {
+  if (!SSE_DEBUG) return
+  const set = globalThis.__cs_redis_debugged_channels__ ?? new Set<string>()
+  if (!globalThis.__cs_redis_debugged_channels__) {
+    globalThis.__cs_redis_debugged_channels__ = set
+  }
+  if (set.has(channel)) return
+  set.add(channel)
+  try {
+    await appendSsePublishDebug(channel, {
+      event: 'redis_client',
+      channel,
+      ...getRedisDebugInfo(),
+    })
+  } catch {}
+}
+
+function isIoredisClient(redis: any) {
+  return Boolean(redis && typeof redis.pipeline === 'function')
+}
+
+async function xaddEvent(redis: any, streamKey: string, payload: string) {
+  if (isIoredisClient(redis)) {
+    return redis.xadd(streamKey, '*', 'event', payload)
+  }
+  return redis.xadd(streamKey, '*', { event: payload as any })
 }
 
 export async function parseWorkerBody(
@@ -66,15 +152,14 @@ export async function parseWorkerBody(
 ): Promise<{ ok: true; body: WorkerBody } | { ok: false; response: Response }> {
   try {
     const json = await req.json()
-    // Debug logging for parsing
-    // if (process.env.NODE_ENV === 'development') {
-    //   console.log('Worker Request Body:', JSON.stringify(json, null, 2))
-    // }
     const parsed = workerBodySchema.safeParse(json)
     if (!parsed.success) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Worker Validation Error:', parsed.error)
-      }
+      logDebug({
+        reqId: 'worker-parse',
+        route: 'worker/common',
+        phase: 'validation_failed',
+        error: parsed.error,
+      })
       return {
         ok: false,
         response: new Response('bad_request', { status: 400 }),
@@ -82,9 +167,12 @@ export async function parseWorkerBody(
     }
     return { ok: true, body: parsed.data }
   } catch (e) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Worker JSON Parse Error:', e)
-    }
+    logError({
+      reqId: 'worker-parse',
+      route: 'worker/common',
+      phase: 'json_parse_failed',
+      error: e instanceof Error ? e : String(e),
+    })
     return { ok: false, response: new Response('bad_request', { status: 400 }) }
   }
 }
@@ -280,6 +368,7 @@ export async function publishEvent(
   event: Record<string, any>,
 ) {
   const redis = getRedis()
+  await writeRedisDebugOnce(channel)
 
   // 在生产环境抑制调试事件采样：不发布、不入流
   const isDebugEvent = getEventType(event) === 'debug'
@@ -323,16 +412,51 @@ export async function publishEvent(
     }
     const payloadStr = JSON.stringify(payloadObj)
     try {
+      await appendSsePublishDebug(ch, {
+        event: 'token_batch',
+        channel: ch,
+        streamKey: `${ch}:stream`,
+        taskId,
+        count: buf.tokens.length,
+        len: mergedText.length,
+      })
+    } catch {}
+    try {
       await redis.publish(ch, payloadStr)
-    } catch {
-      // swallow pubsub errors
+    } catch (err) {
+      try {
+        await appendSsePublishDebug(ch, {
+          event: 'token_batch_publish_error',
+          channel: ch,
+          streamKey: `${ch}:stream`,
+          taskId,
+          error: String(err),
+        })
+      } catch {}
     }
     try {
       const streamKey = `${ch}:stream`
-      // Note: Upstash Redis xadd requires object values; 'as any' is needed for string field type
-      await redis.xadd(streamKey, '*', { event: payloadStr as any })
-    } catch {
-      // non-fatal: stream buffer write error, does not affect main pubsub
+      await xaddEvent(redis, streamKey, payloadStr)
+      try {
+        await appendSsePublishDebug(ch, {
+          event: 'token_batch_stream',
+          channel: ch,
+          streamKey,
+          taskId,
+          count: buf.tokens.length,
+          len: mergedText.length,
+        })
+      } catch {}
+    } catch (err) {
+      try {
+        await appendSsePublishDebug(ch, {
+          event: 'token_batch_stream_error',
+          channel: ch,
+          streamKey: `${ch}:stream`,
+          taskId,
+          error: String(err),
+        })
+      } catch {}
     }
     if (buf.timer) clearTimeout(buf.timer)
     tokenBatchers.delete(ch)
@@ -376,12 +500,36 @@ export async function publishEvent(
   // 对非 token 事件：写入前先冲洗 token 合并缓存，保证顺序
   await flush(channel)
 
-  // if (process.env.NODE_ENV !== 'production') {
-  //   console.log(`[PubSub] Publishing to ${channel}:`, JSON.stringify(event).slice(0, 200))
-  // }
-
   const payload = JSON.stringify(event)
-  await redis.publish(channel, payload)
+  try {
+    await appendSsePublishDebug(channel, {
+      event: 'publish',
+      channel,
+      streamKey: `${channel}:stream`,
+      type: getEventType(event),
+      taskId: (event as any)?.taskId || '',
+      status: (event as any)?.status,
+      code: (event as any)?.code,
+      len: payload.length,
+    })
+  } catch {}
+  try {
+    await redis.publish(channel, payload)
+  } catch (err) {
+    try {
+      await appendSsePublishDebug(channel, {
+        event: 'publish_error',
+        channel,
+        streamKey: `${channel}:stream`,
+        type: getEventType(event),
+        taskId: (event as any)?.taskId || '',
+        status: (event as any)?.status,
+        code: (event as any)?.code,
+        error: String(err),
+      })
+    } catch {}
+    throw err
+  }
 
   // Audit event dispatch for observability（降低频次：仅记录关键事件，跳过 token/token_batch/debug）
   try {
@@ -412,8 +560,19 @@ export async function publishEvent(
     const streamKey = `${channel}:stream`
     const t = getEventType(event)
     const isTerminal = t === 'done' || t === 'error'
-    // Note: Upstash Redis xadd requires object values; 'as any' is needed for string field type
-    await redis.xadd(streamKey, '*', { event: payload as any })
+    await xaddEvent(redis, streamKey, payload)
+    try {
+      await appendSsePublishDebug(channel, {
+        event: 'stream_append',
+        channel,
+        streamKey,
+        type: t,
+        taskId: (event as any)?.taskId || '',
+        status: (event as any)?.status,
+        code: (event as any)?.code,
+        len: payload.length,
+      })
+    } catch {}
     const ttl = Math.max(0, Number(ENV.STREAM_TTL_SECONDS || 0))
     if (ttl > 0) {
       try {
@@ -438,6 +597,17 @@ export async function publishEvent(
       }
     }
   } catch (err) {
-    // 忽略缓冲写入错误，不影响主发布通道
+    try {
+      await appendSsePublishDebug(channel, {
+        event: 'stream_error',
+        channel,
+        streamKey: `${channel}:stream`,
+        type: getEventType(event),
+        taskId: (event as any)?.taskId || '',
+        status: (event as any)?.status,
+        code: (event as any)?.code,
+        error: String(err),
+      })
+    } catch {}
   }
 }

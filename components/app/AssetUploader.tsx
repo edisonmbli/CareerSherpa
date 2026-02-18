@@ -24,6 +24,7 @@ import { Info } from 'lucide-react'
 import { AssetPreview } from './AssetPreview'
 import { useServiceGuard } from '@/lib/hooks/use-service-guard'
 import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 import { ServiceNotification } from '@/components/common/ServiceNotification'
 import { getTaskCost } from '@/lib/constants'
 
@@ -379,7 +380,7 @@ export function AssetUploader({
         displayError = dict.modelOverloaded || 'Model Overloaded'
       } else if (!displayError || (errMsg && /^[a-z_]+$/.test(errMsg))) {
         // If it looks like a raw error code (e.g. "enqueue_failed") or is empty, use generic message
-        console.error('[AssetUploader] Raw error:', errMsg)
+        uiLog.error('asset_uploader_raw_error', { error: errMsg })
         displayError = isFree
           ? dict.toast.pollFailed
           : dict.toast.pollFailedRefund || dict.toast.pollFailed

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { useResumeStore } from '@/store/resume-store'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 
 // Constants for error backoff (scaled to 15s base interval)
 const MIN_RETRY_DELAY = 15000   // 15 seconds (matches default idle delay)
@@ -56,7 +57,9 @@ export function useAutoSave(idleDelayMs: number = 15000) {
 
         // Stop retrying after too many consecutive errors
         if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-            console.warn('Auto-save: Max retries reached, waiting for user action')
+            uiLog.warn('auto-save max retries reached', {
+                serviceId,
+            })
             clearTimer()
             return
         }
@@ -93,11 +96,13 @@ export function useAutoSave(idleDelayMs: number = 15000) {
                         currentDelayRef.current * 2,
                         MAX_RETRY_DELAY
                     )
-                    console.warn(
-                        `Auto-save failed (attempt ${consecutiveErrorsRef.current}/${MAX_CONSECUTIVE_ERRORS}):`,
-                        result.error,
-                        `Next retry in ${currentDelayRef.current / 1000}s`
-                    )
+                    uiLog.warn('auto-save failed', {
+                        attempt: consecutiveErrorsRef.current,
+                        maxAttempts: MAX_CONSECUTIVE_ERRORS,
+                        error: result.error,
+                        nextRetrySeconds: currentDelayRef.current / 1000,
+                        serviceId,
+                    })
                 }
             }
         }, remainingDelay)

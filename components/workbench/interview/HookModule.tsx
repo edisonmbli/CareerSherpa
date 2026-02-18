@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Copy, Check } from 'lucide-react'
 import { cn, getMatchThemeClass } from '@/lib/utils'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 
 interface KeyHook {
   hook: string
@@ -71,7 +72,9 @@ export function HookModule({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error('Failed to copy:', err)
+      uiLog.error('copy_failed', {
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 

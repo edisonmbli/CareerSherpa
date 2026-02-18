@@ -45,7 +45,7 @@ export interface MigrationResult {
 async function createMigrationRecord(
   tempUserKey: string,
   neonAuthUserId: string,
-  reqId: string
+  reqId: string,
 ): Promise<string> {
   const migrationId = randomUUID()
 
@@ -105,7 +105,7 @@ async function updateMigrationStatus(
   migrationId: string,
   status: MigrationStatus,
   errorMessage?: string,
-  reqId?: string
+  reqId?: string,
 ): Promise<void> {
   try {
     if (status === MigrationStatus.COMPLETED) {
@@ -157,8 +157,14 @@ async function updateMigrationStatus(
  * @deprecated 此函数已弃用，因为我们已完全迁移到 Neon Auth
  */
 async function getUserDataSnapshot(tempUserKey: string): Promise<any> {
-  console.warn('getUserDataSnapshot is deprecated. Migration to Neon Auth is complete.')
-  
+  logInfo({
+    reqId: tempUserKey,
+    route: 'auth/migration',
+    phase: 'deprecated_get_snapshot',
+    message:
+      'getUserDataSnapshot is deprecated. Migration to Neon Auth is complete.',
+  })
+
   // 返回空快照，因为迁移已完成
   return {
     user: null,
@@ -189,9 +195,15 @@ async function migrateUserData(
   tempUserKey: string,
   neonAuthUserId: string,
   migrationId: string,
-  reqId: string
+  reqId: string,
 ): Promise<number> {
-  console.warn('migrateUserData is deprecated. Migration to Neon Auth is complete.')
+  logInfo({
+    ...(reqId ? { reqId } : {}),
+    route: 'auth/migration',
+    phase: 'deprecated_migrate_user_data',
+    message:
+      'migrateUserData is deprecated. Migration to Neon Auth is complete.',
+  })
   return 0
 }
 
@@ -202,10 +214,16 @@ async function migrateUserData(
 export async function migrateUserFromTempToNeon(
   tempUserKey: string,
   neonAuthUserId: string,
-  reqId?: string
+  reqId?: string,
 ): Promise<MigrationResult> {
-  console.warn('migrateUserFromTempToNeon is deprecated. Migration to Neon Auth is complete.')
-  
+  logInfo({
+    ...(reqId ? { reqId } : {}),
+    route: 'auth/migration',
+    phase: 'deprecated_migrate_user',
+    message:
+      'migrateUserFromTempToNeon is deprecated. Migration to Neon Auth is complete.',
+  })
+
   // 返回成功状态，因为迁移已完成
   return {
     success: true,
@@ -221,7 +239,7 @@ export async function migrateUserFromTempToNeon(
  */
 export async function rollbackMigration(
   migrationId: string,
-  reqId?: string
+  reqId?: string,
 ): Promise<MigrationResult> {
   const requestId = reqId || randomUUID()
   let migratedRecords = 0
@@ -249,7 +267,7 @@ export async function rollbackMigration(
       migrationId,
       MigrationStatus.ROLLBACK,
       undefined,
-      requestId
+      requestId,
     )
 
     // 3. 执行回滚（将数据改回临时userKey）
@@ -257,7 +275,7 @@ export async function rollbackMigration(
       neonAuthUserId,
       tempUserKey,
       migrationId,
-      requestId
+      requestId,
     )
 
     logInfo({
@@ -304,7 +322,7 @@ export async function rollbackMigration(
  * 获取迁移状态
  */
 export async function getMigrationStatus(
-  migrationId: string
+  migrationId: string,
 ): Promise<MigrationRecord | null> {
   try {
     const migrationRecord = await prisma.$queryRaw<any[]>`
@@ -336,7 +354,7 @@ export async function getMigrationStatus(
  * 清理旧的迁移记录
  */
 export async function cleanupOldMigrations(
-  daysOld: number = 30
+  daysOld: number = 30,
 ): Promise<number> {
   try {
     const result = await prisma.$executeRaw`

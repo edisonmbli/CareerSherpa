@@ -1,5 +1,6 @@
 import { createAnalyticsEvent, type CreateAnalyticsEventParams } from '@/lib/dal/analyticsEvent'
 import { AnalyticsCategory } from '@prisma/client'
+import { logInfo } from '@/lib/logger'
 
 // Re-export for convenience
 export { AnalyticsCategory }
@@ -82,6 +83,11 @@ export function trackEvent(
     void createAnalyticsEvent(args)
   } catch (error) {
     // 绝不抛到业务层
-    console.warn('[Analytics] trackEvent failed:', error)
+    logInfo({
+      reqId: 'analytics',
+      route: 'analytics/trackEvent',
+      phase: 'track_event_failed',
+      error: error instanceof Error ? error : String(error),
+    })
   }
 }

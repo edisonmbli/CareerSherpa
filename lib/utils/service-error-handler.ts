@@ -7,6 +7,8 @@
  * - Prevents leaking internal error details (json_parse_failed, db errors, etc.)
  */
 
+import { uiLog } from '@/lib/ui/sse-debug-logger'
+
 export interface ErrorDicts {
   statusText?: {
     daily_limit?: string
@@ -46,7 +48,6 @@ const PUBLIC_ERROR_WHITELIST = new Set([
   'file_too_large',
 
   // Retryable errors (user can retry)
-  'retry_available',
 ])
 
 /**
@@ -68,7 +69,7 @@ export function getServiceErrorMessage(
 
   // Development mode: log raw error for debugging (never shown to users)
   if (process.env.NODE_ENV === 'development' && normalizedCode) {
-    console.warn('[ServiceError] Raw code:', normalizedCode)
+    uiLog.debug('service_error_raw_code', { code: normalizedCode })
   }
 
   // === Whitelisted Business Errors (safe to show with specific messages) ===
@@ -152,10 +153,9 @@ export function getServiceErrorMessage(
 
   if (normalizedCode === 'retry_available') {
     return {
-      title: dicts.notification?.matchFailedTitle || 'Analysis Incomplete',
+      title: dicts.notification?.serverErrorTitle || 'Service Temporarily Unavailable',
       description:
-        dicts.notification?.matchFailedDesc ||
-        'Please click retry to continue.',
+        dicts.notification?.serverErrorDesc || 'Please try again later.',
     }
   }
 
@@ -178,7 +178,6 @@ export function getServiceErrorMessage(
 export function isRetryableError(errorCode: string): boolean {
   const normalizedCode = (errorCode || '').toLowerCase().trim()
   return [
-    'retry_available',
     'rate_limited',
     'frequency_limit',
     'backpressured',

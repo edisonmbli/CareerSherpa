@@ -1,3 +1,4 @@
+import { logInfo } from '@/lib/logger'
 import { enterUserConcurrency, enterModelConcurrency, enterGuards } from '@/lib/worker/common'
 import { guardBlocked } from '@/lib/worker/pipeline'
 
@@ -12,6 +13,13 @@ export async function guardUser(
   const gate = await enterUserConcurrency(userId, kind, ttlSec)
   if (!gate.ok) {
     const retryAfter = getRetryAfter(gate.response)
+    logInfo({
+      reqId: requestId,
+      route: `worker/${kind}`,
+      userKey: userId,
+      phase: 'guard_user_blocked',
+      retryAfter,
+    })
     await guardBlocked(
       channel,
       userId,
@@ -37,6 +45,15 @@ export async function guardModel(
   const gate = await enterModelConcurrency(modelId, queueId, ttlSec)
   if (!gate.ok) {
     const retryAfter = getRetryAfter(gate.response)
+    logInfo({
+      reqId: requestId,
+      route: 'worker/model',
+      userKey: userIdFromChannel(channel),
+      phase: 'guard_model_blocked',
+      queueId,
+      modelId,
+      retryAfter,
+    })
     await guardBlocked(
       channel,
       userIdFromChannel(channel),
@@ -74,6 +91,17 @@ export async function guardQueue(
     const msg = await safeText(gate.response)
     const retryAfter = getRetryAfter(gate.response)
     const code = normalizeGuardCode(msg)
+    logInfo({
+      reqId: requestId,
+      route: `worker/${kind}`,
+      userKey: userId,
+      phase: 'guard_queue_blocked',
+      reason: code,
+      counterKey,
+      maxSize,
+      ...(gate.pending !== undefined ? { pending: gate.pending } : {}),
+      retryAfter,
+    })
     await guardBlocked(
       channel,
       userId,

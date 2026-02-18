@@ -1,21 +1,9 @@
-const logInfo = (payload: any) => {
-  try {
-    const entry = { level: 'info', ts: new Date().toISOString(), ...payload }
-    console.log(JSON.stringify(entry))
-  } catch { }
-}
-const logError = (payload: any) => {
-  try {
-    const entry = { level: 'error', ts: new Date().toISOString(), ...payload }
-    console.error(JSON.stringify(entry))
-  } catch { }
-}
-
 /**
  * Unified JSON validation and error handling for LLM responses
  * This module provides robust JSON parsing with multiple fallback strategies
  */
 
+import { logDebug, logError } from '@/lib/logger'
 import { executeStrategies } from './json-strategies'
 import { jsonrepair } from 'jsonrepair'
 
@@ -309,7 +297,7 @@ export function validateJson<T = any>(
 
   // Entry logging for observability
   if (debug) {
-    logInfo({
+    logDebug({
       reqId: debug.reqId ?? 'unknown',
       route: debug.route ?? 'json-validator',
       userKey: debug.userKey ?? 'unknown',
@@ -334,7 +322,7 @@ export function validateJson<T = any>(
   // Exit logging
   if (debug) {
     if (result.success) {
-      logInfo({
+      logDebug({
         reqId: debug.reqId ?? 'unknown',
         route: debug.route ?? 'json-validator',
         phase: 'validation_success',
@@ -410,7 +398,7 @@ export function validateJsonSchema<T = any>(
   }
 
   if (debug && warnings.length > 0) {
-    logInfo({
+    logDebug({
       reqId: debug.reqId ?? 'unknown',
       route: debug.route ?? 'json-validator',
       userKey: debug.userKey ?? 'unknown',

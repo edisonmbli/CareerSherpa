@@ -115,7 +115,8 @@ const dict = {
       noFile: 'No file chosen',
       segmentedPaste: 'Paste text',
       segmentedUpload: 'Upload screenshot',
-      imageTooLarge: 'Image size exceeds 3MB',
+      imageTooLarge: 'Image too large, please upload ≤1MB',
+      imageCompressFailed: 'Image compression failed, please try again',
       jobTextTooLong: 'Text length exceeds 8000 characters',
       quickTipsLabel: 'Quick tips',
       quickTips: [
@@ -222,7 +223,7 @@ const dict = {
       recommendations: 'Recommendations',
     },
     interviewUi: {
-      start: 'Interview Tips',
+      start: 'Interview Drill',
       ready: 'Interview tips generated, loading…',
       readyDesc:
         'Generate personalized interview Q&A and tips based on the job match analysis',
@@ -326,6 +327,9 @@ const dict = {
       INTERVIEW_PENDING: 'Generating interview battle card...',
       INTERVIEW_PENDING_DESC:
         'Synthesizing match results and resume highlights into tailored Q&A and strategies.',
+      INTERVIEW_LOADING: 'Loading interview battle card...',
+      INTERVIEW_LOADING_DESC:
+        'Content is ready. Formatting and polishing, please wait.',
       INTERVIEW_STREAMING: 'Generating personalized interview advice...',
       INTERVIEW_COMPLETED: 'Interview prep completed!',
       INTERVIEW_COMPLETED_WISH: 'Wishing you success in your job search!',
@@ -748,7 +752,8 @@ const dict = {
     },
     hero: {
       title: 'Your Personal AI Career Coach',
-      subtitle: 'Stop applying blindly. Get higher-match interviews with data-driven insights.',
+      subtitle:
+        'Stop applying blindly. Get higher-match interviews with data-driven insights.',
       cta: 'Start Free Trial (8 coins)',
     },
     philosophy: {
@@ -794,7 +799,7 @@ const dict = {
         {
           title: 'Precision Matching',
           description:
-            'Stop guessing. Our AI analyzes job descriptions deeply to tell you exactly why you fit (or why you don\'t).',
+            "Stop guessing. Our AI analyzes job descriptions deeply to tell you exactly why you fit (or why you don't).",
         },
         {
           title: 'Efficiency Boost',

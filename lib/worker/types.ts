@@ -8,6 +8,7 @@ const common = {
   locale: z.enum(i18n.locales as readonly [Locale, ...Locale[]]),
   enqueuedAt: z.number().optional(),
   retryCount: z.number().optional(),
+  qstashRetries: z.number().optional(),
 }
 
 const paidTier = z.enum(['paid', 'free']).optional()

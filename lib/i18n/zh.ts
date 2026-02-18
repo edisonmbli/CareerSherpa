@@ -110,7 +110,8 @@ const dict = {
       noFile: '未选择文件',
       segmentedPaste: '粘贴文本',
       segmentedUpload: '上传截图',
-      imageTooLarge: '图片大小超过 3MB',
+      imageTooLarge: '图片过大，请上传不超过 1MB 的截图',
+      imageCompressFailed: '图片压缩失败，请稍后重试',
       jobTextTooLong: '文本长度超过 8000 字',
       quickTipsLabel: '快捷引导',
       quickTips: [
@@ -213,7 +214,7 @@ const dict = {
       recommendations: '行动建议',
     },
     interviewUi: {
-      start: '面试 Tips',
+      start: '面试演练',
       ready: '面试建议已生成，加载中...',
       readyDesc: '根据岗位匹配分析生成个性化的面试Q&A和建议',
       backToTop: '回到顶部',
@@ -313,6 +314,8 @@ const dict = {
       INTERVIEW_PENDING: '正在生成面试作战手卡...',
       INTERVIEW_PENDING_DESC:
         '正在整合匹配度结果与简历亮点，生成个性化问答与应对策略',
+      INTERVIEW_LOADING: '正在加载面试作战手卡...',
+      INTERVIEW_LOADING_DESC: '内容已生成，正在整理与排版，请稍候。',
       INTERVIEW_STREAMING: '正在生成个性化面试建议...',
       INTERVIEW_COMPLETED: '面试准备完成！',
       INTERVIEW_COMPLETED_WISH: '祝求职顺利，马到功成！',
@@ -724,7 +727,8 @@ const dict = {
     },
     hero: {
       title: '你的 AI 求职私教',
-      subtitle: '别再盲目海投了。用数据驱动的匹配分析与简历定制，精准拿下每一次面试机会。',
+      subtitle:
+        '别再盲目海投了。用数据驱动的匹配分析与简历定制，精准拿下每一次面试机会。',
       cta: '开始免费试用（赠 8 金币）',
     },
     philosophy: {
@@ -1021,7 +1025,8 @@ const dict = {
           disabledBadge: '分享已暂停',
           expiredTitle: '链接已过期',
           disabledTitle: '该链接已关闭',
-          expiredDesc: '分享者设置了有效期，当前已到期。可联系分享者重新生成链接',
+          expiredDesc:
+            '分享者设置了有效期，当前已到期。可联系分享者重新生成链接',
           disabledDesc: '分享者已关闭公开分享，暂时无法访问该内容',
           cta: '免费生成我的简历',
           ctaHint: '用 CareerShaper AI 快速生成专业简历',

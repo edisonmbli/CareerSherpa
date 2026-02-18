@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import { logError } from '@/lib/logger'
 import type { 
   LlmCallMetadata, 
   LlmCallResult
@@ -47,7 +48,14 @@ export class LlmLogger {
     const durationMs = endTime.getTime() - this.startTime.getTime()
     
     if (!result.success) {
-      console.error(`[LLM] Failed call ${this.callId} after ${durationMs}ms - ${result.errorMessage}`)
+      logError({
+        reqId: this.callId,
+        route: 'llm/logger',
+        phase: 'call_failed',
+        error: result.errorMessage || 'unknown_error',
+        durationMs,
+        meta: { ...this.metadata },
+      })
     }
   }
 
@@ -57,7 +65,14 @@ export class LlmLogger {
   async logTimeout(): Promise<void> {
     const endTime = new Date()
     const durationMs = endTime.getTime() - this.startTime.getTime()
-    console.warn(`[LLM] Timeout call ${this.callId} after ${durationMs}ms`)
+    logError({
+      reqId: this.callId,
+      route: 'llm/logger',
+      phase: 'call_timeout',
+      error: 'timeout',
+      durationMs,
+      meta: { ...this.metadata },
+    })
   }
 
   /**

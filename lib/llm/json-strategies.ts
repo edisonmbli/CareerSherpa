@@ -11,6 +11,7 @@
  * 4. Repair - Fix common syntax errors
  */
 
+import { logDebug } from '@/lib/logger'
 import type { ValidationOptions, ValidationResult } from './json-validator'
 
 // Re-export helpers for use by strategies
@@ -23,18 +24,6 @@ export interface StrategyResult<T = unknown> {
     success: boolean
     data?: T
     error?: string
-}
-
-/**
- * Logging helper - structured info log
- */
-function logStrategyInfo(payload: Record<string, unknown>) {
-    try {
-        const entry = { level: 'info', ts: new Date().toISOString(), ...payload }
-        console.log(JSON.stringify(entry))
-    } catch {
-        // non-fatal: logging should not break parsing
-    }
 }
 
 /**
@@ -57,7 +46,7 @@ export function parseDirectStrategy<T = unknown>(
         const parsed = JSON.parse(content)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'direct_parse_success',
@@ -71,7 +60,7 @@ export function parseDirectStrategy<T = unknown>(
         const errorMessage = error instanceof Error ? error.message : String(error)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'direct_parse_failed',
@@ -106,7 +95,7 @@ export function parseCleanedStrategy<T = unknown>(
         const cleaned = cleanFn(content)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'cleaned_parse_attempt',
@@ -118,7 +107,7 @@ export function parseCleanedStrategy<T = unknown>(
         const parsed = JSON.parse(cleaned)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'cleaned_parse_success',
@@ -131,7 +120,7 @@ export function parseCleanedStrategy<T = unknown>(
         const errorMessage = error instanceof Error ? error.message : String(error)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'cleaned_parse_failed',
@@ -168,7 +157,7 @@ export function parseExtractedStrategy<T = unknown>(
         const extracted = extractFn(cleaned)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'extracted_parse_attempt',
@@ -184,7 +173,7 @@ export function parseExtractedStrategy<T = unknown>(
         const parsed = JSON.parse(extracted)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'extracted_parse_success',
@@ -197,7 +186,7 @@ export function parseExtractedStrategy<T = unknown>(
         const errorMessage = error instanceof Error ? error.message : String(error)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'extracted_parse_failed',
@@ -237,7 +226,7 @@ export function parseRepairedStrategy<T = unknown>(
         const repaired = repairFn(extracted)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'repaired_parse_attempt',
@@ -251,7 +240,7 @@ export function parseRepairedStrategy<T = unknown>(
         const parsed = JSON.parse(repaired)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'repaired_parse_success',
@@ -264,7 +253,7 @@ export function parseRepairedStrategy<T = unknown>(
         const errorMessage = error instanceof Error ? error.message : String(error)
 
         if (debug) {
-            logStrategyInfo({
+            logDebug({
                 reqId: debug.reqId ?? 'unknown',
                 route: debug.route ?? 'json-strategies',
                 phase: 'repaired_parse_failed',

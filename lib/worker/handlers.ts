@@ -22,7 +22,7 @@ import { getRequestMeta } from '@/lib/worker/steps/meta'
 import { cleanupFinal } from '@/lib/worker/steps/cleanup'
 import { getStrategy } from '@/lib/worker/strategies'
 import { markTimeline } from '@/lib/observability/timeline'
-import { logError } from '@/lib/logger'
+import { logDebug, logError } from '@/lib/logger'
 import { getProvider } from '@/lib/llm/utils'
 import {
   recordRefund,
@@ -63,6 +63,46 @@ function isTimeoutError(message: string): boolean {
   )
 }
 
+type RetryMeta = {
+  retryCount?: number
+  maxRetries?: number
+  shouldRefund: boolean
+}
+
+function getHeaderNumber(req: Request, names: string[]): number | undefined {
+  for (const name of names) {
+    const value = req.headers.get(name)
+    if (!value) continue
+    const num = Number(value)
+    if (Number.isFinite(num)) return num
+  }
+  return undefined
+}
+
+function getRetryMeta(req: Request, body: Body): RetryMeta {
+  const retryCount =
+    getHeaderNumber(req, [
+      'Upstash-Retry-Count',
+      'upstash-retry-count',
+      'X-Upstash-Retry-Count',
+      'x-upstash-retry-count',
+    ]) ?? body.retryCount
+  const maxRetries =
+    getHeaderNumber(req, [
+      'Upstash-Retries',
+      'upstash-retries',
+      'X-Upstash-Retries',
+      'x-upstash-retries',
+    ]) ?? body.qstashRetries
+  const finalRetryCount = retryCount ?? 0
+  const shouldRefund =
+    maxRetries !== undefined ? finalRetryCount >= maxRetries : true
+  const meta: RetryMeta = { shouldRefund }
+  if (retryCount !== undefined) meta.retryCount = retryCount
+  if (maxRetries !== undefined) meta.maxRetries = maxRetries
+  return meta
+}
+
 /**
  * Centralized handler for guard failures (429 errors).
  * Handles refund, SSE error notification, and logging.
@@ -79,6 +119,12 @@ async function handleGuardFailure(params: {
   traceId: string
   billing: BillingVars
   kind: 'stream' | 'batch'
+  retryAfter?: number
+  pending?: number
+  maxSize?: number
+  retryCount?: number
+  maxRetries?: number
+  shouldRefund?: boolean
 }): Promise<Response> {
   const {
     reason,
@@ -91,6 +137,12 @@ async function handleGuardFailure(params: {
     traceId,
     billing,
     kind,
+    retryAfter,
+    pending,
+    maxSize,
+    retryCount,
+    maxRetries,
+    shouldRefund,
   } = params
   const { wasPaid, cost = 0, debitId } = billing
 
@@ -116,7 +168,7 @@ async function handleGuardFailure(params: {
   }
 
   // 2. Refund for Paid tasks (reusing existing pattern)
-  if (wasPaid && cost > 0 && debitId) {
+  if (shouldRefund !== false && wasPaid && cost > 0 && debitId) {
     try {
       await recordRefund({
         userId,
@@ -147,11 +199,40 @@ async function handleGuardFailure(params: {
     error: reason,
     phase: 'guard_blocked',
     serviceId,
-    meta: { taskId, templateId, wasPaid, cost },
+    meta: {
+      taskId,
+      templateId,
+      wasPaid,
+      cost,
+      ...(retryAfter !== undefined ? { retryAfter } : {}),
+      ...(pending !== undefined ? { pending } : {}),
+      ...(maxSize !== undefined ? { maxSize } : {}),
+      ...(retryCount !== undefined ? { retryCount } : {}),
+      ...(maxRetries !== undefined ? { maxRetries } : {}),
+    },
   })
 
   // 4. Return 429 response
-  return Response.json({ ok: false, reason }, { status: 429 })
+  return Response.json(
+    {
+      ok: false,
+      reason,
+      ...(retryAfter !== undefined ? { retryAfter } : {}),
+      ...(pending !== undefined ? { pending } : {}),
+      ...(maxSize !== undefined ? { maxSize } : {}),
+      ...(retryCount !== undefined ? { retryCount } : {}),
+      ...(maxRetries !== undefined ? { maxRetries } : {}),
+    },
+    {
+      status: 429,
+      headers: {
+        ...(retryAfter !== undefined
+          ? { 'Retry-After': String(retryAfter) }
+          : {}),
+        'X-Guard-Reason': reason,
+      },
+    },
+  )
 }
 
 // Token handler for SSE
@@ -259,7 +340,16 @@ export async function handleStream(
       if (!parsed.ok) return parsed.response
       const body: Body = parsed.body
 
-      const { taskId, userId, serviceId, locale, templateId, variables, enqueuedAt } = body
+      const {
+        taskId,
+        userId,
+        serviceId,
+        locale,
+        templateId,
+        variables,
+        enqueuedAt,
+      } = body
+      const retryMeta = getRetryMeta(req, body)
       const startTime = Date.now()
       const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
       trackEvent('WORKER_JOB_STARTED', {
@@ -268,7 +358,12 @@ export async function handleStream(
         taskId,
         traceId: taskId,
         category: AnalyticsCategory.SYSTEM,
-        payload: { templateId, queueWaitTime, enqueuedAt, startedAt: startTime },
+        payload: {
+          templateId,
+          queueWaitTime,
+          enqueuedAt,
+          startedAt: startTime,
+        },
       })
 
       const strategy = getStrategy(templateId)
@@ -279,16 +374,18 @@ export async function handleStream(
       }
 
       const { requestId, traceId } = getRequestMeta(req, taskId)
-
-      // 1. Prepare Vars
-      const preparedVars = await strategy.prepareVars(variables, {
+      const ctxBase = {
         serviceId,
         userId,
         locale: locale as string,
         taskId,
         requestId,
         traceId,
-      })
+        shouldRefund: retryMeta.shouldRefund,
+      }
+
+      // 1. Prepare Vars
+      const preparedVars = await strategy.prepareVars(variables, ctxBase)
 
       const billing = extractBillingVars(variables as Record<string, unknown>)
       const { tierOverride, wasPaid } = billing
@@ -358,6 +455,16 @@ export async function handleStream(
           traceId,
           billing,
           kind: 'stream',
+          ...(gUser.retryAfter !== undefined
+            ? { retryAfter: gUser.retryAfter }
+            : {}),
+          ...(retryMeta.retryCount !== undefined
+            ? { retryCount: retryMeta.retryCount }
+            : {}),
+          ...(retryMeta.maxRetries !== undefined
+            ? { maxRetries: retryMeta.maxRetries }
+            : {}),
+          shouldRefund: retryMeta.shouldRefund,
         })
       userGuarded = true
 
@@ -382,6 +489,16 @@ export async function handleStream(
           traceId,
           billing,
           kind: 'stream',
+          ...(gModel.retryAfter !== undefined
+            ? { retryAfter: gModel.retryAfter }
+            : {}),
+          ...(retryMeta.retryCount !== undefined
+            ? { retryCount: retryMeta.retryCount }
+            : {}),
+          ...(retryMeta.maxRetries !== undefined
+            ? { maxRetries: retryMeta.maxRetries }
+            : {}),
+          shouldRefund: retryMeta.shouldRefund,
         })
       }
       modelGuarded = true
@@ -432,6 +549,18 @@ export async function handleStream(
           traceId,
           billing,
           kind: 'stream',
+          ...(gQueue.retryAfter !== undefined
+            ? { retryAfter: gQueue.retryAfter }
+            : {}),
+          ...(gQueue.pending !== undefined ? { pending: gQueue.pending } : {}),
+          ...(gQueue.maxSize !== undefined ? { maxSize: gQueue.maxSize } : {}),
+          ...(retryMeta.retryCount !== undefined
+            ? { retryCount: retryMeta.retryCount }
+            : {}),
+          ...(retryMeta.maxRetries !== undefined
+            ? { maxRetries: retryMeta.maxRetries }
+            : {}),
+          shouldRefund: retryMeta.shouldRefund,
         })
       }
 
@@ -462,14 +591,7 @@ export async function handleStream(
 
       // 3. Strategy onStart
       if (strategy.onStart) {
-        await strategy.onStart(preparedVars, {
-          serviceId,
-          userId,
-          locale: locale as string,
-          taskId,
-          requestId,
-          traceId,
-        })
+        await strategy.onStart(preparedVars, ctxBase)
       }
 
       // Phase-based error handling to prevent duplicate writeResults calls
@@ -506,31 +628,45 @@ export async function handleStream(
         })
 
         // Debug: Log phase transition and raw content
-        console.log(
-          `[Stream] Phase: LLM_EXECUTE complete, raw length: ${
-            execResult.result.raw?.length ?? 0
-          }`,
-        )
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'llm_execute_complete',
+          serviceId,
+          taskId,
+          rawLength: execResult.result.raw?.length ?? 0,
+        })
 
         // Phase 2: Write Results
         phase = 'WRITE_RESULTS'
         await markTimeline(serviceId, 'worker_stream_finalize_start', {
           taskId,
         })
-        console.log(`[Stream] Phase: WRITE_RESULTS starting`)
-        await strategy.writeResults(execResult.result, preparedVars, {
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'write_results_start',
           serviceId,
-          userId,
-          locale: locale as string,
-          requestId,
-          traceId,
           taskId,
         })
-        console.log(`[Stream] Phase: WRITE_RESULTS complete`)
+        await strategy.writeResults(execResult.result, preparedVars, ctxBase)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'write_results_complete',
+          serviceId,
+          taskId,
+        })
 
         // Phase 3: Cleanup (non-critical)
         phase = 'CLEANUP'
-        console.log(`[Stream] Phase: CLEANUP starting`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'cleanup_start',
+          serviceId,
+          taskId,
+        })
 
         // Emit _COMPLETED status for this task before going idle
         // IMPORTANT: Only emit completion if execution was successful!
@@ -547,9 +683,16 @@ export async function handleStream(
         }
         const completedStatus = completedStatusMap[templateId]
         const wasSuccessful = execResult?.result?.ok !== false
-        console.log(
-          `[Stream] CLEANUP: templateId=${templateId}, wasSuccessful=${wasSuccessful}, completedStatus=${completedStatus || 'NONE'}`,
-        )
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'cleanup_status',
+          serviceId,
+          taskId,
+          templateId,
+          wasSuccessful,
+          completedStatus: completedStatus || 'NONE',
+        })
         if (completedStatus && wasSuccessful) {
           await publishEvent(channel, {
             type: 'status',
@@ -562,9 +705,14 @@ export async function handleStream(
             traceId,
           })
         } else if (!wasSuccessful) {
-          console.log(
-            `[Stream] CLEANUP: Skipping completion emission - task failed`,
-          )
+          logDebug({
+            reqId: requestId,
+            route: 'worker/stream',
+            phase: 'cleanup_skip_completion',
+            serviceId,
+            taskId,
+            templateId,
+          })
         }
 
         await emitStreamIdle(
@@ -584,7 +732,13 @@ export async function handleStream(
           taskId,
         )
         await markTimeline(serviceId, 'worker_stream_finalize_end', { taskId })
-        console.log(`[Stream] Phase: CLEANUP complete`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'cleanup_complete',
+          serviceId,
+          taskId,
+        })
 
         const execDuration = Date.now() - startTime
         trackEvent('WORKER_JOB_COMPLETED', {
@@ -600,7 +754,14 @@ export async function handleStream(
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
-        console.log(`[Stream] Error in phase: ${phase}, error: ${errMsg}`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/stream',
+          phase: 'stream_error',
+          serviceId,
+          taskId,
+          error: errMsg,
+        })
 
         // Handle based on which phase failed
         switch (phase) {
@@ -724,7 +885,16 @@ export async function handleBatch(
       if (!parsed.ok) return parsed.response
       const body: Body = parsed.body
 
-      const { taskId, userId, serviceId, locale, templateId, variables, enqueuedAt } = body
+      const {
+        taskId,
+        userId,
+        serviceId,
+        locale,
+        templateId,
+        variables,
+        enqueuedAt,
+      } = body
+      const retryMeta = getRetryMeta(req, body)
       const startTime = Date.now()
       const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
       trackEvent('WORKER_JOB_STARTED', {
@@ -733,7 +903,12 @@ export async function handleBatch(
         taskId,
         traceId: taskId,
         category: AnalyticsCategory.SYSTEM,
-        payload: { templateId, queueWaitTime, enqueuedAt, startedAt: startTime },
+        payload: {
+          templateId,
+          queueWaitTime,
+          enqueuedAt,
+          startedAt: startTime,
+        },
       })
 
       const strategy = getStrategy(templateId)
@@ -744,16 +919,18 @@ export async function handleBatch(
       }
 
       const { requestId, traceId } = getRequestMeta(req, taskId)
-
-      // 1. Prepare Vars
-      const preparedVars = await strategy.prepareVars(variables, {
+      const ctxBase = {
         serviceId,
         userId,
         locale: locale as string,
         taskId,
         requestId,
         traceId,
-      })
+        shouldRefund: retryMeta.shouldRefund,
+      }
+
+      // 1. Prepare Vars
+      const preparedVars = await strategy.prepareVars(variables, ctxBase)
 
       const billing = extractBillingVars(variables as Record<string, unknown>)
       const { tierOverride, wasPaid } = billing
@@ -827,6 +1004,16 @@ export async function handleBatch(
           traceId,
           billing,
           kind: 'batch',
+          ...(gUser.retryAfter !== undefined
+            ? { retryAfter: gUser.retryAfter }
+            : {}),
+          ...(retryMeta.retryCount !== undefined
+            ? { retryCount: retryMeta.retryCount }
+            : {}),
+          ...(retryMeta.maxRetries !== undefined
+            ? { maxRetries: retryMeta.maxRetries }
+            : {}),
+          shouldRefund: retryMeta.shouldRefund,
         })
       userGuarded = true
 
@@ -851,6 +1038,16 @@ export async function handleBatch(
           traceId,
           billing,
           kind: 'batch',
+          ...(gModel.retryAfter !== undefined
+            ? { retryAfter: gModel.retryAfter }
+            : {}),
+          ...(retryMeta.retryCount !== undefined
+            ? { retryCount: retryMeta.retryCount }
+            : {}),
+          ...(retryMeta.maxRetries !== undefined
+            ? { maxRetries: retryMeta.maxRetries }
+            : {}),
+          shouldRefund: retryMeta.shouldRefund,
         })
       }
       modelGuarded = true
@@ -901,6 +1098,18 @@ export async function handleBatch(
           traceId,
           billing,
           kind: 'batch',
+          ...(gQueue.retryAfter !== undefined
+            ? { retryAfter: gQueue.retryAfter }
+            : {}),
+          ...(gQueue.pending !== undefined ? { pending: gQueue.pending } : {}),
+          ...(gQueue.maxSize !== undefined ? { maxSize: gQueue.maxSize } : {}),
+          ...(retryMeta.retryCount !== undefined
+            ? { retryCount: retryMeta.retryCount }
+            : {}),
+          ...(retryMeta.maxRetries !== undefined
+            ? { maxRetries: retryMeta.maxRetries }
+            : {}),
+          shouldRefund: retryMeta.shouldRefund,
         })
       }
 
@@ -908,14 +1117,7 @@ export async function handleBatch(
 
       // 3. Strategy onStart
       if (strategy.onStart) {
-        await strategy.onStart(preparedVars, {
-          serviceId,
-          userId,
-          locale: locale as string,
-          taskId,
-          requestId,
-          traceId,
-        })
+        await strategy.onStart(preparedVars, ctxBase)
       }
 
       // Phase-based error handling (same pattern as handleStream)
@@ -976,30 +1178,47 @@ export async function handleBatch(
           latencyMs: execResult.latencyMs,
         })
 
-        console.log(`[Batch] Phase: LLM_EXECUTE complete`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/batch',
+          phase: 'llm_execute_complete',
+          serviceId,
+          taskId,
+        })
 
         // Phase 2: Write Results
         phase = 'WRITE_RESULTS'
         await markTimeline(serviceId, 'worker_batch_finalize_start', { taskId })
-        console.log(`[Batch] Phase: WRITE_RESULTS starting`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/batch',
+          phase: 'write_results_start',
+          serviceId,
+          taskId,
+        })
         // Capture deferred tasks for enqueue after cleanup
         const deferredTasks = await strategy.writeResults(
           execResult.result,
           preparedVars,
-          {
-            serviceId,
-            userId,
-            locale: locale as string,
-            requestId,
-            traceId,
-            taskId,
-          },
+          ctxBase,
         )
-        console.log(`[Batch] Phase: WRITE_RESULTS complete`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/batch',
+          phase: 'write_results_complete',
+          serviceId,
+          taskId,
+        })
 
         // Phase 3: Cleanup (releases lock)
         phase = 'CLEANUP'
-        console.log(`[Batch] Phase: CLEANUP starting`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/batch',
+          phase: 'cleanup_start',
+          serviceId,
+          taskId,
+        })
         await cleanupFinal(
           decision.modelId,
           String(decision.queueId),
@@ -1010,13 +1229,24 @@ export async function handleBatch(
           taskId,
         )
         await markTimeline(serviceId, 'worker_batch_finalize_end', { taskId })
-        console.log(`[Batch] Phase: CLEANUP complete`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/batch',
+          phase: 'cleanup_complete',
+          serviceId,
+          taskId,
+        })
 
         // Phase 4: Enqueue deferred tasks (AFTER cleanup to avoid lock contention)
         if (deferredTasks && deferredTasks.length > 0) {
-          console.log(
-            `[Batch] Phase: DEFERRED_ENQUEUE starting, count=${deferredTasks.length}`,
-          )
+          logDebug({
+            reqId: requestId,
+            route: 'worker/batch',
+            phase: 'deferred_enqueue_start',
+            serviceId,
+            taskId,
+            count: deferredTasks.length,
+          })
           for (const task of deferredTasks) {
             try {
               const pushRes = await pushTask(task as any)
@@ -1041,7 +1271,13 @@ export async function handleBatch(
               })
             }
           }
-          console.log(`[Batch] Phase: DEFERRED_ENQUEUE complete`)
+          logDebug({
+            reqId: requestId,
+            route: 'worker/batch',
+            phase: 'deferred_enqueue_complete',
+            serviceId,
+            taskId,
+          })
         }
 
         const execDuration = Date.now() - startTime
@@ -1058,7 +1294,14 @@ export async function handleBatch(
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
-        console.log(`[Batch] Error in phase: ${phase}, error: ${errMsg}`)
+        logDebug({
+          reqId: requestId,
+          route: 'worker/batch',
+          phase: 'batch_error',
+          serviceId,
+          taskId,
+          error: errMsg,
+        })
 
         switch (phase) {
           case 'LLM_EXECUTE':
