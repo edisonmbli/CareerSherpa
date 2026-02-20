@@ -1,13 +1,10 @@
 import { put } from '@vercel/blob'
 import path from 'path'
 import fs from 'fs/promises'
-import { ENV } from '@/lib/env'
 
 export async function uploadFile(file: File, filename: string): Promise<string> {
-  // Determine environment
-  // VERCEL_ENV is set by Vercel platform (production, preview, development)
-  // NODE_ENV is standard
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env['VERCEL_ENV']
+  const isProduction =
+    process.env.NODE_ENV === 'production' || !!process.env['VERCEL_ENV']
 
   if (isProduction) {
     // === Production: Upload to Vercel Blob ===
@@ -50,8 +47,6 @@ export async function uploadFile(file: File, filename: string): Promise<string> 
     // If worker reads file directly, it needs path.
     // However, standardized interface returns URL.
     // Local URL: /uploads/filename
-    const baseUrl = ENV.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
-    const normalizedBase = baseUrl.replace(/\/$/, '')
-    return `${normalizedBase}/uploads/${filename}`
+    return `/uploads/${filename}`
   }
 }

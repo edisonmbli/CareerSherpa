@@ -44,6 +44,7 @@ import {
 } from '@/lib/actions/share.actions'
 import { cn } from '@/lib/utils'
 import { useResumeDict } from '@/components/resume/ResumeDictContext'
+import { loadLocalAvatar } from '@/lib/storage/avatar-client'
 
 interface ShareResumeDialogProps {
   serviceId: string
@@ -60,6 +61,7 @@ const shareCache = new Map<
       isEnabled: boolean
       shareKey: string | null
       expireAt: string | null
+      avatarUrl: string | null
     } | null
     fetchedAt: number
   }
@@ -77,6 +79,7 @@ export async function prefetchShareState(serviceId: string) {
           isEnabled: res.data.isEnabled,
           shareKey: res.data.shareKey ?? null,
           expireAt: res.data.expireAt ?? null,
+          avatarUrl: res.data.avatarUrl ?? null,
         }
       : null
     shareCache.set(serviceId, { data: payload, fetchedAt: Date.now() })
@@ -100,7 +103,8 @@ export function ShareResumeDialog({
   const [isEnabled, setIsEnabled] = useState(false)
   const [shareKey, setShareKey] = useState<string | null>(null)
   const [expireAt, setExpireAt] = useState<Date | null>(null)
-  const [duration, setDuration] = useState('7') // '7', '30', '9999'
+  const [shareAvatarUrl, setShareAvatarUrl] = useState<string | null>(null)
+  const [duration, setDuration] = useState('3')
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<{
     type: 'success' | 'error' | 'info'
@@ -150,21 +154,25 @@ export function ShareResumeDialog({
         isEnabled: boolean
         shareKey: string | null
         expireAt: string | null
+        avatarUrl: string | null
       } | null,
     ) => {
       if (!data) {
         setIsEnabled(false)
         setShareKey(null)
         setExpireAt(null)
+        setShareAvatarUrl(null)
         return
       }
       setIsEnabled(data.isEnabled)
       if (data.isEnabled) {
         setShareKey(data.shareKey)
         setExpireAt(data.expireAt ? new Date(data.expireAt) : null)
+        setShareAvatarUrl(data.avatarUrl ?? null)
       } else {
         setShareKey(null)
         setExpireAt(null)
+        setShareAvatarUrl(null)
       }
     },
     [],
@@ -180,6 +188,7 @@ export function ShareResumeDialog({
               isEnabled: res.data.isEnabled,
               shareKey: res.data.shareKey ?? null,
               expireAt: res.data.expireAt ?? null,
+              avatarUrl: res.data.avatarUrl ?? null,
             }
           : null
         applyShareData(payload)
@@ -236,12 +245,14 @@ export function ShareResumeDialog({
   const handleSave = () => {
     if (!isEnabled || isMutating) return
     setIsMutating(true)
+    const avatarBase64 = shareAvatarUrl ? null : loadLocalAvatar()
     startTransition(async () => {
       try {
-        const days = duration === '9999' ? null : parseInt(duration)
+        const days = parseInt(duration)
         const res = await generateShareLinkAction({
           serviceId,
           durationDays: days,
+          ...(avatarBase64 ? { avatarBase64 } : {}),
         })
         if (res.ok) {
           setShareKey(res.data.shareKey)
@@ -252,6 +263,7 @@ export function ShareResumeDialog({
                 isEnabled: true,
                 shareKey: res.data.shareKey,
                 expireAt: res.data.expireAt ?? null,
+                avatarUrl: res.data.avatarUrl ?? null,
               },
               fetchedAt: Date.now(),
             })
@@ -388,13 +400,17 @@ export function ShareResumeDialog({
                     if (isMutating) return
                     if (next) {
                       setIsEnabled(true)
-                      setDuration('7')
+                      setDuration('3')
+                      const avatarBase64 = shareAvatarUrl
+                        ? null
+                        : loadLocalAvatar()
                       setIsMutating(true)
                       startTransition(async () => {
                         try {
                           const res = await generateShareLinkAction({
                             serviceId,
-                            durationDays: 7,
+                            durationDays: 3,
+                            ...(avatarBase64 ? { avatarBase64 } : {}),
                           })
                           if (res.ok) {
                             setShareKey(res.data.shareKey)
@@ -409,6 +425,7 @@ export function ShareResumeDialog({
                                   isEnabled: true,
                                   shareKey: res.data.shareKey,
                                   expireAt: res.data.expireAt ?? null,
+                                  avatarUrl: res.data.avatarUrl ?? null,
                                 },
                                 fetchedAt: Date.now(),
                               })
@@ -454,6 +471,7 @@ export function ShareResumeDialog({
                                 isEnabled: false,
                                 shareKey: null,
                                 expireAt: null,
+                                avatarUrl: null,
                               },
                               fetchedAt: Date.now(),
                             })
@@ -524,14 +542,14 @@ export function ShareResumeDialog({
                         />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="3">
+                          {dict.share.validity.options.days3}
+                        </SelectItem>
                         <SelectItem value="7">
                           {dict.share.validity.options.days7}
                         </SelectItem>
-                        <SelectItem value="30">
-                          {dict.share.validity.options.days30}
-                        </SelectItem>
-                        <SelectItem value="9999">
-                          {dict.share.validity.options.permanent}
+                        <SelectItem value="15">
+                          {dict.share.validity.options.days15}
                         </SelectItem>
                       </SelectContent>
                     </Select>

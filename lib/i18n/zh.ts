@@ -909,7 +909,7 @@ const dict = {
       avatar: '头像',
       changeAvatar: '更换',
       avatarHint: '支持 jpg/png',
-      avatarSizeLimit: '图片大小不能超过 2MB',
+      avatarSizeLimit: '图片大小不能超过 300KB',
       name: '姓名',
       namePlaceholder: '您的姓名',
       address: '地址',
@@ -989,9 +989,9 @@ const dict = {
         label: '有效期',
         placeholder: '选择有效期',
         options: {
-          days7: '7 天（默认）',
-          days30: '30 天',
-          permanent: '永久有效',
+          days3: '3 天（默认）',
+          days7: '7 天',
+          days15: '15 天',
         },
       },
       link: {

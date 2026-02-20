@@ -35,6 +35,16 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const reqId = generateUUID();
 
+  const localeUploadsMatch = pathname.match(/^\/(en|zh)\/uploads\/(.+)/);
+  if (localeUploadsMatch) {
+    const targetPath = `/uploads/${localeUploadsMatch[2]}`;
+    return NextResponse.rewrite(new URL(targetPath, request.url));
+  }
+
+  if (pathname.startsWith('/uploads/')) {
+    return NextResponse.next();
+  }
+
   // 检查路径是否已经包含locale
   const pathnameHasLocale = i18n.locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
@@ -57,6 +67,7 @@ export async function middleware(request: NextRequest) {
   // 定义系统路径和公共资源（不需要认证）
   const isPublicAsset = pathname.startsWith('/_next/') || 
                        pathname.startsWith('/favicon.ico') ||
+                       pathname.startsWith('/uploads/') ||
                        pathname.startsWith('/static/') ||
                        pathname.startsWith('/robots.txt') ||
                        pathname.startsWith('/sitemap.xml');
@@ -186,6 +197,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - handler (Stack Auth handler)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|handler).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|handler|uploads).*)',
   ],
 };

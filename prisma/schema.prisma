@@ -172,6 +172,7 @@ model ResumeShare {
   customizedResumeId String           @unique @map("customized_resume_id")
   shareKey           String           @unique @map("share_key")
   isEnabled          Boolean          @default(true) @map("is_enabled")
+  avatarUrl          String?          @map("avatar_url")
   expireAt           DateTime?        @map("expire_at")
   viewCount          Int              @default(0) @map("view_count")
   createdAt          DateTime         @default(now()) @map("created_at")

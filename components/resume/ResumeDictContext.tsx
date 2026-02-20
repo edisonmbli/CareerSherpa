@@ -135,9 +135,9 @@ export interface ResumeDict {
       label: string
       placeholder: string
       options: {
+        days3: string
         days7: string
-        days30: string
-        permanent: string
+        days15: string
       }
     }
     link: {
@@ -249,7 +249,7 @@ const defaultDict: ResumeDict = {
     avatar: 'Avatar',
     changeAvatar: 'Change',
     avatarHint: 'Supports jpg/png',
-    avatarSizeLimit: 'Image size cannot exceed 2MB',
+    avatarSizeLimit: 'Image size cannot exceed 300KB',
     name: 'Name',
     namePlaceholder: 'Your name',
     address: 'Address',
@@ -332,9 +332,9 @@ const defaultDict: ResumeDict = {
       label: 'Validity',
       placeholder: 'Select validity period',
       options: {
-        days7: '7 days (default)',
-        days30: '30 days',
-        permanent: 'Never expires',
+        days3: '3 days (default)',
+        days7: '7 days',
+        days15: '15 days',
       },
     },
     link: {

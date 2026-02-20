@@ -1,6 +1,7 @@
 'use client'
 
 import { useResumeStore } from '@/store/resume-store'
+import { saveLocalAvatar } from '@/lib/storage/avatar-client'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ResumeData } from '@/lib/types/resume-schema'
@@ -34,6 +35,7 @@ import { SECTION_TITLES, SectionKey } from '../section-titles'
 import { SOCIAL_PLATFORMS } from '../social-config'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { AVATAR_MAX_BYTES } from '@/lib/constants'
 import { uiLog } from '@/lib/ui/sse-debug-logger'
 import { useResumeDict } from '../ResumeDictContext'
 
@@ -62,8 +64,7 @@ export function BasicsForm() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Limit increased to 2MB
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > AVATAR_MAX_BYTES) {
       alert(dict.forms.avatarSizeLimit)
       return
     }
@@ -73,11 +74,10 @@ export function BasicsForm() {
       const result = e.target?.result as string
       handleChange('photoUrl', result)
       // Save to localStorage for persistence across reloads (MVP)
-      try {
-        localStorage.setItem('user_avatar', result)
-      } catch (err) {
+      const saved = saveLocalAvatar(result)
+      if (!saved) {
         uiLog.error('avatar_local_storage_failed', {
-          error: err instanceof Error ? err.message : String(err),
+          error: 'local_storage_unavailable',
         })
       }
     }
@@ -150,7 +150,7 @@ export function BasicsForm() {
             <p className="text-[10px] text-muted-foreground text-center sm:text-left w-24 leading-tight">
               {dict.forms.avatarHint}
               <br />
-              Max 2MB
+              Max 300KB
             </p>
           </div>
 

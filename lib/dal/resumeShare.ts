@@ -49,6 +49,7 @@ export async function upsertResumeShare(
   data: {
     isEnabled: boolean
     expireAt?: Date | null
+    avatarUrl?: string | null
     // If shareKey is not provided, we generate one for new records
     // We do NOT update shareKey if it exists
   },
@@ -74,6 +75,7 @@ export async function upsertResumeShare(
         isEnabled: data.isEnabled,
         // Only update expireAt if provided (undefined means no change, null means clear)
         ...(data.expireAt !== undefined ? { expireAt: data.expireAt } : {}),
+        ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
       },
     })
   } else {
@@ -84,6 +86,7 @@ export async function upsertResumeShare(
         shareKey: nanoid(10), // Generate a 10-char short key
         isEnabled: data.isEnabled,
         expireAt: data.expireAt ?? null,
+        ...(data.avatarUrl ? { avatarUrl: data.avatarUrl } : {}),
       },
     })
   }
@@ -94,13 +97,21 @@ export async function upsertResumeShareByCustomizedId(
   data: {
     isEnabled: boolean
     expireAt?: Date | null
+    avatarUrl?: string | null
   },
 ) {
-  const updateData: { isEnabled: boolean; expireAt?: Date | null } = {
+  const updateData: {
+    isEnabled: boolean
+    expireAt?: Date | null
+    avatarUrl?: string | null
+  } = {
     isEnabled: data.isEnabled,
   }
   if (data.expireAt !== undefined) {
     updateData.expireAt = data.expireAt
+  }
+  if (data.avatarUrl !== undefined) {
+    updateData.avatarUrl = data.avatarUrl
   }
   return prisma.resumeShare.upsert({
     where: { customizedResumeId },
@@ -110,7 +121,31 @@ export async function upsertResumeShareByCustomizedId(
       shareKey: nanoid(10),
       isEnabled: data.isEnabled,
       expireAt: data.expireAt ?? null,
+      ...(data.avatarUrl ? { avatarUrl: data.avatarUrl } : {}),
     },
+  })
+}
+
+export async function getExpiredResumeSharesWithAvatar(lookbackDays: number) {
+  const now = new Date()
+  const from = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000)
+  return prisma.resumeShare.findMany({
+    where: {
+      expireAt: {
+        lt: now,
+        gte: from,
+      },
+      avatarUrl: { not: null },
+    },
+    select: { id: true, avatarUrl: true },
+  })
+}
+
+export async function clearResumeShareAvatarUrls(ids: string[]) {
+  if (!ids.length) return { count: 0 }
+  return prisma.resumeShare.updateMany({
+    where: { id: { in: ids } },
+    data: { avatarUrl: null },
   })
 }
 
@@ -183,6 +218,9 @@ export async function getSharedResumeByKey(
       ...service,
       resume,
       customizedResume,
+      share: {
+        avatarUrl: share.avatarUrl ?? null,
+      },
       // We don't return other sensitive data like job, detailedResume unless needed
     },
   }

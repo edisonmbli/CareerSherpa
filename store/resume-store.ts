@@ -24,6 +24,7 @@ import { ProductDefaults } from '@/components/resume/templates/TemplateProduct'
 import { TemplateConfig } from '@/components/resume/templates/types'
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants'
 import { uiLog } from '@/lib/ui/sse-debug-logger'
+import { loadLocalAvatar } from '@/lib/storage/avatar-client'
 
 export const TemplateDefaultsMap: Record<TemplateId, TemplateConfig> = {
   technical: TechnicalDefaults,
@@ -95,7 +96,7 @@ interface ResumeState {
     config?: SectionConfig,
     optimizeSuggestion?: string | null,
     opsJson?: any,
-    readOnly?: boolean
+    readOnly?: boolean,
   ) => void
 
   updateBasics: (data: Partial<ResumeData['basics']>) => void
@@ -109,14 +110,14 @@ interface ResumeState {
       'workExperiences' | 'projectExperiences' | 'educations' | 'customSections'
     >,
     itemId: string,
-    data: any
+    data: any,
   ) => void
 
   addSectionItem: (
     sectionKey: keyof Pick<
       ResumeData,
       'workExperiences' | 'projectExperiences' | 'educations' | 'customSections'
-    >
+    >,
   ) => void
 
   removeSectionItem: (
@@ -124,12 +125,12 @@ interface ResumeState {
       ResumeData,
       'workExperiences' | 'projectExperiences' | 'educations' | 'customSections'
     >,
-    itemId: string
+    itemId: string,
   ) => void
 
   updateSimpleSection: (
     sectionKey: keyof Pick<ResumeData, 'skills' | 'certificates' | 'hobbies'>,
-    value: string
+    value: string,
   ) => void
 
   reorderSection: (newOrder: string[]) => void
@@ -140,7 +141,7 @@ interface ResumeState {
   setStructureOpen: (isOpen: boolean) => void
   setAIPanelOpen: (isOpen: boolean) => void
   setStatusMessage: (
-    message: { text: string; type: 'success' | 'info' } | null
+    message: { text: string; type: 'success' | 'info' } | null,
   ) => void
 
   updateStyleConfig: (config: Partial<ResumeState['styleConfig']>) => void
@@ -164,9 +165,10 @@ const debouncedSave = debounce(
     data: ResumeData,
     config: SectionConfig,
     opsJson: any,
-    set: any
+    set: any,
   ) => {
     if (!serviceId) return
+    const sanitizedData = stripAvatarFromResumeData(data)
 
     set((state: ResumeState) => {
       state.isSaving = true
@@ -175,7 +177,7 @@ const debouncedSave = debounce(
     try {
       const res = await updateCustomizedResumeAction({
         serviceId,
-        resumeData: data,
+        resumeData: sanitizedData,
         sectionConfig: config,
         opsJson,
       })
@@ -202,13 +204,25 @@ const debouncedSave = debounce(
       })
     }
   },
-  2000
+  2000,
 )
+
+const stripAvatarFromResumeData = (data?: ResumeData | null) => {
+  if (!data) return data
+  if (!data.basics?.photoUrl) return data
+  return {
+    ...data,
+    basics: {
+      ...data.basics,
+      photoUrl: undefined,
+    },
+  }
+}
 
 // Define the Immer-compatible SetState type
 type ImmerSet<T> = (
   next: ((state: Draft<T>) => void) | Partial<T> | T,
-  shouldReplace?: boolean
+  shouldReplace?: boolean,
 ) => void
 
 // Define the GetState type
@@ -218,7 +232,7 @@ type ImmerGet<T> = () => T
 // This avoids the 'StateCreator' generic constraint issues in strict mode
 const createResumeSlice = (
   set: ImmerSet<ResumeState>,
-  get: ImmerGet<ResumeState>
+  get: ImmerGet<ResumeState>,
 ): ResumeState => ({
   serviceId: null,
   resumeData: null,
@@ -266,7 +280,7 @@ const createResumeSlice = (
     config,
     optimizeSuggestion,
     opsJson,
-    readOnly = false
+    readOnly = false,
   ) => {
     set((state) => {
       state.serviceId = serviceId
@@ -275,18 +289,10 @@ const createResumeSlice = (
 
       // MVP: Check localStorage for avatar if missing in data
       // This runs on client side only
-      if (
-        typeof window !== 'undefined' &&
-        data?.basics &&
-        !data.basics.photoUrl
-      ) {
-        try {
-          const cachedAvatar = localStorage.getItem('user_avatar')
-          if (cachedAvatar) {
-            state.resumeData!.basics.photoUrl = cachedAvatar
-          }
-        } catch {
-          // non-fatal: localStorage may be blocked in incognito mode
+      if (data?.basics && !data.basics.photoUrl) {
+        const cachedAvatar = loadLocalAvatar()
+        if (cachedAvatar) {
+          state.resumeData!.basics.photoUrl = cachedAvatar
         }
       }
 
@@ -294,8 +300,10 @@ const createResumeSlice = (
       state.sectionConfig = config || DEFAULT_SECTION_CONFIG
       state.optimizeSuggestion = optimizeSuggestion || null
 
-      const targetTemplate = (opsJson?.currentTemplate as TemplateId) || 'standard'
-      const templateDefaults = TemplateDefaultsMap[targetTemplate] || StandardDefaults
+      const targetTemplate =
+        (opsJson?.currentTemplate as TemplateId) || 'standard'
+      const templateDefaults =
+        TemplateDefaultsMap[targetTemplate] || StandardDefaults
 
       state.currentTemplate = targetTemplate
 
@@ -304,7 +312,7 @@ const createResumeSlice = (
       // 2. Override with any saved style config from DB
       state.styleConfig = {
         ...state.styleConfig, // Keep base structural defaults (if any)
-        ...templateDefaults,  // Apply template-specific defaults (e.g. Standard Grey)
+        ...templateDefaults, // Apply template-specific defaults (e.g. Standard Grey)
         ...(opsJson?.styleConfig || {}), // Apply user saved overrides
       }
     })
@@ -325,13 +333,13 @@ const createResumeSlice = (
         if (!state.resumeData.sectionTitles) {
           state.resumeData.sectionTitles = {}
         }
-        (state.resumeData.sectionTitles as Record<string, string | undefined>)[sectionKey] = title
+        ;(state.resumeData.sectionTitles as Record<string, string | undefined>)[
+          sectionKey
+        ] = title
       }
     })
     get().markDirty('resumeData')
   },
-
-
 
   togglePageBreak: (sectionKey) => {
     set((state) => {
@@ -339,8 +347,11 @@ const createResumeSlice = (
         state.sectionConfig.pageBreaks = {}
       }
       // Toggle
-      (state.sectionConfig.pageBreaks as Record<string, boolean | undefined>)[sectionKey] =
-        !(state.sectionConfig.pageBreaks as Record<string, boolean | undefined>)[sectionKey]
+      ;(state.sectionConfig.pageBreaks as Record<string, boolean | undefined>)[
+        sectionKey
+      ] = !(
+        state.sectionConfig.pageBreaks as Record<string, boolean | undefined>
+      )[sectionKey]
     })
     get().markDirty('sectionConfig')
   },
@@ -365,7 +376,9 @@ const createResumeSlice = (
         const arr = state.resumeData[sectionKey] as Array<{ id: string }>
         // Add basic empty item with ID
         if (sectionKey === 'customSections') {
-          arr.push({ id, title: 'New Section', description: '' } as { id: string })
+          arr.push({ id, title: 'New Section', description: '' } as {
+            id: string
+          })
         } else {
           arr.push({ id, description: '' } as { id: string })
         }
@@ -502,7 +515,7 @@ const createResumeSlice = (
         resumeData,
         sectionConfig,
         { styleConfig, currentTemplate },
-        set
+        set,
       )
     }
   },
@@ -584,7 +597,7 @@ const createResumeSlice = (
       } = { serviceId }
 
       if (dirtyFields.includes('resumeData') && resumeData) {
-        payload.resumeData = resumeData
+        payload.resumeData = stripAvatarFromResumeData(resumeData)
       }
       if (dirtyFields.includes('sectionConfig')) {
         payload.sectionConfig = sectionConfig
@@ -608,7 +621,10 @@ const createResumeSlice = (
         set((state) => {
           state.isSaving = false
         })
-        return { ok: false, error: 'error' in res ? String(res.error) : 'Save failed' }
+        return {
+          ok: false,
+          error: 'error' in res ? String(res.error) : 'Save failed',
+        }
       }
     } catch (e) {
       set((state) => {
@@ -625,5 +641,5 @@ const createResumeSlice = (
 // Note: immer middleware requires 'as any' due to zustand v5 StateCreator type constraints.
 // The slice implementation above remains fully type-safe; this is a known middleware compatibility issue.
 export const useResumeStore = create<ResumeState>()(
-  (immer as any)(createResumeSlice)
+  (immer as any)(createResumeSlice),
 )

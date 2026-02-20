@@ -6,6 +6,8 @@ import {
   upsertResumeShareByCustomizedId,
 } from '@/lib/dal/resumeShare'
 import { createAnalyticsEvent } from '@/lib/dal/analyticsEvent'
+import { resolveAvatarForShare } from '@/lib/storage/avatar-server'
+import { logError } from '@/lib/logger'
 
 export type ShareLinkResult =
   | { ok: true; data: any }
@@ -23,12 +25,23 @@ export async function trackShareEventAction(params: {
 }
 
 export const generateShareLinkAction = withServerActionAuthWrite<
-  { serviceId: string; durationDays: number | null },
+  {
+    serviceId: string
+    durationDays: number | null
+    avatarBase64?: string | null
+  },
   ShareLinkResult
 >(
   'generateShareLinkAction',
-  async (params: { serviceId: string; durationDays: number | null }, ctx) => {
-    const { serviceId, durationDays } = params
+  async (
+    params: {
+      serviceId: string
+      durationDays: number | null
+      avatarBase64?: string | null
+    },
+    ctx,
+  ) => {
+    const { serviceId, durationDays, avatarBase64 } = params
     const userId = ctx.userId
 
     const shareCtx = await getResumeShareContextForUser(serviceId, userId)
@@ -42,11 +55,27 @@ export const generateShareLinkAction = withServerActionAuthWrite<
       expireAt.setDate(expireAt.getDate() + durationDays)
     }
 
+    const resolvedAvatar = await resolveAvatarForShare(
+      avatarBase64,
+      serviceId,
+    )
+    if (!resolvedAvatar.ok) {
+      logError({
+        reqId: serviceId,
+        route: 'actions/share',
+        phase: 'upload_avatar_failed',
+        error: resolvedAvatar.error,
+      })
+      return { ok: false, error: resolvedAvatar.error }
+    }
+    const avatarUrl = resolvedAvatar.avatarUrl
+
     const share = await upsertResumeShareByCustomizedId(
       shareCtx.customizedResumeId,
       {
         isEnabled: true,
         expireAt,
+        ...(avatarUrl ? { avatarUrl } : {}),
       },
     )
     return { ok: true, data: share }

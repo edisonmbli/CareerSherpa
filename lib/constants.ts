@@ -31,6 +31,7 @@ export const TASK_COSTS: Record<string, number> = {
 }
 
 export const JOB_IMAGE_MAX_BYTES = 600 * 1024
+export const AVATAR_MAX_BYTES = 300 * 1024
 
 export const RATE_LIMIT_FAIL_CLOSED_RETRY_AFTER_SEC = 60
 export const CONCURRENCY_PERSISTENT_TTL_SECONDS = 30 * 24 * 60 * 60

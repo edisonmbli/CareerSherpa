@@ -99,6 +99,7 @@ export default async function SharedResumePage({ params }: PageProps) {
   const styleConfig = ops?.styleConfig || {}
   const templateId = ops?.currentTemplate || 'standard'
   const isOwner = user?.id && data.userId && user.id === data.userId
+  const avatarUrl = data.share?.avatarUrl ?? null
 
   return (
     <div className="min-h-screen bg-slate-100/50 relative pb-20 print:bg-white print:pb-0">
@@ -115,6 +116,7 @@ export default async function SharedResumePage({ params }: PageProps) {
           sectionConfig={finalSectionConfig}
           styleConfig={styleConfig}
           templateId={templateId}
+          avatarUrl={avatarUrl}
         />
       </SharedResumeLayout>
     </div>

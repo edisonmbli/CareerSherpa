@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useResumeStore } from '@/store/resume-store'
 import { ResumePreview } from '@/components/resume/editor/ResumePreview'
 import { Loader2 } from 'lucide-react'
@@ -11,6 +11,7 @@ interface PublicResumeViewerProps {
   sectionConfig: any
   styleConfig: any
   templateId: string
+  avatarUrl?: string | null
 }
 
 export function PublicResumeViewer({
@@ -19,15 +20,27 @@ export function PublicResumeViewer({
   sectionConfig,
   styleConfig,
   templateId,
+  avatarUrl,
 }: PublicResumeViewerProps) {
   const { initStore } = useResumeStore()
   const [ready, setReady] = useState(false)
+  const mergedResumeData = useMemo(() => {
+    if (!resumeData) return resumeData
+    if (!avatarUrl) return resumeData
+    return {
+      ...resumeData,
+      basics: {
+        ...(resumeData.basics || {}),
+        photoUrl: avatarUrl,
+      },
+    }
+  }, [resumeData, avatarUrl])
 
   useEffect(() => {
     // Initialize store in ReadOnly mode
     initStore(
       serviceId,
-      resumeData,
+      mergedResumeData,
       null, // originalData
       sectionConfig,
       null, // suggestion
@@ -35,7 +48,14 @@ export function PublicResumeViewer({
       true // readOnly
     )
     setReady(true)
-  }, [serviceId, resumeData, sectionConfig, styleConfig, templateId, initStore])
+  }, [
+    serviceId,
+    mergedResumeData,
+    sectionConfig,
+    styleConfig,
+    templateId,
+    initStore,
+  ])
 
   if (!ready) {
     return (
@@ -50,7 +70,7 @@ export function PublicResumeViewer({
        <div className="w-full max-w-[210mm] shadow-2xl print:shadow-none">
           <ResumePreview 
             templateId={templateId as any} 
-            data={resumeData} 
+            data={mergedResumeData} 
             config={sectionConfig} 
           />
        </div>
