@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useResumeStore } from '@/store/resume-store'
-import { uiLog } from '@/lib/ui/sse-debug-logger'
 import { ResumePreview } from '@/components/resume/editor/ResumePreview'
 import { Loader2 } from 'lucide-react'
 
@@ -22,7 +21,6 @@ export function PublicResumeViewer({
   avatarUrl,
 }: PublicResumeViewerProps) {
   const { initStore } = useResumeStore()
-  const storeStyleConfig = useResumeStore((state) => state.styleConfig)
   const storeTemplateId = useResumeStore((state) => state.currentTemplate)
   const [ready, setReady] = useState(false)
   const mergedResumeData = useMemo(() => {
@@ -55,23 +53,6 @@ export function PublicResumeViewer({
     sectionConfig,
     opsJson,
     initStore,
-  ])
-
-  useEffect(() => {
-    if (!ready) return
-    uiLog.info('share_viewer_style_state', {
-      serviceId,
-      opsTemplateId: opsJson?.currentTemplate,
-      storeTemplateId,
-      opsStyleConfig: opsJson?.styleConfig,
-      storeStyleConfig,
-    })
-  }, [
-    ready,
-    serviceId,
-    storeTemplateId,
-    opsJson,
-    storeStyleConfig,
   ])
 
   if (!ready) {

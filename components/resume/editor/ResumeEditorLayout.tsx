@@ -100,17 +100,12 @@ export function ResumeEditorLayout({
     return () => window.removeEventListener('resize', checkLayoutMode)
   }, [])
 
-  // Debug info state
-  const [debugInfo, setDebugInfo] = useState<any>({})
-
   // 3. Smart Auto-Scale Logic (Only active in Column Mode)
   useEffect(() => {
     const calculateScale = () => {
       if (!centerContainerRef.current) return
 
       const containerWidth = centerContainerRef.current.clientWidth
-      const containerHeight = centerContainerRef.current.clientHeight
-      const scrollHeight = centerContainerRef.current.scrollHeight
 
       // A4 width ~794px + margin
       // Mobile: Use simpler ratio to fill width
@@ -131,17 +126,6 @@ export function ResumeEditorLayout({
       }
 
       setScale(newScale)
-
-      // Update debug info
-      setDebugInfo({
-        viewportW: window.innerWidth,
-        viewportH: window.innerHeight,
-        containerW: containerWidth,
-        containerH: containerHeight,
-        scrollH: scrollHeight,
-        scale: newScale.toFixed(3),
-        pb: '50vh',
-      })
     }
 
     calculateScale()
@@ -149,23 +133,10 @@ export function ResumeEditorLayout({
     if (centerContainerRef.current) observer.observe(centerContainerRef.current)
 
     window.addEventListener('resize', calculateScale)
-    // Add scroll listener to update debug info dynamically
-    const scrollEl = centerContainerRef.current
-    const handleScroll = () => {
-      if (scrollEl) {
-        setDebugInfo((prev: any) => ({
-          ...prev,
-          scrollTop: scrollEl.scrollTop,
-          scrollH: scrollEl.scrollHeight,
-        }))
-      }
-    }
-    if (scrollEl) scrollEl.addEventListener('scroll', handleScroll)
 
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', calculateScale)
-      if (scrollEl) scrollEl.removeEventListener('scroll', handleScroll)
     }
   }, [isStructureOpen, isAIPanelOpen, isDrawerMode])
 
@@ -175,8 +146,6 @@ export function ResumeEditorLayout({
         'flex w-full bg-gray-50/50 dark:bg-zinc-950 relative flex-col h-full overflow-hidden',
       )}
     >
-      {/* Debug Overlay - REMOVED */}
-
       {/* Top Toolbar - Hidden on Mobile */}
       <div className="hidden md:block">
         <ResumeToolbar printRef={printRef as any} />

@@ -57,7 +57,6 @@ import { SaveIndicator } from '@/components/ui/SaveIndicator'
 import { useResumeDict } from '../ResumeDictContext'
 import { ShareResumeDialog } from '@/components/resume/share/ShareResumeDialog'
 import { generateMarkdown } from '@/lib/export-utils'
-import { uiLog } from '@/lib/ui/sse-debug-logger'
 
 interface ResumeToolbarProps {
   printRef: React.RefObject<HTMLDivElement>
@@ -255,28 +254,6 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
     pageStyle: printPageStyle,
     // @ts-expect-error - onBeforeGetContent is supported in v3 but types might be outdated
     onBeforeGetContent: async () => {
-      const node = printRef.current
-      const inlineVars = node
-        ? {
-          paddingX: node.style.getPropertyValue('--resume-padding-x'),
-          paddingY: node.style.getPropertyValue('--resume-padding-y'),
-          baseFontSize: node.style.getPropertyValue('--resume-base-font-size'),
-          lineHeight: node.style.getPropertyValue('--resume-line-height'),
-          paragraphSpacing: node.style.getPropertyValue(
-            '--resume-paragraph-spacing',
-          ),
-          sectionSpacing: node.style.getPropertyValue(
-            '--resume-section-spacing',
-          ),
-          itemSpacing: node.style.getPropertyValue('--resume-item-spacing'),
-        }
-        : null
-      uiLog.info('editor_print_style_state', {
-        serviceId,
-        templateId: currentTemplate,
-        styleConfig,
-        inlineVars,
-      })
       // Direct store access to ensure immediate state update
       useResumeStore.getState().setActive(null, null)
 
