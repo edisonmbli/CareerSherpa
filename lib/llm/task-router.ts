@@ -127,7 +127,7 @@ const ROUTING_TABLE: Partial<
   // Light: OCR 提取
   ocr_extract: {
     paid: {
-      modelId: MODEL.GLM_VISION_THINKING_FLASH,
+      modelId: MODEL.BAIDU_OCR_API,
       queueId: QueueId.PAID_LIGHT,
       isStream: false,
     },
@@ -189,15 +189,15 @@ export const getTaskRouting = (
 export const getJobVisionTaskRouting = (hasQuota: boolean): TaskRouting => {
   return hasQuota
     ? {
-        modelId: MODEL.GLM_VISION_THINKING_FLASH,
-        queueId: QueueId.PAID_LIGHT,
-        isStream: false,
-      }
+      modelId: MODEL.BAIDU_OCR_API,
+      queueId: QueueId.PAID_LIGHT,
+      isStream: false,
+    }
     : {
-        modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
-        queueId: QueueId.FREE_LIGHT,
-        isStream: false,
-      }
+      modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
+      queueId: QueueId.FREE_LIGHT,
+      isStream: false,
+    }
 }
 
 export const isServiceScoped = (t: TaskTemplateId): boolean => {

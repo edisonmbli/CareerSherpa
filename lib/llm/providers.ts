@@ -426,13 +426,15 @@ export const ModelId = {
   GLM_VISION_THINKING_FLASH: 'glm-4.1v-thinking-flash',
   GLM_EMBEDDING_3: 'glm-embedding-3',
   GEMINI_3_FLASH_PREVIEW: 'gemini-3-flash-preview',
+  BAIDU_OCR_API: 'baidu-ocr-api',
 } as const
 
 export type ModelId = typeof ModelId[keyof typeof ModelId]
 
-export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' | 'gemini' {
+export function providerFromModelId(modelId: ModelId): 'deepseek' | 'zhipu' | 'gemini' | 'baidu' {
   if (modelId.startsWith('deepseek')) return 'deepseek'
   if (modelId.startsWith('gemini')) return 'gemini'
+  if (modelId.startsWith('baidu')) return 'baidu'
   return 'zhipu'
 }
 
@@ -483,6 +485,10 @@ export function getModel(
       ...(timeout !== undefined ? { timeout } : {}),
     }
     return new ChatZhipuAI(params)
+  }
+
+  if (modelId === 'baidu-ocr-api') {
+    throw new Error('BAIDU_OCR_API is directly invoked by strategy and should not be instantiated via getModel')
   }
 
   if (modelId === 'glm-4.1v-thinking-flash') {

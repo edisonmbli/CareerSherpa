@@ -40,6 +40,8 @@ export function getMaxWorkersForModel(
     return cfg.modelTierLimits.geminiFlashPaid
   if (id.startsWith('gemini') && tier === 'free')
     return cfg.modelTierLimits.geminiFlashFree
+  if (id === 'baidu-ocr-api')
+    return 10 // Based on typical Baidu QPS API limits, can be adjusted via ENV
   const provider = getProvider(modelId as any)
   return provider === 'deepseek' ? cfg.deepseekMaxWorkers : cfg.glmMaxWorkers
 }

@@ -1,8 +1,9 @@
 import type { ModelId } from './providers'
 
-export function getProvider(modelId: ModelId): 'deepseek' | 'zhipu' | 'gemini' {
+export function getProvider(modelId: ModelId): 'deepseek' | 'zhipu' | 'gemini' | 'baidu' {
   if (modelId.startsWith('deepseek')) return 'deepseek'
   if (modelId.startsWith('gemini')) return 'gemini'
+  if (modelId.startsWith('baidu')) return 'baidu'
   return 'zhipu'
 }
 
@@ -16,6 +17,7 @@ const COST_PER_1K: Record<ModelId, { input: number; output: number }> = {
   'glm-embedding-3': { input: 0.0005, output: 0 },
   // Gemini Free tier (within daily limit, effectively free)
   'gemini-3-flash-preview': { input: 0.00015, output: 0.00060 },
+  'baidu-ocr-api': { input: 0.000, output: 0.000 }, // Managed via Baidu directly, handled differently
 }
 
 export function getCost(

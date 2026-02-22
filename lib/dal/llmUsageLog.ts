@@ -33,7 +33,7 @@ export interface LlmUsageLogDetailedParams {
   userId?: string
   serviceId?: string
   taskTemplateId: TaskTemplateId
-  provider: 'deepseek' | 'zhipu' | 'gemini'
+  provider: 'deepseek' | 'zhipu' | 'gemini' | 'baidu'
   modelId: ModelId // canonical model id, e.g. 'deepseek-chat'
   modelName?: string
   inputTokens: number
