@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { logError } from '@/lib/logger'
+import { logError, logInfo } from '@/lib/logger'
 import { nanoid } from 'nanoid'
 
 /**
@@ -209,6 +209,63 @@ export async function getSharedResumeByKey(
   const { customizedResume } = share
   const { service } = customizedResume
   const { resume } = service
+  let opsJson = customizedResume.ops_json as any
+  let fallbackApplied = false
+  let opsWasString = false
+  if (typeof opsJson === 'string') {
+    opsWasString = true
+    try {
+      opsJson = JSON.parse(opsJson)
+    } catch {
+      opsJson = null
+    }
+  }
+  if (opsJson && typeof opsJson === 'object') {
+    const rawStyleConfig = (opsJson as any)?.styleConfig
+    if (typeof rawStyleConfig === 'string') {
+      try {
+        opsJson = {
+          ...(opsJson as Record<string, unknown>),
+          styleConfig: JSON.parse(rawStyleConfig),
+        }
+      } catch {
+        opsJson = {
+          ...(opsJson as Record<string, unknown>),
+          styleConfig: {},
+        }
+      }
+    }
+  }
+  if (!opsJson || typeof opsJson !== 'object') {
+    fallbackApplied = true
+    opsJson = {
+      currentTemplate: 'standard',
+      styleConfig: {},
+    }
+  }
+  customizedResume.ops_json = opsJson
+  const styleConfig = opsJson?.styleConfig || {}
+  logInfo({
+    reqId: share.id,
+    route: 'dal/resumeShare',
+    phase: 'fetch_shared_resume',
+    serviceId: service.id,
+    hasOps: Boolean(customizedResume.ops_json),
+    opsWasString,
+    fallbackApplied,
+    templateId: opsJson?.currentTemplate,
+    styleKeys: Object.keys(styleConfig || {}),
+    styleSnapshot: {
+      themeColor: styleConfig?.themeColor,
+      fontFamily: styleConfig?.fontFamily,
+      fontSize: styleConfig?.fontSize,
+      baseFontSize: styleConfig?.baseFontSize,
+      lineHeight: styleConfig?.lineHeight,
+      pageMargin: styleConfig?.pageMargin,
+      sectionSpacing: styleConfig?.sectionSpacing,
+      itemSpacing: styleConfig?.itemSpacing,
+    },
+  })
 
   // Return a structure compatible with what the Resume Store expects
   // We flatten it a bit or return the service object with relations

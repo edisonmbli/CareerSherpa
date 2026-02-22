@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useResumeStore } from '@/store/resume-store'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
 import { ResumePreview } from '@/components/resume/editor/ResumePreview'
 import { Loader2 } from 'lucide-react'
 
@@ -9,8 +10,7 @@ interface PublicResumeViewerProps {
   serviceId: string
   resumeData: any
   sectionConfig: any
-  styleConfig: any
-  templateId: string
+  opsJson?: any
   avatarUrl?: string | null
 }
 
@@ -18,11 +18,12 @@ export function PublicResumeViewer({
   serviceId,
   resumeData,
   sectionConfig,
-  styleConfig,
-  templateId,
+  opsJson,
   avatarUrl,
 }: PublicResumeViewerProps) {
   const { initStore } = useResumeStore()
+  const storeStyleConfig = useResumeStore((state) => state.styleConfig)
+  const storeTemplateId = useResumeStore((state) => state.currentTemplate)
   const [ready, setReady] = useState(false)
   const mergedResumeData = useMemo(() => {
     if (!resumeData) return resumeData
@@ -44,17 +45,33 @@ export function PublicResumeViewer({
       null, // originalData
       sectionConfig,
       null, // suggestion
-      { styleConfig, currentTemplate: templateId }, // opsJson (mock)
-      true // readOnly
+      opsJson,
+      true, // readOnly
     )
     setReady(true)
   }, [
     serviceId,
     mergedResumeData,
     sectionConfig,
-    styleConfig,
-    templateId,
+    opsJson,
     initStore,
+  ])
+
+  useEffect(() => {
+    if (!ready) return
+    uiLog.info('share_viewer_style_state', {
+      serviceId,
+      opsTemplateId: opsJson?.currentTemplate,
+      storeTemplateId,
+      opsStyleConfig: opsJson?.styleConfig,
+      storeStyleConfig,
+    })
+  }, [
+    ready,
+    serviceId,
+    storeTemplateId,
+    opsJson,
+    storeStyleConfig,
   ])
 
   if (!ready) {
@@ -67,13 +84,13 @@ export function PublicResumeViewer({
 
   return (
     <div className="flex justify-center w-full">
-       <div className="w-full max-w-[210mm] shadow-2xl print:shadow-none">
-          <ResumePreview 
-            templateId={templateId as any} 
-            data={mergedResumeData} 
-            config={sectionConfig} 
-          />
-       </div>
+      <div className="w-full max-w-[210mm] shadow-2xl print:shadow-none">
+        <ResumePreview
+          templateId={storeTemplateId as any}
+          data={mergedResumeData}
+          config={sectionConfig}
+        />
+      </div>
     </div>
   )
 }

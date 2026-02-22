@@ -96,7 +96,6 @@ export default async function SharedResumePage({ params }: PageProps) {
   
   // Parse ops_json for styleConfig
   const ops = ops_json as any
-  const styleConfig = ops?.styleConfig || {}
   const templateId = ops?.currentTemplate || 'standard'
   const isOwner = user?.id && data.userId && user.id === data.userId
   const avatarUrl = data.share?.avatarUrl ?? null
@@ -114,8 +113,7 @@ export default async function SharedResumePage({ params }: PageProps) {
           serviceId={data.id}
           resumeData={finalResumeData}
           sectionConfig={finalSectionConfig}
-          styleConfig={styleConfig}
-          templateId={templateId}
+          opsJson={ops}
           avatarUrl={avatarUrl}
         />
       </SharedResumeLayout>

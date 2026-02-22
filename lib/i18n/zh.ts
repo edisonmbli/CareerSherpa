@@ -1014,10 +1014,12 @@ const dict = {
         actionFailed: '操作失败',
       },
       public: {
-        bannerText: '这份简历由 CareerShaper AI 强力助攻',
+        bannerText: 'CareerShaper AI，你的专属求职教练',
         cta: '我也要生成',
         footerText: 'By CareerShaper',
         printFooter: '由 CareerShaper AI 生成',
+        exportPdf: '导出',
+        print: '打印',
         metaTitle: '专业简历 - CareerShaper',
         metaDesc: '查看由 AI 生成的专业简历。',
         status: {

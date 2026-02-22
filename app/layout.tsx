@@ -4,6 +4,8 @@ import {
   Geist_Mono,
   Roboto,
   Noto_Serif,
+  Noto_Sans_SC,
+  Noto_Serif_SC,
   Lato,
   Open_Sans,
   Playfair_Display,
@@ -40,6 +42,18 @@ const notoSerif = Noto_Serif({
   weight: ['400', '700'],
   subsets: ['latin'],
   variable: '--font-noto-serif',
+})
+
+const notoSansSc = Noto_Sans_SC({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-noto-sans-sc',
+})
+
+const notoSerifSc = Noto_Serif_SC({
+  weight: ['400', '700'],
+  subsets: ['latin'],
+  variable: '--font-noto-serif-sc',
 })
 
 const lato = Lato({
@@ -96,6 +110,8 @@ export default function RootLayout({
           ${geistMono.variable} 
           ${roboto.variable}
           ${notoSerif.variable}
+          ${notoSansSc.variable}
+          ${notoSerifSc.variable}
           ${lato.variable}
           ${openSans.variable}
           ${playfair.variable}

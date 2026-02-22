@@ -15,25 +15,25 @@ const DEFAULT_CONFIG: ResumeStyleConfig = {
 const getFontFamilyClass = (family: string) => {
   switch (family) {
     case 'serif':
-      return 'font-[family-name:var(--font-noto-serif),serif]'
+      return 'font-[var(--font-noto-serif),var(--font-cjk-serif),serif]'
     case 'mono':
-      return 'font-mono'
+      return 'font-[var(--font-jetbrains-mono),var(--font-cjk-sans),monospace]'
     case 'lato':
-      return 'font-[family-name:var(--font-lato),sans-serif]'
+      return 'font-[var(--font-lato),var(--font-cjk-sans),sans-serif]'
     case 'open-sans':
-      return 'font-[family-name:var(--font-open-sans),sans-serif]'
+      return 'font-[var(--font-open-sans),var(--font-cjk-sans),sans-serif]'
     case 'playfair':
-      return 'font-[family-name:var(--font-playfair),serif]'
+      return 'font-[var(--font-playfair),var(--font-cjk-serif),serif]'
     case 'jetbrains-mono':
-      return 'font-[family-name:var(--font-jetbrains-mono),monospace]'
+      return 'font-[var(--font-jetbrains-mono),var(--font-cjk-sans),monospace]'
     case 'ibm-plex-mono':
-      return 'font-[family-name:var(--font-ibm-plex-mono),monospace]'
+      return 'font-[var(--font-ibm-plex-mono),var(--font-cjk-sans),monospace]'
     case 'roboto':
-      return 'font-[family-name:var(--font-roboto),sans-serif]'
+      return 'font-[var(--font-roboto),var(--font-cjk-sans),sans-serif]'
     case 'inter':
-      return 'font-[family-name:var(--font-inter),sans-serif]'
+      return 'font-[var(--font-inter),var(--font-cjk-sans),sans-serif]'
     default:
-      return 'font-[family-name:var(--font-roboto),sans-serif]'
+      return 'font-[var(--font-roboto),var(--font-cjk-sans),sans-serif]'
   }
 }
 

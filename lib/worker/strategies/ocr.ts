@@ -10,6 +10,7 @@ import {
   updateServiceExecutionStatus,
   txMarkSummaryFailed,
   getServiceStatus,
+  clearJobImageData,
 } from '@/lib/dal/services'
 import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
@@ -21,6 +22,7 @@ import { logError, logInfo } from '@/lib/logger'
 // Phase 1.5: Baidu OCR for Paid tier
 import { extractTextFromBaidu, isBaiduOcrReady } from '@/lib/services/baidu-ocr'
 import { compressIfNeeded } from '@/lib/utils/image-compress'
+import { toDataUrlFromImageSource } from '@/lib/utils/image-compress'
 
 /**
  * Strategy for OCR Extraction tasks.
@@ -36,12 +38,21 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
     const vars: Record<string, any> = { ...variables }
     const { serviceId, taskId } = ctx
     const image = vars['image']
+    const normalizedImage = image
+      ? await toDataUrlFromImageSource(
+          String(image),
+          ENV.NEXT_PUBLIC_APP_BASE_URL || undefined,
+        )
+      : image
+    if (normalizedImage) {
+      vars['image'] = normalizedImage
+    }
     const isPaidTier = !!variables.wasPaid
-    if (isPaidTier && isBaiduOcrReady() && image) {
+    if (isPaidTier && isBaiduOcrReady() && normalizedImage) {
       try {
         await markTimeline(serviceId, 'baidu_ocr_start', { taskId })
         const t0Baidu = Date.now()
-        const compressedBase64 = await compressIfNeeded(image)
+        const compressedBase64 = await compressIfNeeded(normalizedImage)
         const ocrResult = await extractTextFromBaidu(compressedBase64)
         const t1Baidu = Date.now()
         await markTimeline(serviceId, 'baidu_ocr_end', {
@@ -218,6 +229,15 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         )
 
       const channel = getChannel(userId, serviceId, taskId)
+      const cleanupPromise = clearJobImageData(serviceId).catch((err) =>
+        logError({
+          reqId: requestId,
+          route: 'worker/ocr',
+          error: String(err),
+          phase: 'cleanup_job_image',
+          serviceId,
+        }),
+      )
 
       const publishPromise = Promise.all([
         publishEvent(channel, {
@@ -250,7 +270,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
       )
 
       // Run them in parallel
-      await Promise.all([dbUpdatePromise, publishPromise])
+      await Promise.all([dbUpdatePromise, publishPromise, cleanupPromise])
     } catch (err) {
       // This catch might catch synchronous errors if any
       logError({

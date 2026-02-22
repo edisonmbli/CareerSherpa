@@ -1,10 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Sparkles, ExternalLink } from 'lucide-react'
+import { X, Sparkles, ExternalLink, FileDown, Printer } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useReactToPrint } from 'react-to-print'
+import { useResumeStore } from '@/store/resume-store'
+import { uiLog } from '@/lib/ui/sse-debug-logger'
+import {
+  RESUME_SCREEN_BASE_WIDTH_PX,
+  RESUME_SCREEN_DESKTOP_PADDING_PX,
+  RESUME_SCREEN_DESKTOP_SCALE,
+  RESUME_SCREEN_MIN_SCALE,
+  RESUME_SCREEN_MOBILE_BREAKPOINT_PX,
+  RESUME_SCREEN_MOBILE_PADDING_PX,
+} from '@/lib/constants'
 
 interface SharedResumeLayoutProps {
   children: React.ReactNode
@@ -15,6 +26,8 @@ interface SharedResumeLayoutProps {
     cta: string
     footerText: string
     printFooter: string
+    exportPdf: string
+    print: string
   }
 }
 
@@ -26,6 +39,114 @@ export function SharedResumeLayout({
 }: SharedResumeLayoutProps) {
   const [showBanner, setShowBanner] = useState(showHook)
   const [isClosing, setIsClosing] = useState(false)
+  const printRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const scaleWrapperRef = useRef<HTMLDivElement>(null)
+  const [screenScale, setScreenScale] = useState(1)
+  const styleConfig = useResumeStore((state) => state.styleConfig)
+  // printRef is resolved at click time (see handleExportPdfClick / handlePrintClick)
+  // NOT in useEffect — the useEffect fires before PublicResumeViewer finishes
+  // its own initialization (setReady(true)), so .resume-paper wouldn't exist yet.
+  useEffect(() => {
+    const container = scaleWrapperRef.current?.parentElement
+    if (!container) return
+    const updateScale = () => {
+      const containerWidth = container.clientWidth
+      const isMobile = window.innerWidth < RESUME_SCREEN_MOBILE_BREAKPOINT_PX
+      let newScale = 1
+      if (containerWidth < RESUME_SCREEN_BASE_WIDTH_PX) {
+        const availableWidth = isMobile
+          ? window.innerWidth - RESUME_SCREEN_MOBILE_PADDING_PX
+          : containerWidth - RESUME_SCREEN_DESKTOP_PADDING_PX
+        newScale = Math.max(
+          RESUME_SCREEN_MIN_SCALE,
+          availableWidth / RESUME_SCREEN_BASE_WIDTH_PX,
+        )
+      } else {
+        newScale = RESUME_SCREEN_DESKTOP_SCALE
+      }
+      setScreenScale(newScale)
+    }
+    updateScale()
+    const observer = new ResizeObserver(updateScale)
+    observer.observe(container)
+    window.addEventListener('resize', updateScale)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateScale)
+    }
+  }, [])
+
+  const printPageStyle = `
+@page { margin: 10mm; }
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+`
+
+  const collectInlineVars = () => {
+    const node = printRef.current
+    if (!node) return null
+    return {
+      paddingX: node.style.getPropertyValue('--resume-padding-x'),
+      paddingY: node.style.getPropertyValue('--resume-padding-y'),
+      baseFontSize: node.style.getPropertyValue('--resume-base-font-size'),
+      lineHeight: node.style.getPropertyValue('--resume-line-height'),
+      paragraphSpacing: node.style.getPropertyValue(
+        '--resume-paragraph-spacing',
+      ),
+      sectionSpacing: node.style.getPropertyValue('--resume-section-spacing'),
+      itemSpacing: node.style.getPropertyValue('--resume-item-spacing'),
+    }
+  }
+
+  const handleExportPdf = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'CareerShaper_Resume',
+    ignoreGlobalStyles: false,
+    pageStyle: printPageStyle,
+    onBeforeGetContent: async () => {
+      uiLog.info('share_export_style_state', {
+        styleConfig,
+        inlineVars: collectInlineVars(),
+      })
+      return Promise.resolve()
+    },
+  } as any)
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'CareerShaper_Print',
+    ignoreGlobalStyles: false,
+    pageStyle: printPageStyle,
+    onBeforeGetContent: async () => {
+      uiLog.info('share_print_style_state', {
+        styleConfig,
+        inlineVars: collectInlineVars(),
+      })
+      return Promise.resolve()
+    },
+  } as any)
+
+  const handleExportPdfClick = useCallback(async () => {
+    // Resolve .resume-paper at click time: PublicResumeViewer is guaranteed to
+    // be in ready=true state when the user clicks, so .resume-paper is in DOM.
+    const paper = wrapperRef.current?.querySelector<HTMLDivElement>('.resume-paper')
+    printRef.current = paper ?? (wrapperRef.current as HTMLDivElement)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    handleExportPdf()
+  }, [handleExportPdf])
+
+  const handlePrintClick = useCallback(async () => {
+    // Same: resolve .resume-paper at click time
+    const paper = wrapperRef.current?.querySelector<HTMLDivElement>('.resume-paper')
+    printRef.current = paper ?? (wrapperRef.current as HTMLDivElement)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    handlePrint()
+  }, [handlePrint])
 
   const handleClose = useCallback(() => {
     if (!showBanner) return
@@ -91,7 +212,54 @@ export function SharedResumeLayout({
           showHook && showBanner && !isClosing ? 'pt-20' : 'pt-8',
         )}
       >
-        {children}
+        <div className="relative mx-auto w-full max-w-[210mm]">
+          <div className="flex justify-center">
+            <div
+              ref={scaleWrapperRef}
+              className="resume-scale-wrapper origin-top transition-transform duration-[800ms] ease-out print:transform-none"
+              style={{
+                transform: screenScale === 1 ? 'none' : `scale(${screenScale})`,
+              }}
+            >
+              <div
+                ref={wrapperRef}
+                className="public-resume-content w-full max-w-[210mm]"
+              >
+                {children}
+              </div>
+            </div>
+          </div>
+          <div className="absolute top-0 left-1/2 hidden -translate-x-[calc(-105mm-48px)] md:flex flex-col gap-2 print:hidden">
+            <button
+              onClick={handleExportPdfClick}
+              className="group inline-flex items-center gap-2 self-start rounded-full border border-slate-200/60 bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:border-slate-300 hover:text-slate-900 hover:shadow-md"
+            >
+              <FileDown className="h-4 w-4 text-slate-500 group-hover:text-slate-900 transition-colors" />
+              <span>{text.exportPdf}</span>
+            </button>
+            <button
+              onClick={handlePrintClick}
+              className="group inline-flex items-center gap-2 self-start rounded-full border border-slate-200/60 bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:border-slate-300 hover:text-slate-900 hover:shadow-md"
+            >
+              <Printer className="h-4 w-4 text-slate-500 group-hover:text-slate-900 transition-colors" />
+              <span>{text.print}</span>
+            </button>
+          </div>
+          <div className="fixed right-4 top-4 z-40 flex items-center gap-2 md:hidden print:hidden">
+            <button
+              onClick={handleExportPdfClick}
+              className="group flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/60 bg-white/90 text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:border-slate-300 hover:text-slate-900 hover:shadow-md"
+            >
+              <FileDown className="h-4 w-4 text-slate-500 group-hover:text-slate-900 transition-colors" />
+            </button>
+            <button
+              onClick={handlePrintClick}
+              className="group flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/60 bg-white/90 text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:border-slate-300 hover:text-slate-900 hover:shadow-md"
+            >
+              <Printer className="h-4 w-4 text-slate-500 group-hover:text-slate-900 transition-colors" />
+            </button>
+          </div>
+        </div>
       </main>
 
       {showHook && (
@@ -109,10 +277,6 @@ export function SharedResumeLayout({
           </Link>
         </div>
       )}
-
-      <div className="hidden print:block fixed bottom-0 left-0 right-0 text-center py-2 text-xs text-gray-400 font-mono">
-        {text.printFooter}
-      </div>
     </>
   )
 }

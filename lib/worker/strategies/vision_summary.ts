@@ -5,6 +5,7 @@ import {
   txMarkSummaryFailed,
   updateServiceExecutionStatus,
   getServiceIdsForMatch,
+  clearJobImageData,
 } from '@/lib/dal/services'
 import { markTimeline } from '@/lib/observability/timeline'
 import { getChannel, publishEvent, buildMatchTaskId } from '@/lib/worker/common'
@@ -16,6 +17,8 @@ import {
 } from '@/lib/dal/coinLedger'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import { logError } from '@/lib/logger'
+import { toDataUrlFromImageSource } from '@/lib/utils/image-compress'
+import { ENV } from '@/lib/env'
 
 /**
  * Strategy for Free tier merged OCR + Job Summary (job_vision_summary).
@@ -30,6 +33,13 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
    */
   async prepareVars(variables: any, _ctx: StrategyContext) {
     const vars = { ...variables }
+    const image = vars['image']
+    if (image) {
+      vars['image'] = await toDataUrlFromImageSource(
+        String(image),
+        ENV.NEXT_PUBLIC_APP_BASE_URL || undefined,
+      )
+    }
     return vars
   }
 
@@ -67,6 +77,15 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
           route: 'worker/vision_summary',
           error: String(err),
           phase: 'mark_summary_completed',
+          serviceId,
+        }),
+      )
+      const cleanupPromise = clearJobImageData(serviceId).catch((err) =>
+        logError({
+          reqId: requestId,
+          route: 'worker/vision_summary',
+          error: String(err),
+          phase: 'cleanup_job_image',
           serviceId,
         }),
       )
@@ -121,7 +140,7 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
         }
       })()
 
-      await Promise.all([dbUpdatePromise, publishPromise])
+      await Promise.all([dbUpdatePromise, publishPromise, cleanupPromise])
 
       // Enqueue Match Task
       await this.enqueueMatchTask(variables, ctx, matchTaskId)

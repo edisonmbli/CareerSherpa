@@ -309,6 +309,10 @@ export function ShareResumeDialog({
   const shareUrl = shareKey
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}${sharePath}`
     : ''
+  const handlePreview = () => {
+    if (!sharePath) return
+    window.open(sharePath, '_blank', 'noopener,noreferrer')
+  }
   const feedbackClasses =
     feedback?.type === 'error'
       ? 'bg-red-50 text-red-700 border border-red-100/80 font-medium dark:bg-red-950/30 dark:text-red-200 dark:border-red-900/40'
@@ -633,15 +637,9 @@ export function ShareResumeDialog({
                               size="icon"
                               variant="outline"
                               className="shrink-0"
-                              asChild
+                              onClick={handlePreview}
                             >
-                              <a
-                                href={sharePath}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
+                              <ExternalLink className="w-4 h-4" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>

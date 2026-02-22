@@ -168,6 +168,33 @@ export async function getServiceForUser(serviceId: string, userId: string) {
       },
     },
   })
+  let opsWasString = false
+  let opsJson = service?.customizedResume?.ops_json as any
+  if (typeof opsJson === 'string') {
+    opsWasString = true
+    try {
+      opsJson = JSON.parse(opsJson)
+    } catch {
+      opsJson = null
+    }
+  }
+  if (opsJson && typeof opsJson === 'object') {
+    const rawStyleConfig = (opsJson as any)?.styleConfig
+    if (typeof rawStyleConfig === 'string') {
+      try {
+        opsJson = {
+          ...(opsJson as Record<string, unknown>),
+          styleConfig: JSON.parse(rawStyleConfig),
+        }
+      } catch {
+        opsJson = {
+          ...(opsJson as Record<string, unknown>),
+          styleConfig: {},
+        }
+      }
+    }
+  }
+  const styleConfig = (opsJson as any)?.styleConfig || null
   logInfo({
     reqId: serviceId,
     route: 'dal/services',
@@ -176,6 +203,22 @@ export async function getServiceForUser(serviceId: string, userId: string) {
     ...(userId ? { userKey: userId } : {}),
     ms: Date.now() - startedAt,
     ok: Boolean(service),
+    hasOps: Boolean(service?.customizedResume?.ops_json),
+    opsWasString,
+    templateId: (opsJson as any)?.currentTemplate,
+    styleKeys: styleConfig ? Object.keys(styleConfig) : [],
+    styleSnapshot: styleConfig
+      ? {
+          themeColor: styleConfig?.themeColor,
+          fontFamily: styleConfig?.fontFamily,
+          fontSize: styleConfig?.fontSize,
+          baseFontSize: styleConfig?.baseFontSize,
+          lineHeight: styleConfig?.lineHeight,
+          pageMargin: styleConfig?.pageMargin,
+          sectionSpacing: styleConfig?.sectionSpacing,
+          itemSpacing: styleConfig?.itemSpacing,
+        }
+      : null,
   })
   return service
 }
@@ -449,6 +492,18 @@ export async function updateJobOriginalText(
   originalText: string,
 ) {
   return prisma.job.update({ where: { serviceId }, data: { originalText } })
+}
+
+/**
+ * @desc Clear job image data after OCR/summary is completed
+ * @param serviceId Service ID for the job record
+ * @returns Updated job record
+ */
+export async function clearJobImageData(serviceId: string) {
+  return prisma.job.update({
+    where: { serviceId },
+    data: { originalImage: null, imageUrl: null },
+  })
 }
 
 export async function getJobOriginalImageById(id: string) {

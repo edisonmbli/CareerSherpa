@@ -45,36 +45,46 @@
   --sidebar-ring: oklch(0.7 0.01 240);
   --match-highlight: theme(colors.match-neutral.200);
   --match-text: theme(colors.match-neutral.600);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-neutral.700) 80%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-neutral.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-neutral.400) 70%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-neutral.300) 70%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-neutral.700) 80%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-neutral.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-neutral.400) 70%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-neutral.300) 70%,
+      transparent);
   --match-glow: theme(colors.match-neutral.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-neutral.200) 70%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-neutral.200) 70%,
+      transparent);
   --match-decoration: theme(colors.match-neutral.200);
   --match-accent: theme(colors.match-neutral.700);
   --match-gradient-start: theme(colors.match-neutral.600);
   --match-gradient-end: theme(colors.match-neutral.400);
+  --font-cjk-sans:
+    var(--font-noto-sans-sc, 'PingFang SC'), 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans CJK SC', 'Source Han Sans SC',
+    'WenQuanYi Micro Hei', sans-serif;
+  --font-cjk-serif:
+    var(--font-noto-serif-sc, 'Songti SC'), 'STSong', 'SimSun',
+    'Noto Serif CJK SC', serif;
+}
+
+@media print {
+
+
+  .resume-paper {
+    font-family: var(--font-cjk-sans) !important;
+  }
+
+  .resume-scale-wrapper {
+    transform: none !important;
+    height: auto !important;
+  }
 }
 
 .dark {
@@ -131,38 +141,26 @@
   --sidebar-accent-foreground: oklch(0.98 0.002 240);
   --sidebar-border: oklch(0.2 0.006 240);
   --sidebar-ring: oklch(0.44 0 0);
-  --match-highlight: color-mix(
-    in oklab,
-    theme(colors.match-neutral.900) 48%,
-    transparent
-  );
+  --match-highlight: color-mix(in oklab,
+      theme(colors.match-neutral.900) 48%,
+      transparent);
   --match-text: theme(colors.match-neutral.400);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-neutral.300) 90%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-neutral.600) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-neutral.500) 50%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-neutral.500) 60%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-neutral.300) 90%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-neutral.600) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-neutral.500) 50%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-neutral.500) 60%,
+      transparent);
   --match-glow: theme(colors.match-neutral.600);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-neutral.800) 40%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-neutral.800) 40%,
+      transparent);
   --match-decoration: theme(colors.match-neutral.800);
   --match-accent: theme(colors.match-neutral.300);
   --match-gradient-start: theme(colors.match-neutral.400);
@@ -172,32 +170,22 @@
 .match-theme-neutral {
   --match-highlight: theme(colors.match-neutral.200);
   --match-text: theme(colors.match-neutral.600);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-neutral.700) 80%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-neutral.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-neutral.400) 70%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-neutral.300) 70%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-neutral.700) 80%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-neutral.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-neutral.400) 70%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-neutral.300) 70%,
+      transparent);
   --match-glow: theme(colors.match-neutral.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-neutral.200) 70%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-neutral.200) 70%,
+      transparent);
   --match-decoration: theme(colors.match-neutral.200);
   --match-accent: theme(colors.match-neutral.700);
   --match-gradient-start: theme(colors.match-neutral.600);
@@ -207,32 +195,22 @@
 .match-theme-high {
   --match-highlight: theme(colors.match-high.200);
   --match-text: theme(colors.match-high.600);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-high.700) 80%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-high.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-high.400) 70%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-high.300) 70%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-high.700) 80%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-high.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-high.400) 70%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-high.300) 70%,
+      transparent);
   --match-glow: theme(colors.match-high.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-high.200) 70%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-high.200) 70%,
+      transparent);
   --match-decoration: theme(colors.match-high.200);
   --match-accent: theme(colors.match-high.700);
   --match-gradient-start: theme(colors.match-high.600);
@@ -242,32 +220,22 @@
 .match-theme-medium {
   --match-highlight: theme(colors.match-medium.200);
   --match-text: theme(colors.match-medium.600);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-medium.700) 80%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-medium.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-medium.400) 70%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-medium.300) 70%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-medium.700) 80%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-medium.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-medium.400) 70%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-medium.300) 70%,
+      transparent);
   --match-glow: theme(colors.match-medium.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-medium.200) 70%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-medium.200) 70%,
+      transparent);
   --match-decoration: theme(colors.match-medium.200);
   --match-accent: theme(colors.match-medium.700);
   --match-gradient-start: theme(colors.match-medium.600);
@@ -277,32 +245,22 @@
 .match-theme-low {
   --match-highlight: theme(colors.match-low.200);
   --match-text: theme(colors.match-low.600);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-low.700) 80%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-low.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-low.400) 70%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-low.300) 70%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-low.700) 80%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-low.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-low.400) 70%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-low.300) 70%,
+      transparent);
   --match-glow: theme(colors.match-low.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-low.200) 70%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-low.200) 70%,
+      transparent);
   --match-decoration: theme(colors.match-low.200);
   --match-accent: theme(colors.match-low.700);
   --match-gradient-start: theme(colors.match-low.600);
@@ -310,38 +268,26 @@
 }
 
 .dark .match-theme-neutral {
-  --match-highlight: color-mix(
-    in oklab,
-    theme(colors.match-neutral.900) 48%,
-    transparent
-  );
+  --match-highlight: color-mix(in oklab,
+      theme(colors.match-neutral.900) 48%,
+      transparent);
   --match-text: theme(colors.match-neutral.400);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-neutral.300) 90%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-neutral.600) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-neutral.500) 50%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-neutral.500) 60%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-neutral.300) 90%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-neutral.600) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-neutral.500) 50%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-neutral.500) 60%,
+      transparent);
   --match-glow: theme(colors.match-neutral.600);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-neutral.800) 40%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-neutral.800) 40%,
+      transparent);
   --match-decoration: theme(colors.match-neutral.800);
   --match-accent: theme(colors.match-neutral.300);
   --match-gradient-start: theme(colors.match-neutral.400);
@@ -349,38 +295,26 @@
 }
 
 .dark .match-theme-high {
-  --match-highlight: color-mix(
-    in oklab,
-    theme(colors.match-high.500) 50%,
-    transparent
-  );
+  --match-highlight: color-mix(in oklab,
+      theme(colors.match-high.500) 50%,
+      transparent);
   --match-text: theme(colors.match-high.400);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-high.300) 90%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-high.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-high.500) 50%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-high.500) 60%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-high.300) 90%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-high.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-high.500) 50%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-high.500) 60%,
+      transparent);
   --match-glow: theme(colors.match-high.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-high.800) 40%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-high.800) 40%,
+      transparent);
   --match-decoration: theme(colors.match-high.800);
   --match-accent: theme(colors.match-high.300);
   --match-gradient-start: theme(colors.match-high.500);
@@ -388,38 +322,26 @@
 }
 
 .dark .match-theme-medium {
-  --match-highlight: color-mix(
-    in oklab,
-    theme(colors.match-medium.500) 52%,
-    transparent
-  );
+  --match-highlight: color-mix(in oklab,
+      theme(colors.match-medium.500) 52%,
+      transparent);
   --match-text: theme(colors.match-medium.400);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-medium.300) 90%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-medium.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-medium.500) 50%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-medium.500) 60%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-medium.300) 90%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-medium.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-medium.500) 50%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-medium.500) 60%,
+      transparent);
   --match-glow: theme(colors.match-medium.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-medium.800) 40%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-medium.800) 40%,
+      transparent);
   --match-decoration: theme(colors.match-medium.800);
   --match-accent: theme(colors.match-medium.300);
   --match-gradient-start: theme(colors.match-medium.500);
@@ -427,38 +349,26 @@
 }
 
 .dark .match-theme-low {
-  --match-highlight: color-mix(
-    in oklab,
-    theme(colors.match-low.500) 46%,
-    transparent
-  );
+  --match-highlight: color-mix(in oklab,
+      theme(colors.match-low.500) 46%,
+      transparent);
   --match-text: theme(colors.match-low.400);
-  --match-text-muted: color-mix(
-    in oklab,
-    theme(colors.match-low.300) 90%,
-    transparent
-  );
-  --match-border: color-mix(
-    in oklab,
-    theme(colors.match-low.500) 20%,
-    transparent
-  );
-  --match-dot: color-mix(
-    in oklab,
-    theme(colors.match-low.500) 50%,
-    transparent
-  );
-  --match-watermark: color-mix(
-    in oklab,
-    theme(colors.match-low.500) 60%,
-    transparent
-  );
+  --match-text-muted: color-mix(in oklab,
+      theme(colors.match-low.300) 90%,
+      transparent);
+  --match-border: color-mix(in oklab,
+      theme(colors.match-low.500) 20%,
+      transparent);
+  --match-dot: color-mix(in oklab,
+      theme(colors.match-low.500) 50%,
+      transparent);
+  --match-watermark: color-mix(in oklab,
+      theme(colors.match-low.500) 60%,
+      transparent);
   --match-glow: theme(colors.match-low.500);
-  --match-ring: color-mix(
-    in oklab,
-    theme(colors.match-low.800) 40%,
-    transparent
-  );
+  --match-ring: color-mix(in oklab,
+      theme(colors.match-low.800) 40%,
+      transparent);
   --match-decoration: theme(colors.match-low.800);
   --match-accent: theme(colors.match-low.300);
   --match-gradient-start: theme(colors.match-low.500);
@@ -637,7 +547,7 @@
 }
 
 /* Utility class for controllable item spacing */
-.item-gap > * + * {
+.item-gap>*+* {
   margin-top: var(--resume-item-spacing);
 }
 

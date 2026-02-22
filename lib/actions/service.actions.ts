@@ -128,11 +128,7 @@ export const createServiceAction = withServerActionAuthWrite(
         ? crypto.randomUUID()
         : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     // 6. 为服务创建工作（Job）记录，包含岗位文本或图片
-    const job = await createJobForService(
-      svc.id,
-      params.jobText,
-      params.jobImage,
-    )
+    const job = await createJobForService(svc.id, params.jobText)
     await markTimeline(svc.id, 'create_service_job_created')
     // 7. 确保匹配记录存在
     await ensureMatchRecord(svc.id)

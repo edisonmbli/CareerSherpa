@@ -11,6 +11,14 @@ import { Edit2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MobileEditorSheet } from './MobileEditorSheet'
 import { MobileControlFab } from './MobileControlFab'
+import {
+  RESUME_SCREEN_BASE_WIDTH_PX,
+  RESUME_SCREEN_DESKTOP_PADDING_PX,
+  RESUME_SCREEN_DESKTOP_SCALE,
+  RESUME_SCREEN_MIN_SCALE,
+  RESUME_SCREEN_MOBILE_BREAKPOINT_PX,
+  RESUME_SCREEN_MOBILE_PADDING_PX,
+} from '@/lib/constants'
 
 export function ResumeEditorLayout({
   ctaAction,
@@ -106,20 +114,20 @@ export function ResumeEditorLayout({
 
       // A4 width ~794px + margin
       // Mobile: Use simpler ratio to fill width
-      const isMobile = window.innerWidth < 768
-      const resumeWidth = 794 // Base A4 width
+      const isMobile = window.innerWidth < RESUME_SCREEN_MOBILE_BREAKPOINT_PX
+      const resumeWidth = RESUME_SCREEN_BASE_WIDTH_PX
 
       let newScale = 1
       if (containerWidth < resumeWidth) {
-        // Mobile: Use window width directly to ensure full usage minus minimal safety margin
-        // We subtract 16px (8px padding on each side) for a tight but safe fit
         const availableWidth = isMobile
-          ? window.innerWidth - 16
-          : containerWidth - 40
-        newScale = Math.max(0.25, availableWidth / 794)
+          ? window.innerWidth - RESUME_SCREEN_MOBILE_PADDING_PX
+          : containerWidth - RESUME_SCREEN_DESKTOP_PADDING_PX
+        newScale = Math.max(
+          RESUME_SCREEN_MIN_SCALE,
+          availableWidth / RESUME_SCREEN_BASE_WIDTH_PX,
+        )
       } else {
-        // Desktop: Scale down slightly (0.85) to be less intrusive, as requested
-        newScale = 0.85
+        newScale = RESUME_SCREEN_DESKTOP_SCALE
       }
 
       setScale(newScale)
@@ -259,7 +267,7 @@ export function ResumeEditorLayout({
           */}
           <div
             className={cn(
-              'min-h-full flex flex-col items-stretch md:items-center transition-all duration-[800ms] ease-out origin-top w-full md:w-auto overflow-x-hidden md:overflow-visible',
+              'resume-scale-wrapper min-h-full flex flex-col items-stretch md:items-center transition-all duration-[800ms] ease-out origin-top w-full md:w-auto overflow-x-hidden md:overflow-visible',
               isMobileView ? 'py-0' : 'py-8',
             )}
             onClick={(e) => e.stopPropagation()}
