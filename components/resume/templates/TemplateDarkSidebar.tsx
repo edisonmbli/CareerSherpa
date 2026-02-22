@@ -24,6 +24,7 @@ import {
   Heart,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Dark Sidebar 模板 - 深色侧栏型
@@ -511,19 +512,17 @@ export function TemplateDarkSidebar({
             <div className="w-full">
               <InteractiveSection sectionKey="basics">
                 <div className="flex flex-col items-center md:items-start print:items-start mb-6 w-full">
-                  {basics.photoUrl ? (
-                    <div className="w-24 h-24 rounded-full border-[3px] border-white/20 shadow-xl overflow-hidden mb-6 bg-white/5">
-                      <img
-                        src={basics.photoUrl}
-                        alt={basics.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-24 h-24 rounded-full border-2 border-white/20 flex items-center justify-center mb-6 bg-white/10 text-white/40">
-                      <User size={40} />
-                    </div>
-                  )}
+                  <ResumeAvatar
+                    photoUrl={basics.photoUrl}
+                    name={basics.name}
+                    containerClassName="w-24 h-24 rounded-full shadow-xl mb-6 bg-white/5 border-[3px] border-white/20 print:shadow-none bg-clip-padding"
+                    imageClassName="w-full h-full object-cover rounded-full"
+                    fallback={
+                      <div className="w-24 h-24 rounded-full border-2 border-white/20 flex items-center justify-center mb-6 bg-white/10 text-white/40">
+                        <User size={40} />
+                      </div>
+                    }
+                  />
 
                   <h1 className="text-[2em] font-black tracking-tighter leading-none mb-3 text-center md:text-left print:text-left">
                     {basics.name}

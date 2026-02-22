@@ -21,6 +21,7 @@ import {
   Home,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Designer Template V5 - "Swiss Style" (Visual Premium)
@@ -593,20 +594,17 @@ export function TemplateDesign({ data, config, styleConfig }: TemplateProps) {
           <div className="flex flex-col md:flex-row print:flex-row items-center md:items-start print:items-start gap-8 md:gap-10 print:gap-10">
             {/* Group 1: Avatar (Left) */}
             <div className="shrink-0 flex justify-center">
-              {basics.photoUrl ? (
-                <div className="w-32 h-32 rounded-[2rem] bg-white shadow-2xl overflow-hidden border-[6px] border-white rotate-0 hover:rotate-3 transition-transform duration-500 relative z-10 print:shadow-none">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- Print/PDF export requires native img */}
-                  <img
-                    src={basics.photoUrl}
-                    alt={basics.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-32 h-32 rounded-[2rem] bg-slate-50 flex items-center justify-center rotate-3 border-[6px] border-white shadow-xl text-slate-300 print-bg-reset print:shadow-none">
-                  <User size={48} />
-                </div>
-              )}
+              <ResumeAvatar
+                photoUrl={basics.photoUrl}
+                name={basics.name}
+                containerClassName="w-32 h-32 rounded-[2rem] bg-white shadow-2xl border-[6px] border-white rotate-0 hover:rotate-3 transition-transform duration-500 relative z-10 print:shadow-none bg-clip-padding"
+                imageClassName="w-full h-full object-cover rounded-[1.6rem]"
+                fallback={
+                  <div className="w-32 h-32 rounded-[2rem] bg-slate-50 flex items-center justify-center rotate-3 border-[6px] border-white shadow-xl text-slate-300 print-bg-reset print:shadow-none">
+                    <User size={48} />
+                  </div>
+                }
+              />
             </div>
 
             {/* Vertical Divider (Hidden on Mobile) */}

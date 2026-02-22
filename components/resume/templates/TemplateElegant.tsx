@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Mail, Phone, MapPin, Github, ExternalLink } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Elegant 模板 - 雅致格调
@@ -463,16 +464,13 @@ export function TemplateElegant({ data, config, styleConfig }: TemplateProps) {
       {/* Header: Centered Balance Layout */}
       <InteractiveSection sectionKey="basics">
         <header className="mb-12 flex flex-col items-center text-center pt-8 relative z-10">
-          {/* Photo (Optional) - Centered above name */}
-          {basics.photoUrl && (
-            <div className="mb-6 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-sm ring-1 ring-slate-100 print:shadow-none">
-              <img
-                src={basics.photoUrl}
-                alt={basics.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          {/* Photo (Optional) - Centered above name - Handled by ResumeAvatar to gracefully hide if broken/missing */}
+          <ResumeAvatar
+            photoUrl={basics.photoUrl}
+            name={basics.name}
+            containerClassName="mb-6 w-28 h-28 rounded-full border-4 border-white shadow-sm ring-1 ring-slate-100 print:shadow-none bg-slate-50"
+            imageClassName="w-full h-full object-cover rounded-full"
+          />
 
           <h1
             className="font-serif font-bold tracking-[0.1em] mb-4 text-gray-900"

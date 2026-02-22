@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Professional 模板 - 商务专业型
@@ -478,16 +479,13 @@ export function TemplateProfessional({
               </div>
             </div>
           </div>
-          {/* 头像 */}
-          {basics.photoUrl && (
-            <div className="w-24 h-24 rounded-md overflow-hidden border border-gray-200 shadow-sm shrink-0 ml-6 print:shadow-none">
-              <img
-                src={basics.photoUrl}
-                alt={basics.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          {/* 头像 - 使用 ResumeAvatar 实现自然降级 */}
+          <ResumeAvatar
+            photoUrl={basics.photoUrl}
+            name={basics.name}
+            containerClassName="w-24 h-24 rounded-md border border-gray-200 shadow-sm shrink-0 ml-6 print:shadow-none bg-gray-50 bg-clip-padding"
+            imageClassName="w-full h-full rounded-md"
+          />
         </header>
       </InteractiveSection>
 

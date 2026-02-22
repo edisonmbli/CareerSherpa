@@ -24,6 +24,7 @@ import {
   Globe,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Product & Operation 模板 - 逻辑驱动型
@@ -209,16 +210,13 @@ export function TemplateProduct({ data, config, styleConfig }: TemplateProps) {
               borderColor: secondaryBorder,
             }}
           >
-            {basics.photoUrl && (
-              <div className="shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element -- Print/PDF export requires native img */}
-                <img
-                  src={basics.photoUrl}
-                  alt={basics.name}
-                  className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm print:shadow-none"
-                />
-              </div>
-            )}
+            {/* Avatar - Handled by ResumeAvatar to gracefully hide if broken/missing */}
+            <ResumeAvatar
+              photoUrl={basics.photoUrl}
+              name={basics.name}
+              containerClassName="shrink-0"
+              imageClassName="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm print:shadow-none bg-gray-50"
+            />
             <div className="text-gray-700 leading-relaxed font-medium text-justify text-[0.95em] w-full">
               {renderDescription(basics.summary)}
             </div>

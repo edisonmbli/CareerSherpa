@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Technical Template - Optimized for Developers/Engineers
@@ -479,17 +480,13 @@ export function TemplateTechnical({
             </div>
           </div>
 
-          {/* Avatar - Only show if present */}
-          {basics.photoUrl && (
-            <div className="shrink-0 order-first sm:order-last">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={basics.photoUrl}
-                alt={basics.name}
-                className="w-24 h-24 rounded-lg object-cover border border-gray-200 shadow-sm print:shadow-none"
-              />
-            </div>
-          )}
+          {/* Avatar - Handled by ResumeAvatar to gracefully hide if broken/missing */}
+          <ResumeAvatar
+            photoUrl={basics.photoUrl}
+            name={basics.name}
+            containerClassName="shrink-0 order-first sm:order-last"
+            imageClassName="w-24 h-24 rounded-lg border border-gray-200 shadow-sm print:shadow-none bg-gray-50"
+          />
         </header>
       </InteractiveSection>
 

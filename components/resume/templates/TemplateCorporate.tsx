@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Mail, Phone, Github, MapPin, ExternalLink } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Corporate 模板 - 企业蓝调
@@ -382,16 +383,13 @@ export function TemplateCorporate({
           <div className="flex justify-between items-stretch relative mb-6">
             {/* Content Container - Responsive */}
             <div className="flex-1 flex items-stretch px-3 md:px-0 py-3 md:py-0 gap-3 md:gap-6">
-              {/* Avatar */}
-              {basics.photoUrl && (
-                <div className="w-20 h-24 md:w-24 md:h-32 shrink-0 bg-gray-100 overflow-hidden border border-gray-200 shadow-sm print:bg-transparent print:shadow-none">
-                  <img
-                    src={basics.photoUrl}
-                    alt={basics.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+              {/* Avatar - Handled by ResumeAvatar to gracefully hide if broken/missing */}
+              <ResumeAvatar
+                photoUrl={basics.photoUrl}
+                name={basics.name}
+                containerClassName="w-20 h-24 md:w-24 md:h-32 shrink-0 bg-gray-100 border border-gray-200 shadow-sm print:bg-transparent print:shadow-none bg-clip-padding"
+                imageClassName="w-full h-full object-cover"
+              />
 
               {/* Info Column - Mobile: right-aligned compact, Desktop: left-aligned expanded */}
               <div className="flex flex-col items-end md:items-start text-right md:text-left min-w-0 flex-1 justify-between md:justify-center">

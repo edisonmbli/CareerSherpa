@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Mail, Phone, MapPin, Github, Globe } from 'lucide-react'
 import { InteractiveSection } from './InteractiveSection'
+import { ResumeAvatar } from './ResumeAvatar'
 
 /**
  * Standard 模板 - 标准通用型
@@ -457,17 +458,13 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
             </div>
           </div>
 
-          {/* Avatar - Displayed if photoUrl exists */}
-          {basics.photoUrl && (
-            <div className="shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element -- Print/PDF export requires native img */}
-              <img
-                src={basics.photoUrl}
-                alt={basics.name}
-                className="w-24 h-24 rounded-full object-cover border-[3px] border-white shadow-sm bg-gray-100 print:bg-transparent print:shadow-none"
-              />
-            </div>
-          )}
+          {/* Avatar - Handled by ResumeAvatar which degrades gracefully if missing or broken */}
+          <ResumeAvatar
+            photoUrl={basics.photoUrl}
+            name={basics.name}
+            containerClassName="shrink-0"
+            imageClassName="w-24 h-24 rounded-full border-[3px] border-white shadow-sm bg-gray-100 print:bg-transparent print:shadow-none"
+          />
         </header>
       </InteractiveSection>
 
