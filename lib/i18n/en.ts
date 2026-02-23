@@ -758,11 +758,14 @@ const dict = {
     },
     coreValue: {
       tag: 'The Paradigm Shift',
-      title: 'Stop the Grind. Let AI Bridge the Final Mile',
-      subtitle: 'The job hunt is a draining numbers game. Crafting a customized resume for each application is an exhausting loop. Here, you solely need to organize your master history once. Our AI acts as your private coach, rigorously analyzing your profile against target jobs to instantly generate highly-tailored resumes and interview strategies—saving time while maximizing your offer rate.',
-      step1: 'Vault',
-      step2: 'Graph',
-      step3: 'Empower',
+      title: 'Stop the Grind. Let an AI Coach Bridge the Final Mile',
+      subtitle: 'Deposit your master resume into the Asset Library. Then, simply upload a JD and let AI match your strengths, instantly customizing your resume and interview strategy.',
+      f1Title: 'Data Vault',
+      f1Desc: 'Securely extract and structure your scattered professional history into a unified highlight asset library.',
+      f2Title: 'Collision Engine',
+      f2Desc: 'Deep semantic matching between your capabilities and the multi-dimensional requirements of any target role.',
+      f3Title: 'Targeted Output',
+      f3Desc: 'Rapidly generate highly-optimized, role-specific professional resumes and targeted interview strategies.'
     },
     bentoGrid: {
       resumeBuilder: {

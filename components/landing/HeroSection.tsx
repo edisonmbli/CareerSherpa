@@ -327,7 +327,8 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
             </div>
 
             {/* Live Data Mockup (Cyclic) */}
-            <div className="flex-1 w-full flex flex-col gap-6 pt-1 z-10 relative">
+            {/* Added a responsive min-h to prevent the card height from jumping between different mock data lengths. */}
+            <div className="flex-1 w-full flex flex-col gap-6 pt-1 z-10 relative min-h-[360px] sm:min-h-[300px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={mockIdx}

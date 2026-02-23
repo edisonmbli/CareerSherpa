@@ -3,210 +3,240 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { Database, Zap, Target } from 'lucide-react'
 
-// Data models for the animation
-const SCENARIOS = [
-    { id: 'jd1', x: 200, y: -80, name: 'Product Manager', matchColor: '#0ea5e9', activeBlocks: [0, 2, 4, 7] }, // cyan
-    { id: 'jd2', x: 200, y: 0, name: 'Software Engineer', matchColor: '#10b981', activeBlocks: [1, 3, 5, 8] }, // emerald
-    { id: 'jd3', x: 200, y: 80, name: 'Data Analyst', matchColor: '#8b5cf6', activeBlocks: [0, 4, 6, 8] }, // violet
-]
-
-const BLOCKS = [
-    { id: 0, x: -130, y: -80, w: 30, h: 30, label: 'Edu' },
-    { id: 1, x: -80, y: -80, w: 50, h: 30, label: 'Code' },
-    { id: 2, x: -10, y: -80, w: 30, h: 30, label: 'Cert' },
-
-    { id: 3, x: -130, y: -30, w: 60, h: 40, label: 'Proj A' },
-    { id: 4, x: -50, y: -30, w: 70, h: 40, label: 'Exp B' },
-
-    { id: 5, x: -130, y: 30, w: 40, h: 50, label: 'Skill' },
-    { id: 6, x: -70, y: 30, w: 30, h: 50, label: 'Data' },
-    { id: 7, x: -20, y: 30, w: 40, h: 50, label: 'Lead' },
-
-    { id: 8, x: -130, y: 100, w: 150, h: 20, label: 'Interests' }
-]
-
-function CollisionEngine({ dict }: { dict: any }) {
-    const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0)
-    const [phase, setPhase] = useState<'idle' | 'scanning' | 'matching'>('idle')
+function AbstractEngine() {
+    const [phase, setPhase] = useState<'gathering' | 'collision' | 'emitting'>('gathering')
 
     useEffect(() => {
         let unmounted = false
-
         const runLoop = () => {
             if (unmounted) return
-            setPhase('idle')
+            setPhase('gathering')
 
             setTimeout(() => {
                 if (unmounted) return
-                setPhase('scanning')
+                setPhase('collision')
 
                 setTimeout(() => {
                     if (unmounted) return
-                    setPhase('matching')
+                    setPhase('emitting')
 
                     setTimeout(() => {
                         if (unmounted) return
-                        // Move to next scenario
-                        setCurrentScenarioIndex((prev) => (prev + 1) % SCENARIOS.length)
                         runLoop()
-                    }, 3000) // Match display duration
-                }, 1500) // Scanning duration
-            }, 500) // Idle duration
+                    }, 2000) // emitting duration
+                }, 800) // collision duration
+            }, 2500) // gathering duration
         }
 
         runLoop()
-
-        return () => {
-            unmounted = true
-        }
+        return () => { unmounted = true }
     }, [])
 
-    const scenario = SCENARIOS[currentScenarioIndex]!
+    // Deterministic pseudo-random for SSR hydration safety
+    const getPseudoRandom = (seed: number) => {
+        const x = Math.sin(seed + 1) * 10000;
+        return x - Math.floor(x);
+    }
+
+    // Abstract particles streaming into the core
+    const particles = Array.from({ length: 16 }).map((_, i) => {
+        const angle = (i * 22.5 * Math.PI) / 180
+        // scatter particles off-center
+        const distance = 140 + getPseudoRandom(i) * 40
+        const startX = Number((Math.cos(angle) * distance).toFixed(3))
+        const startY = Number((Math.sin(angle) * distance).toFixed(3))
+        const delay = Number((getPseudoRandom(i + 100) * 2).toFixed(3))
+        return { id: i, startX, startY, delay }
+    })
 
     return (
         <div className="relative w-full aspect-[4/3] md:aspect-auto md:h-[500px] flex items-center justify-center p-4">
-            {/* Dynamic Background Glow */}
+            {/* Background Volumetric Glow (Cyan only) */}
             <motion.div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full rounded-full blur-[100px] pointer-events-none transition-colors duration-1000"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000"
                 animate={{
-                    backgroundColor: phase === 'matching' ? `${scenario.matchColor}20` : 'transparent'
+                    backgroundColor: phase === 'emitting' || phase === 'collision' ? 'rgba(6, 182, 212, 0.15)' : 'transparent'
                 }}
             />
 
-            <svg viewBox="-150 -150 460 300" className="w-full h-full overflow-visible z-10">
+            <svg viewBox="-200 -150 400 300" className="w-full h-full overflow-visible z-10">
+                <defs>
+                    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity="1" />
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                    </linearGradient>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
 
-                {/* Column 1: Personal Asset Library */}
+                {/* Ambient Grid Lines (Data structure) */}
+                <g className="stroke-white/5 dark:stroke-white/5" strokeWidth="0.5">
+                    {Array.from({ length: 11 }).map((_, i) => (
+                        <line key={`v${i}`} x1={-150 + i * 30} y1="-150" x2={-150 + i * 30} y2="150" />
+                    ))}
+                    {Array.from({ length: 11 }).map((_, i) => (
+                        <line key={`h${i}`} x1="-150" y1={-150 + i * 30} x2="150" y2={-150 + i * 30} />
+                    ))}
+                </g>
+
+                {/* Abstract Particles (User specific data points) */}
                 <g>
-                    <text x="-55" y="-130" className="text-[12px] fill-slate-900 dark:fill-white font-bold" textAnchor="middle">{dict?.step1}</text>
-                    <text x="-55" y="-115" className="text-[8px] fill-slate-400 dark:fill-slate-500 font-mono tracking-widest" textAnchor="middle">ASSET LIBRARY</text>
-
-                    {/* Library Boundary */}
-                    <rect x="-140" y="-100" width="170" height="240" rx="12" fill="none" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" strokeDasharray="4 4" />
-
-                    {/* Library Blocks */}
-                    {BLOCKS.map((block) => {
-                        const isMatched = phase === 'matching' && scenario.activeBlocks.includes(block.id)
-
+                    {particles.map((p) => {
+                        const isGathering = phase === 'gathering'
                         return (
-                            <g key={block.id}>
-                                {/* Connecting Lines during match */}
-                                {isMatched && (
-                                    <motion.line
-                                        x1={block.x + block.w} y1={block.y + block.h / 2}
-                                        x2={scenario.x} y2={scenario.y + 15}
-                                        stroke={scenario.matchColor}
-                                        strokeWidth="1.5"
-                                        strokeDasharray="4 2"
-                                        className="opacity-40"
-                                        initial={{ pathLength: 0 }}
-                                        animate={{ pathLength: 1 }}
-                                        transition={{ duration: 0.5, ease: "easeOut" }}
-                                    />
-                                )}
-
-                                {/* The Block */}
-                                <motion.rect
-                                    x={block.x} y={block.y}
-                                    width={block.w} height={block.h}
-                                    rx="4"
-                                    className={cn(
-                                        "transition-all duration-500",
-                                        isMatched
-                                            ? "fill-white dark:fill-slate-900 shadow-lg"
-                                            : "fill-white/50 dark:fill-slate-800/50 outline outline-1 outline-black/5 dark:outline-white/10"
-                                    )}
-                                    style={{
-                                        stroke: isMatched ? scenario.matchColor : 'transparent',
-                                        strokeWidth: 2
-                                    }}
-                                    animate={{
-                                        scale: isMatched ? 1.05 : 1,
-                                        opacity: phase === 'idle' ? 0.7 : (isMatched ? 1 : 0.3)
-                                    }}
-                                />
-
-                                {/* Block Label */}
-                                <motion.text
-                                    x={block.x + block.w / 2}
-                                    y={block.y + block.h / 2 + 3}
-                                    textAnchor="middle"
-                                    className="text-[8px] font-medium"
-                                    animate={{
-                                        fill: isMatched ? scenario.matchColor : '#64748b'
-                                    }}
-                                >
-                                    {block.label}
-                                </motion.text>
-                            </g>
+                            <motion.circle
+                                key={p.id}
+                                r="1.5"
+                                className="fill-slate-400 dark:fill-slate-500"
+                                initial={{ cx: p.startX, cy: p.startY, opacity: 0 }}
+                                animate={{
+                                    cx: isGathering ? [p.startX, 0] : 0,
+                                    cy: isGathering ? [p.startY, 0] : 0,
+                                    opacity: isGathering ? [0, 1, 0] : 0,
+                                }}
+                                transition={{
+                                    duration: 2.5,
+                                    ease: "circIn",
+                                    delay: p.delay,
+                                    repeat: isGathering ? Infinity : 0
+                                }}
+                            />
                         )
                     })}
+                </g>
 
-                    {/* Scanning Laser */}
+                {/* The Collision Core (Engine) */}
+                <g>
+                    {/* Outer Ring */}
+                    <motion.circle
+                        cx="0" cy="0" r="45"
+                        fill="none"
+                        className="stroke-slate-300 dark:stroke-slate-700"
+                        strokeWidth="0.5"
+                        strokeDasharray="2 10"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 30, ease: "linear", repeat: Infinity }}
+                        style={{ transformOrigin: "0px 0px" }}
+                    />
+
+                    {/* Middle Data Track */}
+                    <motion.circle
+                        cx="0" cy="0" r="30"
+                        fill="none"
+                        className={cn("transition-colors duration-500",
+                            phase === 'collision' ? "stroke-cyan-500" : "stroke-slate-400 dark:stroke-slate-600"
+                        )}
+                        strokeWidth="1"
+                        strokeDasharray="15 5"
+                        animate={{
+                            rotate: phase === 'collision' ? -360 : 360,
+                            scale: phase === 'collision' ? 1.1 : 1
+                        }}
+                        transition={{
+                            rotate: { duration: phase === 'collision' ? 1 : 15, ease: "linear", repeat: Infinity },
+                            scale: { duration: 0.3 }
+                        }}
+                        style={{ transformOrigin: "0px 0px" }}
+                    />
+
+                    {/* Intense Inner Core */}
+                    <motion.circle
+                        cx="0" cy="0" r="12"
+                        fill="none"
+                        className={cn("transition-colors duration-300",
+                            (phase === 'collision' || phase === 'emitting') ? "stroke-cyan-400" : "stroke-slate-500 dark:stroke-slate-400"
+                        )}
+                        strokeWidth="2"
+                        strokeDasharray="4 4"
+                        animate={{
+                            scale: phase === 'gathering' ? [1, 1.1, 1] : (phase === 'collision' ? [1, 1.5, 1] : 1),
+                            rotate: phase === 'collision' ? 360 : -360
+                        }}
+                        transition={{
+                            scale: { duration: phase === 'collision' ? 0.3 : 2, repeat: Infinity },
+                            rotate: { duration: phase === 'collision' ? 0.5 : 8, ease: "linear", repeat: Infinity }
+                        }}
+                        style={{
+                            filter: (phase === 'collision' || phase === 'emitting') ? "url(#glow)" : "none",
+                            transformOrigin: "0px 0px"
+                        }}
+                    />
+
+                    <motion.circle
+                        cx="0" cy="0" r="4"
+                        className={cn("transition-colors duration-300",
+                            (phase === 'collision' || phase === 'emitting') ? "fill-cyan-300" : "fill-slate-600 dark:fill-slate-300"
+                        )}
+                        style={{ filter: (phase === 'collision' || phase === 'emitting') ? "url(#glow)" : "none" }}
+                    />
+                </g>
+
+                {/* Emitting Laser & Target Node */}
+                <g>
+                    {/* Laser Beam */}
                     <AnimatePresence>
-                        {phase === 'scanning' && (
+                        {phase === 'emitting' && (
                             <motion.line
-                                x1="-150" x2="30"
-                                y1="-90" y2="-90"
-                                stroke={scenario.matchColor}
+                                x1="20" y1="0"
+                                x2="150" y2="0"
+                                stroke="url(#laserGrad)"
                                 strokeWidth="2"
-                                initial={{ y: -90, opacity: 0 }}
-                                animate={{ y: [-90, 130, -90], opacity: [0, 1, 1, 0] }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 1.5, ease: "linear" }}
-                                className="drop-shadow-lg"
+                                initial={{ pathLength: 0, opacity: 0 }}
+                                animate={{ pathLength: 1, opacity: 1 }}
+                                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                                transition={{ duration: 0.4, ease: "easeOut" }}
+                                style={{ filter: "url(#glow)" }}
                             />
                         )}
                     </AnimatePresence>
-                </g>
 
-                {/* Column 2: Graph Engine */}
-                <g>
-                    <text x="115" y="-130" className="text-[12px] fill-slate-900 dark:fill-white font-bold" textAnchor="middle">{dict?.step2}</text>
-                    <text x="115" y="-115" className="text-[8px] fill-slate-400 dark:fill-slate-500 font-mono tracking-widest" textAnchor="middle">AI COLLISION</text>
-                </g>
+                    {/* Target Geometry (JD Abstraction) */}
+                    <motion.g
+                        animate={{ scale: phase === 'emitting' ? [1, 1.1, 1] : 1 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <motion.rect
+                            x="142" y="-8" width="16" height="16"
+                            fill="none"
+                            className={cn("transition-colors duration-300",
+                                phase === 'emitting' ? "stroke-cyan-500" : "stroke-slate-300 dark:stroke-slate-700"
+                            )}
+                            strokeWidth="1"
+                            animate={{ rotate: 180 }}
+                            transition={{ duration: 15, ease: "linear", repeat: Infinity }}
+                            style={{ transformOrigin: "150px 0px" }}
+                        />
+                        <circle
+                            cx="150" cy="0" r="3"
+                            className={cn("transition-colors duration-300",
+                                phase === 'emitting' ? "fill-cyan-400" : "fill-slate-400 dark:fill-slate-600"
+                            )}
+                            style={{ filter: phase === 'emitting' ? "url(#glow)" : "none" }}
+                        />
 
-                {/* Column 3: Target Opportunities */}
-                <g>
-                    <text x="245" y="-130" className="text-[12px] fill-slate-900 dark:fill-white font-bold" textAnchor="middle">{dict?.step3}</text>
-                    <text x="245" y="-115" className="text-[8px] fill-slate-400 dark:fill-slate-500 font-mono tracking-widest" textAnchor="middle">TARGET OPPORTUNITIES</text>
-
-                    {SCENARIOS.map((scen, idx) => {
-                        const isActive = currentScenarioIndex === idx
-
-                        return (
-                            <motion.g
-                                key={scen.id}
-                                animate={{
-                                    opacity: isActive ? 1 : 0.4,
-                                    scale: isActive ? 1.05 : 0.95,
-                                    x: isActive ? -10 : 0
-                                }}
-                                transition={{ duration: 0.5 }}
-                            >
-                                <rect
-                                    x={scen.x} y={scen.y}
-                                    width="90" height="30"
-                                    rx="6"
-                                    className="fill-white dark:fill-slate-900 stroke-1 shadow-sm transition-all duration-300"
-                                    style={{
-                                        stroke: isActive ? scen.matchColor : 'rgba(156, 163, 175, 0.2)'
-                                    }}
+                        {/* Output trailing data */}
+                        <AnimatePresence>
+                            {phase === 'emitting' && (
+                                <motion.line
+                                    x1="160" y1="0" x2="200" y2="0"
+                                    className="stroke-cyan-500/50"
+                                    strokeWidth="1"
+                                    strokeDasharray="2 4"
+                                    initial={{ pathLength: 0, opacity: 0 }}
+                                    animate={{ pathLength: 1, opacity: [0, 1, 0] }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 1.5, ease: "linear", repeat: Infinity }}
                                 />
-                                <text
-                                    x={scen.x + 45} y={scen.y + 18}
-                                    textAnchor="middle"
-                                    className="text-[9px] font-bold"
-                                    style={{ fill: isActive ? scen.matchColor : '#94a3b8' }}
-                                >
-                                    {scen.name}
-                                </text>
-                                {/* Mini JD lines */}
-                                <line x1={scen.x + 10} y1={scen.y + 24} x2={scen.x + 40} y2={scen.y + 24} stroke="#cbd5e1" strokeWidth="1" className="dark:stroke-slate-700" />
-                                <line x1={scen.x + 45} y1={scen.y + 24} x2={scen.x + 80} y2={scen.y + 24} stroke="#cbd5e1" strokeWidth="1" className="dark:stroke-slate-700" />
-                            </motion.g>
-                        )
-                    })}
+                            )}
+                        </AnimatePresence>
+                    </motion.g>
                 </g>
 
             </svg>
@@ -217,31 +247,70 @@ function CollisionEngine({ dict }: { dict: any }) {
 export function CoreValueSection({ dict }: { dict: any }) {
     const t = dict.coreValue || {}
 
+    const features = [
+        {
+            icon: Database,
+            title: t.f1Title,
+            desc: t.f1Desc
+        },
+        {
+            icon: Zap,
+            title: t.f2Title,
+            desc: t.f2Desc
+        },
+        {
+            icon: Target,
+            title: t.f3Title,
+            desc: t.f3Desc
+        }
+    ]
+
     return (
-        <section className="w-full py-20 sm:py-32 relative overflow-hidden bg-slate-50 border-b border-black/5 dark:border-white/5 dark:bg-[#09090B]">
+        <section className="w-full py-24 sm:py-32 relative overflow-hidden bg-slate-50 border-b border-black/5 dark:border-white/5 dark:bg-[#09090B]">
             <div className="container mx-auto px-4 relative z-10 max-w-6xl">
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
 
                     {/* Left Column: Storytelling / Copy */}
-                    <div className="flex flex-col gap-6 sm:gap-8">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200/50 dark:bg-slate-800/50 w-fit border border-black/5 dark:border-white/5">
-                            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                                {t.tag}
-                            </span>
+                    <div className="flex flex-col gap-10 lg:-mt-[50px]">
+                        <div className="flex flex-col gap-6">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200/50 dark:bg-slate-800/50 w-fit border border-black/5 dark:border-white/5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+                                    {t.tag}
+                                </span>
+                            </div>
+
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance break-words leading-tight">
+                                {t.title}
+                            </h2>
+
+                            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-medium tracking-tight text-balance break-words leading-relaxed max-w-xl">
+                                {t.subtitle}
+                            </p>
                         </div>
 
-                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white text-balance break-words leading-tight">
-                            {t.title}
-                        </h2>
-
-                        <p className="text-base sm:text-xl text-slate-600 dark:text-slate-400 font-medium tracking-tight text-balance break-words leading-relaxed">
-                            {t.subtitle}
-                        </p>
+                        {/* Abstract Feature List */}
+                        <div className="flex flex-col gap-6">
+                            {features.map((feature, i) => (
+                                <div key={i} className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 backdrop-blur-md">
+                                        <feature.icon className="w-5 h-5 stroke-[1.5]" />
+                                    </div>
+                                    <div className="flex flex-col gap-1 pt-0.5">
+                                        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                                            {feature.title}
+                                        </h3>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed text-balance">
+                                            {feature.desc}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Right Column: Animation Graphic */}
+                    {/* Right Column: Abstract Engine Graphic */}
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         whileInView={{ opacity: 1, x: 0 }}
@@ -249,7 +318,7 @@ export function CoreValueSection({ dict }: { dict: any }) {
                         transition={{ duration: 0.8 }}
                         className="w-full rounded-2xl sm:rounded-[2.5rem] bg-white/50 dark:bg-black/20 backdrop-blur-3xl border border-black/5 dark:border-white/10 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden"
                     >
-                        <CollisionEngine dict={t} />
+                        <AbstractEngine />
                     </motion.div>
 
                 </div>

@@ -90,7 +90,9 @@ function RadarChartSkeleton() {
                 ))}
                 {/* Axes */}
                 {[0, 60, 120, 180, 240, 300].map((angle) => (
-                    <line key={angle} x1="50" y1="50" x2={50 + 50 * Math.sin(angle * Math.PI / 180)} y2={50 - 50 * Math.cos(angle * Math.PI / 180)}
+                    <line key={angle} x1="50" y1="50"
+                        x2={Number((50 + 50 * Math.sin(angle * Math.PI / 180)).toFixed(3))}
+                        y2={Number((50 - 50 * Math.cos(angle * Math.PI / 180)).toFixed(3))}
                         className="stroke-slate-200 dark:stroke-slate-800"
                         strokeWidth="0.5"
                     />
