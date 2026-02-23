@@ -6,32 +6,61 @@ import { cn } from '@/lib/utils'
 import { Database, Zap, Target } from 'lucide-react'
 
 function AbstractEngine() {
-    const [phase, setPhase] = useState<'gathering' | 'collision' | 'emitting'>('gathering')
+    const [phase, setPhase] = useState<'idle' | 'targetAppears' | 'gathering' | 'collision' | 'emitting'>('idle')
+    const [targetPos, setTargetPos] = useState({ x: 150, y: 0 })
+    const [loopKey, setLoopKey] = useState(0)
 
     useEffect(() => {
         let unmounted = false
+        let loopCount = 1
         const runLoop = () => {
             if (unmounted) return
-            setPhase('gathering')
+
+            // Random distance and angle for the new target
+            const r = 90 + Math.random() * 60 // distance between 90 and 150
+            const theta = Math.random() * Math.PI * 2
+
+            setTargetPos({
+                x: Number((Math.cos(theta) * r).toFixed(3)),
+                y: Number((Math.sin(theta) * r).toFixed(3))
+            })
+            setLoopKey(loopCount++)
+            setPhase('targetAppears')
 
             setTimeout(() => {
                 if (unmounted) return
-                setPhase('collision')
+                setPhase('gathering')
 
                 setTimeout(() => {
                     if (unmounted) return
-                    setPhase('emitting')
+                    setPhase('collision')
 
                     setTimeout(() => {
                         if (unmounted) return
-                        runLoop()
-                    }, 2000) // emitting duration
-                }, 800) // collision duration
-            }, 2500) // gathering duration
+                        setPhase('emitting')
+
+                        setTimeout(() => {
+                            if (unmounted) return
+                            setPhase('idle')
+
+                            setTimeout(() => {
+                                if (unmounted) return
+                                runLoop()
+                            }, 3000) // relaxed pause duration
+                        }, 1300) // emitting duration
+                    }, 800) // collision duration
+                }, 2000) // gathering duration
+            }, 800) // targetAppears duration
         }
 
-        runLoop()
-        return () => { unmounted = true }
+        const initialTimer = setTimeout(() => {
+            runLoop()
+        }, 300)
+
+        return () => {
+            unmounted = true
+            clearTimeout(initialTimer)
+        }
     }, [])
 
     // Deterministic pseudo-random for SSR hydration safety
@@ -40,34 +69,45 @@ function AbstractEngine() {
         return x - Math.floor(x);
     }
 
-    // Abstract particles streaming into the core
-    const particles = Array.from({ length: 16 }).map((_, i) => {
-        const angle = (i * 22.5 * Math.PI) / 180
-        // scatter particles off-center
-        const distance = 140 + getPseudoRandom(i) * 40
+    // Abstract particles
+    const particles = Array.from({ length: 24 }).map((_, i) => {
+        const angle = (i * 15 * Math.PI) / 180
+        const distance = 110 + getPseudoRandom(i) * 50
         const startX = Number((Math.cos(angle) * distance).toFixed(3))
         const startY = Number((Math.sin(angle) * distance).toFixed(3))
-        const delay = Number((getPseudoRandom(i + 100) * 2).toFixed(3))
+        const delay = Number((getPseudoRandom(i + 100) * 1.5).toFixed(3))
         return { id: i, startX, startY, delay }
     })
 
     return (
         <div className="relative w-full aspect-[4/3] md:aspect-auto md:h-[500px] flex items-center justify-center p-4">
-            {/* Background Volumetric Glow (Cyan only) */}
-            <motion.div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000"
-                animate={{
-                    backgroundColor: phase === 'emitting' || phase === 'collision' ? 'rgba(6, 182, 212, 0.15)' : 'transparent'
-                }}
-            />
-
             <svg viewBox="-200 -150 400 300" className="w-full h-full overflow-visible z-10">
                 <defs>
-                    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity="1" />
-                        <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
-                    </linearGradient>
-                    <filter id="glow">
+                    <radialGradient id="gridMaskGradient">
+                        <stop offset="30%" stopColor="white" stopOpacity="1" />
+                        <stop offset="100%" stopColor="white" stopOpacity="0" />
+                    </radialGradient>
+                    <mask id="gridMask">
+                        <rect x="-200" y="-150" width="400" height="300" fill="url(#gridMaskGradient)" />
+                    </mask>
+                    <radialGradient id="auraLight">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.15" />
+                        <stop offset="50%" stopColor="#2563eb" stopOpacity="0.05" />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="auraDark">
+                        <stop offset="0%" stopColor="#0891b2" stopOpacity="0.15" />
+                        <stop offset="50%" stopColor="#0891b2" stopOpacity="0.05" />
+                        <stop offset="100%" stopColor="#0891b2" stopOpacity="0" />
+                    </radialGradient>
+                    <filter id="glowDark">
+                        <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                    <filter id="glowLight">
                         <feGaussianBlur stdDeviation="3" result="coloredBlur" />
                         <feMerge>
                             <feMergeNode in="coloredBlur" />
@@ -76,20 +116,40 @@ function AbstractEngine() {
                     </filter>
                 </defs>
 
+                {/* Central Aura Flare on Match */}
+                <g className="pointer-events-none">
+                    <motion.circle
+                        cx="0" cy="0" r="200"
+                        fill="url(#auraLight)"
+                        className="dark:hidden"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: phase === 'emitting' ? 1 : 0, scale: phase === 'emitting' ? 1 : 0.8 }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                    />
+                    <motion.circle
+                        cx="0" cy="0" r="200"
+                        fill="url(#auraDark)"
+                        className="hidden dark:block"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: phase === 'emitting' ? 1 : 0, scale: phase === 'emitting' ? 1 : 0.8 }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                    />
+                </g>
+
                 {/* Ambient Grid Lines (Data structure) */}
-                <g className="stroke-white/5 dark:stroke-white/5" strokeWidth="0.5">
-                    {Array.from({ length: 11 }).map((_, i) => (
-                        <line key={`v${i}`} x1={-150 + i * 30} y1="-150" x2={-150 + i * 30} y2="150" />
+                <g className="stroke-blue-900/[0.08] dark:stroke-white/[0.05]" strokeWidth="1.5" mask="url(#gridMask)" strokeDasharray="1 10" strokeLinecap="round">
+                    {Array.from({ length: 15 }).map((_, i) => (
+                        <line key={`v${i}`} x1={-210 + i * 30} y1="-150" x2={-210 + i * 30} y2="150" />
                     ))}
-                    {Array.from({ length: 11 }).map((_, i) => (
-                        <line key={`h${i}`} x1="-150" y1={-150 + i * 30} x2="150" y2={-150 + i * 30} />
+                    {Array.from({ length: 13 }).map((_, i) => (
+                        <line key={`h${i}`} x1="-210" y1={-180 + i * 30} x2="210" y2={-180 + i * 30} />
                     ))}
                 </g>
 
                 {/* Abstract Particles (User specific data points) */}
                 <g>
                     {particles.map((p) => {
-                        const isGathering = phase === 'gathering'
+                        const isGathering = phase === 'gathering' || phase === 'collision'
                         return (
                             <motion.circle
                                 key={p.id}
@@ -97,14 +157,14 @@ function AbstractEngine() {
                                 className="fill-slate-400 dark:fill-slate-500"
                                 initial={{ cx: p.startX, cy: p.startY, opacity: 0 }}
                                 animate={{
-                                    cx: isGathering ? [p.startX, 0] : 0,
-                                    cy: isGathering ? [p.startY, 0] : 0,
+                                    cx: isGathering ? [p.startX, 0] : p.startX,
+                                    cy: isGathering ? [p.startY, 0] : p.startY,
                                     opacity: isGathering ? [0, 1, 0] : 0,
                                 }}
                                 transition={{
-                                    duration: 2.5,
+                                    duration: 1.5,
                                     ease: "circIn",
-                                    delay: p.delay,
+                                    delay: isGathering ? p.delay : 0,
                                     repeat: isGathering ? Infinity : 0
                                 }}
                             />
@@ -131,7 +191,7 @@ function AbstractEngine() {
                         cx="0" cy="0" r="30"
                         fill="none"
                         className={cn("transition-colors duration-500",
-                            phase === 'collision' ? "stroke-cyan-500" : "stroke-slate-400 dark:stroke-slate-600"
+                            phase === 'collision' ? "stroke-blue-600 dark:stroke-cyan-500" : "stroke-slate-300 dark:stroke-slate-700"
                         )}
                         strokeWidth="1"
                         strokeDasharray="15 5"
@@ -150,8 +210,8 @@ function AbstractEngine() {
                     <motion.circle
                         cx="0" cy="0" r="12"
                         fill="none"
-                        className={cn("transition-colors duration-300",
-                            (phase === 'collision' || phase === 'emitting') ? "stroke-cyan-400" : "stroke-slate-500 dark:stroke-slate-400"
+                        className={cn("transition-colors duration-300 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]",
+                            (phase === 'collision' || phase === 'emitting') ? "stroke-blue-600 dark:stroke-cyan-400" : "stroke-slate-400 dark:stroke-slate-500"
                         )}
                         strokeWidth="2"
                         strokeDasharray="4 4"
@@ -164,79 +224,104 @@ function AbstractEngine() {
                             rotate: { duration: phase === 'collision' ? 0.5 : 8, ease: "linear", repeat: Infinity }
                         }}
                         style={{
-                            filter: (phase === 'collision' || phase === 'emitting') ? "url(#glow)" : "none",
                             transformOrigin: "0px 0px"
                         }}
                     />
 
                     <motion.circle
                         cx="0" cy="0" r="4"
-                        className={cn("transition-colors duration-300",
-                            (phase === 'collision' || phase === 'emitting') ? "fill-cyan-300" : "fill-slate-600 dark:fill-slate-300"
+                        className={cn("transition-colors duration-300 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]",
+                            (phase === 'collision' || phase === 'emitting') ? "fill-blue-500 dark:fill-cyan-300" : "fill-slate-600 dark:fill-slate-400"
                         )}
-                        style={{ filter: (phase === 'collision' || phase === 'emitting') ? "url(#glow)" : "none" }}
                     />
                 </g>
 
-                {/* Emitting Laser & Target Node */}
+                {/* Target Node & Emitting */}
                 <g>
                     {/* Laser Beam */}
                     <AnimatePresence>
                         {phase === 'emitting' && (
                             <motion.line
-                                x1="20" y1="0"
-                                x2="150" y2="0"
-                                stroke="url(#laserGrad)"
+                                x1="0" y1="0"
+                                x2={targetPos.x} y2={targetPos.y}
+                                className="stroke-blue-600 dark:stroke-cyan-400 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]"
                                 strokeWidth="2"
                                 initial={{ pathLength: 0, opacity: 0 }}
                                 animate={{ pathLength: 1, opacity: 1 }}
                                 exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                                transition={{ duration: 0.4, ease: "easeOut" }}
-                                style={{ filter: "url(#glow)" }}
+                                transition={{ duration: 0.3, ease: "easeOut" }}
                             />
                         )}
                     </AnimatePresence>
 
                     {/* Target Geometry (JD Abstraction) */}
                     <motion.g
-                        animate={{ scale: phase === 'emitting' ? [1, 1.1, 1] : 1 }}
-                        transition={{ duration: 0.5 }}
+                        key={loopKey}
+                        initial={{ opacity: 0, x: targetPos.x + 20, y: targetPos.y }}
+                        animate={{
+                            opacity: phase === 'idle' ? 0 : 1,
+                            x: phase === 'idle' ? targetPos.x + 20 : targetPos.x,
+                            y: targetPos.y
+                        }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
                     >
-                        <motion.rect
-                            x="142" y="-8" width="16" height="16"
-                            fill="none"
-                            className={cn("transition-colors duration-300",
-                                phase === 'emitting' ? "stroke-cyan-500" : "stroke-slate-300 dark:stroke-slate-700"
-                            )}
-                            strokeWidth="1"
-                            animate={{ rotate: 180 }}
-                            transition={{ duration: 15, ease: "linear", repeat: Infinity }}
-                            style={{ transformOrigin: "150px 0px" }}
-                        />
-                        <circle
-                            cx="150" cy="0" r="3"
-                            className={cn("transition-colors duration-300",
-                                phase === 'emitting' ? "fill-cyan-400" : "fill-slate-400 dark:fill-slate-600"
-                            )}
-                            style={{ filter: phase === 'emitting' ? "url(#glow)" : "none" }}
-                        />
-
-                        {/* Output trailing data */}
+                        {/* Ripple Effect on hit */}
                         <AnimatePresence>
                             {phase === 'emitting' && (
-                                <motion.line
-                                    x1="160" y1="0" x2="200" y2="0"
-                                    className="stroke-cyan-500/50"
-                                    strokeWidth="1"
-                                    strokeDasharray="2 4"
-                                    initial={{ pathLength: 0, opacity: 0 }}
-                                    animate={{ pathLength: 1, opacity: [0, 1, 0] }}
+                                <motion.circle
+                                    cx="0" cy="0" r="16"
+                                    fill="none"
+                                    className="stroke-blue-500 dark:stroke-cyan-400"
+                                    strokeWidth="1.5"
+                                    initial={{ scale: 0.5, opacity: 1 }}
+                                    animate={{ scale: 2.5, opacity: 0 }}
                                     exit={{ opacity: 0 }}
-                                    transition={{ duration: 1.5, ease: "linear", repeat: Infinity }}
+                                    transition={{ duration: 0.8, ease: "easeOut" }}
+                                    style={{ transformOrigin: "0px 0px" }}
                                 />
                             )}
                         </AnimatePresence>
+                        <AnimatePresence>
+                            {phase === 'emitting' && (
+                                <motion.circle
+                                    cx="0" cy="0" r="16"
+                                    fill="none"
+                                    className="stroke-blue-500 dark:stroke-cyan-400"
+                                    strokeWidth="1"
+                                    initial={{ scale: 0.5, opacity: 1 }}
+                                    animate={{ scale: 3.5, opacity: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 1.2, ease: "easeOut", delay: 0.1 }}
+                                    style={{ transformOrigin: "0px 0px" }}
+                                />
+                            )}
+                        </AnimatePresence>
+
+                        <motion.rect
+                            x="-8" y="-8" width="16" height="16"
+                            fill="none"
+                            className={cn("transition-colors duration-300",
+                                phase === 'emitting' ? "stroke-blue-600 dark:stroke-cyan-400" : "stroke-slate-400 dark:stroke-slate-600"
+                            )}
+                            strokeWidth="1"
+                            strokeDasharray="2 2"
+                            animate={{ rotate: phase === 'emitting' ? 180 : 0 }}
+                            transition={{ duration: phase === 'emitting' ? 0.5 : 20, ease: phase === 'emitting' ? "easeInOut" : "linear", repeat: Infinity }}
+                            style={{ transformOrigin: "0px 0px" }}
+                        />
+                        <circle
+                            cx="0" cy="0" r="3"
+                            className={cn("transition-colors duration-300 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]",
+                                phase === 'emitting' ? "fill-blue-500 dark:fill-cyan-300" : "fill-slate-400 dark:fill-slate-600"
+                            )}
+                        />
+
+                        {/* Target Label */}
+                        <text x="0" y="-16" className="text-[10px] fill-slate-500 dark:fill-slate-500 font-mono tracking-widest font-bold uppercase transition-opacity" textAnchor="middle">
+                            [JD]
+                        </text>
                     </motion.g>
+
                 </g>
 
             </svg>
@@ -316,7 +401,12 @@ export function CoreValueSection({ dict }: { dict: any }) {
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: "-100px" }}
                         transition={{ duration: 0.8 }}
-                        className="w-full rounded-2xl sm:rounded-[2.5rem] bg-white/50 dark:bg-black/20 backdrop-blur-3xl border border-black/5 dark:border-white/10 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden"
+                        className={cn(
+                            "w-full rounded-2xl sm:rounded-[2.5rem] overflow-hidden backdrop-blur-3xl",
+                            "bg-gradient-to-br from-white/90 to-slate-50/40 dark:from-transparent dark:to-transparent dark:bg-black/20",
+                            "border border-white/60 dark:border-white/10",
+                            "shadow-[inset_0_1px_1px_rgba(255,255,255,1),0_20px_40px_-20px_rgba(15,23,42,0.05)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+                        )}
                     >
                         <AbstractEngine />
                     </motion.div>
