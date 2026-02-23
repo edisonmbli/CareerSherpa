@@ -51,15 +51,15 @@ The narrative strictly follows: **Hook -> Trust -> Paradigm Shift (Asset Vault) 
 *   **Elements [i18n]:** "Privacy First / 数据安全隔离", "Powered by Advanced AI / 驱动于顶尖大模型", "Local Browser Parsing / 保护简历隐私" (Accompanied by Lucide icons like Shield, Sparkle, Lock).
 *   **Visual:** Low opacity (`opacity-60`), monochrome or muted text, seamless integration with the page background to avoid stealing focus from the CTA.
 
-### 2.3 资产理念区 (The Paradigm Shift: Asset Vault)
+### 2.3 核心价值理念区 (Core Value Statement)
 *   **Goal:** Educate the user on the "Profile First" mechanism. It's not just "uploading a file", it is systematically building a structured "Personal Asset Vault" (个人高光资产库) for the AI to retrieve and weaponize.
-*   **Layout:** 3-step horizontal flow or stacking cards (Mobile: vertical).
+*   **Layout:** 2-column storytelling layout.
 *   **Section Title [i18n]:** "打造专属个人的高光资产库" (Build Your Personal Highlight Asset Vault)
 *   **Steps:**
     1.  **沉淀 (Vault):** Unload your raw experiences. AI extracts and structures your data into a secure knowledge base.
     2.  **织网 (Graph):** The AI connects disparate achievements into a unified competency graph.
     3.  **赋能 (Empower):** The vault feeds the AI engine to generate highly targeted assets for any given JD instantly.
-*   **Code-driven Visual:** A sleek, secure "Vault" icon that splits open to reveal glowing data nodes, interacting and forming a network graph using SVG interconnect lines.
+*   **Code-driven Visual:** A sleek, secure SVG animation where the Vault nodes map and connect tracking varying Job Descriptions ("Collision Engine").
 
 ### 2.4 Bento Grid 场景功能区 (Core Value Showcase)
 *   **Goal:** High information density, visually striking. Showcase the 4 core functions with a **heavy visual emphasis** on the Resume Builder.

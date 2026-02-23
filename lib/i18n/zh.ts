@@ -725,6 +725,37 @@ const dict = {
       description:
         '粘贴岗位JD、上传简历，三步提升面试匹配度：匹配度分析、定制化简历、面试要点。',
     },
+    trustBanner: {
+      privacy: '贯穿求职全流程',
+      ai: '使用业界领先的大模型',
+      local: '保护简历隐私',
+    },
+    coreValue: {
+      tag: '求职新范式',
+      title: '告别海投内耗，专属 AI 私教为你打通最后一公里',
+      subtitle: '求职是一个充满不确定性的漏斗，针对每个 JD 反复定制简历极大地消耗着求职者的心智与精力。在此次新范式下，你只需专注梳理一次详细履历作为「高光资产库」，剩下的请放心交由 AI 处理。引擎会将其与目标岗位进行深度对碰，提供精准定制化的简历与面试策略，只为省时省力，效果更好。',
+      step1: '沉淀',
+      step2: '织网',
+      step3: '赋能',
+    },
+    bentoGrid: {
+      resumeBuilder: {
+        title: '定制精美简历',
+        desc: '专属线上排版，一键分发替代沉重 PDF',
+      },
+      matchAnalysis: {
+        title: '精准匹配分析',
+        desc: '透视 JD 隐藏需求',
+      },
+      smartPitch: {
+        title: '破冰话术',
+        desc: '抓眼球的直联内推话术',
+      },
+      mockInterview: {
+        title: '面试沙盘演练',
+        desc: '预判面试官的连环追问',
+      },
+    },
     hero: {
       title: '你的 AI 求职私教',
       subtitle:

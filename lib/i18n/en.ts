@@ -751,6 +751,37 @@ const dict = {
       description:
         'Paste JD, upload resume, and get higher-match interviews in three steps: match analysis, resume customization, and interview tips.',
     },
+    trustBanner: {
+      privacy: 'E2E: From JD to Offer',
+      ai: 'Powered by Advanced LLMs',
+      local: 'Privacy Security First',
+    },
+    coreValue: {
+      tag: 'The Paradigm Shift',
+      title: 'Stop the Grind. Let AI Bridge the Final Mile',
+      subtitle: 'The job hunt is a draining numbers game. Crafting a customized resume for each application is an exhausting loop. Here, you solely need to organize your master history once. Our AI acts as your private coach, rigorously analyzing your profile against target jobs to instantly generate highly-tailored resumes and interview strategies—saving time while maximizing your offer rate.',
+      step1: 'Vault',
+      step2: 'Graph',
+      step3: 'Empower',
+    },
+    bentoGrid: {
+      resumeBuilder: {
+        title: 'Custom Resumes',
+        desc: 'Stunning web-native resumes, overriding static PDFs via shareable links.',
+      },
+      matchAnalysis: {
+        title: 'Precision Match',
+        desc: 'Decipher hidden JD requirements.',
+      },
+      smartPitch: {
+        title: 'Smart Pitch',
+        desc: 'Eye-catching DM & referral scripts.',
+      },
+      mockInterview: {
+        title: 'Mock Interview',
+        desc: 'Anticipate ruthless interviewer follow-ups.',
+      },
+    },
     hero: {
       title: 'Your Personal AI Career Coach',
       subtitle:

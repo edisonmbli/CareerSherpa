@@ -6,6 +6,9 @@ import { HeroSection } from '@/components/landing/HeroSection'
 // import { PhilosophySection } from '@/components/landing/PhilosophySection'
 // import { FeatureShowcase } from '@/components/landing/FeatureShowcase'
 // import { BenefitsSection } from '@/components/landing/BenefitsSection'
+import { TrustBanner } from '@/components/landing/TrustBanner'
+import { CoreValueSection } from '@/components/landing/CoreValueSection'
+import { BentoGrid } from '@/components/landing/BentoGrid'
 import { FaqSection } from '@/components/landing/FaqSection'
 // import { CtaSection } from '@/components/landing/CtaSection'
 
@@ -55,26 +58,14 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
       {/* 2.1 Hero 区 (The Hook) */}
       <HeroSection dict={dict.hero} locale={locale} />
 
-      {/* 2.2 信任背书区 (Trust & Social Proof Banner) - Placeholder */}
-      <section className="w-full border-b border-border/40 bg-muted/20">
-        <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-          [ Placeholder: 2.2 Trust Banner / Social Proof ]
-        </div>
-      </section>
+      {/* 2.2 信任背书区 (Trust & Social Proof Banner) */}
+      <TrustBanner dict={dict} />
 
-      {/* 2.3 资产理念区 (The Paradigm Shift: Asset Vault) - Placeholder */}
-      <section className="w-full">
-        <div className="container mx-auto px-4 py-24 text-center text-muted-foreground">
-          [ Placeholder: 2.3 Asset Vault Philosophy Section ]
-        </div>
-      </section>
+      {/* 2.3 核心价值理念区 (The Paradigm Shift: Core Value) */}
+      <CoreValueSection dict={dict} />
 
-      {/* 2.4 Bento Grid 场景功能区 (Core Value Showcase) - Placeholder */}
-      <section className="w-full bg-muted/10">
-        <div className="container mx-auto px-4 py-24 text-center text-muted-foreground">
-          [ Placeholder: 2.4 Bento Grid Features Section ]
-        </div>
-      </section>
+      {/* 2.4 Bento Grid 场景功能区 (Core Value Showcase) */}
+      <BentoGrid dict={dict} />
 
       <FaqSection dict={dict.faq} locale={locale} />
 
