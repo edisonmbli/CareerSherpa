@@ -91,8 +91,8 @@ function AbstractEngine() {
                         <rect x="-200" y="-150" width="400" height="300" fill="url(#gridMaskGradient)" />
                     </mask>
                     <radialGradient id="auraLight">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.15" />
-                        <stop offset="50%" stopColor="#2563eb" stopOpacity="0.05" />
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
+                        <stop offset="50%" stopColor="#2563eb" stopOpacity="0.12" />
                         <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="auraDark">
@@ -145,6 +145,43 @@ function AbstractEngine() {
                         <line key={`h${i}`} x1="-210" y1={-180 + i * 30} x2="210" y2={-180 + i * 30} />
                     ))}
                 </g>
+
+                {/* Technical Viewfinder / Calibration Marks */}
+                <g className="stroke-slate-300/70 dark:stroke-slate-700/50" strokeWidth="1" fill="none">
+                    <path d="M-180 -120 L-180 -130 L-170 -130" />
+                    <path d="M180 -120 L180 -130 L170 -130" />
+                    <path d="M-180 120 L-180 130 L-170 130" />
+                    <path d="M180 120 L180 130 L170 130" />
+                    <circle cx="-180" cy="-130" r="1.5" className="fill-slate-300/70 dark:fill-slate-700/50" />
+                    <circle cx="180" cy="-130" r="1.5" className="fill-slate-300/70 dark:fill-slate-700/50" />
+                    <circle cx="-180" cy="130" r="1.5" className="fill-slate-300/70 dark:fill-slate-700/50" />
+                    <circle cx="180" cy="130" r="1.5" className="fill-slate-300/70 dark:fill-slate-700/50" />
+                </g>
+
+                {/* Abstract HUD Rings (Blueprint aesthetic) */}
+                <motion.g className="stroke-blue-900/[0.04] dark:stroke-white/[0.02]" fill="none" strokeWidth="1">
+                    <circle cx="0" cy="0" r="120" />
+                    <circle cx="0" cy="0" r="120" strokeDasharray="2 6" strokeWidth="2" />
+                    <circle cx="0" cy="0" r="80" />
+
+                    {/* Rotating Scanner Data Arcs */}
+                    <motion.path
+                        d="M 0 -120 A 120 120 0 0 1 120 0"
+                        className="stroke-blue-500/20 dark:stroke-cyan-500/20"
+                        strokeWidth="1.5"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 15, ease: "linear", repeat: Infinity }}
+                        style={{ transformOrigin: "0px 0px" }}
+                    />
+                    <motion.path
+                        d="M -80 0 A 80 80 0 0 1 0 -80"
+                        className="stroke-blue-400/30 dark:stroke-cyan-400/30"
+                        strokeWidth="1"
+                        animate={{ rotate: -360 }}
+                        transition={{ duration: 25, ease: "linear", repeat: Infinity }}
+                        style={{ transformOrigin: "0px 0px" }}
+                    />
+                </motion.g>
 
                 {/* Abstract Particles (User specific data points) */}
                 <g>
@@ -402,12 +439,15 @@ export function CoreValueSection({ dict }: { dict: any }) {
                         viewport={{ once: true, margin: "-100px" }}
                         transition={{ duration: 0.8 }}
                         className={cn(
-                            "w-full rounded-2xl sm:rounded-[2.5rem] overflow-hidden backdrop-blur-3xl",
-                            "bg-gradient-to-br from-white/90 to-slate-50/40 dark:from-transparent dark:to-transparent dark:bg-black/20",
-                            "border border-white/60 dark:border-white/10",
-                            "shadow-[inset_0_1px_1px_rgba(255,255,255,1),0_20px_40px_-20px_rgba(15,23,42,0.05)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+                            "w-full rounded-2xl sm:rounded-[2.5rem] overflow-hidden backdrop-blur-3xl relative",
+                            "bg-gradient-to-br from-zinc-200/30 via-white to-zinc-200/30 dark:from-transparent dark:via-transparent dark:to-transparent dark:bg-black/20",
+                            "border border-white/80 dark:border-white/10",
+                            "shadow-[inset_0_1px_1px_rgba(255,255,255,1),0_20px_40px_-20px_rgba(15,23,42,0.08)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
                         )}
                     >
+                        {/* Light Mode Inner Ambient Vignette */}
+                        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.02)_100%)] dark:hidden" />
+
                         <AbstractEngine />
                     </motion.div>
 
