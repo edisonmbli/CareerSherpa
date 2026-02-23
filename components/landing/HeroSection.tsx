@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect, useMemo } from 'react'
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { Plus_Jakarta_Sans, Playfair_Display } from 'next/font/google'
+import React, { useEffect, useState, useMemo } from 'react'
+import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -10,11 +10,6 @@ const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-plus-jakarta',
-})
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
 })
 
 interface HeroSectionProps {
@@ -29,9 +24,9 @@ function AnimatedScore({ value }: { value: number }) {
 
   useEffect(() => {
     const controls = animate(count, value, {
-      duration: 3,
+      duration: 2.5,
       ease: [0.16, 1, 0.3, 1],
-      delay: 0.5
+      delay: 0.2
     })
     return controls.stop
   }, [value, count])
@@ -39,18 +34,20 @@ function AnimatedScore({ value }: { value: number }) {
   return <motion.span>{rounded}</motion.span>
 }
 
-// 2. Neural Network Background (SVG + Framer Motion)
-// Generates a static web of nodes and animates glowing paths along them
+// 2. High-Quality Neural Network Background (SVG + Framer Motion)
+// Refined: Darker lines, bolder nodes, faint yellow insight lasers, reduced density, wider spread.
 function NeuralNetworkBackground() {
-  // Generate random nodes deterministically for hydration safety
+  const [mounted, setMounted] = useState(false)
+
+  // Deterministic hydration-safe random nodes (only rendered post-mount anyway, but good practice)
   const nodes = useMemo(() => {
     const arr = []
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 40; i++) { // Reduced density
       arr.push({
         id: i,
-        x: 10 + Math.random() * 80, // percentage
-        y: 10 + Math.random() * 80,
-        size: Math.random() * 2 + 1,
+        x: Math.random() * 120 - 10, // Spread beyond 0-100 bounds
+        y: Math.random() * 120 - 10,
+        size: Math.random() * 1.5 + 0.5,
       })
     }
     return arr
@@ -58,7 +55,7 @@ function NeuralNetworkBackground() {
 
   const connections = useMemo(() => {
     const arr = []
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 30; i++) { // Reduced density
       const source = nodes[Math.floor(Math.random() * nodes.length)]!
       const target = nodes[Math.floor(Math.random() * nodes.length)]!
       if (source.id !== target.id) {
@@ -68,277 +65,321 @@ function NeuralNetworkBackground() {
     return arr
   }, [nodes])
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#0B1120] transition-colors duration-700">
-      <motion.svg
-        className="absolute inset-0 w-full h-full opacity-40 dark:opacity-60"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 300, repeat: Infinity, ease: 'linear' }}
-        viewBox="0 0 100 100"
-        preserveAspectRatio="xMidYMid slice"
-      >
-        {/* Draw connections with animating dasharrays to simulate energy flow */}
-        {connections.map((conn) => (
-          <motion.path
-            key={conn.id}
-            d={`M ${conn.source.x} ${conn.source.y} L ${conn.target.x} ${conn.target.y}`}
-            className="stroke-amber-400/20 dark:stroke-amber-500/20"
-            strokeWidth="0.1"
-            fill="none"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{
-              pathLength: [0, 1, 1, 0],
-              opacity: [0, 1, 1, 0]
-            }}
-            transition={{
-              duration: 4 + Math.random() * 4,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-              ease: "easeInOut"
-            }}
-          />
-        ))}
+    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#09090B] transition-colors duration-700">
+      {mounted && (
+        <motion.svg
+          className="absolute inset-0 w-full h-full opacity-[0.5] dark:opacity-[0.6]"
+          // Restored full rotation of the network
+          animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+          transition={{
+            rotate: { duration: 250, repeat: Infinity, ease: 'linear' },
+            scale: { duration: 30, repeat: Infinity, ease: 'easeInOut' }
+          }}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="xMidYMid slice"
+          style={{ originX: "50%", originY: "50%" }}
+        >
+          {/* Base Static Connections - Darkened for contrast */}
+          {connections.map((conn) => (
+            <path
+              key={conn.id}
+              d={`M ${conn.source.x} ${conn.source.y} L ${conn.target.x} ${conn.target.y}`}
+              className="stroke-slate-400 dark:stroke-slate-700"
+              strokeWidth="0.08"
+              fill="none"
+            />
+          ))}
 
-        {/* Draw nodes */}
-        {nodes.map((node) => (
-          <circle
-            key={node.id}
-            cx={node.x}
-            cy={node.y}
-            r={node.size * 0.1}
-            className="fill-blue-900/30 dark:fill-blue-400/30"
-          />
-        ))}
+          {/* Flowing Highlight Connections (AI Thought Paths / Insights 💡) - Faint Yellow */}
+          {connections.slice(0, 15).map((conn, idx) => (
+            <motion.path
+              key={`pulse-${conn.id}`}
+              d={`M ${conn.source.x} ${conn.source.y} L ${conn.target.x} ${conn.target.y}`}
+              className="stroke-amber-300 dark:stroke-amber-200/80"
+              strokeWidth={idx % 3 === 0 ? "0.3" : "0.15"}
+              strokeLinecap="round"
+              fill="none"
+              initial={{ pathLength: 0.15, pathOffset: 0, opacity: 0 }}
+              animate={{
+                pathOffset: [0, 1],
+                opacity: [0, 1, 1, 0]
+              }}
+              transition={{
+                duration: 2.5 + Math.random() * 2.5,
+                repeat: Infinity,
+                delay: Math.random() * 3,
+                ease: "linear"
+              }}
+              style={{
+                filter: 'drop-shadow(0 0 1px rgba(252,211,77,0.8))'
+              }}
+            />
+          ))}
 
-        {/* Pulse nodes */}
-        {nodes.map((node, i) => i % 3 === 0 && (
-          <motion.circle
-            key={`pulse-${node.id}`}
-            cx={node.x}
-            cy={node.y}
-            r={node.size * 0.2}
-            className="fill-amber-400 pb-blend-screen"
-            animate={{ opacity: [0, 0.8, 0], scale: [1, 2, 1] }}
-            transition={{ duration: 2 + Math.random() * 2, repeat: Infinity, delay: Math.random() * 5 }}
-          />
-        ))}
-      </motion.svg>
+          {/* Base Nodes - Darkened */}
+          {nodes.map((node) => (
+            <circle
+              key={node.id}
+              cx={node.x}
+              cy={node.y}
+              r={node.size * 0.15}
+              className="fill-slate-500 dark:fill-slate-600"
+            />
+          ))}
 
-      {/* Base Radial Gradients to give depth to the grid */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(23,37,84,0.05),transparent_70%)] dark:bg-[radial-gradient(circle_at_50%_50%,rgba(30,58,138,0.15),transparent_70%)]" />
+          {/* Breathing / Flashing Nodes representing past experiences - Slightly strengthened */}
+          {nodes.map((node, i) => i % 4 === 0 && (
+            <motion.circle
+              key={`breath-${node.id}`}
+              cx={node.x}
+              cy={node.y}
+              r={node.size * 0.35}
+              className="fill-cyan-500 dark:fill-cyan-400"
+              animate={{ opacity: [0, 0.9, 0], scale: [1, 2, 1] }}
+              transition={{ duration: 3 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 5 }}
+            />
+          ))}
+        </motion.svg>
+      )}
 
-      {/* Extreme Fine Noise Texture */}
-      <div className="absolute inset-0 mix-blend-overlay opacity-[0.06] dark:opacity-[0.08]" style={{ backgroundImage: 'url("/noise.svg")' }} />
+      {/* Generous elliptical gradient: visible center, soft falloff, allowing nodes to be seen near edges */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(248,250,252,0.5)_0%,rgba(248,250,252,1)_120%)] dark:bg-[radial-gradient(ellipse_at_50%_50%,rgba(9,9,11,0.2)_0%,rgba(9,9,11,1)_120%)]" />
+
+      {/* Extreme Fine Noise Texture for premium tactile feel */}
+      <div className="absolute inset-0 mix-blend-overlay opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
     </div>
   )
 }
 
-// 3. Holographic Data Cloud
-function HolographicCloud() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 2, delay: 1 }}
-      className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-20 pointer-events-none z-20 flex items-end justify-center perspective-1000"
-    >
-      <motion.div
-        animate={{ rotateY: 360 }}
-        transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
-        className="relative w-24 h-24 transform-style-3d opacity-60 flex items-center justify-center"
-      >
-        <svg viewBox="0 0 100 100" className="absolute w-full h-full overflow-visible">
-          {/* Abstract projected grid lines */}
-          <motion.path d="M 10 50 L 90 50 M 50 10 L 50 90 M 15 15 L 85 85 M 15 85 L 85 15" className="stroke-amber-400/40" strokeWidth="0.5" fill="none"
-            animate={{ strokeDasharray: ["0, 100", "100, 0"], opacity: [0.2, 0.8, 0.2] }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-          />
-          {/* Glowing data rings */}
-          <ellipse cx="50" cy="50" rx="30" ry="10" className="stroke-indigo-400/50 fill-none" strokeWidth="0.5" />
-          <ellipse cx="50" cy="50" rx="10" ry="30" className="stroke-amber-400/40 fill-none" strokeWidth="0.5" />
-          <motion.circle cx="50" cy="50" r="40" className="stroke-blue-400/30 stroke-dashed fill-none" strokeWidth="0.5" animate={{ rotate: 360, transformOrigin: 'center' }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }} strokeDasharray="2 4" />
-        </svg>
-      </motion.div>
-      {/* Subtle light beam projecting upwards */}
-      <div className="absolute bottom-0 w-8 h-24 bg-gradient-to-t from-amber-400/10 to-transparent blur-md" />
-    </motion.div>
-  )
-}
-
 export function HeroSection({ dict, locale }: HeroSectionProps) {
+  // Setup cyclic mock data (3 scenarios)
+  const [mockIdx, setMockIdx] = useState(0)
+
+  // Fallback mock strictly matches the data schema defined in zh.ts / en.ts
+  const mockDataList = dict.mocks && dict.mocks.length > 0 ? dict.mocks : [
+    {
+      role: 'Full Stack Engineer (AI Applied)',
+      tag: 'Highly Compatible',
+      score: 90,
+      desc: 'Your 5 years of React/Node.js experience aligns perfectly, but the JD heavily emphasizes LLM integration workflows where your resume lacks specific keywords.',
+      insights: [
+        { title: 'Quantify "LangChain" Experience', desc: 'Add metrics to your RAG project. E.g., "Improved retrieval accuracy by 30% using vector databases."' },
+        { title: 'Highlight System Design', desc: 'The JD requires architecture skills. Move the "Microservices Migration" bullet point to the top of your most recent role.' }
+      ]
+    }
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setMockIdx((prev) => (prev + 1) % mockDataList.length)
+    }, 9000)
+    return () => clearInterval(timer)
+  }, [mockDataList.length])
+
+  const currentMock = mockDataList[mockIdx]
+
   return (
+    // Breakout Layout: w-screen absolute trick to break out of container.
+    // RESPONSIVE/ABOVE-THE-FOLD: using calc to subtract header height (approx 4rem), with a sane max fallback.
     <section className={cn(
-      "relative w-full min-h-[105vh] flex flex-col items-center justify-center overflow-hidden",
-      "pt-32 pb-24 px-4 sm:px-6 lg:px-8",
+      "w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[max(800px,calc(100svh-4rem))] flex flex-col items-center justify-center overflow-hidden",
+      "pt-16 pb-12 px-4 sm:px-6 lg:px-8",
       plusJakarta.variable,
-      playfair.variable,
-      "font-sans text-slate-900 dark:text-slate-50"
+      "font-sans text-slate-900 dark:text-slate-50 border-b border-black/5 dark:border-white/5"
     )}>
 
-      {/* 1. Deep Indigo / Gold Neural Network Background */}
+      {/* 1. Silicon Valley Neural Network Background (Restored) */}
       <NeuralNetworkBackground />
 
-      {/* Main Content Area */}
-      <div className="relative z-10 max-w-5xl mx-auto flex flex-col items-center text-center space-y-8 sm:space-y-10">
+      {/* Main Content Area (Max-W preserved) */}
+      <div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center space-y-6 sm:space-y-8 mt-4">
 
-        {/* Headline: Haute Couture sizing and balance */}
+        {/* Headline: Absolute starkness, high contrast, adjusted tracking, gradient clipping */}
         <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, filter: 'blur(10px)', y: 20 }}
+          animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           className={cn(
-            "text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] leading-[1.1] font-extrabold tracking-tight text-balance",
+            "text-5xl sm:text-6xl md:text-7xl lg:text-8xl leading-[1.05] font-extrabold tracking-[-0.02em] text-balance",
             "font-[family-name:var(--font-plus-jakarta)]",
-            // Deep text with subtle gradient that shines
-            "text-transparent bg-clip-text bg-gradient-to-br from-indigo-950 via-slate-800 to-indigo-800 dark:from-white dark:via-slate-200 dark:to-indigo-200 drop-shadow-sm"
+            "bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-800 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-300",
+            "pb-2" // padding to prevent lowercase clip cutoffs
           )}
         >
           {dict.title || "你的 AI 求职私教"}
         </motion.h1>
 
-        {/* Subheadline: Elegant text balance */}
+        {/* Subheadline: Muted, precise, polished typography */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="text-lg sm:text-xl md:text-2xl text-slate-600 dark:text-slate-400/90 max-w-3xl leading-relaxed sm:leading-loose px-4 text-balance"
+          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+          className="text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed px-4 text-balance font-medium tracking-tight drop-shadow-sm"
         >
-          {dict.subtitle || "告别海投。沉淀个人经历，让 AI 为你精准匹配岗位、定制惊艳简历并制定面试通关策略。"}
+          {dict.subtitle}
         </motion.p>
 
-        {/* Master CTA Button: Luxury Gold Accent */}
+        {/* Master CTA Button: Polished interaction details, inner glow, diffuse drop shadow, shimmer */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="pt-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          className="pt-2 sm:pt-4 relative group"
         >
-          <Link href={`/${locale}/workbench`} className={cn(
-            "group relative inline-flex items-center justify-center px-8 sm:px-10 py-4 sm:py-5 text-lg font-bold text-slate-900",
-            "rounded-full overflow-hidden transition-all duration-500 ease-out",
-            // Rich Metallic Gold Gradient
-            "bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600",
-            "shadow-[0_0_30px_rgba(245,158,11,0.2),0_8px_16px_rgba(0,0,0,0.1),inset_0_1px_2px_rgba(255,255,255,0.8)]",
-            "hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(245,158,11,0.4),0_12px_24px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9)]",
-            "active:scale-95 active:shadow-inner"
-          )}>
-            {/* Glossy Shimmer Sweep */}
-            <motion.div
-              className="absolute inset-0 -translate-x-[150%] skew-x-[-25deg] bg-gradient-to-r from-transparent via-white/50 to-transparent"
-              animate={{ x: ['-150%', '250%'] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1 }}
-            />
+          {/* Diffuse glow shadow */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-blue-500/0 rounded-full blur-lg opacity-30 group-hover:opacity-60 transition duration-500" />
 
-            <span className="relative flex items-center gap-2 drop-shadow-sm">
+          <Link href={`/${locale}/workbench`} className={cn(
+            "relative inline-flex items-center justify-center px-8 py-3.5 sm:px-10 sm:py-4 text-sm sm:text-base font-bold",
+            "rounded-full transition-all duration-300 ease-out overflow-hidden z-10",
+            "bg-gradient-to-b from-slate-800 to-slate-900 dark:from-white/10 dark:to-white/5 backdrop-blur-md",
+            "text-white dark:text-white",
+            "hover:from-slate-700 hover:to-slate-800 dark:hover:from-white/20 dark:hover:to-white/10",
+            "shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_20px_rgba(0,0,0,0.5)]",
+            "border border-slate-900/10 dark:border-white/10",
+            "active:scale-[0.98]"
+          )}>
+            <span className="relative z-10 flex items-center gap-2">
               {dict.cta || "开始免费诊断"}
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:translate-x-1 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </span>
+            {/* Shimmer sweep animation */}
+            <motion.div
+              className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent skew-x-[-25deg]"
+              initial={{ x: '-150%' }}
+              animate={{ x: '150%' }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1 }}
+            />
           </Link>
         </motion.div>
 
-        {/* The Digital Haute Couture Card */}
+        {/* The Platinum Glass Card - Now featuring "Dry Goods" Mock Data */}
         <motion.div
-          initial={{ opacity: 0, y: 60 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-4xl mt-20 sm:mt-28 relative perspective-1000 px-4"
+          transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-4xl mt-12 sm:mt-16 relative perspective-1000 px-4"
         >
-          {/* Holographic Projection Above */}
-          <HolographicCloud />
 
-          {/* Diffused Gold Base Glow */}
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[70%] h-12 bg-amber-500/20 dark:bg-amber-500/30 blur-[40px] rounded-[100%] pointer-events-none" />
+          {/* Main Depth Decorator - Volumetric Glow behind the card */}
+          {/* Strong cyan/blue pop in light mode, subtle deep-space aura in dark mode */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-gradient-to-tr from-blue-400/15 via-cyan-300/20 to-indigo-400/15 dark:from-cyan-900/15 dark:via-blue-900/15 dark:to-indigo-900/15 blur-[140px] dark:blur-[120px] rounded-[100%] pointer-events-none z-0 mix-blend-normal dark:mix-blend-screen" />
 
-          {/* Multi-layered Optical Instrument Card */}
           <motion.div
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             className={cn(
-              "w-full rounded-2xl sm:rounded-3xl p-6 sm:p-10 relative overflow-hidden",
-              // Deep frosted glass
-              "bg-white/60 dark:bg-[#0B1120]/60 backdrop-blur-2xl",
-              // Double complex shadowing: physical depth + glow + inner sheen
-              "shadow-[0_20px_80px_-10px_rgba(23,37,84,0.1),0_0_0_1px_rgba(23,37,84,0.05)_inset,inset_0_2px_4px_rgba(255,255,255,0.4)]",
-              "dark:shadow-[0_20px_80px_-10px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.05)_inset,inset_0_1px_2px_rgba(255,255,255,0.1)]",
-              "flex flex-col sm:flex-row items-center sm:items-start gap-8 transform-gpu preserve-3d"
+              "w-full rounded-2xl sm:rounded-[2rem] p-6 sm:p-8 lg:p-10 relative overflow-hidden text-left z-10",
+              // Light mode: Reverted to solid glass (bg-white/70, blur-40px) to prevent Chromium animation rendering bugs
+              // Dark mode: Deep solid glass (bg-black/70, blur-3xl) to prevent line noise
+              "bg-white/70 dark:bg-black/70 backdrop-blur-[40px] dark:backdrop-blur-3xl",
+              "border border-white/90 dark:border-white/10 ring-1 ring-emerald-500/5 dark:ring-0",
+              // Augmented shadow: sharp inner white rim + colored deep drop shadow (applied to both modes now)
+              "shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_15px_40px_-10px_rgba(14,165,233,0.15)]",
+              "flex flex-col sm:flex-row items-center sm:items-start gap-8 lg:gap-12"
             )}
-            style={{ rotateX: "3deg", rotateY: "-1deg" }}
           >
-            {/* Metallic Gold Gradient Border via pseudo-element illusion */}
-            <div className="absolute inset-0 rounded-2xl sm:rounded-3xl p-[1px] bg-gradient-to-br from-amber-300/60 via-transparent to-indigo-500/30 dark:from-amber-500/40 dark:via-transparent dark:to-indigo-500/20 pointer-events-none [mask-image:linear-gradient(black,black)] [mask-composite:exclude]" />
+            {/* Fine Noise Texture for the glass */}
+            <div className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
-            {/* Fine Noise Texture for tactile feel */}
-            <div className="absolute inset-0 mix-blend-overlay opacity-20 pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")' }} />
-
-            {/* Energy Sweep (Scanner Line) */}
+            {/* Hyper-minimal Laser Sweep (Scanner Line) */}
             <motion.div
-              className="absolute left-0 right-0 h-[80px] z-30 pointer-events-none"
+              className="absolute left-0 right-0 h-[100px] z-30 pointer-events-none"
               style={{
-                background: 'linear-gradient(to bottom, transparent, rgba(251,191,36,0.15) 50%, rgba(251,191,36,0.8) 100%)',
-                maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)'
+                background: 'linear-gradient(to bottom, transparent, rgba(6,182,212,0.02) 70%, rgba(6,182,212,0.1) 100%)',
               }}
-              animate={{ top: ['-20%', '120%'] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+              animate={{ top: ['-30%', '130%'] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: 'linear' }}
             >
-              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-amber-300 shadow-[0_0_15px_3px_rgba(251,191,36,0.6)]" />
+              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyan-500/70 shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
             </motion.div>
 
-            {/* Score Ring */}
-            <div className="relative w-28 h-28 sm:w-36 sm:h-36 shrink-0 flex items-center justify-center text-amber-500 z-10">
-              {/* Outer Glow Ring */}
-              <div className="absolute inset-[-4px] rounded-full border border-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.2)]" />
-              {/* Thick Semi-transparent track */}
-              <div className="absolute inset-0 rounded-full border-[8px] border-indigo-900/5 dark:border-white/5" />
-              {/* Animated Conic Energy Stream */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-[0px] rounded-full border-[8px] border-transparent"
-                style={{
-                  borderTopColor: '#fbbf24',
-                  boxShadow: '0 0 10px #fbbf24 inset, 0 0 10px #fbbf24',
-                  filter: 'drop-shadow(0 0 4px #f59e0b)'
-                }}
-              />
-              <span className="text-4xl sm:text-5xl font-black tabular-nums tracking-tighter drop-shadow-md text-amber-600 dark:text-amber-400">
-                <AnimatedScore value={98} />
-              </span>
+            {/* Minimalist Score Ring - Reduced to 90 */}
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center z-10">
+              {/* Ultra-thin Track */}
+              <div className="absolute inset-0 rounded-full border border-slate-200 dark:border-slate-800" />
+
+              {/* Progress Line (Cyan/Electric Blue) */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <motion.circle
+                  cx="50" cy="50" r="49"
+                  fill="none"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  className="stroke-cyan-500 dark:stroke-cyan-400"
+                  initial={{ strokeDasharray: "0 308" }}
+                  animate={{ strokeDasharray: `${currentMock.score * 308 / 100} 308` }} // Dyanmic completion based on mock score out of 2*pi*r (308)
+                  transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                />
+              </svg>
+
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-4xl sm:text-5xl font-extrabold tabular-nums tracking-tighter text-slate-900 dark:text-white leading-none">
+                  <AnimatedScore value={currentMock.score} />
+                </span>
+                <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-1">Match</span>
+              </div>
             </div>
 
-            {/* Data Skeletons matched to the Indigo/Gold theme */}
-            <div className="flex-1 w-full flex flex-col gap-5 pt-2 z-10">
-              <div className="flex flex-col gap-3">
-                <div className="h-5 w-48 sm:w-64 bg-indigo-950/10 dark:bg-white/10 rounded-md relative overflow-hidden backdrop-blur-sm">
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/20 to-transparent"
-                    animate={{ x: ['-100%', '200%'] }}
-                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                  />
-                </div>
-                <div className="h-4 w-32 sm:w-40 bg-indigo-950/5 dark:bg-white/5 rounded-md" />
-              </div>
+            {/* Live Data Mockup (Cyclic) */}
+            <div className="flex-1 w-full flex flex-col gap-6 pt-1 z-10 relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={mockIdx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex flex-col gap-6"
+                >
+                  {/* Target Role Header */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight truncate mr-2">{currentMock.role}</h3>
 
-              <div className="h-px w-full bg-indigo-900/10 dark:bg-white/10 my-2" />
+                      {/* Custom UI Badge - Borderless, Soft Fill */}
+                      <span className="flex shrink-0 items-center justify-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 text-[10px] font-bold tracking-wide">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.8)]" />
+                        {currentMock.tag}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{currentMock.desc}</p>
+                  </div>
 
-              <div className="flex flex-col gap-3 w-full">
-                {/* Row 1 - Success/Highlight in Gold */}
-                <div className="flex gap-3 w-full items-center">
-                  <div className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
-                  <div className="h-4 w-3/4 bg-indigo-950/5 dark:bg-white/5 rounded-full" />
-                </div>
-                {/* Row 2 */}
-                <div className="flex gap-3 w-full items-center">
-                  <div className="h-3 w-3 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
-                  <div className="h-4 w-1/2 bg-indigo-950/5 dark:bg-white/5 rounded-full" />
-                </div>
-                {/* Row 3 - Subtle alert in secondary tone */}
-                <div className="flex gap-3 w-full items-center mt-2">
-                  <div className="h-3 w-3 rounded-full bg-indigo-400 dark:bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                  <div className="h-4 w-2/3 bg-indigo-950/5 dark:bg-white/5 rounded-full" />
-                </div>
-              </div>
+                  <div className="h-px w-full bg-slate-200 dark:bg-white/10" />
+
+                  {/* Actionable Insights Layout */}
+                  <div className="flex flex-col gap-3">
+                    <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">{dict.optimizationInsights || "Optimization Insights"}</h4>
+
+                    {currentMock.insights.map((insight: any, i: number) => (
+                      <motion.div
+                        key={i}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 relative overflow-hidden group shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] dark:shadow-none transition-shadow hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)]"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: i * 0.15 + 0.2 }}
+                      >
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent skew-x-[-20deg]"
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 + i * 0.2 }}
+                        />
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1.5 shadow-[0_0_6px_theme(colors.cyan.500)]" />
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{insight.title}</span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{insight.desc}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         </motion.div>

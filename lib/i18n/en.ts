@@ -754,8 +754,59 @@ const dict = {
     hero: {
       title: 'Your Personal AI Career Coach',
       subtitle:
-        'Stop applying blindly. Get higher-match interviews with data-driven insights.',
+        'Stop applying blindly. Secure every interview opportunity with 1-on-1 personalized match analysis and tailored resumes.',
       cta: 'Start Free Trial (8 coins)',
+      optimizationInsights: 'Optimization Insights',
+      mocks: [
+        {
+          role: 'Digital IT Manager (Ecommerce)',
+          tag: 'Highly Compatible',
+          score: 85,
+          desc: 'Your 12 years of hybrid experience, especially in digital commerce and CRM integration, fully covers the hard requirements. However, your resume lacks specific mentions of multi-brand marketing support.',
+          insights: [
+            {
+              title: 'Highlight Backend Integration',
+              desc: 'Emphasize keywords matching the JD, such as "OMS" and "ERP upgrades", and quantify the results.',
+            },
+            {
+              title: 'Add Data-Driven Models',
+              desc: 'Given the JD\'s focus on data flow analysis, we suggest highlighting a data optimization project in your most recent role.',
+            },
+          ],
+        },
+        {
+          role: 'Senior AI Product Manager',
+          tag: 'Perfect Match',
+          score: 92,
+          desc: 'You have end-to-end experience building LLM applications from 0 to 1. Your B2B SaaS commercialization skills align perfectly with the core requirements.',
+          insights: [
+            {
+              title: 'Quantify AIGC Infrastructure',
+              desc: 'Add specific efficiency metrics to your projects, e.g., "Increased business workflow efficiency by 40% using Model X".',
+            },
+            {
+              title: 'Restructure Agile Experience',
+              desc: 'The JD emphasizes agile development. Extract your cross-functional collaboration and agile delivery into a standalone highlight.',
+            },
+          ],
+        },
+        {
+          role: 'Full Stack Engineer (AI Applied)',
+          tag: 'Perfect Match',
+          score: 98,
+          desc: 'Your 5 years of React/Node.js experience aligns perfectly. However, the JD heavily emphasizes LLM integration workflows where your resume lacks specific keywords.',
+          insights: [
+            {
+              title: 'Quantify "LangChain" Experience',
+              desc: 'Add metrics to your RAG project. E.g., "Improved retrieval accuracy by 30% using vector databases."',
+            },
+            {
+              title: 'Highlight System Design',
+              desc: 'The JD requires architecture skills. Move the "Microservices Migration" bullet point to the top of your most recent role.',
+            },
+          ],
+        },
+      ],
     },
     philosophy: {
       title: 'Success Starts with Self-Knowledge',
