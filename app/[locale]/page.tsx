@@ -9,8 +9,7 @@ import { HeroSection } from '@/components/landing/HeroSection'
 import { TrustBanner } from '@/components/landing/TrustBanner'
 import { CoreValueSection } from '@/components/landing/CoreValueSection'
 import { BentoGrid } from '@/components/landing/BentoGrid'
-import { FaqSection } from '@/components/landing/FaqSection'
-// import { CtaSection } from '@/components/landing/CtaSection'
+import { CtaSection } from '@/components/landing/CtaSection'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -67,14 +66,8 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
       {/* 2.4 Bento Grid 场景功能区 (Core Value Showcase) */}
       <BentoGrid dict={dict} />
 
-      <FaqSection dict={dict.faq} locale={locale} />
-
-      {/* 2.5 CTA 转化区 (The Push) - Placeholder */}
-      <section className="w-full bg-primary/5">
-        <div className="container mx-auto px-4 py-24 text-center text-muted-foreground">
-          [ Placeholder: 2.5 Final CTA Section ]
-        </div>
-      </section>
+      {/* 2.5 CTA 转化区 (The Push) */}
+      <CtaSection dict={dict} />
 
       <script
         type="application/ld+json"

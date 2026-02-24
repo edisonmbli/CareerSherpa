@@ -809,7 +809,7 @@ const dict = {
       title: 'Your Personal AI Career Coach',
       subtitle:
         'Stop applying blindly. Secure every interview opportunity with 1-on-1 personalized match analysis and tailored resumes.',
-      cta: 'Start Free Trial (8 coins)',
+      cta: 'Start Your Smart Journey',
       optimizationInsights: 'Optimization Insights',
       mocks: [
         {
@@ -936,8 +936,9 @@ const dict = {
       ],
     },
     cta: {
-      title: 'Ready to get started?',
-      button: 'Start Free Trial',
+      title: 'Ready to land your dream offer?',
+      subtitle: 'Register now to get 8 startup coins. Experience the full end-to-end AI career coach with zero pressure.',
+      button: 'Start Your Smart Journey',
     },
   },
   resume: {

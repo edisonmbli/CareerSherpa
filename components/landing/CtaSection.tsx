@@ -1,27 +1,60 @@
+'use client'
 
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 export function CtaSection({ dict }: { dict: any }) {
+  const t = dict.cta || {}
+
   return (
-    <section className="py-24 relative overflow-hidden bg-background">
-       <div className="absolute inset-0 -z-10 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
-        <div className="absolute left-0 right-0 bottom-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-primary/20 opacity-20 blur-[100px]" />
+    <section className="relative w-full py-32 overflow-hidden bg-slate-50 dark:bg-black">
+      {/* Background Ambient Glow (Breathing Cyber Blue Aura) */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <motion.div
+          className="w-[600px] h-[400px] bg-cyan-500/20 dark:bg-cyan-500/10 rounded-full blur-[120px]"
+          animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
       </div>
 
-      <div className="container px-4 md:px-6 mx-auto text-center">
-        <div className="max-w-2xl mx-auto space-y-8">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-[family-name:var(--font-playfair),serif]">
-            {dict.title}
-          </h2>
-          <div className="flex justify-center">
-            <Button asChild size="lg" className="rounded-full px-8 h-14 text-lg">
-              <Link href="/workbench">
-                {dict.button}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
+      <div className="container relative z-10 px-4 md:px-6 mx-auto">
+        <div className="max-w-4xl mx-auto">
+          {/* Main Container - Silicon Valley Elite Glassmorphism */}
+          <div className="p-10 md:p-16 rounded-[2rem] bg-white/40 dark:bg-white/5 backdrop-blur-3xl border-[0.5px] border-black/5 dark:border-white/10 shadow-2xl flex flex-col items-center text-center">
+
+            {/* Hook Title */}
+            <h2 className="text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl text-slate-900 dark:text-slate-100 mb-6">
+              {t.title}
+            </h2>
+
+            {/* Subtitle / Hook Proposition */}
+            <p className="max-w-[600px] text-slate-600 dark:text-slate-400 md:text-xl mb-10 leading-relaxed">
+              {t.subtitle}
+            </p>
+
+            {/* The Ultimate CTA Button */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Button
+                asChild
+                size="lg"
+                className="group relative h-16 px-10 rounded-full text-lg font-medium bg-slate-900 dark:bg-cyan-500/10 text-white dark:text-cyan-400 hover:bg-slate-800 dark:hover:bg-cyan-500/20 border border-transparent dark:border-cyan-500/50 shadow-xl dark:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden"
+              >
+                <Link href="/workbench" className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400 dark:text-cyan-300" />
+                  <span>{t.button}</span>
+                  <ArrowRight className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
+
+                  {/* Subtle Shimmer Sweep */}
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                </Link>
+              </Button>
+            </motion.div>
+
           </div>
         </div>
       </div>

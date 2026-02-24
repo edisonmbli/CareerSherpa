@@ -783,7 +783,7 @@ const dict = {
       title: '你的 AI 求职私教',
       subtitle:
         '别再盲目海投了。用一对一专属服务的匹配分析与简历定制，精准拿下每一次面试机会',
-      cta: '开始免费试用（赠 8 金币）',
+      cta: '免费诊断简历',
       optimizationInsights: '优化洞察',
       mocks: [
         {
@@ -910,8 +910,9 @@ const dict = {
       ],
     },
     cta: {
-      title: '准备好开始了吗？',
-      button: '开始免费试用',
+      title: '准备好斩获心仪的 Offer 了吗？',
+      subtitle: '新用户注册即赠 8 枚启动金币，零压力体验全流程 AI 辅助。',
+      button: '开启智能求职之旅',
     },
   },
   resume: {
