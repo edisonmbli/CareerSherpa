@@ -274,7 +274,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
 
           {/* Main Depth Decorator - Volumetric Glow behind the card */}
           {/* Strong cyan/blue pop in light mode, subtle deep-space aura in dark mode */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-gradient-to-tr from-blue-400/15 via-cyan-300/20 to-indigo-400/15 dark:from-cyan-900/15 dark:via-blue-900/15 dark:to-indigo-900/15 blur-[140px] dark:blur-[120px] rounded-[100%] pointer-events-none z-0 mix-blend-normal dark:mix-blend-screen" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-gradient-to-tr from-blue-400/15 via-cyan-300/20 to-indigo-400/15 dark:hidden blur-[140px] rounded-[100%] pointer-events-none z-0 mix-blend-normal" />
 
           <motion.div
             className={cn(
@@ -283,7 +283,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
               "bg-white/70 dark:bg-white/[0.03] backdrop-blur-2xl",
               "border-[0.5px] border-black/5 dark:border-white/10 ring-1 ring-emerald-500/5 dark:ring-0",
               // Augmented shadow: sharp inner white rim + colored deep drop shadow (applied to both modes now)
-              "shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_15px_40px_-10px_rgba(14,165,233,0.15)]",
+              "shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-2xl",
               "flex flex-col sm:flex-row items-center sm:items-start gap-8 lg:gap-12"
             )}
           >
