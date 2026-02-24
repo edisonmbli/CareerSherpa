@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react'
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
+import { motion, useMotionValue, useTransform, animate, AnimatePresence, useInView } from 'framer-motion'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -38,6 +38,8 @@ function AnimatedScore({ value }: { value: number }) {
 // Refined: Darker lines, bolder nodes, faint yellow insight lasers, reduced density, wider spread.
 function NeuralNetworkBackground() {
   const [mounted, setMounted] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isInView = useInView(containerRef)
 
   // Deterministic hydration-safe random nodes (only rendered post-mount anyway, but good practice)
   const nodes = useMemo(() => {
@@ -70,9 +72,11 @@ function NeuralNetworkBackground() {
   }, [])
 
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#09090B] transition-colors duration-700">
-      {mounted && (
+    <div ref={containerRef} className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#09090B] transition-colors duration-700">
+      {mounted && isInView && (
         <motion.svg
+          aria-hidden="true"
+          focusable="false"
           className="absolute inset-0 w-full h-full opacity-[0.5] dark:opacity-[0.6]"
           // Restored full rotation of the network
           animate={{ rotate: 360, scale: [1, 1.05, 1] }}
@@ -148,10 +152,10 @@ function NeuralNetworkBackground() {
       )}
 
       {/* Generous elliptical gradient: visible center, soft falloff, allowing nodes to be seen near edges */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(248,250,252,0.5)_0%,rgba(248,250,252,1)_120%)] dark:bg-[radial-gradient(ellipse_at_50%_50%,rgba(9,9,11,0.2)_0%,rgba(9,9,11,1)_120%)]" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(248,250,252,0.5)_0%,rgba(248,250,252,1)_120%)] dark:bg-[radial-gradient(ellipse_at_50%_50%,rgba(9,9,11,0.2)_0%,rgba(9,9,11,1)_120%)]" />
 
       {/* Extreme Fine Noise Texture for premium tactile feel */}
-      <div className="absolute inset-0 mix-blend-overlay opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+      <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
     </div>
   )
 }
@@ -232,7 +236,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
           className="pt-2 sm:pt-4 relative group"
         >
           {/* Diffuse glow shadow */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-blue-500/0 rounded-full blur-lg opacity-30 group-hover:opacity-60 transition duration-500" />
+          <div aria-hidden="true" className="absolute -inset-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-blue-500/0 rounded-full blur-lg opacity-30 group-hover:opacity-60 transition duration-500" />
 
           <Link href={`/${locale}/workbench`} className={cn(
             "relative inline-flex items-center justify-center px-8 py-3.5 sm:px-10 sm:py-4 text-sm sm:text-base font-bold",
@@ -246,7 +250,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
           )}>
             <span className="relative z-10 flex items-center gap-2">
               {dict.cta || "开始免费诊断"}
-              <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg aria-hidden="true" focusable="false" className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </span>
@@ -275,17 +279,16 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
           <motion.div
             className={cn(
               "w-full rounded-2xl sm:rounded-[2rem] p-6 sm:p-8 lg:p-10 relative overflow-hidden text-left z-10",
-              // Light mode: Reverted to solid glass (bg-white/70, blur-40px) to prevent Chromium animation rendering bugs
-              // Dark mode: Deep solid glass (bg-black/70, blur-3xl) to prevent line noise
-              "bg-white/70 dark:bg-black/70 backdrop-blur-[40px] dark:backdrop-blur-3xl",
-              "border border-white/90 dark:border-white/10 ring-1 ring-emerald-500/5 dark:ring-0",
+              // Light mode & Dark mode: unified standard card token
+              "bg-white/70 dark:bg-white/[0.03] backdrop-blur-2xl",
+              "border-[0.5px] border-black/5 dark:border-white/10 ring-1 ring-emerald-500/5 dark:ring-0",
               // Augmented shadow: sharp inner white rim + colored deep drop shadow (applied to both modes now)
               "shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_15px_40px_-10px_rgba(14,165,233,0.15)]",
               "flex flex-col sm:flex-row items-center sm:items-start gap-8 lg:gap-12"
             )}
           >
             {/* Fine Noise Texture for the glass */}
-            <div className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+            <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
             {/* Hyper-minimal Laser Sweep (Scanner Line) */}
             <motion.div
@@ -305,7 +308,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
               <div className="absolute inset-0 rounded-full border border-slate-200 dark:border-slate-800" />
 
               {/* Progress Line (Cyan/Electric Blue) */}
-              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+              <svg aria-hidden="true" focusable="false" className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <motion.circle
                   cx="50" cy="50" r="49"
                   fill="none"
@@ -361,7 +364,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
                     {currentMock.insights.map((insight: any, i: number) => (
                       <motion.div
                         key={i}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 relative overflow-hidden group shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] dark:shadow-none transition-shadow hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)]"
+                        className="flex items-start gap-3 p-3 rounded-xl bg-white/60 dark:bg-white/[0.03] backdrop-blur-2xl border-[0.5px] border-black/5 dark:border-white/10 relative overflow-hidden group shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] dark:shadow-none transition-shadow hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)]"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.4, delay: i * 0.15 + 0.2 }}
