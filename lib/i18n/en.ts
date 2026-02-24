@@ -940,6 +940,10 @@ const dict = {
       subtitle: 'Register now to get 8 startup coins. Experience the full end-to-end AI career coach with zero pressure.',
       button: 'Start Your Smart Journey',
     },
+    footer: {
+      slogan: 'Your Personal AI Career Coach.',
+      copyright: 'All rights reserved.',
+    },
   },
   resume: {
     templates: {

@@ -914,6 +914,10 @@ const dict = {
       subtitle: '新用户注册即赠 8 枚启动金币，零压力体验全流程 AI 辅助。',
       button: '开启智能求职之旅',
     },
+    footer: {
+      slogan: '你的 AI 求职私教。',
+      copyright: '保留所有权利。',
+    },
   },
   resume: {
     templates: {

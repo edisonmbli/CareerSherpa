@@ -9,7 +9,7 @@ export function CtaSection({ dict }: { dict: any }) {
   const t = dict.cta || {}
 
   return (
-    <section className="relative w-full py-32 overflow-hidden bg-slate-50 dark:bg-black">
+    <section className="relative w-full pt-32 pb-20 overflow-hidden bg-slate-50 dark:bg-black">
       {/* Background Ambient Glow (Breathing Cyber Blue Aura) */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
         <motion.div
@@ -25,12 +25,12 @@ export function CtaSection({ dict }: { dict: any }) {
           <div className="p-10 md:p-16 rounded-[2rem] bg-white/40 dark:bg-white/5 backdrop-blur-3xl border-[0.5px] border-black/5 dark:border-white/10 shadow-2xl flex flex-col items-center text-center">
 
             {/* Hook Title */}
-            <h2 className="text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl text-slate-900 dark:text-slate-100 mb-6">
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-slate-900 dark:text-white mb-6 text-balance">
               {t.title}
             </h2>
 
             {/* Subtitle / Hook Proposition */}
-            <p className="max-w-[600px] text-slate-600 dark:text-slate-400 md:text-xl mb-10 leading-relaxed">
+            <p className="max-w-[700px] text-slate-500 dark:text-slate-400 md:text-lg mb-12 leading-relaxed text-balance">
               {t.subtitle}
             </p>
 
@@ -38,19 +38,23 @@ export function CtaSection({ dict }: { dict: any }) {
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className="relative group"
             >
+              {/* Outer Breathing Glow Layer */}
+              <div className="absolute -inset-1 rounded-full animate-pulse bg-cyan-500/20 blur-xl opacity-70 group-hover:opacity-100 transition-opacity duration-500 shadow-[0_0_40px_-10px_rgba(6,182,212,0.8)]" />
+
               <Button
                 asChild
                 size="lg"
-                className="group relative h-16 px-10 rounded-full text-lg font-medium bg-slate-900 dark:bg-cyan-500/10 text-white dark:text-cyan-400 hover:bg-slate-800 dark:hover:bg-cyan-500/20 border border-transparent dark:border-cyan-500/50 shadow-xl dark:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden"
+                className="relative z-10 h-20 px-12 sm:px-14 rounded-full text-xl font-bold bg-slate-900 dark:bg-cyan-500/10 text-white dark:text-cyan-400 hover:bg-slate-800 dark:hover:bg-cyan-500/20 border border-transparent dark:border-cyan-500/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] dark:shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all duration-300 overflow-hidden"
               >
-                <Link href="/workbench" className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-cyan-400 dark:text-cyan-300" />
+                <Link href="/workbench" className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-cyan-400 dark:text-cyan-300" />
                   <span>{t.button}</span>
-                  <ArrowRight className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight className="w-6 h-6 transition-transform duration-300 group-hover:translate-x-1.5" />
 
                   {/* Subtle Shimmer Sweep */}
-                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/20 dark:via-cyan-400/20 to-transparent" />
                 </Link>
               </Button>
             </motion.div>

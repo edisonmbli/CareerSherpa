@@ -10,6 +10,7 @@ import { TrustBanner } from '@/components/landing/TrustBanner'
 import { CoreValueSection } from '@/components/landing/CoreValueSection'
 import { BentoGrid } from '@/components/landing/BentoGrid'
 import { CtaSection } from '@/components/landing/CtaSection'
+import { Footer } from '@/components/landing/Footer'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -66,8 +67,14 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
       {/* 2.4 Bento Grid 场景功能区 (Core Value Showcase) */}
       <BentoGrid dict={dict} />
 
+      {/* 制造极具夸张感的垂直留白呼吸感 */}
+      <div className="w-full h-32 md:h-48 bg-slate-50 dark:bg-black" />
+
       {/* 2.5 CTA 转化区 (The Push) */}
       <CtaSection dict={dict} />
+
+      {/* 2.6 页脚 (Footer Legitimacy) */}
+      <Footer dict={dict.footer} />
 
       <script
         type="application/ld+json"
