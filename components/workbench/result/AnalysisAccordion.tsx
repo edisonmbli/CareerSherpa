@@ -25,11 +25,11 @@ interface AnalysisItem {
   evidence?: string
   section?: string
   tip?:
-    | {
-        interview?: string
-        resume?: string
-      }
-    | string
+  | {
+    interview?: string
+    resume?: string
+  }
+  | string
 }
 
 interface AnalysisAccordionProps {
@@ -124,7 +124,7 @@ export function AnalysisAccordion({
                   <WatermarkPrefix index={idx} themeColor={themeColor} />
                   <div className="space-y-1.5 relative">
                     {/* Main Point */}
-                    <div className="text-sm leading-relaxed text-stone-800 dark:text-stone-200 font-[family-name:var(--font-noto-serif),serif]">
+                    <div className="text-sm leading-relaxed text-stone-800 dark:text-slate-300 font-[family-name:var(--font-noto-serif),serif]">
                       <ReactMarkdown
                         components={{
                           p: ({ node, ...props }) => (

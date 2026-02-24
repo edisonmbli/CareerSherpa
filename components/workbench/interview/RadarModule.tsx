@@ -85,7 +85,7 @@ export function RadarModule({
       {/* Section Title */}
       <div className="relative inline-block">
         <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
-        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-foreground tracking-tight relative">
+        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-foreground dark:text-white tracking-tight relative">
           {finalLabels.title}
         </h3>
       </div>
@@ -116,7 +116,7 @@ export function RadarModule({
                 <div key={index} className="relative pt-1 pb-6 last:pb-0">
                   <WatermarkPrefix index={index} themeColor={themeColor} />
                   <div className="space-y-3">
-                    <h4 className="text-base font-semibold text-foreground">
+                    <h4 className="text-base font-semibold text-foreground dark:text-white">
                       {challenge.challenge}
                     </h4>
                     <div className="space-y-3">
@@ -127,7 +127,7 @@ export function RadarModule({
                             {finalLabels.whyImportant}
                           </span>
                         </div>
-                        <p className="text-sm text-stone-600/80 dark:text-stone-400 leading-relaxed">
+                        <p className="text-sm text-stone-600/80 dark:text-slate-300 leading-relaxed">
                           {challenge.why_important}
                         </p>
                       </div>
@@ -138,7 +138,7 @@ export function RadarModule({
                             {finalLabels.yourAngle}
                           </span>
                         </div>
-                        <p className="text-sm text-stone-900/90 dark:text-stone-100 leading-relaxed font-normal">
+                        <p className="text-sm text-stone-900/90 dark:text-slate-300 leading-relaxed font-normal">
                           {challenge.your_angle}
                         </p>
                       </div>
@@ -155,7 +155,7 @@ export function RadarModule({
           <AccordionTrigger className="px-0 py-3 hover:no-underline group">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-sm font-semibold text-foreground relative">
+                <span className="text-sm font-semibold text-foreground dark:text-white relative">
                   {finalLabels.interviewRounds}
                 </span>
               </div>
@@ -190,7 +190,7 @@ export function RadarModule({
                     {round.focus_points.map((point, idx) => (
                       <li
                         key={idx}
-                        className="flex items-start gap-3 text-sm text-stone-900/80 dark:text-stone-300"
+                        className="flex items-start gap-3 text-sm text-stone-900/80 dark:text-slate-300"
                       >
                         <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
                         <span className="leading-relaxed">{point}</span>
@@ -204,7 +204,7 @@ export function RadarModule({
                 {interview_rounds.map((round, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h5 className="text-sm font-semibold text-foreground">
+                      <h5 className="text-sm font-semibold text-foreground dark:text-white">
                         {round.round_name}
                       </h5>
                     </div>
@@ -212,7 +212,7 @@ export function RadarModule({
                       {round.focus_points.map((point, idx) => (
                         <li
                           key={idx}
-                          className="flex items-start gap-2 text-xs text-stone-700 dark:text-stone-300"
+                          className="flex items-start gap-2 text-xs text-stone-700 dark:text-slate-300"
                         >
                           <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
                           <span className="leading-relaxed">{point}</span>
@@ -231,7 +231,7 @@ export function RadarModule({
           <AccordionTrigger className="px-0 py-3 hover:no-underline group">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-sm font-semibold text-foreground relative">
+                <span className="text-sm font-semibold text-foreground dark:text-white relative">
                   {finalLabels.hiddenRequirements}
                 </span>
               </div>
@@ -245,7 +245,7 @@ export function RadarModule({
               {hidden_requirements.map((req, index) => (
                 <div key={index} className="flex items-start gap-3">
                   <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
-                  <span className="text-sm text-stone-900/80 dark:text-stone-300 leading-relaxed flex-1">
+                  <span className="text-sm text-stone-900/80 dark:text-slate-300 leading-relaxed flex-1">
                     {req}
                   </span>
                 </div>

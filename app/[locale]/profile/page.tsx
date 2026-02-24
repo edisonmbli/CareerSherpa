@@ -66,8 +66,8 @@ export default async function ProfilePage({
 
   const ledgerData = user
     ? await listLedgerByUser(user.id, page, LEDGER_PAGE_SIZE, {
-        type:
-          fType &&
+      type:
+        fType &&
           [
             'SIGNUP_BONUS',
             'PURCHASE',
@@ -75,31 +75,31 @@ export default async function ProfilePage({
             'FAILURE_REFUND',
             'MANUAL_ADJUST',
           ].includes(fType)
-            ? fType
-            : undefined,
-        status:
-          fStatus &&
+          ? fType
+          : undefined,
+      status:
+        fStatus &&
           ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'].includes(fStatus)
-            ? fStatus
-            : undefined,
-        templateId: fTemplate || undefined,
-        serviceId: fService || undefined,
-        after: fAfter,
-        before: fBefore,
-      })
+          ? fStatus
+          : undefined,
+      templateId: fTemplate || undefined,
+      serviceId: fService || undefined,
+      after: fAfter,
+      before: fBefore,
+    })
     : { items: [], total: 0 }
   const ledger = (ledgerData as any).items || []
   const total = Number((ledgerData as any).total || 0)
   const pageCount = Math.max(1, Math.ceil(total / LEDGER_PAGE_SIZE))
   const surfaceClass = cn(
     'w-full relative overflow-visible',
-    'bg-card/50',
-    'border border-border/60',
-    'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
-    'rounded-xl backdrop-blur-sm',
+    'bg-white/70 dark:bg-white/[0.03]',
+    'border-[0.5px] border-black/5 dark:border-white/10',
+    'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-2xl',
+    'rounded-xl backdrop-blur-2xl',
   )
   const surfaceStyle = {
-    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
+    backgroundImage: 'url("/noise.svg")',
   }
 
   return (
@@ -292,16 +292,12 @@ export default async function ProfilePage({
                           href={`/${locale}/profile?tab=billing&page=${Math.max(
                             1,
                             page - 1,
-                          )}${fType ? `&type=${fType}` : ''}${
-                            fStatus ? `&status=${fStatus}` : ''
-                          }${fTemplate ? `&tpl=${fTemplate}` : ''}${
-                            fService ? `&svc=${fService}` : ''
-                          }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${
-                            fBefore ? `&before=${fBefore.toISOString()}` : ''
-                          }`}
-                          className={`px-2 py-0.5 rounded border text-xs ${
-                            page <= 1 ? 'opacity-40 pointer-events-none' : ''
-                          }`}
+                          )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
+                            }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
+                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
+                            }`}
+                          className={`px-2 py-0.5 rounded border text-xs ${page <= 1 ? 'opacity-40 pointer-events-none' : ''
+                            }`}
                         >
                           {p.billing.pagination.prev}
                         </Link>
@@ -314,18 +310,14 @@ export default async function ProfilePage({
                           href={`/${locale}/profile?tab=billing&page=${Math.min(
                             pageCount,
                             page + 1,
-                          )}${fType ? `&type=${fType}` : ''}${
-                            fStatus ? `&status=${fStatus}` : ''
-                          }${fTemplate ? `&tpl=${fTemplate}` : ''}${
-                            fService ? `&svc=${fService}` : ''
-                          }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${
-                            fBefore ? `&before=${fBefore.toISOString()}` : ''
-                          }`}
-                          className={`px-2 py-0.5 rounded border text-xs ${
-                            page >= pageCount
+                          )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
+                            }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
+                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
+                            }`}
+                          className={`px-2 py-0.5 rounded border text-xs ${page >= pageCount
                               ? 'opacity-40 pointer-events-none'
                               : ''
-                          }`}
+                            }`}
                         >
                           {p.billing.pagination.next}
                         </Link>

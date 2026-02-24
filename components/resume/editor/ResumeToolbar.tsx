@@ -293,13 +293,16 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
     <header className="shrink-0 z-30 transition-colors no-print relative">
       <div className="w-full px-3 md:px-4">
         <div className="mx-auto w-full max-w-[1180px]">
-          <div className="flex h-10 items-center justify-between rounded-md border border-border/60 bg-card/70 shadow-sm backdrop-blur-sm">
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-4">
+          <div className="flex h-10 items-center justify-between rounded-md border-[0.5px] border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] shadow-sm dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden">
+            {/* Ambient Noise Texture (Unified with other immersive cards) */}
+            <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-md z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-4 relative z-10">
               {/* Left Sidebar Toggle - Chapters */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
+                className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
                 onClick={() => setStructureOpen(!isStructureOpen)}
               >
                 <PanelLeft
@@ -313,12 +316,12 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                 </span>
               </Button>
 
-              <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1 shrink-0" />
+              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
               {/* Template Selector */}
               <TemplateSelector />
 
-              <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1 shrink-0" />
+              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
               {/* Style Tweaks */}
               <Popover open={isStyleOpen} onOpenChange={setIsStyleOpen}>
@@ -326,7 +329,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-2 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 px-2 transition-colors cursor-pointer"
+                    className="h-8 gap-2 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
                   >
                     <Palette className="h-4 w-4" />
                     <span className="hidden lg:inline">
@@ -646,20 +649,20 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                 </PopoverContent>
               </Popover>
 
-              <div className="h-4 w-px bg-border mx-1 shrink-0" />
+              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
               {/* Reset */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 px-2 transition-colors cursor-pointer"
+                className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
                 onClick={() => setIsResetOpen(true)}
               >
                 <RotateCcw className="h-4 w-4" />
                 <span className="hidden lg:inline">{dict.toolbar.reset}</span>
               </Button>
 
-              <div className="h-4 w-px bg-border mx-1 shrink-0" />
+              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
               {/* Export */}
               <DropdownMenu>
@@ -667,7 +670,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 px-2 transition-colors cursor-pointer"
+                    className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
                   >
                     <Download className="h-4 w-4" />
                     <span className="hidden lg:inline">
@@ -687,7 +690,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="h-4 w-px bg-border mx-1 shrink-0" />
+              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
               {serviceId && (
                 <ShareResumeDialog
@@ -696,7 +699,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 px-2 transition-colors cursor-pointer"
+                      className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
                     >
                       <Share2 className="h-4 w-4" />
                       <span className="hidden lg:inline">
@@ -752,7 +755,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
             </div>
 
             {/* Right Actions - AI Only */}
-            <div className="flex items-center gap-0 pl-4 pr-2 shrink-0">
+            <div className="flex items-center gap-0 pl-4 pr-2 shrink-0 relative z-10">
               {/* AI Suggestions - Premium Chip Style */}
               {/* AI Suggestions - Obsidian & Pearl Style */}
               <Button
@@ -761,9 +764,9 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                 className={cn(
                   'gap-2 h-8 px-3 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden group relative',
                   // Base: Solid Pearl/Obsidian
-                  'bg-background',
+                  'bg-white/50 dark:bg-zinc-950/50',
                   // Border: Refined
-                  'border-b border-blue-100 dark:border-blue-900',
+                  'border-b border-[0.5px] border-black/10 dark:border-white/20',
                   // Text: Blue
                   'text-blue-500/90 hover:text-blue-500/100 dark:text-blue-100 font-semibold',
                   // Interaction: Lift & Glow Shadow

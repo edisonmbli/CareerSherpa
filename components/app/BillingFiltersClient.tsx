@@ -39,7 +39,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
 
   function clearAll() {
     const params = new URLSearchParams(sp.toString())
-    ;['type','status','tpl','after','before','svc','page','filters'].forEach(k => params.delete(k))
+      ;['type', 'status', 'tpl', 'after', 'before', 'svc', 'page', 'filters'].forEach(k => params.delete(k))
     params.set('tab', 'billing')
     router.push(`${pathname}?${params.toString()}`)
   }
@@ -140,7 +140,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
       )}
       {open && (
         <div className="w-full sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-3 border border-border/30 rounded-lg bg-muted/[0.18] shadow-[0_6px_18px_rgba(0,0,0,0.06)]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-3 border border-black/5 dark:border-white/10 rounded-lg bg-white/50 dark:bg-white/[0.02] shadow-[0_6px_18px_rgba(0,0,0,0.06)] dark:shadow-2xl">
             <div className="md:col-span-3 sm:hidden">
               <Accordion type="multiple">
                 <AccordionItem value="type">
@@ -186,7 +186,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
             </div>
 
             <div className="hidden sm:block">
-              <div className="text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.type}</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 border-b border-black/5 dark:border-white/5 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.type}</div>
               <div className="flex flex-wrap gap-2 justify-start pl-3">
                 {Object.keys(dict.type).map((k) => (
                   <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextType === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextType(nextType === k ? '' : k)}>
@@ -197,7 +197,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
               </div>
             </div>
             <div className="hidden sm:block">
-              <div className="text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.status}</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 border-b border-black/5 dark:border-white/5 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.status}</div>
               <div className="flex flex-wrap gap-2 justify-start pl-3">
                 {Object.keys(dict.status).map((k) => (
                   <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextStatus === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextStatus(nextStatus === k ? '' : k)}>
@@ -208,7 +208,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
               </div>
             </div>
             <div className="hidden sm:block">
-              <div className="text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.template}</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 border-b border-black/5 dark:border-white/5 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.template}</div>
               <div className="flex flex-wrap gap-2 justify-start pl-3">
                 {Object.keys(dict.templates).map((k) => (
                   <Button key={k} variant={'ghost'} size="sm" className={`text-[11px] font-medium text-muted-foreground hover:text-foreground ${nextTpl === k ? 'bg-muted/40 text-foreground' : ''}`} onClick={() => setNextTpl(nextTpl === k ? '' : k)}>
@@ -220,7 +220,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
             </div>
 
             <div className="md:col-span-3">
-              <div className="hidden sm:block text-[11px] text-muted-foreground/70 mb-2 border-b border-border/30 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.date}</div>
+              <div className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400 mb-2 border-b border-black/5 dark:border-white/5 pb-1 pl-3 tracking-[0.1em] uppercase">{dict.filters.date}</div>
               <div className="hidden sm:flex items-center gap-2 pl-3">
                 <Input aria-label={locale === 'zh' ? '开始日期' : 'Start date'} type="date" lang={locale} value={nextAfter || ''} onChange={(e) => setNextAfter(e.target.value)} className="h-7 text-[11px] w-32" />
                 <span className="text-xs">—</span>

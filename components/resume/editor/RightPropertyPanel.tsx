@@ -115,7 +115,7 @@ export function RightPropertyPanel({
     if (!isAIPanelOpen && !showAI) return null
 
     return (
-      <div className="flex flex-col h-full bg-white dark:bg-zinc-900 transition-colors">
+      <div className="flex flex-col h-full bg-transparent transition-colors">
         {/* AI Suggestions with native scrolling for better reliability */}
         <div
           className="flex-1 overflow-y-auto min-h-0"
@@ -266,10 +266,10 @@ export function RightPropertyPanel({
   const sectionLabel = activeSectionKey ? (dict.sections[activeSectionKey] || dict.forms.editContent) : dict.forms.editContent
 
   return (
-    <div className="flex flex-col h-full bg-card transition-colors">
+    <div className="flex flex-col h-full bg-transparent transition-colors">
       <div
         className={cn(
-          'flex items-center justify-between sticky top-0 bg-card z-10 border-b border-border',
+          'flex items-center justify-between sticky top-0 bg-transparent z-10 border-b border-black/5 dark:border-white/10',
           isMobile ? 'p-3 h-10' : 'p-2'
         )}
       >

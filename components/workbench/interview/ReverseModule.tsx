@@ -47,7 +47,7 @@ export function ReverseModule({
       {/* Section Header */}
       <div className="relative inline-block">
         <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
-        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-stone-900 dark:text-stone-50 tracking-tight relative">
+        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-stone-900 dark:text-white tracking-tight relative">
           {finalLabels.title}
         </h3>
       </div>
@@ -58,7 +58,7 @@ export function ReverseModule({
           <div key={index} className="relative pt-1 pb-6 last:pb-0">
             <WatermarkPrefix index={index} themeColor={themeColor} />
             <div className="space-y-3 pb-2">
-              <h4 className="text-base font-semibold text-stone-900 dark:text-stone-100 leading-relaxed">
+              <h4 className="text-base font-semibold text-stone-900 dark:text-white leading-relaxed">
                 {q.question}
               </h4>
 
@@ -68,7 +68,7 @@ export function ReverseModule({
                     <Flag className="h-3 w-3 text-match-text" />
                     <span className="uppercase">{finalLabels.askIntent}</span>
                   </div>
-                  <p className="text-sm text-stone-900/90 dark:text-stone-300 leading-relaxed">
+                  <p className="text-sm text-stone-900/90 dark:text-slate-300 leading-relaxed">
                     {q.ask_intent}
                   </p>
                 </div>
@@ -78,7 +78,7 @@ export function ReverseModule({
                     <Ear className="h-3 w-3 text-match-text" />
                     <span className="uppercase">{finalLabels.listenFor}</span>
                   </div>
-                  <p className="text-sm text-stone-900/90 dark:text-stone-300 leading-relaxed">
+                  <p className="text-sm text-stone-900/90 dark:text-slate-300 leading-relaxed">
                     {q.listen_for}
                   </p>
                 </div>

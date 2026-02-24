@@ -46,9 +46,9 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
     return (
         <div
-            className="space-y-4 text-xs text-slate-700 dark:text-slate-300 pb-6 px-4 sm:px-6 md:px-10 leading-relaxed font-sans relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-stone-50 dark:bg-stone-950"
+            className="space-y-4 text-xs text-slate-700 dark:text-slate-300 pb-6 px-4 sm:px-6 md:px-10 leading-relaxed font-sans relative overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-stone-50 dark:bg-white/[0.02] backdrop-blur-2xl"
             style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
+                backgroundImage: 'url("/noise.svg")',
             }}
         >
             {/* Header Info */}
@@ -95,7 +95,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                 <Section title={L.specialties}>
                     <div className="flex flex-wrap gap-2">
                         {d.specialties_points.map((s: string, i: number) => (
-                            <span key={i} className="list-disc px-2.5 py-1 bg-emerald-100/20 dark:bg-emerald-900/20 text-gray-600 dark:text-emerald-300 rounded-sm font-[family-name:var(--font-jetbrains-mono),monospace] border border-emerald-100/50 dark:border-emerald-500/20 marker:text-slate-300">
+                            <span key={i} className="list-disc px-2.5 py-1 bg-emerald-100/20 dark:bg-emerald-400/[0.05] text-gray-600 dark:text-emerald-300 rounded-sm font-[family-name:var(--font-jetbrains-mono),monospace] border border-emerald-100/50 dark:border-emerald-500/20 marker:text-slate-300">
                                 {s}
                             </span>
                         ))}
@@ -134,7 +134,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                         {d.experiences.map((e: any, i: number) => (
                             <div key={i} className="group relative border-l border-slate-200 dark:border-slate-800 pl-5 ml-1.5 pb-8 last:pb-0 last:border-l-0">
                                 {/* Timeline Dot */}
-                                <div className="absolute top-1.5 -left-[5px] w-2.5 h-2.5 rounded-full border-2 border-slate-200 bg-white dark:border-slate-700 dark:bg-stone-950 group-hover:border-slate-300 dark:group-hover:border-slate-600 transition-colors" />
+                                <div className="absolute top-1.5 -left-[5px] w-2.5 h-2.5 rounded-full border-2 border-slate-200 bg-white dark:border-white/20 dark:bg-transparent group-hover:border-slate-300 dark:group-hover:border-white/40 transition-colors" />
 
                                 {/* Header: Company & Date line */}
                                 <div className="flex justify-between items-baseline mb-1">
@@ -142,7 +142,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                         {e.company}
                                         {e.product_or_team && <span className="font-normal text-slate-500 dark:text-slate-400 ml-2 text-sm italic serif"> {e.product_or_team}</span>}
                                     </div>
-                                    <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-bold text-slate-500 dark:text-slate-400 text-[10px] tabular-nums whitespace-nowrap bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded">
+                                    <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-bold text-slate-500 dark:text-slate-400 text-[10px] tabular-nums whitespace-nowrap bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded">
                                         {e.duration}
                                     </span>
                                 </div>
@@ -156,7 +156,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                 {Array.isArray(e.keywords) && e.keywords.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5 mb-3">
                                         {e.keywords.map((k: string, ki: number) => (
-                                            <span key={ki} className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono),monospace] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-full">
+                                            <span key={ki} className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono),monospace] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 rounded-full">
                                                 {k}
                                             </span>
                                         ))}
@@ -175,7 +175,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                     {Array.isArray(e.stack) && e.stack.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mt-2">
                                             {e.stack.map((s: string, si: number) => (
-                                                <Badge key={si} variant="outline" className="text-[10px] font-normal text-muted-foreground dark:text-slate-400 dark:border-slate-700">{s}</Badge>
+                                                <Badge key={si} variant="outline" className="text-[10px] font-normal text-muted-foreground dark:text-slate-400 dark:border-white/10 dark:bg-white/[0.02]">{s}</Badge>
                                             ))}
                                         </div>
                                     )}
@@ -193,7 +193,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                         <div className="mt-2">
                                             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {e.metrics.map((m: any, mi: number) => (
-                                                    <li key={mi} className="text-xs bg-emerald-50/50 dark:bg-emerald-900/20 border border-emerald-100/50 dark:border-emerald-500/20 px-2 py-1.5 rounded flex items-center gap-2 text-emerald-900 dark:text-emerald-300">
+                                                    <li key={mi} className="text-xs bg-emerald-50/50 dark:bg-emerald-400/[0.05] border border-emerald-100/50 dark:border-emerald-500/20 px-2 py-1.5 rounded flex items-center gap-2 text-emerald-900 dark:text-emerald-300">
                                                         <div className="w-1 h-1 rounded-full bg-emerald-400 shrink-0" />
                                                         {typeof m === 'string' ? m : <span className="truncate"><span className="font-semibold">{m.label}:</span> {m.value} {m.unit}</span>}
                                                     </li>
@@ -207,12 +207,12 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                         <div className="mt-4 pt-2">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="text-xs font-bold text-gray-900 dark:text-slate-300 uppercase tracking-widest">{L.projects}</div>
-                                                <div className="h-px bg-gray-100 dark:bg-slate-800 flex-1"></div>
+                                                <div className="h-px bg-gray-100 dark:bg-white/5 flex-1"></div>
                                             </div>
 
                                             <div className="space-y-4">
                                                 {e.projects.map((p: any, k: number) => (
-                                                    <div key={k} className="relative pl-4 border-l-2 border-indigo-100 dark:border-indigo-900/50 py-0.5">
+                                                    <div key={k} className="relative pl-4 border-l-2 border-indigo-100 dark:border-indigo-400/20 py-0.5">
                                                         {/* Project Title */}
                                                         <div className="flex flex-wrap items-baseline gap-2 mb-1">
                                                             <span className="font-semibold text-gray-800 dark:text-slate-200">{p.name}</span>
@@ -232,9 +232,9 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                                                 if (!Array.isArray(items) || items.length === 0) return null;
 
                                                                 const colorMap = {
-                                                                    task: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
-                                                                    actions: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300',
-                                                                    results: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300'
+                                                                    task: 'bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400',
+                                                                    actions: 'bg-blue-50 dark:bg-blue-400/[0.05] text-blue-600 dark:text-blue-300',
+                                                                    results: 'bg-emerald-50 dark:bg-emerald-400/[0.05] text-emerald-600 dark:text-emerald-300'
                                                                 }
                                                                 const label = key === 'task' ? L.task : key === 'actions' ? L.action : L.result;
 
@@ -258,14 +258,14 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
                                                         {/* Project Metrics */}
                                                         {Array.isArray(p.metrics) && p.metrics.length > 0 && (
-                                                            <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-dashed border-gray-100 dark:border-slate-800">
+                                                            <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-dashed border-gray-100 dark:border-white/5">
                                                                 {p.metrics.map((m: any, mi: number) => {
                                                                     const isObj = typeof m === 'object'
                                                                     const label = isObj ? m.label : L.metric
                                                                     const value = isObj ? m.value : m
                                                                     const unit = isObj ? m.unit : ''
                                                                     return (
-                                                                        <div key={mi} className="inline-flex items-center text-[10px] border border-gray-200 dark:border-slate-700 rounded px-2 py-0.5 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 shadow-sm">
+                                                                        <div key={mi} className="inline-flex items-center text-[10px] border border-gray-200 dark:border-white/10 rounded px-2 py-0.5 bg-white dark:bg-white/[0.02] text-gray-600 dark:text-slate-300 shadow-sm dark:shadow-none">
                                                                             <span className="mr-1.5">{label}</span>
                                                                             <span className="font-bold text-gray-900 dark:text-white">{value}</span>
                                                                             {unit && <span className="ml-0.5 text-gray-400 dark:text-slate-500">{unit}</span>}
@@ -325,11 +325,11 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                         {d.education.map((e: any, i: number) => (
                             <li key={i} className="text-slate-600 group relative border-l border-slate-200 dark:border-slate-800 pl-5 ml-1.5 pb-2">
                                 {/* Timeline Dot */}
-                                <div className="absolute top-1.5 -left-[5px] w-2.5 h-2.5 rounded-full border-2 border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900" />
+                                <div className="absolute top-1.5 -left-[5px] w-2.5 h-2.5 rounded-full border-2 border-slate-200 bg-white dark:border-white/20 dark:bg-transparent" />
 
                                 <div className="flex justify-between font-bold text-slate-900 text-sm mb-0.5">
                                     <span>{e.school}</span>
-                                    <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-normal text-slate-500 tabular-nums text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{e.duration}</span>
+                                    <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-normal text-slate-500 tabular-nums text-[10px] bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded">{e.duration}</span>
                                 </div>
                                 <div className="text-sm mb-1 font-medium text-slate-700">{e.degree} {e.major && <span className="text-slate-500 font-normal">· {e.major}</span>}</div>
                                 {e.gpa && <div className="text-xs text-slate-400 font-[family-name:var(--font-jetbrains-mono),monospace]">GPA: {e.gpa}</div>}
@@ -366,7 +366,7 @@ function Section({ title, children }: { title: string, children: React.ReactNode
             <div className="mb-6 relative pl-2">
                 <div className="relative inline-block ml-0">
                     {/* Highlight Block */}
-                    <div className="absolute bottom-2 -left-2 w-full min-w-[60px] h-3 bg-slate-200/60 dark:bg-slate-800/60 -z-10" />
+                    <div className="absolute bottom-2 -left-2 w-full min-w-[60px] h-3 bg-slate-200/60 dark:bg-white/[0.06] -z-10" />
                     {/* Title Text */}
                     <h3 className="font-[family-name:var(--font-playfair),serif] font-bold text-lg text-slate-900 dark:text-slate-100 tracking-tight relative z-10">
                         {title}
@@ -388,7 +388,7 @@ function renderSkills(skills: any) {
             return (
                 <div className="flex flex-wrap gap-2">
                     {skills.map((s: string, i: number) => (
-                        <span key={i} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 rounded-full text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono),monospace] border border-slate-200/50 dark:border-slate-700">
+                        <span key={i} className="px-2.5 py-1 bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 rounded-full text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono),monospace] border border-slate-200/50 dark:border-white/10">
                             {s}
                         </span>
                     ))}
@@ -418,7 +418,7 @@ function renderSkills(skills: any) {
                         <div className="font-medium capitalize text-gray-900 dark:text-slate-100 mb-1">{key}</div>
                         <div className="flex flex-wrap gap-1.5">
                             {vals.map((v: string, vi: number) => (
-                                <span key={vi} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 rounded-md text-[10px] font-[family-name:var(--font-jetbrains-mono),monospace] font-medium border border-slate-200/50 dark:border-slate-700">{v}</span>
+                                <span key={vi} className="px-2 py-0.5 bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 rounded-md text-[10px] font-[family-name:var(--font-jetbrains-mono),monospace] font-medium border border-slate-200/50 dark:border-white/10">{v}</span>
                             ))}
                         </div>
                     </div>

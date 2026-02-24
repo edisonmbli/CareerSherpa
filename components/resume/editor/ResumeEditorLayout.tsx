@@ -157,9 +157,9 @@ export function ResumeEditorLayout({
         {!isDrawerMode && (
           <div
             className={cn(
-              'bg-white dark:bg-popover border-r dark:border-zinc-800 z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
+              'bg-white/70 dark:bg-white/[0.03] backdrop-blur-2xl border-r border-[0.5px] border-black/5 dark:border-white/10 dark:shadow-2xl z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
               isStructureOpen
-                ? 'w-[280px] translate-x-0 opacity-100 shadow-sm'
+                ? 'w-[280px] translate-x-0 opacity-100 shadow-sm dark:shadow-2xl'
                 : 'w-0 -translate-x-full opacity-0 border-none',
             )}
           >
@@ -173,7 +173,7 @@ export function ResumeEditorLayout({
         {isDrawerMode && (
           <div
             className={cn(
-              'absolute left-0 top-0 bottom-0 z-50 bg-white dark:bg-popover border-r dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
+              'absolute left-0 top-0 bottom-0 z-50 bg-white/70 dark:bg-white/[0.03] backdrop-blur-2xl border-r border-[0.5px] border-black/5 dark:border-white/10 dark:shadow-2xl transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
               isStructureOpen
                 ? 'translate-x-0 shadow-2xl'
                 : '-translate-x-full',
@@ -265,7 +265,7 @@ export function ResumeEditorLayout({
         {!isDrawerMode && (
           <div
             className={cn(
-              'bg-white dark:bg-popover shadow-2xs dark:border-zinc-800 z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
+              'bg-white/70 dark:bg-white/[0.03] backdrop-blur-2xl border-l border-[0.5px] border-black/5 dark:border-white/10 shadow-2xs dark:shadow-2xl z-20 transition-all duration-[800ms] ease-in-out overflow-hidden flex-shrink-0 relative flex flex-col',
               isAIPanelOpen
                 ? 'w-[350px] translate-x-0 opacity-100'
                 : 'w-0 translate-x-full opacity-0 border-none',
@@ -281,7 +281,7 @@ export function ResumeEditorLayout({
         {isDrawerMode && (
           <div
             className={cn(
-              'absolute right-0 top-0 bottom-0 z-50 bg-white dark:bg-popover shadow-xs border-l dark:border-zinc-800 transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
+              'absolute right-0 top-0 bottom-0 z-50 bg-white/70 dark:bg-white/[0.03] backdrop-blur-2xl border-l border-[0.5px] border-black/5 dark:border-white/10 shadow-xs dark:shadow-2xl transition-transform duration-[800ms] ease-out flex flex-col hidden md:flex',
               isAIPanelOpen ? 'translate-x-0' : 'translate-x-full',
             )}
             style={{ width: '350px' }}

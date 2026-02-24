@@ -56,7 +56,7 @@ export function SmartPitch({
     const parts = text.split(/([【\[][HVC][】\]])/g)
 
     return (
-      <div className="whitespace-pre-wrap text-sm leading-relaxed text-stone-800 dark:text-stone-200 font-[family-name:var(--font-noto-serif),serif]">
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-stone-800 dark:text-slate-300 font-[family-name:var(--font-noto-serif),serif]">
         {parts.map((part, i) => {
           const isTag = part.match(/^[【\[][HVC][】\]]$/)
 

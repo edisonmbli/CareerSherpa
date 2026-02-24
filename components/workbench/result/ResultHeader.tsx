@@ -81,7 +81,7 @@ export function ResultHeader({
       {/* 1. Left: Identity Block */}
       <div className="flex flex-col gap-1.5 flex-1 min-w-0">
         {/* Company Name */}
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-[family-name:var(--font-playfair),serif] font-bold tracking-tight text-stone-900 dark:text-stone-50 flex items-center gap-2 truncate">
+        <h2 className="text-2xl md:text-3xl lg:text-4xl font-[family-name:var(--font-playfair),serif] font-bold tracking-tight text-stone-900 dark:text-white flex items-center gap-2 truncate">
           {company || labels?.targetCompany || 'Target Company'}
         </h2>
         {/* Job Title */}
@@ -136,7 +136,7 @@ export function ResultHeader({
             viewBox="0 0 100 100"
           >
             <circle
-              className="text-stone-200 dark:text-stone-800"
+              className="text-stone-200 dark:text-white/10"
               strokeWidth="8"
               stroke="currentColor"
               fill="transparent"

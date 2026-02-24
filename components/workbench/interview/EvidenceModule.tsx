@@ -78,7 +78,7 @@ export function EvidenceModule({
       <div className="flex items-center gap-3">
         <div className="relative inline-block">
           <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
-          <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-foreground tracking-tight relative">
+          <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-foreground dark:text-white tracking-tight relative">
             {finalLabels.title}
           </h3>
         </div>
@@ -93,7 +93,7 @@ export function EvidenceModule({
             <TabsTrigger
               key={index}
               value={String(index)}
-              className="text-xs px-3 py-2 rounded-none text-stone-500/80 dark:text-stone-400/80 data-[state=active]:text-stone-700/90 dark:data-[state=active]:text-stone-200 data-[state=active]:border-b-2 data-[state=active]:border-stone-300/80 dark:data-[state=active]:border-stone-700/80"
+              className="text-xs px-3 py-2 rounded-none text-stone-500/80 dark:text-stone-400/80 data-[state=active]:text-stone-700/90 dark:data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-stone-300/80 dark:data-[state=active]:border-white/20"
             >
               {finalLabels.storyLabel || finalLabels.storyTitle} {index + 1}
             </TabsTrigger>
@@ -106,12 +106,12 @@ export function EvidenceModule({
             value={String(index)}
             className="mt-4 space-y-4 print:hidden"
           >
-            <div className="md:hidden rounded-lg border border-stone-200/70 dark:border-stone-800/70 p-3 space-y-3">
+            <div className="md:hidden rounded-lg border border-stone-200/70 dark:border-white/5 bg-transparent dark:bg-white/[0.02] p-3 space-y-3">
               <div className="space-y-1.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500/80 dark:text-stone-400/80">
                   {finalLabels.storyTitle}
                 </p>
-                <h4 className="text-base font-semibold text-stone-900 dark:text-stone-100">
+                <h4 className="text-base font-semibold text-stone-900 dark:text-white">
                   {story.story_title}
                 </h4>
                 <div className="flex flex-wrap gap-2 text-xs">
@@ -138,10 +138,10 @@ export function EvidenceModule({
 
               {story.matched_pain_point && (
                 <div className="space-y-1 rounded-lg p-3 bg-stone-100/80 dark:bg-stone-900/40">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600/90 dark:text-stone-300">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600/90 dark:text-slate-400">
                     {finalLabels.matchedPainPoint}
                   </p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">
+                  <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                     {story.matched_pain_point}
                   </p>
                 </div>
@@ -152,7 +152,7 @@ export function EvidenceModule({
                   <span className="w-4 text-[11px] font-semibold text-match-text pt-[2px]">
                     S
                   </span>
-                  <p className="text-sm text-foreground/80 leading-relaxed">
+                  <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                     {story.star.situation}
                   </p>
                 </div>
@@ -160,7 +160,7 @@ export function EvidenceModule({
                   <span className="w-4 text-[11px] font-semibold text-match-text pt-[2px]">
                     T
                   </span>
-                  <p className="text-sm text-foreground/80 leading-relaxed">
+                  <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                     {story.star.task}
                   </p>
                 </div>
@@ -168,7 +168,7 @@ export function EvidenceModule({
                   <span className="w-4 text-[11px] font-semibold text-match-text pt-[2px]">
                     A
                   </span>
-                  <p className="text-sm text-foreground/80 leading-relaxed">
+                  <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                     {story.star.action}
                   </p>
                 </div>
@@ -176,19 +176,19 @@ export function EvidenceModule({
                   <span className="w-4 text-[11px] font-semibold text-match-text pt-[2px]">
                     R
                   </span>
-                  <p className="text-sm text-foreground/80 leading-relaxed">
+                  <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                     {story.star.result}
                   </p>
                 </div>
               </div>
             </div>
             <div className="hidden md:block">
-              <div className="rounded-xl border border-stone-200/70 dark:border-stone-800/60 p-4 space-y-4 print:break-inside-avoid">
+              <div className="rounded-xl border border-stone-200/70 dark:border-white/5 bg-transparent dark:bg-white/[0.02] p-4 space-y-4 print:break-inside-avoid">
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500/80 dark:text-stone-400/80">
                     {finalLabels.storyTitle}
                   </p>
-                  <h4 className="text-base font-semibold text-foreground">
+                  <h4 className="text-base font-semibold text-foreground dark:text-white">
                     {story.story_title}
                   </h4>
                   <div className="flex flex-wrap gap-2 text-sm">
@@ -214,11 +214,11 @@ export function EvidenceModule({
                 </div>
 
                 {story.matched_pain_point && (
-                  <div className="space-y-1 rounded-lg p-4 bg-stone-100/80 dark:bg-stone-900/40">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600/90 dark:text-stone-300">
+                  <div className="space-y-1 rounded-lg p-4 bg-stone-100/80 dark:bg-white/[0.02] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600/90 dark:text-slate-400">
                       {finalLabels.matchedPainPoint}
                     </p>
-                    <p className="text-sm text-foreground/80 leading-relaxed">
+                    <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                       {story.matched_pain_point}
                     </p>
                   </div>
@@ -229,7 +229,7 @@ export function EvidenceModule({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-match-text">
                       S · {finalLabels.situation}
                     </p>
-                    <p className="text-sm text-foreground/80 leading-relaxed">
+                    <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                       {story.star.situation}
                     </p>
                   </div>
@@ -237,7 +237,7 @@ export function EvidenceModule({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-match-text">
                       T · {finalLabels.task}
                     </p>
-                    <p className="text-sm text-foreground/80 leading-relaxed">
+                    <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                       {story.star.task}
                     </p>
                   </div>
@@ -245,7 +245,7 @@ export function EvidenceModule({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-match-text">
                       A · {finalLabels.action}
                     </p>
-                    <p className="text-sm text-foreground/80 leading-relaxed">
+                    <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                       {story.star.action}
                     </p>
                   </div>
@@ -253,7 +253,7 @@ export function EvidenceModule({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-match-text">
                       R · {finalLabels.result}
                     </p>
-                    <p className="text-sm text-foreground/80 leading-relaxed">
+                    <p className="text-sm text-foreground/80 dark:text-slate-300 leading-relaxed">
                       {story.star.result}
                     </p>
                   </div>
@@ -267,7 +267,7 @@ export function EvidenceModule({
           {stories.map((story, index) => (
             <div
               key={index}
-              className="rounded-xl border border-stone-200/70 dark:border-stone-800/60 p-4 space-y-4 print:break-inside-avoid"
+              className="rounded-xl border border-stone-200/70 dark:border-white/5 bg-transparent dark:bg-white/[0.02] p-4 space-y-4 print:break-inside-avoid"
             >
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500/80 dark:text-stone-400/80">

@@ -102,13 +102,13 @@ function SortableItem({
       className={cn(
         'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none',
         isMobile
-          ? 'py-3 px-3 border border-gray-100 bg-white dark:bg-zinc-900 dark:border-zinc-800'
+          ? 'py-3 px-3 border border-gray-100 bg-white/50 dark:bg-transparent dark:border-white/10'
           : 'p-2',
         isActive && !isMobile
-          ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 font-medium'
-          : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300',
+          ? 'bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-100 font-medium'
+          : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300',
         isDragging &&
-        'opacity-50 bg-gray-50 dark:bg-zinc-800 ring-2 ring-zinc-500/20 z-50 shadow-lg',
+        'opacity-50 bg-gray-50 dark:bg-white/10 ring-2 ring-zinc-500/20 z-50 shadow-lg',
         isHidden && 'opacity-60 grayscale',
         hasPageBreak && 'border-l-2 border-orange-300'
       )}
@@ -209,11 +209,11 @@ function FixedItem({
   return (
     <div
       className={cn(
-        'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none border-b border-dashed border-gray-200 dark:border-zinc-800 pb-2',
-        isMobile ? 'py-3 px-3 bg-white dark:bg-zinc-900' : 'p-2',
+        'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none border-b border-dashed border-gray-200 dark:border-white/10 pb-2',
+        isMobile ? 'py-3 px-3 bg-white/50 dark:bg-transparent' : 'p-2',
         isActive && !isMobile
-          ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 font-medium'
-          : 'hover:bg-gray-100 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-gray-300'
+          ? 'bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-100 font-medium'
+          : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300'
       )}
       onClick={onClick}
     >
@@ -297,10 +297,10 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
   const sortableItems = sectionConfig.order.filter((key) => key !== 'basics')
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-zinc-900 transition-colors">
+    <div className="h-full flex flex-col bg-transparent transition-colors">
       {!isMobile && (
-        <div className="p-3 flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900 z-10 border-b border-transparent">
-          <h3 className="font-medium text-sm text-muted-foreground pl-1">
+        <div className="p-3 flex items-center justify-between sticky top-0 bg-transparent z-10 border-b border-transparent">
+          <h3 className="font-medium text-sm text-foreground/80 pl-1">
             {dict.editor.structure}
           </h3>
           <Button

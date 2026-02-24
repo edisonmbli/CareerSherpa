@@ -103,31 +103,28 @@ export function LedgerGroupList({
       <>
         <span className="hidden md:inline-flex items-center">
           <span
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full border text-[11px] font-normal ${
-              success
-                ? 'text-emerald-700 border-emerald-200/70'
-                : failed
-                  ? 'text-rose-700 border-rose-200/70'
-                  : 'text-muted-foreground border-border/40'
-            }`}
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full border text-[11px] font-normal ${success
+              ? 'text-emerald-700 border-emerald-200/70'
+              : failed
+                ? 'text-rose-700 border-rose-200/70'
+                : 'text-muted-foreground border-border/40'
+              }`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                success
-                  ? 'bg-emerald-500'
-                  : failed
-                    ? 'bg-rose-500'
-                    : 'bg-zinc-400'
-              }`}
+              className={`h-1.5 w-1.5 rounded-full ${success
+                ? 'bg-emerald-500'
+                : failed
+                  ? 'bg-rose-500'
+                  : 'bg-zinc-400'
+                }`}
             />
             <span className="opacity-80">{label}</span>
           </span>
         </span>
         <span className="md:hidden inline-flex items-center w-16 justify-center">
           <span
-            className={`inline-block size-2 rounded-full ${
-              success ? 'bg-green-500' : failed ? 'bg-red-500' : 'bg-gray-400'
-            }`}
+            className={`inline-block size-2 rounded-full ${success ? 'bg-green-500' : failed ? 'bg-red-500' : 'bg-gray-400'
+              }`}
           />
         </span>
       </>
@@ -230,11 +227,10 @@ export function LedgerGroupList({
               />
             )}
             <span
-              className={`text-[13px] font-medium truncate ${
-                failed
-                  ? 'text-muted-foreground line-through decoration-rose-500/50'
-                  : 'text-foreground'
-              }`}
+              className={`text-[13px] font-medium truncate ${failed
+                ? 'text-muted-foreground line-through decoration-rose-500/50'
+                : 'text-foreground dark:text-white'
+                }`}
             >
               {serviceLabel(item)}
             </span>
@@ -245,13 +241,12 @@ export function LedgerGroupList({
             )}
           </div>
           <div
-            className={`text-[13px] font-mono font-medium shrink-0 tabular-nums tracking-tight ${
-              item.delta > 0
-                ? 'text-emerald-600'
-                : item.delta < 0
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
-            }`}
+            className={`text-[13px] font-mono font-medium shrink-0 tabular-nums tracking-tight ${item.delta > 0
+              ? 'text-emerald-600'
+              : item.delta < 0
+                ? 'text-foreground'
+                : 'text-muted-foreground'
+              }`}
           >
             {item.delta > 0 ? `+${item.delta}` : item.delta}
           </div>
@@ -273,9 +268,9 @@ export function LedgerGroupList({
 
   return (
     <div className="space-y-3 -mx-3 sm:mx-0">
-      <div className="sm:rounded-xl sm:border sm:border-border/40 sm:bg-card/60 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="sm:rounded-xl sm:border sm:border-black/5 sm:dark:border-white/10 sm:bg-white/50 sm:dark:bg-white/[0.02] sm:shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden sm:backdrop-blur-xl">
         {/* Desktop Header */}
-        <div className="hidden sm:block sticky top-0 z-10 bg-muted/50 backdrop-blur supports-[backdrop-filter]:bg-muted/50 border-t border-border/20 border-b border-border/20 shadow-[inset_0_-1px_0_rgba(0,0,0,0.04)] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/70 whitespace-nowrap">
+        <div className="hidden sm:block sticky top-0 z-10 bg-muted/50 dark:bg-white/[0.03] backdrop-blur supports-[backdrop-filter]:bg-muted/50 supports-[backdrop-filter]:dark:bg-white/[0.03] border-t border-border/20 dark:border-white/5 border-b border-border/20 dark:border-b-white/5 shadow-[inset_0_-1px_0_rgba(0,0,0,0.04)] dark:shadow-none px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/70 dark:text-slate-400 whitespace-nowrap">
           <div className={headerGridClass}>
             <div className="px-2 text-left w-full">
               {dict.table?.type || '类型'}
@@ -323,7 +318,7 @@ export function LedgerGroupList({
                           className={`hidden sm:grid rounded-md bg-muted/30 h-11 ${rowGridClass}`}
                         >
                           <div className="px-2 h-12 flex items-center gap-2 text-left w-full justify-start">
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground dark:text-slate-400">
                               {typeLabelDisplay(String(child.type))}
                             </span>
                           </div>
@@ -345,13 +340,12 @@ export function LedgerGroupList({
                           <div className={numberGroupClass}>
                             <div className="px-1 h-12 flex items-center justify-end font-mono">
                               <span
-                                className={`inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em] ${
-                                  child.delta > 0
-                                    ? 'text-emerald-600'
-                                    : child.delta < 0
-                                      ? 'text-red-600'
-                                      : ''
-                                }`}
+                                className={`inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] dark:bg-white/[0.02] tabular-nums tracking-[0.03em] ${child.delta > 0
+                                  ? 'text-emerald-600'
+                                  : child.delta < 0
+                                    ? 'text-red-600'
+                                    : ''
+                                  }`}
                               >
                                 {child.delta > 0
                                   ? `+${child.delta}`
@@ -359,7 +353,7 @@ export function LedgerGroupList({
                               </span>
                             </div>
                             <div className="px-1 h-12 flex items-center justify-end font-mono">
-                              <span className="inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em]">
+                              <span className="inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] dark:bg-white/[0.02] tabular-nums tracking-[0.03em]">
                                 {child.balanceAfter}
                               </span>
                             </div>
@@ -391,7 +385,7 @@ export function LedgerGroupList({
                   <MobileListItem item={parent} />
                   <div className={`hidden sm:grid h-11 ${rowGridClass}`}>
                     <div className="px-2 h-12 flex items-center gap-2 text-left w-full justify-start">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground dark:text-slate-400">
                         {typeLabelDisplay(String(parent.type))}
                       </span>
                     </div>
@@ -417,13 +411,12 @@ export function LedgerGroupList({
                     <div className={numberGroupClass}>
                       <div className="px-1 h-12 flex items-center justify-end font-mono">
                         <span
-                          className={`inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em] ${
-                            parent.delta > 0
-                              ? 'text-emerald-600'
-                              : parent.delta < 0
-                                ? 'text-red-600'
-                                : ''
-                          }`}
+                          className={`inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] dark:bg-white/[0.02] tabular-nums tracking-[0.03em] ${parent.delta > 0
+                            ? 'text-emerald-600'
+                            : parent.delta < 0
+                              ? 'text-red-600'
+                              : ''
+                            }`}
                         >
                           {parent.delta > 0
                             ? `+${parent.delta}`
@@ -431,7 +424,7 @@ export function LedgerGroupList({
                         </span>
                       </div>
                       <div className="px-1 h-12 flex items-center justify-end font-mono">
-                        <span className="inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] tabular-nums tracking-[0.03em]">
+                        <span className="inline-flex w-full justify-end px-2 py-0.5 rounded bg-muted/[0.03] dark:bg-white/[0.02] tabular-nums tracking-[0.03em]">
                           {parent.balanceAfter}
                         </span>
                       </div>

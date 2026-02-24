@@ -83,7 +83,7 @@ export function HookModule({
       {/* Section Title */}
       <div className="relative inline-block">
         <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
-        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-stone-900 dark:text-stone-50 tracking-tight relative">
+        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-stone-900 dark:text-white tracking-tight relative">
           {finalLabels.title}
         </h3>
       </div>
@@ -91,7 +91,7 @@ export function HookModule({
       {/* P-P-F Script Card */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+          <h4 className="text-sm font-semibold text-stone-700 dark:text-white">
             {finalLabels.ppfScript}
           </h4>
           <Button
@@ -115,8 +115,8 @@ export function HookModule({
         </div>
 
         {/* Script Content - Clean monospace block */}
-        <div className="rounded-md bg-stone-50/80 dark:bg-stone-900/40 border border-stone-200/70 dark:border-stone-800/70 p-4">
-          <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono text-stone-700 dark:text-stone-300">
+        <div className="rounded-md bg-stone-50/80 dark:bg-white/[0.02] border border-stone-200/70 dark:border-white/5 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono text-stone-700 dark:text-slate-300">
             {ppf_script}
           </p>
         </div>
@@ -125,14 +125,14 @@ export function HookModule({
       {/* Key Hooks - Subtle list */}
       {key_hooks && key_hooks.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+          <h4 className="text-sm font-semibold text-stone-700 dark:text-white">
             {finalLabels.keyHooks}
           </h4>
           <div className="space-y-3">
             {key_hooks.map((hook, index) => (
               <div key={index} className="flex items-start gap-3">
                 <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
-                <p className="text-sm font-normal text-stone-900/80 dark:text-stone-100 leading-relaxed">
+                <p className="text-sm font-normal text-stone-900/80 dark:text-slate-300 leading-relaxed">
                   {hook.hook}
                   <span
                     className={cn(
@@ -153,14 +153,14 @@ export function HookModule({
       {/* Delivery Tips - Clean numbered list */}
       {delivery_tips && delivery_tips.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+          <h4 className="text-sm font-semibold text-stone-700 dark:text-white">
             {finalLabels.deliveryTips}
           </h4>
           <div className="space-y-3">
             {delivery_tips.map((tip, index) => (
               <div key={index} className="flex items-start gap-3 text-sm">
                 <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
-                <span className="text-stone-900/80 dark:text-stone-300 leading-relaxed flex-1">
+                <span className="text-stone-900/80 dark:text-slate-300 leading-relaxed flex-1">
                   {tip}
                 </span>
               </div>

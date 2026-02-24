@@ -259,10 +259,9 @@ export function buildInterviewBattlePlanCopyText(
         `${finalLabels.evidence.action}: ${story.star.action}`,
         `${finalLabels.evidence.result}: ${story.star.result}`,
         `${finalLabels.evidence.impact}: ${story.quantified_impact}`,
-        `${finalLabels.evidence.source}: ${
-          story.source === 'detailed_resume'
-            ? finalLabels.evidence.sourceDetailedResume
-            : finalLabels.evidence.sourceResume
+        `${finalLabels.evidence.source}: ${story.source === 'detailed_resume'
+          ? finalLabels.evidence.sourceDetailedResume
+          : finalLabels.evidence.sourceResume
         }`,
       ].join('\n'),
     ),
@@ -330,19 +329,19 @@ export function InterviewBattlePlan({
     <div
       className={cn(
         'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible print:max-w-none print:w-full print:mt-0 print:break-before-auto print:break-inside-auto animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
-        'bg-card/50',
-        'border-0 sm:border sm:border-border',
-        'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
-        'rounded-sm sm:rounded-xl backdrop-blur-sm',
+        'bg-white/70 dark:bg-white/[0.03]',
+        'border-[0.5px] border-black/5 dark:border-white/10',
+        'shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-2xl',
+        'rounded-sm sm:rounded-[2rem] backdrop-blur-2xl',
         'print:shadow-none print:border-0',
         matchThemeClass,
         className,
       )}
-      style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
-      }}
     >
-      <div className="relative px-0 py-3 sm:p-4 md:p-8 pb-24 md:pb-10 print:pt-4 print:pb-4 print:px-2">
+      {/* Fine Noise Texture for the glass (matching Landing Page and Step 1) */}
+      <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+
+      <div className="relative px-0 py-3 sm:p-4 md:p-8 pb-24 md:pb-10 print:pt-4 print:pb-4 print:px-2 z-10">
         <div className="space-y-10">
           {data?.radar && (
             <section

@@ -95,16 +95,16 @@ function parseMatchData(data: any) {
       ? data.highlights.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.strengths)
         ? data.strengths.map((s: any) => {
-            if (typeof s === 'string') return { point: s, evidence: '' }
-            const point = s?.Point ?? s?.point ?? ''
-            const evidence = s?.Evidence ?? s?.evidence ?? ''
-            const section = s?.Section ?? s?.section
-            return {
-              point: String(point),
-              evidence: evidence ? String(evidence) : '',
-              section,
-            }
-          })
+          if (typeof s === 'string') return { point: s, evidence: '' }
+          const point = s?.Point ?? s?.point ?? ''
+          const evidence = s?.Evidence ?? s?.evidence ?? ''
+          const section = s?.Section ?? s?.section
+          return {
+            point: String(point),
+            evidence: evidence ? String(evidence) : '',
+            section,
+          }
+        })
         : []
   ).slice(0, 6)
 
@@ -113,27 +113,27 @@ function parseMatchData(data: any) {
       ? data.gaps.map((s: any) => ({ point: String(s), evidence: '' }))
       : Array.isArray(data?.weaknesses)
         ? data.weaknesses.map((w: any) => {
-            if (typeof w === 'string') return { point: w, evidence: '' }
-            const point = w?.Point ?? w?.point ?? ''
-            const evidence = w?.Evidence ?? w?.evidence ?? w?.suggestion ?? ''
-            const tip = w?.Tip ?? w?.tip ?? null
+          if (typeof w === 'string') return { point: w, evidence: '' }
+          const point = w?.Point ?? w?.point ?? ''
+          const evidence = w?.Evidence ?? w?.evidence ?? w?.suggestion ?? ''
+          const tip = w?.Tip ?? w?.tip ?? null
 
-            const tipObj:
-              | { interview: string; resume: string }
-              | string
-              | undefined =
-              typeof tip === 'object' && tip !== null
-                ? { interview: tip.interview ?? '', resume: tip.resume ?? '' }
-                : typeof tip === 'string'
-                  ? { interview: tip, resume: '' }
-                  : undefined
+          const tipObj:
+            | { interview: string; resume: string }
+            | string
+            | undefined =
+            typeof tip === 'object' && tip !== null
+              ? { interview: tip.interview ?? '', resume: tip.resume ?? '' }
+              : typeof tip === 'string'
+                ? { interview: tip, resume: '' }
+                : undefined
 
-            return {
-              point: String(point),
-              evidence: evidence ? String(evidence) : '',
-              tip: tipObj,
-            }
-          })
+          return {
+            point: String(point),
+            evidence: evidence ? String(evidence) : '',
+            tip: tipObj,
+          }
+        })
         : []
   ).slice(0, 6)
 
@@ -147,13 +147,12 @@ function parseMatchData(data: any) {
       : typeof data?.cover_letter_script === 'string'
         ? data.cover_letter_script
         : typeof data?.cover_letter_script === 'object' &&
-            data?.cover_letter_script !== null
+          data?.cover_letter_script !== null
           ? typeof data.cover_letter_script.script === 'string'
             ? data.cover_letter_script.script
             : typeof data.cover_letter_script.H === 'string'
-              ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${
-                  data.cover_letter_script.V || ''
-                }\n\n【C】${data.cover_letter_script.C || ''}`
+              ? `【H】${data.cover_letter_script.H || ''}\n\n【V】${data.cover_letter_script.V || ''
+              }\n\n【C】${data.cover_letter_script.C || ''}`
               : null
           : null
 
@@ -199,34 +198,34 @@ export function buildMatchResultCopyText(
     `## ${highlightsLabel}`,
     ...(parsed.strengths.length
       ? parsed.strengths.map((s, i) =>
-          [
-            `${i + 1}. ${s.point}`,
-            s.evidence ? `- ${s.evidence}` : '',
-            s.section ? `- ${s.section}` : '',
-          ]
-            .filter(Boolean)
-            .join('\n'),
-        )
+        [
+          `${i + 1}. ${s.point}`,
+          s.evidence ? `- ${s.evidence}` : '',
+          s.section ? `- ${s.section}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      )
       : [labels?.noHighlights || '']),
     '',
     `## ${gapsLabel}`,
     ...(parsed.weaknesses.length
       ? parsed.weaknesses.map((w, i) => {
-          const tipObj =
-            typeof w.tip === 'string' ? { interview: w.tip, resume: '' } : w.tip
-          return [
-            `${i + 1}. ${w.point}`,
-            w.evidence ? `- ${w.evidence}` : '',
-            tipObj?.resume
-              ? `- ${labels?.resumeTweak || 'Resume'}: ${tipObj.resume}`
-              : '',
-            tipObj?.interview
-              ? `- ${labels?.interviewPrep || 'Interview'}: ${tipObj.interview}`
-              : '',
-          ]
-            .filter(Boolean)
-            .join('\n')
-        })
+        const tipObj =
+          typeof w.tip === 'string' ? { interview: w.tip, resume: '' } : w.tip
+        return [
+          `${i + 1}. ${w.point}`,
+          w.evidence ? `- ${w.evidence}` : '',
+          tipObj?.resume
+            ? `- ${labels?.resumeTweak || 'Resume'}: ${tipObj.resume}`
+            : '',
+          tipObj?.interview
+            ? `- ${labels?.interviewPrep || 'Interview'}: ${tipObj.interview}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('\n')
+      })
       : [labels?.noGaps || '']),
   ]
 
@@ -290,23 +289,22 @@ export function ResultCard({
         // V5 Measured Document Styling:
         // 1. Centered "Page" with max-width (Letterhead feel)
         'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
-        // 2. Tinted Neutral Background
-        'bg-card/50',
-        // 3. Double Border Effect
-        'border-0 sm:border sm:border-border',
-        'shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)]',
-        'rounded-sm sm:rounded-xl backdrop-blur-sm',
+        // 2. Tinted Neutral Background - Unified with Landing Page
+        'bg-white/70 dark:bg-white/[0.03]',
+        // 3. Double Border Effect - Unified with Landing Page
+        'border-[0.5px] border-black/5 dark:border-white/10',
+        'shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-2xl',
+        'rounded-sm sm:rounded-[2rem] backdrop-blur-2xl',
         matchThemeClass,
         className,
       )}
-      style={{
-        // Subtle noise texture overlay
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E")`,
-      }}
     >
+      {/* Fine Noise Texture for the glass (matching Landing Page) */}
+      <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+
       <div
         ref={scrollRef}
-        className="flex-1 overflow-visible px-0 py-3 sm:p-4 md:p-8 space-y-5 md:space-y-8"
+        className="flex-1 overflow-visible px-0 py-3 sm:p-4 md:p-8 space-y-5 md:space-y-8 relative z-10"
       >
         {/* Module A: Hero Header (Now handles CTA) */}
         <ResultHeader
