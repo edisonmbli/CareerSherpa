@@ -91,9 +91,9 @@ function AbstractEngine() {
                         <rect x="-200" y="-150" width="400" height="300" fill="url(#gridMaskGradient)" />
                     </mask>
                     <radialGradient id="auraLight">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
-                        <stop offset="50%" stopColor="#2563eb" stopOpacity="0.12" />
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                        <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.5" />
+                        <stop offset="50%" stopColor="#a5f3fc" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#a5f3fc" stopOpacity="0" />
                     </radialGradient>
                     <radialGradient id="auraDark">
                         <stop offset="0%" stopColor="#0891b2" stopOpacity="0.15" />
@@ -167,7 +167,7 @@ function AbstractEngine() {
                     {/* Rotating Scanner Data Arcs */}
                     <motion.path
                         d="M 0 -120 A 120 120 0 0 1 120 0"
-                        className="stroke-blue-500/20 dark:stroke-cyan-500/20"
+                        className="stroke-cyan-200/60 dark:stroke-cyan-500/20"
                         strokeWidth="1.5"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 15, ease: "linear", repeat: Infinity }}
@@ -175,7 +175,7 @@ function AbstractEngine() {
                     />
                     <motion.path
                         d="M -80 0 A 80 80 0 0 1 0 -80"
-                        className="stroke-blue-400/30 dark:stroke-cyan-400/30"
+                        className="stroke-cyan-200/40 dark:stroke-cyan-400/30"
                         strokeWidth="1"
                         animate={{ rotate: -360 }}
                         transition={{ duration: 25, ease: "linear", repeat: Infinity }}
@@ -228,7 +228,7 @@ function AbstractEngine() {
                         cx="0" cy="0" r="30"
                         fill="none"
                         className={cn("transition-colors duration-500",
-                            phase === 'collision' ? "stroke-blue-600 dark:stroke-cyan-500" : "stroke-slate-300 dark:stroke-slate-700"
+                            phase === 'collision' ? "stroke-cyan-200 dark:stroke-cyan-500" : "stroke-slate-300 dark:stroke-slate-700"
                         )}
                         strokeWidth="1"
                         strokeDasharray="15 5"
@@ -248,7 +248,7 @@ function AbstractEngine() {
                         cx="0" cy="0" r="12"
                         fill="none"
                         className={cn("transition-colors duration-300 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]",
-                            (phase === 'collision' || phase === 'emitting') ? "stroke-blue-600 dark:stroke-cyan-400" : "stroke-slate-400 dark:stroke-slate-500"
+                            (phase === 'collision' || phase === 'emitting') ? "stroke-cyan-200 dark:stroke-cyan-400" : "stroke-slate-400 dark:stroke-slate-500"
                         )}
                         strokeWidth="2"
                         strokeDasharray="4 4"
@@ -268,7 +268,7 @@ function AbstractEngine() {
                     <motion.circle
                         cx="0" cy="0" r="4"
                         className={cn("transition-colors duration-300 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]",
-                            (phase === 'collision' || phase === 'emitting') ? "fill-blue-500 dark:fill-cyan-300" : "fill-slate-600 dark:fill-slate-400"
+                            (phase === 'collision' || phase === 'emitting') ? "fill-cyan-200 dark:fill-cyan-300" : "fill-slate-600 dark:fill-slate-400"
                         )}
                     />
                 </g>
@@ -281,7 +281,7 @@ function AbstractEngine() {
                             <motion.line
                                 x1="0" y1="0"
                                 x2={targetPos.x} y2={targetPos.y}
-                                className="stroke-blue-600 dark:stroke-cyan-400 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]"
+                                className="stroke-cyan-200 dark:stroke-cyan-400 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]"
                                 strokeWidth="2"
                                 initial={{ pathLength: 0, opacity: 0 }}
                                 animate={{ pathLength: 1, opacity: 1 }}
@@ -308,7 +308,7 @@ function AbstractEngine() {
                                 <motion.circle
                                     cx="0" cy="0" r="16"
                                     fill="none"
-                                    className="stroke-blue-500 dark:stroke-cyan-400"
+                                    className="stroke-cyan-200 dark:stroke-cyan-400"
                                     strokeWidth="1.5"
                                     initial={{ scale: 0.5, opacity: 1 }}
                                     animate={{ scale: 2.5, opacity: 0 }}
@@ -323,7 +323,7 @@ function AbstractEngine() {
                                 <motion.circle
                                     cx="0" cy="0" r="16"
                                     fill="none"
-                                    className="stroke-blue-500 dark:stroke-cyan-400"
+                                    className="stroke-cyan-200 dark:stroke-cyan-400"
                                     strokeWidth="1"
                                     initial={{ scale: 0.5, opacity: 1 }}
                                     animate={{ scale: 3.5, opacity: 0 }}
@@ -338,7 +338,7 @@ function AbstractEngine() {
                             x="-8" y="-8" width="16" height="16"
                             fill="none"
                             className={cn("transition-colors duration-300",
-                                phase === 'emitting' ? "stroke-blue-600 dark:stroke-cyan-400" : "stroke-slate-400 dark:stroke-slate-600"
+                                phase === 'emitting' ? "stroke-cyan-200 dark:stroke-cyan-400" : "stroke-slate-400 dark:stroke-slate-600"
                             )}
                             strokeWidth="1"
                             strokeDasharray="2 2"
@@ -349,7 +349,7 @@ function AbstractEngine() {
                         <circle
                             cx="0" cy="0" r="3"
                             className={cn("transition-colors duration-300 [filter:url(#glowLight)] dark:[filter:url(#glowDark)]",
-                                phase === 'emitting' ? "fill-blue-500 dark:fill-cyan-300" : "fill-slate-400 dark:fill-slate-600"
+                                phase === 'emitting' ? "fill-cyan-200 dark:fill-cyan-300" : "fill-slate-400 dark:fill-slate-600"
                             )}
                         />
 
@@ -440,9 +440,9 @@ export function CoreValueSection({ dict }: { dict: any }) {
                         transition={{ duration: 0.8 }}
                         className={cn(
                             "w-full rounded-2xl sm:rounded-[2.5rem] overflow-hidden backdrop-blur-3xl relative",
-                            "bg-gradient-to-br from-zinc-200/30 via-white to-zinc-200/30 dark:from-transparent dark:via-transparent dark:to-transparent dark:bg-black/20",
-                            "border border-white/80 dark:border-white/10",
-                            "shadow-[inset_0_1px_1px_rgba(255,255,255,1),0_20px_40px_-20px_rgba(15,23,42,0.08)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+                            "bg-white/80 dark:bg-black/20",
+                            "border border-slate-200/50 dark:border-white/10",
+                            "shadow-2xl shadow-slate-200/50 dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
                         )}
                     >
                         {/* Light Mode Inner Ambient Vignette */}
