@@ -327,15 +327,16 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
             </div>
 
             {/* Live Data Mockup (Cyclic) */}
-            <div className="flex-1 w-full flex flex-col gap-6 pt-1 z-10 relative">
-              <AnimatePresence mode="wait">
+            {/* Using CSS Grid to overlap items so the container inherently sizes to the absolute identical children without explicit static heights, completely removing collapse jitter */}
+            <div className="flex-1 w-full pt-1 z-10 relative grid">
+              <AnimatePresence>
                 <motion.div
                   key={mockIdx}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.4 }}
-                  className="flex flex-col gap-6"
+                  className="col-start-1 row-start-1 flex flex-col gap-6 w-full"
                 >
                   {/* Target Role Header */}
                   <div className="flex flex-col gap-1.5">
