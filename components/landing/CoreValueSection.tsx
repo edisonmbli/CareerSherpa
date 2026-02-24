@@ -388,7 +388,7 @@ export function CoreValueSection({ dict }: { dict: any }) {
     ]
 
     return (
-        <section className="w-full py-24 sm:py-32 relative overflow-hidden bg-slate-50 border-b border-black/5 dark:border-white/5 dark:bg-[#09090B]">
+        <section className="w-full relative">
             <div className="container mx-auto px-4 relative z-10 max-w-6xl">
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">

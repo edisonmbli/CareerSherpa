@@ -54,7 +54,7 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
   const dict = (await getDictionary(locale)).landing
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen overflow-x-clip">
       {/* 2.1 Hero 区 (The Hook) */}
       <HeroSection dict={dict.hero} locale={locale} />
 
@@ -62,16 +62,19 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
       <TrustBanner dict={dict} />
 
       {/* 2.3 核心价值理念区 (The Paradigm Shift: Core Value) */}
-      <CoreValueSection dict={dict} />
+      <div className="mt-16 md:mt-24 lg:mt-32">
+        <CoreValueSection dict={dict} />
+      </div>
 
       {/* 2.4 Bento Grid 场景功能区 (Core Value Showcase) */}
-      <BentoGrid dict={dict} />
+      <div className="mt-20 md:mt-32 lg:mt-40">
+        <BentoGrid dict={dict} />
+      </div>
 
-      {/* 制造极具夸张感的垂直留白呼吸感 */}
-      <div className="w-full h-32 md:h-48 bg-slate-50 dark:bg-black" />
-
-      {/* 2.5 CTA 转化区 (The Push) */}
-      <CtaSection dict={dict} />
+      {/* 2.5 CTA 转化区 (The Push) - 高潮前的宏大留白与停顿 */}
+      <div className="mt-32 md:mt-48 lg:mt-56 pb-24 md:pb-32 lg:pb-40">
+        <CtaSection dict={dict} />
+      </div>
 
       {/* 2.6 页脚 (Footer Legitimacy) */}
       <Footer dict={dict.footer} />

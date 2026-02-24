@@ -9,7 +9,7 @@ export function CtaSection({ dict }: { dict: any }) {
   const t = dict.cta || {}
 
   return (
-    <section className="relative w-full pt-32 pb-20 overflow-hidden bg-slate-50 dark:bg-black">
+    <section className="relative w-full">
       {/* Background Ambient Glow (Breathing Cyber Blue Aura) */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
         <motion.div
@@ -19,7 +19,13 @@ export function CtaSection({ dict }: { dict: any }) {
         />
       </div>
 
-      <div className="container relative z-10 px-4 md:px-6 mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 1, ease: 'easeOut' }}
+        className="container relative z-10 px-4 md:px-6 mx-auto"
+      >
         <div className="max-w-4xl mx-auto">
           {/* Main Container - Silicon Valley Elite Glassmorphism */}
           <div className="p-10 md:p-16 rounded-[2rem] bg-white/40 dark:bg-white/5 backdrop-blur-3xl border-[0.5px] border-black/5 dark:border-white/10 shadow-2xl flex flex-col items-center text-center">
@@ -61,7 +67,7 @@ export function CtaSection({ dict }: { dict: any }) {
 
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }

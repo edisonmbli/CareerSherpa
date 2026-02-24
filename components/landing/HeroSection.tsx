@@ -190,7 +190,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
       "w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[max(800px,calc(100svh-4rem))] flex flex-col items-center justify-center overflow-hidden",
       "pt-16 pb-12 px-4 sm:px-6 lg:px-8",
       plusJakarta.variable,
-      "font-sans text-slate-900 dark:text-slate-50 border-b border-black/5 dark:border-white/5"
+      "font-sans text-slate-900 dark:text-slate-50"
     )}>
 
       {/* 1. Silicon Valley Neural Network Background (Restored) */}
@@ -327,8 +327,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
             </div>
 
             {/* Live Data Mockup (Cyclic) */}
-            {/* Added a responsive min-h to prevent the card height from jumping between different mock data lengths. */}
-            <div className="flex-1 w-full flex flex-col gap-6 pt-1 z-10 relative min-h-[540px] sm:min-h-[440px] lg:min-h-[340px]">
+            <div className="flex-1 w-full flex flex-col gap-6 pt-1 z-10 relative">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={mockIdx}
@@ -349,7 +348,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
                         {currentMock.tag}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2">{currentMock.desc}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-2 min-h-[40px]">{currentMock.desc}</p>
                   </div>
 
                   <div className="h-px w-full bg-slate-200 dark:bg-white/10" />
@@ -374,7 +373,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1.5 shadow-[0_0_6px_theme(colors.cyan.500)]" />
                         <div className="flex flex-col gap-1">
                           <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{insight.title}</span>
-                          <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{insight.desc}</span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 min-h-[40px]">{insight.desc}</span>
                         </div>
                       </motion.div>
                     ))}

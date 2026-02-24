@@ -46,7 +46,7 @@ function TemplateGalleryAnimation({ t }: { t: any }) {
         if (!mounted || isHovered) return
 
         const timer = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % templates.length)
+            setCurrentIndex((prev) => (prev - 1 + templates.length) % templates.length)
         }, 2500)
 
         return () => clearInterval(timer)
@@ -530,8 +530,8 @@ export function BentoGrid({ dict }: { dict: any }) {
     const t = dict.bentoGrid || {}
 
     return (
-        <section className="w-full py-24 bg-slate-50 dark:bg-black">
-            <div className="container mx-auto px-4 max-w-6xl">
+        <section className="w-full relative">
+            <div className="mx-auto px-4 max-w-6xl">
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-auto">
 
@@ -578,13 +578,13 @@ export function BentoGrid({ dict }: { dict: any }) {
                         )}
                     >
                         <div className="flex flex-col gap-3 z-10">
-                            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-2 border border-black/5 dark:border-white/5 shadow-sm">
-                                <Compass className="w-5 h-5 text-slate-900 dark:text-white" strokeWidth={1.5} />
+                            <div className="w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl bg-slate-900 dark:bg-white flex items-center justify-center mb-2 shadow-sm">
+                                <Compass className="w-6 h-6 md:w-5 md:h-5 text-white dark:text-slate-900" strokeWidth={1.5} />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight break-words text-balance">
+                            <h3 className="text-3xl md:text-2xl font-extrabold md:font-bold text-slate-900 dark:text-white tracking-tight break-words text-balance">
                                 {t.matchAnalysis?.title}
                             </h3>
-                            <p className="text-base text-slate-600 dark:text-slate-400 font-medium break-words text-balance">
+                            <p className="text-lg md:text-base text-slate-600 dark:text-slate-400 font-medium break-words text-balance">
                                 {t.matchAnalysis?.desc}
                             </p>
                         </div>
@@ -605,13 +605,13 @@ export function BentoGrid({ dict }: { dict: any }) {
                         )}
                     >
                         <div className="flex flex-col gap-3 z-10">
-                            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-2 border border-black/5 dark:border-white/5 shadow-sm">
-                                <MessageSquareCode className="w-5 h-5 text-slate-900 dark:text-white" strokeWidth={1.5} />
+                            <div className="w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl bg-slate-900 dark:bg-white flex items-center justify-center mb-2 shadow-sm">
+                                <MessageSquareCode className="w-6 h-6 md:w-5 md:h-5 text-white dark:text-slate-900" strokeWidth={1.5} />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight break-words text-balance">
+                            <h3 className="text-3xl md:text-2xl font-extrabold md:font-bold text-slate-900 dark:text-white tracking-tight break-words text-balance">
                                 {t.smartPitch?.title}
                             </h3>
-                            <p className="text-base text-slate-600 dark:text-slate-400 font-medium break-words text-balance">
+                            <p className="text-lg md:text-base text-slate-600 dark:text-slate-400 font-medium break-words text-balance">
                                 {t.smartPitch?.desc}
                             </p>
                         </div>
@@ -632,13 +632,13 @@ export function BentoGrid({ dict }: { dict: any }) {
                         )}
                     >
                         <div className="flex flex-col gap-3 z-10">
-                            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-2 border border-black/5 dark:border-white/5 shadow-sm">
-                                <Swords className="w-5 h-5 text-slate-900 dark:text-white" strokeWidth={1.5} />
+                            <div className="w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl bg-slate-900 dark:bg-white flex items-center justify-center mb-2 shadow-sm">
+                                <Swords className="w-6 h-6 md:w-5 md:h-5 text-white dark:text-slate-900" strokeWidth={1.5} />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight break-words text-balance">
+                            <h3 className="text-3xl md:text-2xl font-extrabold md:font-bold text-slate-900 dark:text-white tracking-tight break-words text-balance">
                                 {t.mockInterview?.title}
                             </h3>
-                            <p className="text-base text-slate-600 dark:text-slate-400 font-medium break-words text-balance">
+                            <p className="text-lg md:text-base text-slate-600 dark:text-slate-400 font-medium break-words text-balance">
                                 {t.mockInterview?.desc}
                             </p>
                         </div>
