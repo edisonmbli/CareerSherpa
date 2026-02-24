@@ -774,15 +774,35 @@ const dict = {
       },
       matchAnalysis: {
         title: 'Precision Match',
-        desc: 'Decipher hidden JD requirements.',
+        desc: 'Powered by industry RAG knowledge bases, professionally decodes core job requirements.',
+        terminal: {
+          step1: 'Loading RAG Knowledge Base...',
+          step2: 'Executing Red/Blue Validation...',
+          result: 'Match Accuracy: 98.5%',
+          pass: 'PASS',
+        }
       },
       smartPitch: {
         title: 'Smart Pitch',
-        desc: 'End "read-but-no-reply". Craft eye-catching DM scripts packed with targeted value to instantly capture HR attention.',
+        desc: 'End "read-but-no-reply". Deliver targeted value that hooks HR attention in one second.',
+        pitch: {
+          weakMsg: 'Hello, I am highly interested in this position, looking forward to your reply...',
+          strongMsg: "Based on the JD's '0-100M growth' requirement, I've led similar breakthrough matrices achieving a 300% revenue jump. Open to discussing tactics?",
+          tag: 'Smart Pitch',
+          rejectStamp: 'INSTANT REJECT'
+        }
       },
       mockInterview: {
         title: 'Mock Interview',
         desc: 'Your personal AI military advisor prepares you in advance, anticipating ruthless follow-ups to multiply your success rate.',
+        simulation: {
+          question: 'Tough HR Probe:',
+          questionText: '"This 6-month gap shows no output. Explain?"',
+          strategy: 'AI Strategy Deployed',
+          point1: 'STAR Method',
+          point2: 'Focus on Upskilling',
+          point3: 'Pivot to Strength'
+        }
       },
     },
     hero: {

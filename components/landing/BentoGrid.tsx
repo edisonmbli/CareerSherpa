@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { FileText, Compass, MessageSquareCode, Swords } from 'lucide-react'
+import { FileText, Compass, MessageSquareCode, Swords, Target, Shield, Zap } from 'lucide-react'
 import Image from 'next/image'
 
 // Template Images
@@ -17,278 +17,511 @@ import tplStandard from '@/assets/images/templates/standard.png'
 import tplTechnical from '@/assets/images/templates/technical.png'
 
 // Template Gallery Animation (Card A)
-function TemplateGalleryAnimation() {
-    const templates = [
-        { src: tplCorporate, alt: "Corporate", rotate: -12, x: -140, y: 15 },
-        { src: tplCreative, alt: "Creative", rotate: -8, x: -100, y: 5 },
-        { src: tplDarkSidebar, alt: "Dark Sidebar", rotate: -4, x: -60, y: -2 },
-        { src: tplElegant, alt: "Elegant", rotate: 0, x: -20, y: -5 },
-        { src: tplProduct, alt: "Product", rotate: 4, x: 20, y: -5 },
-        { src: tplProfessional, alt: "Professional", rotate: 8, x: 60, y: -2 },
-        { src: tplStandard, alt: "Standard", rotate: 12, x: 100, y: 5 },
-        { src: tplTechnical, alt: "Technical", rotate: 16, x: 140, y: 15 },
+function TemplateGalleryAnimation({ t }: { t: any }) {
+    const defaultTemplates = [
+        { src: tplCorporate, alt: "Corporate" },
+        { src: tplCreative, alt: "Creative" },
+        { src: tplDarkSidebar, alt: "Dark Sidebar" },
+        { src: tplElegant, alt: "Elegant" },
+        { src: tplProduct, alt: "Product" },
+        { src: tplProfessional, alt: "Professional" },
+        { src: tplStandard, alt: "Standard" },
+        { src: tplTechnical, alt: "Technical" },
     ]
 
-    return (
-        <div className="relative w-full h-[300px] mt-8 flex items-center justify-center group perspective-[1200px]">
-            {templates.map((tpl, i) => (
-                <motion.div
-                    key={i}
-                    className="absolute w-[140px] h-[198px] sm:w-[180px] sm:h-[254px] rounded-lg border-[0.5px] border-black/10 dark:border-white/20 shadow-xl overflow-hidden bg-white cursor-pointer origin-bottom"
-                    initial={{
-                        rotate: (i - 3.5) * 2,
-                        x: (i - 3.5) * 8,
-                        y: Math.abs(i - 3.5) * 4,
-                        scale: 1 - Math.abs(i - 3.5) * 0.05,
-                        zIndex: i
-                    }}
-                    whileHover={{ scale: 1.05, zIndex: 10, y: -10, transition: { duration: 0.2 } }}
-                    variants={{
-                        hover: {
-                            rotate: tpl.rotate,
-                            x: tpl.x,
-                            y: tpl.y,
-                            scale: 1.02,
-                            transition: {
-                                type: "spring",
-                                stiffness: 260,
-                                damping: 20
-                            }
-                        }
-                    }}
-                >
-                    <Image
-                        src={tpl.src}
-                        alt={tpl.alt}
-                        fill
-                        className="object-cover pointer-events-none"
-                        sizes="(max-width: 768px) 140px, 180px"
-                    />
-                </motion.div>
-            ))}
+    const [templates, setTemplates] = useState(defaultTemplates)
+    const [currentIndex, setCurrentIndex] = useState(0)
+    const [isHovered, setIsHovered] = useState(false)
+    const [mounted, setMounted] = useState(false)
 
-            {/* Add global group hover trigger context block */}
-            <motion.div
-                className="absolute inset-0 z-20 cursor-crosshair opacity-0"
-                whileHover="hover"
-            />
+    // Shuffle and mount
+    React.useEffect(() => {
+        const shuffled = [...defaultTemplates].sort(() => 0.5 - Math.random())
+        setTemplates(shuffled)
+        setMounted(true)
+    }, [])
+
+    // Auto-advance
+    React.useEffect(() => {
+        if (!mounted || isHovered) return
+
+        const timer = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % templates.length)
+        }, 2500)
+
+        return () => clearInterval(timer)
+    }, [mounted, isHovered, templates.length])
+
+    if (!mounted) return <div className="relative w-full h-[300px] mt-8" /> // SSR placeholder
+
+    // Helper to calculate relative positions
+    const getPositionIndex = (index: number) => {
+        const diff = (index - currentIndex + templates.length) % templates.length
+        if (diff === 0) return 0 // Center
+        if (diff === 1) return 1 // Right 1
+        if (diff === 2) return 2 // Right 2
+        if (diff === templates.length - 1) return -1 // Left 1
+        if (diff === templates.length - 2) return -2 // Left 2
+        return 3 // Hidden
+    }
+
+    return (
+        <div
+            className="relative w-full h-[300px] mt-8 flex items-center justify-center overflow-hidden"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <div className="relative w-full h-full flex items-center justify-center">
+                <AnimatePresence initial={false}>
+                    {templates.map((tpl, i) => {
+                        const pos = getPositionIndex(i)
+                        if (pos === 3) return null // Do not render hidden cards
+
+                        const isCenter = pos === 0
+                        const absPos = Math.abs(pos)
+
+                        return (
+                            <motion.div
+                                key={tpl.alt}
+                                className="absolute w-[160px] h-[226px] sm:w-[200px] sm:h-[282px] rounded-lg shadow-2xl overflow-hidden bg-white cursor-pointer border-[0.5px] border-black/10 dark:border-white/20"
+                                initial={{
+                                    x: pos * 150,
+                                    scale: 0.8,
+                                    opacity: 0,
+                                    zIndex: 0
+                                }}
+                                animate={{
+                                    x: pos * 110, // Distance between cards
+                                    scale: isCenter ? (isHovered ? 1.1 : 1) : (absPos === 1 ? 0.8 : 0.65),
+                                    opacity: isCenter ? 1 : (absPos === 1 ? 0.6 : 0.2),
+                                    zIndex: isCenter ? 10 : (absPos === 1 ? 5 : 0),
+                                    filter: isCenter ? 'blur(0px)' : (absPos === 1 ? 'blur(1px)' : 'blur(2px)'),
+                                    rotateY: pos * -15 // Add a slight 3D tilt
+                                }}
+                                exit={{
+                                    x: pos > 0 ? 250 : -250,
+                                    scale: 0.8,
+                                    opacity: 0,
+                                    zIndex: 0
+                                }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 300,
+                                    damping: 30,
+                                    mass: 1
+                                }}
+                                style={{ perspective: 1000 }}
+                            >
+                                <Image
+                                    src={tpl.src}
+                                    alt={tpl.alt}
+                                    fill
+                                    className="object-cover pointer-events-none"
+                                    sizes="(max-width: 768px) 160px, 200px"
+                                />
+                            </motion.div>
+                        )
+                    })}
+                </AnimatePresence>
+            </div>
         </div>
     )
 }
 
-// Matrix-style Terminal Animation (Card B)
-function TerminalAnimation() {
+// Typewriter Text Helper
+function TypewriterText({ text, className = "" }: { text: string, className?: string }) {
     return (
-        <div className="w-full h-full min-h-[160px] flex items-center justify-center relative mt-6">
-            <div className="w-full max-w-[280px] bg-[#0A0A0A] rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col font-mono text-xs sm:text-sm">
+        <motion.span
+            className={className}
+            variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.03 } } }}
+            initial="hidden"
+            animate="visible"
+        >
+            {text.split('').map((char, i) => (
+                <motion.span key={i} variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}>
+                    {char}
+                </motion.span>
+            ))}
+        </motion.span>
+    )
+}
+
+// Matrix-style Terminal Animation (Card B)
+function TerminalAnimation({ t }: { t: any }) {
+    const [step, setStep] = useState(0)
+    const [mounted, setMounted] = useState(false)
+    const containerRef = React.useRef<HTMLDivElement>(null)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    React.useEffect(() => {
+        if (!mounted) return
+
+        let timer: NodeJS.Timeout
+
+        // State 0: Idle, State 1: Typing Step 1, State 2: Typing Step 2, State 3: Result, State 4: PASS, State 5: End
+        switch (step) {
+            case 0:
+                timer = setTimeout(() => setStep(1), 500); break;
+            case 1:
+                timer = setTimeout(() => setStep(2), 1500); break;
+            case 2:
+                timer = setTimeout(() => setStep(3), 1500); break;
+            case 3:
+                timer = setTimeout(() => setStep(4), 1000); break;
+            case 4:
+                timer = setTimeout(() => setStep(0), 5000); break;
+        }
+
+        return () => clearTimeout(timer)
+    }, [step, mounted])
+
+    // Auto-scroll to bottom when new steps appear
+    React.useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
+    }, [step])
+
+    const termStrings = t?.matchAnalysis?.terminal || {
+        step1: 'Loading RAG Knowledge Base...',
+        step2: 'Executing Red/Blue Validation...',
+        result: 'Match Accuracy: 98.5%',
+        pass: 'PASS',
+    }
+
+    if (!mounted) return <div className="w-full h-full min-h-[190px] flex items-center justify-center relative mt-6" />
+
+    return (
+        <div className="w-full h-full min-h-[190px] flex items-center justify-center relative mt-6">
+            {/* Ambient High-Tech Glow */}
+            <div className="absolute w-[200px] h-[100px] bg-cyan-500/20 dark:bg-cyan-500/10 blur-[40px] rounded-full pointer-events-none" />
+
+            <motion.div
+                className="w-full max-w-[290px] h-[170px] bg-[#0A0A0A]/95 dark:bg-[#050505]/95 backdrop-blur-2xl rounded-xl border border-white/10 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col font-mono text-[11px] sm:text-xs relative z-10"
+                animate={{ y: [-3, 3, -3] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            >
+                {/* Subtle Grid Background inside Terminal */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
+
                 {/* Terminal Header */}
-                <div className="h-8 bg-[#1A1A1A] border-b border-white/5 flex items-center px-3 gap-1.5 shrink-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/50" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/50" />
-                    <div className="ml-2 text-[10px] text-white/30 font-sans tracking-widest">sys_match_core</div>
+                <div className="h-8 bg-[#1A1A1A]/80 border-b border-white/5 flex items-center px-3 gap-1.5 shrink-0 relative z-10">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/40 border border-red-500/50 shadow-[0_0_5px_rgba(239,68,68,0.5)]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/40 border border-amber-500/50 shadow-[0_0_5px_rgba(245,158,11,0.5)]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/40 border border-emerald-500/50 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
+                    <div className="ml-2 text-[10px] text-white/40 font-sans tracking-widest font-medium">sys_match_core</div>
                 </div>
+
                 {/* Terminal Body */}
-                <div className="p-4 flex flex-col gap-2 min-h-[120px] relative">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0, delay: 0.5 }}
-                        className="text-cyan-400 dark:text-cyan-500 font-medium"
-                    >
-                        <span className="text-white/40 select-none mr-2">&gt;</span>
-                        载入 RAG 行业知识库...
-                    </motion.div>
+                <div
+                    ref={containerRef}
+                    className="p-4 flex flex-col gap-3 h-[138px] overflow-y-auto relative z-10 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                >
+                    {step >= 1 && (
+                        <div className="text-cyan-400 font-medium drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] flex items-start">
+                            <span className="text-white/40 select-none mr-2 flex-shrink-0 mt-0.5">&gt;</span>
+                            <TypewriterText text={termStrings.step1} />
+                        </div>
+                    )}
 
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0, delay: 1.8 }}
-                        className="text-white/70"
-                    >
-                        <span className="text-white/40 select-none mr-2">&gt;</span>
-                        执行红蓝对抗校验...
-                    </motion.div>
+                    {step >= 2 && (
+                        <div className="text-slate-300 flex items-start mt-1">
+                            <span className="text-white/40 select-none mr-2 flex-shrink-0 mt-0.5">&gt;</span>
+                            <TypewriterText text={termStrings.step2} />
+                        </div>
+                    )}
 
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0, delay: 3.5 }}
-                        className="text-emerald-400 font-semibold mt-1"
-                    >
-                        <span className="text-white/40 select-none mr-2">&gt;</span>
-                        匹配精准度：98.5% <span className="bg-emerald-400/20 text-emerald-400 px-1 ml-1 rounded">PASS</span>
-                    </motion.div>
+                    {step >= 3 && (
+                        <div className="text-emerald-400 font-semibold mt-2 flex items-start gap-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]">
+                            <span className="text-white/40 select-none mr-2 flex-shrink-0 mt-0.5">&gt;</span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <TypewriterText text={termStrings.result} />
+                                {step >= 4 && (
+                                    <motion.span
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="inline-block bg-emerald-400/20 border border-emerald-400/30 text-emerald-400 px-1.5 py-0.5 rounded flex-shrink-0 shadow-[0_0_10px_rgba(52,211,153,0.3)] text-[10px]"
+                                    >
+                                        {termStrings.pass}
+                                    </motion.span>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Blinking Cursor */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        className="absolute bottom-4 left-4 inline-block w-2 h-4 bg-white/50"
-                        animate={{ opacity: [1, 0, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.8, delay: 4.5 }}
-                    />
+                    {(step === 0 || step === 4) && (
+                        <motion.div
+                            className="inline-block w-2 h-3.5 bg-white/60 ml-4 mt-1"
+                            animate={{ opacity: [1, 0, 1] }}
+                            transition={{ repeat: Infinity, duration: 0.8 }}
+                        />
+                    )}
                 </div>
-            </div>
+            </motion.div>
         </div>
     )
 }
 
 // Message Comparison Animation (Card C)
-function MessageComparisonAnimation() {
-    return (
-        <div className="w-full h-full min-h-[160px] flex items-center justify-center relative mt-6 font-sans">
-            <div className="w-full max-w-[260px] relative pb-16">
-                {/* Weak Message */}
-                <motion.div
-                    className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl rounded-tl-sm p-3.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 relative"
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4 }}
-                >
-                    您好，我对贵司的这个岗位很感兴趣，期待回复...
+function MessageComparisonAnimation({ t }: { t: any }) {
+    const [step, setStep] = useState(1)
+    const [mounted, setMounted] = useState(false)
 
-                    {/* Strike-through Line */}
-                    <motion.div
-                        className="absolute top-1/2 left-2 h-[2px] bg-red-500/80 origin-left z-10"
-                        initial={{ scaleX: 0 }}
-                        whileInView={{ scaleX: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.3, delay: 1.5, ease: "easeOut" }}
-                        style={{ width: "calc(100% - 16px)" }}
-                    />
-                </motion.div>
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    React.useEffect(() => {
+        if (!mounted) return
+
+        let timer: NodeJS.Timeout
+
+        // State 1: Weak Msg, State 2: Strike, State 3: Strong Msg, State 4: Reset Pause
+        switch (step) {
+            case 1:
+                timer = setTimeout(() => setStep(2), 1500); break;
+            case 2:
+                timer = setTimeout(() => setStep(3), 1000); break; // Slightly longer to let the stamp register
+            case 3:
+                timer = setTimeout(() => setStep(4), 5000); break;
+            case 4:
+                timer = setTimeout(() => setStep(1), 600); break;
+        }
+
+        return () => clearTimeout(timer)
+    }, [step, mounted])
+
+    const pitchStrings = t?.smartPitch?.pitch || {
+        weakMsg: '您好，我对贵司的这个岗位很感兴趣，期待回复...',
+        strongMsg: '基于 JD 要求的“0-1 亿级增长”，我曾主导过同类破局矩阵，实现 300% 营收跃升。有空聊聊具体打法吗？',
+        tag: 'Smart Pitch',
+        rejectStamp: '一秒划走'
+    }
+
+    if (!mounted) return <div className="w-full h-full min-h-[190px] flex items-center justify-center relative mt-6 font-sans" />
+
+    return (
+        <div className="w-full h-full min-h-[190px] flex items-center justify-center relative mt-6 font-sans">
+            {/* Ambient Pulse Glow - adjusted to match Terminal */}
+            <div className="absolute w-[200px] h-[100px] bg-cyan-500/10 dark:bg-cyan-500/10 blur-[40px] rounded-full pointer-events-none" />
+
+            {/* Container fixed height to prevent vertical jumping between steps, sized to match Terminal exactly */}
+            <div className="w-full max-w-[290px] h-[170px] relative flex flex-col justify-center items-center">
+
+                {/* Weak Message */}
+                <AnimatePresence>
+                    {(step === 1 || step === 2) && (
+                        <motion.div
+                            className="absolute z-10 w-[85%] bg-white/70 dark:bg-white/5 backdrop-blur-md border border-slate-200/50 dark:border-white/10 rounded-xl p-3.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 shadow-sm"
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{
+                                opacity: 1,
+                                scale: 1,
+                                y: 0,
+                                x: step === 2 ? [-2, 2, -2, 2, 0] : 0
+                            }}
+                            exit={{
+                                opacity: 0,
+                                scale: 0.85,
+                                y: 40,
+                                rotate: -4,
+                                filter: "blur(4px)",
+                                transition: { duration: 0.6, ease: "easeIn" }
+                            }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {pitchStrings.weakMsg}
+
+                            {/* "Instant Reject" Stamp */}
+                            {step === 2 && (
+                                <motion.div
+                                    className="absolute top-1/2 left-1/2 z-10 flex items-center justify-center pointer-events-none"
+                                    initial={{ scale: 2.5, opacity: 0, x: "-50%", y: "-50%", rotate: -15 }}
+                                    animate={{ scale: 1, opacity: 1, x: "-50%", y: "-50%", rotate: -15 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                >
+                                    <div className="border-[2px] border-red-500 text-red-500 font-black text-xs sm:text-sm px-2.5 py-0.5 rounded shadow-[0_0_15px_rgba(239,68,68,0.4)] backdrop-blur-md bg-white/20 tracking-wider uppercase origin-center whitespace-nowrap">
+                                        {pitchStrings.rejectStamp}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Strong Pitch Message */}
-                <motion.div
-                    className="absolute top-10 left-4 w-[105%] bg-[#080808] dark:bg-black/90 border border-cyan-500/50 shadow-[0_10px_30px_rgba(6,182,212,0.15)] rounded-2xl rounded-br-sm p-3.5 text-xs sm:text-sm text-slate-200"
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 2.2, type: "spring", bounce: 0.4 }}
-                    style={{ zIndex: 20 }}
-                >
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                        <span className="text-cyan-400 font-medium text-[10px] uppercase tracking-wider">Smart Pitch</span>
-                    </div>
-                    基于 JD 要求的“0-1 亿级增长”，我曾主导过同类破局矩阵，实现 300% 营收跃升。有空聊聊具体打法吗？
-                </motion.div>
+                <AnimatePresence>
+                    {step === 3 && (
+                        <motion.div
+                            className="absolute inset-0 bg-[#0A0A0A]/95 dark:bg-[#050505]/95 backdrop-blur-2xl border border-white/10 dark:border-cyan-500/50 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] dark:shadow-[0_0_30px_rgba(6,182,212,0.25)] rounded-xl py-5 px-6 text-[11px] sm:text-xs text-slate-200 z-20 flex flex-col justify-center overflow-hidden"
+                            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98, y: -5, filter: "blur(2px)", transition: { duration: 0.3 } }}
+                            transition={{ duration: 0.8, type: "spring", bounce: 0.25, delay: 0.4 }}
+                        >
+                            {/* Inner Grid for tech aesthetic matching Terminal */}
+                            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
+
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-1.5 mb-2.5 h-4">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_5px_rgba(34,211,238,0.8)]" />
+                                    <span className="text-cyan-400 font-medium text-[10px] uppercase tracking-widest">{pitchStrings.tag}</span>
+                                </div>
+                                <div className="leading-relaxed drop-shadow-md text-slate-300">
+                                    {pitchStrings.strongMsg}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     )
 }
 
-// Tactical Sand Table Animation (Card D)
-function TacticalSandTableAnimation() {
+// Mock Interview Animation (Card D)
+function MockInterviewAnimation({ t }: { t: any }) {
+    const [step, setStep] = useState(0)
+    const [mounted, setMounted] = useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    React.useEffect(() => {
+        if (!mounted) return
+
+        let timer: NodeJS.Timeout
+
+        // State 0: Idle, State 1: Question, State 2: Analysis, State 3: Strategy, State 4: Reset
+        switch (step) {
+            case 0:
+                timer = setTimeout(() => setStep(1), 500); break;
+            case 1:
+                timer = setTimeout(() => setStep(2), 2000); break;
+            case 2:
+                timer = setTimeout(() => setStep(3), 1200); break;
+            case 3:
+                timer = setTimeout(() => setStep(4), 5000); break;
+            case 4:
+                timer = setTimeout(() => setStep(0), 400); break;
+        }
+
+        return () => clearTimeout(timer)
+    }, [step, mounted])
+
+    const simStrings = t?.mockInterview?.simulation || {
+        question: 'Tough HR Probe:',
+        questionText: '"This 6-month gap shows no output. Explain?"',
+        strategy: 'AI Strategy Deployed',
+        point1: 'STAR Method',
+        point2: 'Focus on Upskilling',
+        point3: 'Pivot to Strength'
+    }
+
+    if (!mounted) return <div className="w-full h-full min-h-[190px] flex items-center justify-center relative mt-6 font-sans" />
+
     return (
-        <div className="w-full h-full min-h-[160px] flex items-center justify-center relative mt-6">
-            <svg viewBox="0 0 200 160" className="w-[180px] h-[140px] overflow-visible">
-                {/* Background Grid */}
-                <pattern id="sandTableGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="0.5" />
-                </pattern>
-                <rect width="200" height="160" fill="url(#sandTableGrid)" className="opacity-50" />
+        <div className="w-full h-full min-h-[190px] flex items-center justify-center relative mt-6 font-sans">
+            {/* Ambient Pulse Glow */}
+            <div className="absolute w-[200px] h-[100px] bg-cyan-500/10 dark:bg-cyan-500/10 blur-[40px] rounded-full pointer-events-none" />
 
-                {/* Question Path (Interviewer -> User) */}
-                <motion.line
-                    x1="100" y1="30" x2="100" y2="80"
-                    className="stroke-rose-500"
-                    strokeWidth="2"
-                    strokeDasharray="4 4"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    whileInView={{ pathLength: 1, opacity: [0, 1, 0] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
-                />
+            <div className="w-full max-w-[290px] h-[170px] relative flex flex-col justify-center items-center">
+                <AnimatePresence>
+                    {(step >= 1 && step < 4) && (
+                        <motion.div
+                            className="absolute inset-0 bg-[#0A0A0A]/95 dark:bg-[#050505]/95 backdrop-blur-2xl border border-white/10 dark:border-cyan-500/50 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] dark:shadow-[0_0_30px_rgba(6,182,212,0.25)] rounded-xl py-4 px-5 flex flex-col font-sans text-xs overflow-hidden z-20"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3 } }}
+                            transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
+                        >
+                            {/* Inner Grid */}
+                            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
 
-                {/* Interviewer Node (Red) */}
-                <motion.circle
-                    cx="100" cy="25" r="5"
-                    className="fill-rose-500"
-                    initial={{ scale: 0.8 }}
-                    whileInView={{ scale: [0.8, 1.2, 0.8] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
-                />
-                {/* Interviewer Ping */}
-                <motion.circle
-                    cx="100" cy="25" r="5"
-                    className="stroke-rose-500 fill-none"
-                    strokeWidth="1"
-                    initial={{ scale: 1, opacity: 0.8 }}
-                    whileInView={{ scale: 3, opacity: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
-                />
+                            {/* HR Question Box */}
+                            <motion.div
+                                className="relative z-10 bg-rose-500/5 border border-rose-500/20 rounded-lg p-3 mb-3 shrink-0"
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4, delay: 0.1 }}
+                            >
+                                <div className="flex items-center gap-1.5 mb-2 h-3 text-rose-400">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shadow-[0_0_5px_rgba(244,63,94,0.8)]" />
+                                    <span className="font-medium text-[10px] uppercase tracking-widest leading-none">{simStrings.question}</span>
+                                </div>
+                                <div className="text-slate-200">
+                                    {simStrings.questionText}
+                                </div>
+                            </motion.div>
 
-                {/* User Node (Cyan) */}
-                <motion.circle
-                    cx="100" cy="85" r="6"
-                    className="fill-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.8)]"
-                    initial={{ scale: 1 }}
-                    whileInView={{ scale: [1, 1.3, 1] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 1, repeat: Infinity, repeatDelay: 3 }}
-                />
+                            {/* AI Scanning / Analysis Step */}
+                            <AnimatePresence>
+                                {step === 2 && (
+                                    <motion.div
+                                        className="relative z-10 flex-1 flex items-center justify-center h-full mb-6"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                                    >
+                                        <div className="flex space-x-1.5 items-center bg-cyan-500/10 border border-cyan-500/20 rounded-md px-3 py-1.5 text-cyan-400">
+                                            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" />
+                                            <span className="font-mono text-[10px] uppercase ml-1">Analyzing...</span>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
-                {/* Defense Paths (Branching out) */}
-                {/* Path 1: Left */}
-                <motion.line
-                    x1="95" y1="90" x2="50" y2="135"
-                    className="stroke-cyan-500 dark:stroke-cyan-400"
-                    strokeWidth="1.5"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    whileInView={{ pathLength: 1, opacity: [0, 1, 0.5] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 1.2, repeat: Infinity, repeatDelay: 2.9 }}
-                />
-                <motion.circle cx="50" cy="135" r="3" className="fill-cyan-400"
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: [0, 1, 0.5] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.3, delay: 1.6, repeat: Infinity, repeatDelay: 3.2 }}
-                />
+                            {/* Strategy Breakdown */}
+                            <AnimatePresence>
+                                {step === 3 && (
+                                    <motion.div
+                                        className="relative z-10 flex flex-col gap-3"
+                                        initial={{ opacity: 0, y: 25 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+                                    >
+                                        <div className="flex items-center gap-1.5 h-3 text-cyan-400">
+                                            <Zap className="w-3 h-3 text-cyan-400" />
+                                            <span className="font-medium text-[10px] uppercase tracking-widest leading-none">{simStrings.strategy}</span>
+                                        </div>
 
-                {/* Path 2: Center (Deep) */}
-                <motion.line
-                    x1="100" y1="92" x2="100" y2="145"
-                    className="stroke-cyan-500 dark:stroke-cyan-400"
-                    strokeWidth="1.5"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    whileInView={{ pathLength: 1, opacity: [0, 1, 0.5] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 1.3, repeat: Infinity, repeatDelay: 2.9 }}
-                />
-                <motion.circle cx="100" cy="145" r="3" className="fill-cyan-400"
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: [0, 1, 0.5] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.3, delay: 1.7, repeat: Infinity, repeatDelay: 3.2 }}
-                />
-
-                {/* Path 3: Right */}
-                <motion.line
-                    x1="105" y1="90" x2="150" y2="135"
-                    className="stroke-cyan-500 dark:stroke-cyan-400"
-                    strokeWidth="1.5"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    whileInView={{ pathLength: 1, opacity: [0, 1, 0.5] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 1.4, repeat: Infinity, repeatDelay: 2.9 }}
-                />
-                <motion.circle cx="150" cy="135" r="3" className="fill-cyan-400"
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: [0, 1, 0.5] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.3, delay: 1.8, repeat: Infinity, repeatDelay: 3.2 }}
-                />
-            </svg>
+                                        <div className="flex justify-between items-center w-full gap-1.5 overflow-hidden">
+                                            <motion.div className="flex-1 text-center bg-cyan-500/10 border border-cyan-500/30 text-cyan-200 px-1 py-1.5 rounded-md text-[10px] shadow-[inset_0_1px_4px_rgba(6,182,212,0.1)] truncate"
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.7, delay: 0.6, type: "spring", bounce: 0.1 }}
+                                            >
+                                                {simStrings.point1}
+                                            </motion.div>
+                                            <motion.div className="flex-1 text-center bg-cyan-500/10 border border-cyan-500/30 text-cyan-200 px-1 py-1.5 rounded-md text-[10px] shadow-[inset_0_1px_4px_rgba(6,182,212,0.1)] truncate"
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.7, delay: 1.2, type: "spring", bounce: 0.1 }}
+                                            >
+                                                {simStrings.point2}
+                                            </motion.div>
+                                            <motion.div className="flex-1 text-center bg-cyan-500/10 border border-cyan-500/30 text-cyan-200 px-1 py-1.5 rounded-md text-[10px] shadow-[inset_0_1px_4px_rgba(6,182,212,0.1)] truncate"
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.7, delay: 1.8, type: "spring", bounce: 0.1 }}
+                                            >
+                                                {simStrings.point3}
+                                            </motion.div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     )
 }
@@ -297,7 +530,7 @@ export function BentoGrid({ dict }: { dict: any }) {
     const t = dict.bentoGrid || {}
 
     return (
-        <section className="w-full py-24 bg-slate-100 dark:bg-[#09090B]">
+        <section className="w-full py-24 bg-slate-50 dark:bg-black">
             <div className="container mx-auto px-4 max-w-6xl">
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-auto">
@@ -327,7 +560,7 @@ export function BentoGrid({ dict }: { dict: any }) {
                         </div>
 
                         <div className="w-full md:w-1/2 flex justify-center md:justify-end shrink-0 z-0 pl-0 md:pl-12 group">
-                            <TemplateGalleryAnimation />
+                            <TemplateGalleryAnimation t={t} />
                         </div>
                     </motion.div>
 
@@ -355,7 +588,7 @@ export function BentoGrid({ dict }: { dict: any }) {
                                 {t.matchAnalysis?.desc}
                             </p>
                         </div>
-                        <TerminalAnimation />
+                        <TerminalAnimation t={t} />
                     </motion.div>
 
                     {/* Card 3: Smart Pitch */}
@@ -382,7 +615,7 @@ export function BentoGrid({ dict }: { dict: any }) {
                                 {t.smartPitch?.desc}
                             </p>
                         </div>
-                        <MessageComparisonAnimation />
+                        <MessageComparisonAnimation t={t} />
                     </motion.div>
 
                     {/* Card 4: Mock Interview */}
@@ -398,8 +631,6 @@ export function BentoGrid({ dict }: { dict: any }) {
                             "shadow-xl shadow-black/5 dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
                         )}
                     >
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-cyan-500/5 dark:bg-cyan-500/10 blur-[80px] rounded-full pointer-events-none" />
-
                         <div className="flex flex-col gap-3 z-10">
                             <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-2 border border-black/5 dark:border-white/5 shadow-sm">
                                 <Swords className="w-5 h-5 text-slate-900 dark:text-white" strokeWidth={1.5} />
@@ -411,7 +642,7 @@ export function BentoGrid({ dict }: { dict: any }) {
                                 {t.mockInterview?.desc}
                             </p>
                         </div>
-                        <TacticalSandTableAnimation />
+                        <MockInterviewAnimation t={t} />
                     </motion.div>
 
                 </div>

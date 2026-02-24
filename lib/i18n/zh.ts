@@ -744,19 +744,39 @@ const dict = {
     bentoGrid: {
       resumeBuilder: {
         title: '定制精美简历',
-        desc: '不仅是 AI 润色，更是一个全功能的线上排版利器。内置丰富的专业模板，支持一键分享专属链接，彻底告别繁琐的 PDF 传输。',
+        desc: '不仅是 AI 润色，更是一个全功能的线上排版利器。内置丰富的专业模板，支持一键分享专属链接，彻底告别繁琐的 PDF 传输',
       },
       matchAnalysis: {
         title: '精准匹配分析',
-        desc: '透视 JD 隐藏需求。',
+        desc: '底层接入 RAG 行业知识库，专业拆解岗位核心要点，直击简历筛选逻辑',
+        terminal: {
+          step1: '载入 RAG 行业知识库...',
+          step2: '执行红蓝对抗校验...',
+          result: '匹配精准度：98.5%',
+          pass: 'PASS',
+        }
       },
       smartPitch: {
         title: '破冰话术',
-        desc: '解决“已读不回”。用直击痛点的干货价值，打造一秒抓住 HR 眼球的破冰话术，提升建联成功率。',
+        desc: '解决“已读不回”。突出干货价值，打造一秒勾住 HR 眼球的破冰神器',
+        pitch: {
+          weakMsg: '您好，我对贵司的这个岗位很感兴趣，期待回复...',
+          strongMsg: '基于 JD 要求的“0-1 亿级增长”，我曾主导过同类破局矩阵，实现 300% 营收跃升。有空聊聊具体打法吗？',
+          tag: 'Smart Pitch',
+          rejectStamp: '一秒划走'
+        }
       },
       mockInterview: {
         title: '面试沙盘演练',
-        desc: '上场前的沙盘演练。你的专属 AI 军师提前帮你做好功课，预判追问，事半功倍。',
+        desc: '上场前的沙盘演练。你的专属 AI 军师提前帮你做好功课，预判追问，事半功倍',
+        simulation: {
+          question: 'HR 锐利追问：',
+          questionText: '“这半年空窗期，你好像没有产出？”',
+          strategy: 'AI 拆解的锦囊妙招',
+          point1: 'STAR 法则',
+          point2: '强调沉淀',
+          point3: '反转劣势'
+        }
       },
     },
     hero: {
