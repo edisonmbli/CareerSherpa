@@ -744,19 +744,19 @@ const dict = {
     bentoGrid: {
       resumeBuilder: {
         title: '定制精美简历',
-        desc: '专属线上排版，一键分发替代沉重 PDF',
+        desc: '不仅是 AI 润色，更是一个全功能的线上排版利器。内置丰富的专业模板，支持一键分享专属链接，彻底告别繁琐的 PDF 传输。',
       },
       matchAnalysis: {
         title: '精准匹配分析',
-        desc: '透视 JD 隐藏需求',
+        desc: '透视 JD 隐藏需求。',
       },
       smartPitch: {
         title: '破冰话术',
-        desc: '抓眼球的直联内推话术',
+        desc: '解决“已读不回”。用直击痛点的干货价值，打造一秒抓住 HR 眼球的破冰话术，提升建联成功率。',
       },
       mockInterview: {
         title: '面试沙盘演练',
-        desc: '预判面试官的连环追问',
+        desc: '上场前的沙盘演练。你的专属 AI 军师提前帮你做好功课，预判追问，事半功倍。',
       },
     },
     hero: {

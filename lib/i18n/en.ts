@@ -770,7 +770,7 @@ const dict = {
     bentoGrid: {
       resumeBuilder: {
         title: 'Custom Resumes',
-        desc: 'Stunning web-native resumes, overriding static PDFs via shareable links.',
+        desc: 'Beyond AI polishing, it’s a full-featured online builder. Packed with professional templates and ready-to-share links, say goodbye to clunky PDFs.',
       },
       matchAnalysis: {
         title: 'Precision Match',
@@ -778,11 +778,11 @@ const dict = {
       },
       smartPitch: {
         title: 'Smart Pitch',
-        desc: 'Eye-catching DM & referral scripts.',
+        desc: 'End "read-but-no-reply". Craft eye-catching DM scripts packed with targeted value to instantly capture HR attention.',
       },
       mockInterview: {
         title: 'Mock Interview',
-        desc: 'Anticipate ruthless interviewer follow-ups.',
+        desc: 'Your personal AI military advisor prepares you in advance, anticipating ruthless follow-ups to multiply your success rate.',
       },
     },
     hero: {
