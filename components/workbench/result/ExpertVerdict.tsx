@@ -20,7 +20,7 @@ export function ExpertVerdict({ content, label }: ExpertVerdictProps) {
       {/* Left Accent Bar - Removed for V5 Monochrome */}
       {/* <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-500" /> */}
 
-      <div className="relative z-10 p-5 md:p-6">
+      <div className="relative z-10 p-6 md:p-8">
         {/* Content - Serif Lead Paragraph with Drop Cap styling simulation */}
         <div className="prose prose-lg max-w-none dark:prose-invert relative z-10">
           {/* Custom Markdown Components for Typography */}

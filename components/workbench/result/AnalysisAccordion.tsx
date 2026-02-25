@@ -119,10 +119,10 @@ export function AnalysisAccordion({
               return (
                 <div
                   key={idx}
-                  className="group/item relative pt-1 pb-4 last:pb-0"
+                  className="group/item relative pt-1 pb-6 md:pb-8 last:pb-0"
                 >
                   <WatermarkPrefix index={idx} themeColor={themeColor} />
-                  <div className="space-y-1.5 relative">
+                  <div className="space-y-2 relative">
                     {/* Main Point */}
                     <div className="text-sm leading-relaxed text-stone-800 dark:text-slate-300 font-[family-name:var(--font-noto-serif),serif]">
                       <ReactMarkdown
@@ -156,7 +156,7 @@ export function AnalysisAccordion({
                     {tip &&
                       typeof tip === 'object' &&
                       (tip.interview || tip.resume) && (
-                        <div className="mt-3 flex flex-col gap-3">
+                        <div className="mt-4 md:mt-5 flex flex-col gap-3 group-hover/item:opacity-100 transition-opacity">
                           {tip.resume && (
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">

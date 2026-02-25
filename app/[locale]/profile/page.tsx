@@ -115,7 +115,7 @@ export default async function ProfilePage({
           <div className="w-full">
             <ProfileTabs defaultValue={tab} labels={p.tabs} />
 
-            <div className={tab === 'assets' ? 'grid gap-12 mt-10' : 'hidden'}>
+            <div className={tab === 'assets' ? 'grid gap-6 md:gap-8 mt-6 md:mt-8' : 'hidden'}>
               <div className={surfaceClass} style={surfaceStyle}>
                 <div className="p-6 sm:p-8">
                   <div className="flex items-center gap-2.5">
@@ -219,7 +219,7 @@ export default async function ProfilePage({
             </div>
 
             <div
-              className={tab === 'billing' ? 'block mt-6 space-y-4' : 'hidden'}
+              className={tab === 'billing' ? 'block mt-6 md:mt-8 space-y-6 md:space-y-8' : 'hidden'}
             >
               <AppCard
                 padded={false}
@@ -315,8 +315,8 @@ export default async function ProfilePage({
                             }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
                             }`}
                           className={`px-2 py-0.5 rounded border text-xs ${page >= pageCount
-                              ? 'opacity-40 pointer-events-none'
-                              : ''
+                            ? 'opacity-40 pointer-events-none'
+                            : ''
                             }`}
                         >
                           {p.billing.pagination.next}

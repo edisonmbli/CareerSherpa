@@ -454,7 +454,7 @@ export function ServiceDisplay({
         }
         showError(
           dict.workbench?.customize?.createFailed ||
-            'Failed to start customization',
+          'Failed to start customization',
           'An unexpected error occurred.',
         )
       }
@@ -1346,14 +1346,14 @@ export function ServiceDisplay({
       document.body.appendChild(el)
     }
     setMobileBarRoot(el)
-    return () => {}
+    return () => { }
   }, [])
 
   return (
     <>
       <div
         className={cn(
-          'h-full flex flex-col space-y-4 md:space-y-2 pt-2 md:pt-0',
+          'h-full flex flex-col pt-2 md:pt-0',
           tabValue === 'customize' && 'bg-gray-50/50 dark:bg-zinc-950',
         )}
       >
@@ -1405,7 +1405,7 @@ export function ServiceDisplay({
           USE_SSE_V2 &&
           v2Bridge &&
           tabValue === 'match' && (
-            <div className="w-full px-3 md:px-4 print:hidden">
+            <div className="w-full px-3 md:px-4 mt-6 md:mt-8 print:hidden">
               <div className="mx-auto w-full max-w-[1180px]">
                 <StatusConsoleV2
                   status={v2Bridge.status}
@@ -1427,7 +1427,10 @@ export function ServiceDisplay({
           onValueChange={(v) =>
             setTabValue(v as 'match' | 'customize' | 'interview')
           }
-          className="flex-1 flex flex-col min-h-0 space-y-2 mb-0"
+          className={cn(
+            "flex-1 flex flex-col min-h-0 mb-0",
+            tabValue === 'customize' ? "mt-4 md:mt-4" : "mt-6 md:mt-8"
+          )}
         >
           <TabsContent
             value="match"
@@ -1438,81 +1441,81 @@ export function ServiceDisplay({
                 {(status === 'MATCH_COMPLETED' ||
                   matchResult ||
                   matchParsed) && (
-                  <>
-                    <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
-                      <TooltipProvider>
-                        {matchActions.map((action) => {
-                          const themeClasses = getActionThemeClasses(matchTheme)
-                          const Icon = action.icon
-                          return (
-                            <Tooltip key={action.id}>
-                              <TooltipTrigger asChild>
+                    <>
+                      <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                        <TooltipProvider>
+                          {matchActions.map((action) => {
+                            const themeClasses = getActionThemeClasses(matchTheme)
+                            const Icon = action.icon
+                            return (
+                              <Tooltip key={action.id}>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    disabled={action.disabled}
+                                    onClick={action.onClick}
+                                    className={cn(
+                                      'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                      themeClasses.base,
+                                      themeClasses.hover,
+                                      themeClasses.ring,
+                                    )}
+                                  >
+                                    <Icon className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  {action.label}
+                                </TooltipContent>
+                              </Tooltip>
+                            )
+                          })}
+                        </TooltipProvider>
+                      </div>
+                      <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                        {matchFabOpen && (
+                          <div className="flex flex-col items-center gap-2 w-10">
+                            {matchActions.map((action) => {
+                              const themeClasses =
+                                getActionThemeClasses(matchTheme)
+                              const Icon = action.icon
+                              return (
                                 <Button
+                                  key={action.id}
                                   size="icon"
                                   disabled={action.disabled}
-                                  onClick={action.onClick}
+                                  onClick={() => {
+                                    action.onClick()
+                                    setMatchFabOpen(false)
+                                  }}
                                   className={cn(
-                                    'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                    'h-9 w-9 rounded-full border shadow-lg',
                                     themeClasses.base,
                                     themeClasses.hover,
                                     themeClasses.ring,
                                   )}
                                 >
                                   <Icon className="h-4 w-4" />
+                                  <span className="sr-only">{action.label}</span>
                                 </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left">
-                                {action.label}
-                              </TooltipContent>
-                            </Tooltip>
-                          )
-                        })}
-                      </TooltipProvider>
-                    </div>
-                    <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
-                      {matchFabOpen && (
-                        <div className="flex flex-col items-center gap-2 w-10">
-                          {matchActions.map((action) => {
-                            const themeClasses =
-                              getActionThemeClasses(matchTheme)
-                            const Icon = action.icon
-                            return (
-                              <Button
-                                key={action.id}
-                                size="icon"
-                                disabled={action.disabled}
-                                onClick={() => {
-                                  action.onClick()
-                                  setMatchFabOpen(false)
-                                }}
-                                className={cn(
-                                  'h-9 w-9 rounded-full border shadow-lg',
-                                  themeClasses.base,
-                                  themeClasses.hover,
-                                  themeClasses.ring,
-                                )}
-                              >
-                                <Icon className="h-4 w-4" />
-                                <span className="sr-only">{action.label}</span>
-                              </Button>
-                            )
-                          })}
-                        </div>
-                      )}
-                      <Button
-                        size="icon"
-                        onClick={() => setMatchFabOpen((prev) => !prev)}
-                        className={cn(
-                          'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                          getActionThemeClasses(matchTheme).base,
-                          getActionThemeClasses(matchTheme).hover,
+                              )
+                            })}
+                          </div>
                         )}
-                      >
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </>
-                )}
+                        <Button
+                          size="icon"
+                          onClick={() => setMatchFabOpen((prev) => !prev)}
+                          className={cn(
+                            'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                            getActionThemeClasses(matchTheme).base,
+                            getActionThemeClasses(matchTheme).hover,
+                          )}
+                        >
+                          <Menu className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 {USE_SSE_V2 &&
                   v2Bridge &&
                   (v2Bridge.status === 'IDLE' ||
@@ -1623,7 +1626,7 @@ export function ServiceDisplay({
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
-            customizedResumeBase?.customizedResumeJson ? (
+              customizedResumeBase?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
@@ -1681,9 +1684,9 @@ export function ServiceDisplay({
                       // Use executionTier to show correct message based on failed task's tier
                       executionTier === 'free'
                         ? dict?.workbench?.statusConsole?.customizeFailedFree ||
-                          '免费模型暂时繁忙，请稍后重试'
+                        '免费模型暂时繁忙，请稍后重试'
                         : dict?.workbench?.statusConsole?.customizeRefunded ||
-                          '金币已自动返还，请点击重试'
+                        '金币已自动返还，请点击重试'
                     }
                     onRetry={onCustomize}
                     isRetryLoading={isTransitionState || isPending}
@@ -1708,9 +1711,9 @@ export function ServiceDisplay({
                       <h3 className="text-lg font-semibold">
                         {cta?.disabled
                           ? dict.workbench?.statusConsole?.customizeStarting ||
-                            '正在启动定制服务...'
+                          '正在启动定制服务...'
                           : dict.workbench?.statusText?.readyToCustomize ||
-                            'Ready to Customize'}
+                          'Ready to Customize'}
                       </h3>
                       {/* Only show guide text when button is clickable */}
                       {!cta?.disabled && (
@@ -1830,8 +1833,8 @@ export function ServiceDisplay({
                       />
                     </div>
                     <aside className="hidden xl:block print:hidden w-[240px]">
-                      <div className="fixed top-[120px] w-[240px] left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)]">
-                        <div className="w-full max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
+                      <div className="fixed top-[136px] w-[240px] left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)]">
+                        <div className="w-full max-h-[calc(100vh-136px)] overflow-y-auto pr-1">
                           <div className="text-[11px] font-semibold text-foreground/60 tracking-[0.24em]">
                             {dict.workbench?.interviewUi?.toc || 'Contents'}
                           </div>
@@ -1943,12 +1946,12 @@ export function ServiceDisplay({
                       description={
                         interviewExecutionTier === 'free'
                           ? dict.workbench?.statusText
-                              ?.INTERVIEW_FAILED_DESC_FREE ||
-                            '免费模型暂时繁忙，请稍后重试'
+                            ?.INTERVIEW_FAILED_DESC_FREE ||
+                          '免费模型暂时繁忙，请稍后重试'
                           : dict.workbench?.statusText
-                              ?.INTERVIEW_FAILED_DESC_PAID ||
-                            dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
-                            '金币已自动返还，请点击重试'
+                            ?.INTERVIEW_FAILED_DESC_PAID ||
+                          dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
+                          '金币已自动返还，请点击重试'
                       }
                       onRetry={onInterview}
                       isRetryLoading={isPending}
