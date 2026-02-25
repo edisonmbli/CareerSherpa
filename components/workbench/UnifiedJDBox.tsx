@@ -22,7 +22,7 @@ export function UnifiedJDBox({ dict, disabled, valueText, onChangeText, valueFil
   }, [onChangeFile])
 
   return (
-    <div onDragOver={(e) => e.preventDefault()} onDrop={onDrop} className="rounded-xl border border-border/60 bg-card/50 shadow-[0_0_0_1px_rgba(255,255,255,0.3)_inset]">
+    <div onDragOver={(e) => e.preventDefault()} onDrop={onDrop} className="rounded-xl border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] backdrop-blur-md shadow-sm dark:shadow-none">
       {!valueFile ? (
         <div className="p-4">
           <Textarea className="border-0 focus:ring-0 focus-visible:ring-0 outline-none bg-transparent" value={valueText} onChange={(e) => onChangeText(e.target.value)} onPaste={onPaste} rows={10} placeholder={dict.placeholderText} disabled={disabled} />

@@ -274,7 +274,7 @@ export function NewServiceForm({
       <StepperProgress
         currentStep={0 as any}
         maxUnlockedStep={0 as any}
-        onStepClick={() => {}}
+        onStepClick={() => { }}
         labels={{
           step1: String(tabsDict?.match || 'Step 1'),
           step2: String(tabsDict?.customize || 'Step 2'),
@@ -283,7 +283,7 @@ export function NewServiceForm({
         className="shrink-0"
       />
       {isBusy ? (
-        <AppCard className="border border-border/60 bg-card/50 shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+        <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl">
           <AppCardContent className="pt-6">
             <BatchProgressPanel
               title={pendingTitle}
@@ -294,7 +294,7 @@ export function NewServiceForm({
         </AppCard>
       ) : (
         <form onSubmit={onSubmit} className="space-y-6">
-          <AppCard className="border border-border/60 bg-card/50 shadow-[0_0_0_1px_rgba(255,255,255,0.4)_inset,0_2px_6px_rgba(0,0,0,0.04)] sm:shadow-[0_0_0_1px_rgba(255,255,255,0.5)_inset,0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_4px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+          <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl">
             <AppCardHeader>
               <AppCardTitle>{dict.title}</AppCardTitle>
               <AppCardDescription>{dict.description}</AppCardDescription>
@@ -315,7 +315,7 @@ export function NewServiceForm({
                 <Button
                   type="submit"
                   disabled={isPending}
-                  className="dark:shadow-lg dark:ring-1 dark:ring-primary/30"
+                  className="dark:shadow-2xl dark:ring-1 dark:ring-primary/50"
                 >
                   {dict.button}
                 </Button>

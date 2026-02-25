@@ -97,7 +97,7 @@ export function StatusConsoleV2({
     return (
         <div
             className={cn(
-                'w-full rounded-xl border bg-card/50 backdrop-blur-sm shadow-sm p-4 space-y-4',
+                'w-full rounded-xl border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] backdrop-blur-2xl shadow-sm dark:shadow-2xl p-4 space-y-4',
                 className
             )}
             role="status"
@@ -109,14 +109,14 @@ export function StatusConsoleV2({
                 <div className="flex items-center gap-3">
                     <div
                         className={cn(
-                            'relative flex items-center justify-center w-8 h-8 rounded-lg bg-background border shadow-sm',
+                            'relative flex items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-white/[0.04] border border-black/5 dark:border-white/10 shadow-sm dark:shadow-none',
                             config.color
                         )}
                     >
                         <Icon className={cn('w-4 h-4', config.animate && 'animate-spin')} />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-foreground">
+                        <span className="text-sm font-semibold text-foreground dark:text-white">
                             {errorMessage || statusMessage}
                         </span>
                     </div>
@@ -129,10 +129,10 @@ export function StatusConsoleV2({
                         <Badge
                             variant="outline"
                             className={cn(
-                                'gap-1.5 font-medium border-border/50',
+                                'gap-1.5 font-medium border-border/50 dark:border-white/10',
                                 tier === 'paid'
-                                    ? 'bg-amber-500/10 text-amber-600 border-amber-200'
-                                    : 'bg-muted/50 text-muted-foreground'
+                                    ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
+                                    : 'bg-muted/50 dark:bg-white/[0.04] text-muted-foreground dark:text-slate-400'
                             )}
                         >
                             <Zap className="w-3 h-3" />

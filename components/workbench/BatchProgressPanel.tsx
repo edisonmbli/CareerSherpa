@@ -21,11 +21,11 @@ export function BatchProgressPanel({
   retryLabel = '重试',
 }: BatchProgressPanelProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
+    <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md min-h-[300px] border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] backdrop-blur-2xl shadow-sm dark:shadow-2xl">
       <div className="w-full max-w-md space-y-4 text-center">
         <div className="flex flex-col items-center gap-3">
           {mode === 'error' ? (
-            <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center">
               <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
           ) : (
@@ -33,7 +33,7 @@ export function BatchProgressPanel({
           )}
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
-        <p className="text-sm text-muted-foreground max-w-[85%] mx-auto leading-relaxed sm:max-w-none sm:whitespace-nowrap">
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[85%] mx-auto leading-relaxed sm:max-w-none sm:whitespace-nowrap">
           {description}
         </p>
 

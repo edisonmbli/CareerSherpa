@@ -77,8 +77,8 @@ export function SidebarHistory({
                       className={cn(
                         'flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200',
                         isActive(s.id)
-                          ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                          ? 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-white shadow-sm'
+                          : 'hover:bg-slate-100 dark:hover:bg-white/[0.04] text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       )}
                     >
                       <FileClock className="h-4 w-4" />
@@ -103,7 +103,7 @@ export function SidebarHistory({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 cursor-default">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-white/[0.04] text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-default">
                       <MoreHorizontal className="w-4 h-4" />
                     </div>
                   </TooltipTrigger>
@@ -143,21 +143,21 @@ export function SidebarHistory({
               className={cn(
                 'block rounded-lg px-3 py-2.5 transition-all duration-200 ml-2', // ml-2 for indicator space
                 isActive(s.id)
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                  ? 'bg-accent dark:bg-white/[0.06] text-accent-foreground dark:text-white'
+                  : 'hover:bg-accent/50 dark:hover:bg-white/[0.04] text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white'
               )}
             >
               <div className="flex flex-col gap-0.5">
                 <span
                   className={cn(
                     'truncate text-xs font-mono',
-                    isActive(s.id) ? 'text-foreground font-medium' : ''
+                    isActive(s.id) ? 'text-foreground dark:text-white font-medium' : ''
                   )}
                   title={String(s.title ?? (labels?.creating || 'Creating...'))}
                 >
                   {s.title ?? (labels?.creating || 'Creating...')}
                 </span>
-                <span className="text-[10px] text-muted-foreground/70 font-light">
+                <span className="text-[10px] text-slate-400 font-light">
                   {formatShort(s.updatedAt || s.createdAt, String(locale))}
                 </span>
               </div>

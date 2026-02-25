@@ -68,7 +68,7 @@ export function MobileDrawer({
           {/* Header Area */}
           <div className="flex items-center justify-center mt-3 px-12">
             <Button
-              className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black shadow-sm h-9 w-[70%]"
+              className="bg-black text-white hover:bg-gray-800 dark:bg-white/[0.04] dark:text-white border-transparent dark:border-white/10 border shadow-sm h-9 w-[70%]"
               asChild
             >
               <Link href={`/${locale}/workbench`}>
@@ -88,12 +88,12 @@ export function MobileDrawer({
           </div>
 
           {/* Bottom Footer */}
-          <div className="p-4 bg-gray-50/50 dark:bg-zinc-900/50 mt-auto">
+          <div className="p-4 bg-gray-50/50 dark:bg-white/[0.02] border-t border-black/5 dark:border-white/10 mt-auto">
             <div className="flex items-center justify-center gap-4">
               <Button
                 asChild
                 variant="outline"
-                className="border-gray-200 dark:border-zinc-800 bg-white dark:bg-black shadow-sm h-10 w-auto px-4"
+                className="border-gray-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-800 dark:text-white shadow-sm h-10 w-auto px-4"
               >
                 <Link href={`/${locale}/profile?tab=assets`}>
                   {dict.workbench.sidebar.myCv}
