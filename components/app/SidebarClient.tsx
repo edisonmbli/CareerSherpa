@@ -111,7 +111,7 @@ export function SidebarClient({
       >
         {!collapsed ? (
           <Button
-            className="w-full shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="w-full relative inline-flex items-center justify-center font-bold overflow-hidden z-10 bg-gradient-to-b from-slate-800 to-slate-900 text-white hover:from-slate-700 hover:to-slate-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.15)] dark:from-slate-100 dark:to-slate-300 dark:text-slate-900 dark:hover:from-white dark:hover:to-slate-200 dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_4px_20px_rgba(0,0,0,0.3)] border border-slate-900/10 dark:border-white/10 active:scale-[0.98] transition-all duration-300 ease-out backdrop-blur-md cursor-pointer"
             onClick={() => router.push(`/${locale}/workbench`)}
           >
             + {dict.workbench.sidebar.newService}
@@ -146,14 +146,14 @@ export function SidebarClient({
       />
       {!collapsed && (
         <div className="flex items-center justify-between gap-2">
-          <Button asChild className="w-32" variant="secondary">
+          <Button asChild className="w-32 bg-white/50 dark:bg-white/[0.04] border-[0.5px] border-black/5 dark:border-white/10 text-slate-700 dark:text-white hover:bg-white/80 dark:hover:bg-white/[0.08] shadow-sm transition-all duration-300" variant="outline">
             <Link href={`/${locale}/profile?tab=assets`}>
               {dict.workbench.sidebar.myCv}
             </Link>
           </Button>
           <Link
             href={`/${locale}/profile?tab=billing`}
-            className="inline-flex items-center rounded-md border px-2 py-1 text-xs whitespace-nowrap"
+            className="inline-flex items-center rounded-md border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] backdrop-blur-md text-slate-700 dark:text-slate-300 px-2 py-1 text-xs whitespace-nowrap shadow-sm transition-all duration-300 hover:bg-white/80 dark:hover:bg-white/[0.06]"
           >
             {dict.workbench.sidebar.coins}: {quotaBalance ?? 0}
           </Link>

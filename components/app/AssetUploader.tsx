@@ -466,10 +466,10 @@ export function AssetUploader({
     const s = isFinishing
       ? 'PENDING'
       : status === 'PENDING'
-      ? pollStatus === 'IDLE'
-        ? 'PENDING'
-        : pollStatus
-      : status
+        ? pollStatus === 'IDLE'
+          ? 'PENDING'
+          : pollStatus
+        : status
 
     // Logic for ETA
     const estimateTotalMin = taskTemplateId === 'resume_summary' ? '1-2' : '2-3'
@@ -516,9 +516,8 @@ export function AssetUploader({
               {/* Progress Bar */}
               <Progress
                 value={progressValue}
-                className={`h-2 w-full transition-all duration-500 ${
-                  isCompletedStep ? 'progress-success' : ''
-                }`}
+                className={`h-2 w-full transition-all duration-500 ${isCompletedStep ? 'progress-success' : ''
+                  }`}
               />
               <style jsx global>{`
                 .progress-success > div {
@@ -574,7 +573,7 @@ export function AssetUploader({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs px-3"
+                className="h-8 text-xs px-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all duration-300"
                 onClick={async () => {
                   setShowPreview(true)
                   await ensurePreviewData()
@@ -586,7 +585,7 @@ export function AssetUploader({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs px-3 hover:text-foreground"
+                className="h-8 text-xs px-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all duration-300"
                 onClick={handleReupload}
               >
                 {labels?.actionReupload ?? dict.reupload}
@@ -700,10 +699,10 @@ export function AssetUploader({
                             const arr = Array.isArray(d.skills)
                               ? d.skills
                               : [
-                                  ...(d.skills.technical || []),
-                                  ...(d.skills.soft || []),
-                                  ...(d.skills.tools || []),
-                                ]
+                                ...(d.skills.technical || []),
+                                ...(d.skills.soft || []),
+                                ...(d.skills.tools || []),
+                              ]
                             sections.push(
                               `## ${L.skills}`,
                               `- ${arr.join(', ')}`
@@ -878,11 +877,10 @@ export function AssetUploader({
             >
               {fileName
                 ? fileName
-                : `${
-                    taskTemplateId === 'resume_summary'
-                      ? dict.placeholderHintResume
-                      : dict.placeholderHintDetailed
-                  }`}
+                : `${taskTemplateId === 'resume_summary'
+                  ? dict.placeholderHintResume
+                  : dict.placeholderHintDetailed
+                }`}
             </div>
             <div className="flex gap-2 justify-end sm:justify-start">
               <Button
@@ -891,6 +889,7 @@ export function AssetUploader({
                 size="sm"
                 onClick={triggerFileSelect}
                 disabled={isPending || status === 'UPLOADING'}
+                className="bg-white/50 dark:bg-white/[0.04] border-[0.5px] border-black/5 dark:border-white/10 text-slate-700 dark:text-white hover:bg-white/80 dark:hover:bg-white/[0.08] shadow-sm transition-all duration-300"
               >
                 {dict.chooseFile}
               </Button>
@@ -898,6 +897,7 @@ export function AssetUploader({
                 type="submit"
                 disabled={isPending || status === 'UPLOADING'}
                 size="sm"
+                className="relative inline-flex items-center justify-center overflow-hidden z-10 bg-gradient-to-b from-slate-800 to-slate-900 dark:from-white/10 dark:to-white/5 text-white dark:text-white hover:from-slate-700 hover:to-slate-800 dark:hover:from-white/20 dark:hover:to-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_20px_rgba(0,0,0,0.5)] border border-slate-900/10 dark:border-white/10 active:scale-[0.98] transition-all duration-300 ease-out backdrop-blur-md cursor-pointer"
               >
                 {isPending || status === 'PENDING' || status === 'UPLOADING' ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -119,7 +119,7 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
         <Button
           variant="outline"
           size="sm"
-          className="gap-1 w-24 justify-center text-xs font-medium text-muted-foreground border-muted/40 hover:text-foreground hover:border-border/60"
+          className="gap-1 w-24 justify-center text-xs font-medium text-slate-700 dark:text-white border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] hover:bg-white/80 dark:hover:bg-white/[0.08] shadow-sm transition-all duration-300"
           onClick={openPanel}
         >
           <Filter className="h-3.5 w-3.5" />
@@ -256,8 +256,8 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
             <div className="md:col-span-3 flex items-center justify-between">
               <Button variant="ghost" size="sm" onClick={() => { clearAll(); }} className="gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" />{dict.filters.clear}</Button>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="text-[11px] font-medium" onClick={() => { setOpen(false) }}>{dict.common?.cancel ?? '关闭'}</Button>
-                <Button variant="default" size="sm" className="text-[11px] font-medium" onClick={applyAll}>{dict.filters.apply}</Button>
+                <Button variant="outline" size="sm" className="text-[11px] font-medium bg-white/50 dark:bg-white/[0.04] border-[0.5px] border-black/5 dark:border-white/10 text-slate-700 dark:text-white hover:bg-white/80 dark:hover:bg-white/[0.08] shadow-sm transition-all duration-300" onClick={() => { setOpen(false) }}>{dict.common?.cancel ?? '关闭'}</Button>
+                <Button variant="default" size="sm" className="text-[11px] font-medium relative inline-flex items-center justify-center overflow-hidden z-10 bg-gradient-to-b from-slate-800 to-slate-900 dark:from-white/10 dark:to-white/5 text-white dark:text-white hover:from-slate-700 hover:to-slate-800 dark:hover:from-white/20 dark:hover:to-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_20px_rgba(0,0,0,0.5)] border border-slate-900/10 dark:border-white/10 active:scale-[0.98] transition-all duration-300 ease-out backdrop-blur-md cursor-pointer" onClick={applyAll}>{dict.filters.apply}</Button>
               </div>
             </div>
           </div>

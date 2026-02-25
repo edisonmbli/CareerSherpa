@@ -68,7 +68,7 @@ export function CtaButton({
                 disabled={cta.disabled}
                 aria-label={cta.label}
                 size="sm"
-                className="font-semibold shadow-sm h-8 px-4 gap-2 cursor-pointer"
+                className="font-semibold h-8 px-4 gap-2 cursor-pointer relative inline-flex items-center justify-center overflow-hidden z-10 bg-gradient-to-b from-slate-800 to-slate-900 text-white hover:from-slate-700 hover:to-slate-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.15)] dark:from-slate-100 dark:to-slate-300 dark:text-slate-900 dark:hover:from-white dark:hover:to-slate-200 dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_4px_20px_rgba(0,0,0,0.3)] border border-slate-900/10 dark:border-white/10 active:scale-[0.98] transition-all duration-300 ease-out backdrop-blur-md"
             >
                 {cta.label}
                 <div className="h-3 w-px bg-white/20 mx-1" />
