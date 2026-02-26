@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { RadarModule } from './RadarModule'
 import { HookModule } from './HookModule'
 import { EvidenceModule } from './EvidenceModule'
@@ -325,6 +325,92 @@ export function InterviewBattlePlan({
   const themeColor = getMatchThemeColor(resolvedScore)
   const matchThemeClass = getMatchThemeClass(themeColor)
 
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
+
+  // Define available sections dynamically based on data availability
+  const sectionsList = useMemo(() => {
+    const list: string[] = []
+    if (data?.radar) list.push('ibp-radar')
+    if (data?.hook) list.push('ibp-hook')
+    if (data?.evidence && data.evidence.length > 0) list.push('ibp-evidence')
+    if (data?.defense && data.defense.length > 0) list.push('ibp-defense')
+    if (data?.reverse_questions && data.reverse_questions.length > 0) list.push('ibp-reverse')
+    if (data?.knowledge_refresh && data.knowledge_refresh.length > 0) list.push('ibp-knowledge')
+    return list
+  }, [data])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Find the section currently in view
+      // We look at the top of the viewport + an offset
+      const offset = 140
+      const currentId = sectionsList.find((id) => {
+        const el = document.getElementById(id)
+        if (!el) return false
+        const rect = el.getBoundingClientRect()
+        // If the top element is near the top or taking up the screen
+        return rect.top <= offset && rect.bottom > offset
+      })
+
+      if (currentId && currentId !== activeSectionId) {
+        setActiveSectionId(currentId)
+      } else if (!currentId && window.scrollY < window.innerHeight / 2) {
+        // We're at the very top, before the first section
+        setActiveSectionId(null)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll() // Init on mount
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [sectionsList, activeSectionId])
+
+  const handleScrollPrev = () => {
+    let prevId = sectionsList[0]
+
+    if (activeSectionId) {
+      const currentIndex = sectionsList.indexOf(activeSectionId)
+      if (currentIndex > 0) {
+        prevId = sectionsList[currentIndex - 1]
+      } else {
+        // If at the first element, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+    } else {
+      // if we are above the first section, clicking up does nothing
+      return
+    }
+
+    const prevEl = document.getElementById(prevId!)
+    if (prevEl) {
+      prevEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const handleScrollNext = () => {
+    let nextId = sectionsList[0] // Default to first section if none active
+
+    if (activeSectionId) {
+      const currentIndex = sectionsList.indexOf(activeSectionId)
+      if (currentIndex !== -1 && currentIndex < sectionsList.length - 1) {
+        nextId = sectionsList[currentIndex + 1]
+      } else {
+        // If at the last element, don't do anything or maybe loop to top
+        return
+      }
+    }
+
+    const nextEl = document.getElementById(nextId!)
+    if (nextEl) {
+      nextEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  // Hide the FABs at extremities
+  const isFirstSection = activeSectionId === sectionsList[0] && window.scrollY < window.innerHeight / 2
+  const isLastSection = activeSectionId === sectionsList[sectionsList.length - 1]
+
   return (
     <div
       className={cn(
@@ -342,7 +428,7 @@ export function InterviewBattlePlan({
       <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
       <div className="relative px-0 py-3 sm:p-4 md:p-10 lg:p-12 pb-24 md:pb-16 print:pt-4 print:pb-4 print:px-2 z-10">
-        <div className="space-y-14 md:space-y-16">
+        <div className="space-y-16 md:space-y-24 mt-0 relative z-10 w-full max-w-full print:mt-4 print:space-y-8">
           {data?.radar && (
             <section
               id="ibp-radar"

@@ -2,7 +2,6 @@
 import React from 'react'
 import { Ear, Flag } from 'lucide-react'
 import { cn, getMatchThemeClass } from '@/lib/utils'
-import { WatermarkPrefix } from '@/components/workbench/WatermarkPrefix'
 
 interface ReverseQuestion {
   question: string
@@ -45,40 +44,45 @@ export function ReverseModule({
   return (
     <div className={cn('space-y-6', matchThemeClass, className)}>
       {/* Section Header */}
-      <div className="relative inline-block">
-        <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
-        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-stone-900 dark:text-white tracking-tight relative">
-          {finalLabels.title}
-        </h3>
+      <div className="flex items-center w-full mb-6 relative pl-2">
+        <div className={cn('relative ml-0 border-l-[3px] pl-3 py-0.5', 'border-match-dot')}>
+          <h3 className="text-2xl font-serif text-foreground z-10 relative">
+            {finalLabels.title}
+          </h3>
+        </div>
       </div>
 
-      {/* Questions List - Clean timeline style */}
-      <div className="space-y-2">
+      {/* Questions List */}
+      <div className="space-y-4">
         {questions.map((q, index) => (
-          <div key={index} className="relative pt-1 pb-6 last:pb-0">
-            <WatermarkPrefix index={index} themeColor={themeColor} />
-            <div className="space-y-3 pb-2">
-              <h4 className="text-base font-semibold text-stone-900 dark:text-white leading-relaxed">
+          <div key={index} className="relative overflow-hidden z-10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-2xl border-[0.5px] border-black/5 dark:border-white/10 rounded-xl p-4 md:p-5 shadow-sm">
+            {/* Proportional Ghost Watermark Small */}
+            <div className="absolute -top-3 -left-2 text-[5rem] font-black pointer-events-none select-none opacity-[0.08] dark:opacity-[0.05] z-0 text-slate-900 dark:text-white leading-none">
+              {index + 1}
+            </div>
+
+            <div className="relative z-10 space-y-4">
+              <h4 className="text-lg font-semibold text-foreground leading-tight">
                 {q.question}
               </h4>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-stone-500">
-                    <Flag className="h-3 w-3 text-match-text" />
-                    <span className="uppercase">{finalLabels.askIntent}</span>
+              <div className="space-y-4 pt-1">
+                <div className="space-y-1.5 bg-white/30 dark:bg-white/[0.01] border-[0.5px] border-black/5 dark:border-white/10 rounded-lg p-3 md:p-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-muted-foreground mb-1 uppercase">
+                    <Flag className="h-3 w-3 text-stone-400" />
+                    <span>{finalLabels.askIntent}</span>
                   </div>
-                  <p className="text-sm text-stone-900/90 dark:text-slate-300 leading-relaxed">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-pretty">
                     {q.ask_intent}
                   </p>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-stone-500">
-                    <Ear className="h-3 w-3 text-match-text" />
-                    <span className="uppercase">{finalLabels.listenFor}</span>
+                <div className="space-y-1.5 bg-match-highlight/[0.05] dark:bg-match-highlight/[0.02] border-l-2 border-match-dot rounded-r-lg p-3 md:p-4">
+                  <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-match-text mb-1 uppercase">
+                    <Ear className="h-3 w-3" />
+                    <span>{finalLabels.listenFor}</span>
                   </div>
-                  <p className="text-sm text-stone-900/90 dark:text-slate-300 leading-relaxed">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-pretty">
                     {q.listen_for}
                   </p>
                 </div>

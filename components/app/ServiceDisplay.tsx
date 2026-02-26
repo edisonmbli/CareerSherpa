@@ -53,6 +53,9 @@ import {
   Printer,
   Copy,
   Check,
+  ChevronUp,
+  ChevronDown,
+  ListOrdered,
 } from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
 import { cn, getMatchScore, getMatchThemeColor } from '@/lib/utils'
@@ -865,6 +868,7 @@ export function ServiceDisplay({
 
       const getSections = () => {
         const rootRect = root!.getBoundingClientRect()
+        const isScrollWindow = root!.scrollHeight <= root!.clientHeight + 4
         return ibpTocItems
           .map((item) => {
             const el = root!.querySelector(`#${item.id}`) as HTMLElement | null
@@ -872,10 +876,10 @@ export function ServiceDisplay({
             const rect = el.getBoundingClientRect()
             return {
               id: item.id,
-              top: rect.top - rootRect.top + root!.scrollTop,
+              top: isScrollWindow ? rect.top + window.scrollY - 100 : rect.top - rootRect.top + root!.scrollTop,
             }
           })
-          .filter(Boolean) as Array<{ id: string; top: number }>
+          .filter((s) => s != null) as Array<{ id: string; top: number }>
       }
 
       const onScroll = () => {
@@ -885,15 +889,20 @@ export function ServiceDisplay({
           const sections = getSections()
           if (sections.length === 0) return
 
+          const isScrollWindow = root!.scrollHeight <= root!.clientHeight + 4
+          const scrollHeight = isScrollWindow ? document.documentElement.scrollHeight : root!.scrollHeight
+          const scrollTop = isScrollWindow ? Math.max(window.scrollY, document.documentElement.scrollTop) : root!.scrollTop
+          const clientHeight = isScrollWindow ? window.innerHeight : root!.clientHeight
+
           const atBottom =
-            root!.scrollHeight - (root!.scrollTop + root!.clientHeight) <= 24
+            scrollHeight - (scrollTop + clientHeight) <= 24
           if (atBottom) {
             const last = sections[sections.length - 1]
             if (last?.id) setActiveIbpSection(last.id)
             return
           }
 
-          const anchor = root!.scrollTop + 24
+          const anchor = scrollTop + (isScrollWindow ? 180 : 24)
           let current = sections[0]
           for (const section of sections) {
             if (section.top <= anchor) current = section
@@ -915,12 +924,14 @@ export function ServiceDisplay({
       initRaf = window.requestAnimationFrame(onScroll)
       timeoutId = window.setTimeout(onScroll, 120)
       root.addEventListener('scroll', onScroll, { passive: true })
+      window.addEventListener('scroll', onScroll, { passive: true })
       window.addEventListener('resize', handleResize)
     }
 
     setup()
     return () => {
       if (root && handleScroll) root.removeEventListener('scroll', handleScroll)
+      if (handleScroll) window.removeEventListener('scroll', handleScroll)
       if (handleResize) window.removeEventListener('resize', handleResize)
       if (resizeObserver) resizeObserver.disconnect()
       if (mutationObserver) mutationObserver.disconnect()
@@ -1323,7 +1334,7 @@ export function ServiceDisplay({
     {
       id: 'toc',
       label: String(dict.workbench?.interviewUi?.toc || '目录'),
-      icon: Menu,
+      icon: ListOrdered,
       onClick: () => setTocOpen(true),
       disabled: !(interviewStatus === 'COMPLETED' && interviewParsed),
     },
@@ -1780,6 +1791,67 @@ export function ServiceDisplay({
                             button
                           )
                         })}
+
+                        {/* Desktop Global FAB Up/Down */}
+                        <div className="flex flex-col gap-2 mt-2 xl:hidden">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                                  const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
+                                  if (prevItem) {
+                                    setActiveIbpSection(prevItem.id);
+                                    scrollToIbpSection(prevItem.id);
+                                  } else {
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }
+                                }}
+                                className={cn(
+                                  'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                  getActionThemeClasses(interviewTheme).base,
+                                  getActionThemeClasses(interviewTheme).hover,
+                                  getActionThemeClasses(interviewTheme).ring,
+                                )}
+                                aria-label="Scroll to previous section"
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              上一节
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                                  const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
+                                  if (nextItem) {
+                                    setActiveIbpSection(nextItem.id);
+                                    scrollToIbpSection(nextItem.id);
+                                  }
+                                }}
+                                className={cn(
+                                  'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                  getActionThemeClasses(interviewTheme).base,
+                                  getActionThemeClasses(interviewTheme).hover,
+                                  getActionThemeClasses(interviewTheme).ring,
+                                )}
+                                aria-label="Scroll to next section"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              下一节
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       </TooltipProvider>
                     </div>
                     <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
@@ -1812,6 +1884,50 @@ export function ServiceDisplay({
                           })}
                         </div>
                       )}
+                      {/* Mobile Global FAB Up/Down */}
+                      <div className="flex flex-col gap-2 mt-2">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                            const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
+                            if (prevItem) {
+                              setActiveIbpSection(prevItem.id);
+                              scrollToIbpSection(prevItem.id);
+                            } else {
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                          }}
+                          className={cn(
+                            'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                            getActionThemeClasses(interviewTheme).base,
+                            getActionThemeClasses(interviewTheme).hover,
+                          )}
+                          aria-label="Scroll to previous section"
+                        >
+                          <ChevronUp className="h-5 w-5" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                            const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
+                            if (nextItem) {
+                              setActiveIbpSection(nextItem.id);
+                              scrollToIbpSection(nextItem.id);
+                            }
+                          }}
+                          className={cn(
+                            'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                            getActionThemeClasses(interviewTheme).base,
+                            getActionThemeClasses(interviewTheme).hover,
+                          )}
+                          aria-label="Scroll to next section"
+                        >
+                          <ChevronDown className="h-5 w-5" />
+                        </Button>
+                      </div>
                       <Button
                         size="icon"
                         onClick={() => setInterviewFabOpen((prev) => !prev)}
@@ -1875,6 +1991,42 @@ export function ServiceDisplay({
                               )
                             })}
                           </div>
+
+                          {/* Up/Down FAB Pair for TOC */}
+                          <div className="mt-8 flex flex-col gap-3 pl-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                                const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
+                                if (prevItem) {
+                                  setActiveIbpSection(prevItem.id);
+                                  scrollToIbpSection(prevItem.id);
+                                } else {
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
+                              }}
+                              className="flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-xl bg-white/60 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-sm hover:scale-110 hover:bg-white focus:outline-none transition-all duration-300 group"
+                              aria-label="Scroll to previous section"
+                            >
+                              <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400 group-hover:text-foreground group-hover:dark:text-white transition-colors" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                                const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
+                                if (nextItem) {
+                                  setActiveIbpSection(nextItem.id);
+                                  scrollToIbpSection(nextItem.id);
+                                }
+                              }}
+                              className="flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-xl bg-white/60 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-sm hover:scale-110 hover:bg-white focus:outline-none transition-all duration-300 group"
+                              aria-label="Scroll to next section"
+                            >
+                              <ChevronDown className="w-4 h-4 text-stone-500 dark:text-stone-400 group-hover:text-foreground group-hover:dark:text-white transition-colors" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </aside>
@@ -1902,10 +2054,10 @@ export function ServiceDisplay({
                   <div className="mx-auto w-full max-w-[1180px]">
                     <StreamPanelV2
                       status={v2Bridge.status}
-                      tier={v2Bridge.tier}
+                      tier={v2Bridge.tier!}
                       interviewContent={v2Bridge.interviewContent}
                       interviewJson={v2Bridge.interviewJson}
-                      errorMessage={localizedError}
+                      errorMessage={localizedError!}
                       dict={dict?.workbench?.streamPanel}
                     />
                   </div>

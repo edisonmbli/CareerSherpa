@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/accordion'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn, getMatchThemeClass } from '@/lib/utils'
-import { WatermarkPrefix } from '@/components/workbench/WatermarkPrefix'
 
 interface InterviewRound {
   round_name: string
@@ -81,13 +80,14 @@ export function RadarModule({
   )
 
   return (
-    <div className={cn('space-y-4', matchThemeClass, className)}>
+    <div className={cn('space-y-2', matchThemeClass, className)}>
       {/* Section Title */}
-      <div className="relative inline-block">
-        <div className="absolute bottom-4 -left-4 w-24 h-5 -z-10 bg-match-highlight" />
-        <h3 className="text-[22px] leading-[30px] font-bold font-[family-name:var(--font-playfair),serif] text-foreground dark:text-white tracking-tight relative">
-          {finalLabels.title}
-        </h3>
+      <div className="flex items-center w-full mb-6 relative pl-2">
+        <div className={cn('relative ml-0 border-l-[3px] pl-3 py-0.5', 'border-match-dot')}>
+          <h3 className="text-2xl font-serif text-foreground z-10 relative">
+            {finalLabels.title}
+          </h3>
+        </div>
       </div>
 
       {/* Accordion - Clean, minimal styling */}
@@ -96,12 +96,11 @@ export function RadarModule({
         defaultValue={['challenges', 'rounds', 'hidden']}
         className="space-y-2"
       >
-        {/* Core Challenges */}
         <AccordionItem value="challenges" className="border-none">
-          <AccordionTrigger className="px-0 py-3 hover:no-underline group">
+          <AccordionTrigger className="px-0 py-3 hover:no-underline group focus-visible:ring-0 focus-visible:outline-none">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-sm font-semibold text-foreground relative">
+                <span className="text-lg font-semibold text-foreground relative">
                   {finalLabels.coreChallenges}
                 </span>
               </div>
@@ -113,32 +112,31 @@ export function RadarModule({
           <CoreAccordionContent className="px-0">
             <div className="space-y-2">
               {core_challenges.map((challenge, index) => (
-                <div key={index} className="relative pt-1 pb-6 last:pb-0">
-                  <WatermarkPrefix index={index} themeColor={themeColor} />
-                  <div className="space-y-3">
-                    <h4 className="text-base font-semibold text-foreground dark:text-white">
+                <div key={index} className="relative overflow-hidden z-10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-2xl border-[0.5px] border-black/5 dark:border-white/10 rounded-xl p-4 md:p-5 mb-4 last:mb-0 shadow-sm">
+                  {/* Proportional Ghost Watermark Small */}
+                  <div className="absolute -top-3 -left-2 text-[5rem] font-black pointer-events-none select-none opacity-[0.06] dark:opacity-[0.05] z-0 text-slate-900 dark:text-white leading-none">
+                    {index + 1}
+                  </div>
+                  <div className="relative z-10 space-y-4">
+                    <h4 className="text-lg font-semibold text-foreground leading-tight">
                       {challenge.challenge}
                     </h4>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-stone-500/80 dark:text-stone-400/80">
-                          <Compass className="h-3 w-3 text-stone-500/80 dark:text-stone-400/80" />
-                          <span className="uppercase">
-                            {finalLabels.whyImportant}
-                          </span>
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
+                          <Compass className="h-3 w-3" />
+                          <span>{finalLabels.whyImportant}</span>
                         </div>
-                        <p className="text-sm text-stone-600/80 dark:text-slate-300 leading-relaxed">
+                        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                           {challenge.why_important}
                         </p>
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-match-text">
-                          <Target className="h-3 w-3" />
-                          <span className="uppercase">
-                            {finalLabels.yourAngle}
-                          </span>
+                      <div className="space-y-1.5 bg-match-highlight/[0.05] dark:bg-match-highlight/[0.02] border-l-2 border-match-dot rounded-r-lg p-3">
+                        <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-match-text uppercase mb-1">
+                          <Target className="h-3 w-3 text-match-text" />
+                          <span>{finalLabels.yourAngle}</span>
                         </div>
-                        <p className="text-sm text-stone-900/90 dark:text-slate-300 leading-relaxed font-normal">
+                        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium text-pretty">
                           {challenge.your_angle}
                         </p>
                       </div>
@@ -152,10 +150,10 @@ export function RadarModule({
 
         {/* Interview Rounds */}
         <AccordionItem value="rounds" className="border-none">
-          <AccordionTrigger className="px-0 py-3 hover:no-underline group">
+          <AccordionTrigger className="px-0 py-3 hover:no-underline group focus-visible:ring-0 focus-visible:outline-none">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-sm font-semibold text-foreground dark:text-white relative">
+                <span className="text-lg font-semibold text-foreground dark:text-white relative">
                   {finalLabels.interviewRounds}
                 </span>
               </div>
@@ -165,73 +163,75 @@ export function RadarModule({
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-0 pb-4">
-            <Tabs defaultValue="0" className="w-full">
-              <TabsList className="w-full inline-flex justify-start bg-transparent p-0 border-b border-match-border print:hidden flex-nowrap overflow-x-auto no-scrollbar">
+            <div className="relative overflow-hidden z-10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-2xl border-[0.5px] border-black/5 dark:border-white/10 rounded-xl p-4 md:p-5 shadow-sm">
+              <Tabs defaultValue="0" className="w-full">
+                <TabsList className="w-full inline-flex justify-start bg-transparent p-0 border-b border-black/5 dark:border-white/10 print:hidden flex-nowrap overflow-x-auto no-scrollbar">
+                  {interview_rounds.map((round, index) => (
+                    <TabsTrigger
+                      key={index}
+                      value={String(index)}
+                      className="text-xs px-3 py-2 rounded-none text-stone-500/80 dark:text-stone-400/80 data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-match-dot max-w-[96px] truncate sm:max-w-none sm:whitespace-nowrap"
+                    >
+                      <span className="truncate block" title={round.round_name}>
+                        {round.round_name}
+                      </span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
                 {interview_rounds.map((round, index) => (
-                  <TabsTrigger
+                  <TabsContent
                     key={index}
                     value={String(index)}
-                    className="text-xs px-3 py-2 rounded-none text-match-text-muted data-[state=active]:text-match-accent data-[state=active]:border-b-2 data-[state=active]:border-match-accent max-w-[96px] truncate sm:max-w-none sm:whitespace-nowrap"
+                    className="mt-4 space-y-3 print:hidden"
                   >
-                    <span className="truncate block" title={round.round_name}>
-                      {round.round_name}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {interview_rounds.map((round, index) => (
-                <TabsContent
-                  key={index}
-                  value={String(index)}
-                  className="mt-4 space-y-3 print:hidden"
-                >
-                  <ul className="space-y-2">
-                    {round.focus_points.map((point, idx) => (
-                      <li
-                        key={idx}
-                        className="flex items-start gap-3 text-sm text-stone-900/80 dark:text-slate-300"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
-                        <span className="leading-relaxed">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </TabsContent>
-              ))}
-
-              <div className="hidden print:block space-y-4 mt-4">
-                {interview_rounds.map((round, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h5 className="text-sm font-semibold text-foreground dark:text-white">
-                        {round.round_name}
-                      </h5>
-                    </div>
                     <ul className="space-y-2">
                       {round.focus_points.map((point, idx) => (
                         <li
                           key={idx}
-                          className="flex items-start gap-2 text-xs text-stone-700 dark:text-slate-300"
+                          className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300"
                         >
                           <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
                           <span className="leading-relaxed">{point}</span>
                         </li>
                       ))}
                     </ul>
-                  </div>
+                  </TabsContent>
                 ))}
-              </div>
-            </Tabs>
+
+                <div className="hidden print:block space-y-4 mt-4">
+                  {interview_rounds.map((round, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="text-sm font-semibold text-foreground dark:text-white">
+                          {round.round_name}
+                        </h5>
+                      </div>
+                      <ul className="space-y-2">
+                        {round.focus_points.map((point, idx) => (
+                          <li
+                            key={idx}
+                            className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300"
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
+                            <span className="leading-relaxed">{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </Tabs>
+            </div>
           </AccordionContent>
         </AccordionItem>
 
         {/* Hidden Requirements */}
         <AccordionItem value="hidden" className="border-none">
-          <AccordionTrigger className="px-0 py-3 hover:no-underline group">
+          <AccordionTrigger className="px-0 py-3 hover:no-underline group focus-visible:ring-0 focus-visible:outline-none">
             <div className="flex items-center w-full">
               <div className="relative inline-block">
-                <span className="text-sm font-semibold text-foreground dark:text-white relative">
+                <span className="text-lg font-semibold text-foreground dark:text-white relative">
                   {finalLabels.hiddenRequirements}
                 </span>
               </div>
@@ -241,15 +241,17 @@ export function RadarModule({
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-0 pb-4">
-            <div className="space-y-2">
-              {hidden_requirements.map((req, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
-                  <span className="text-sm text-stone-900/80 dark:text-slate-300 leading-relaxed flex-1">
-                    {req}
-                  </span>
-                </div>
-              ))}
+            <div className="relative overflow-hidden z-10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-2xl border-[0.5px] border-black/5 dark:border-white/10 rounded-xl p-4 md:p-5 shadow-sm">
+              <div className="space-y-3">
+                {hidden_requirements.map((req, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
+                      {req}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
