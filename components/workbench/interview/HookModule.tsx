@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, FileText } from 'lucide-react'
 import { cn, getMatchThemeClass } from '@/lib/utils'
 import { uiLog } from '@/lib/ui/sse-debug-logger'
 
@@ -49,10 +49,6 @@ export function HookModule({
   const finalLabels = { ...defaultLabels, ...labels }
   const [copied, setCopied] = useState(false)
   const matchThemeClass = getMatchThemeClass(themeColor)
-
-  const getBadgeStyle = () => {
-    return 'bg-stone-100/80 text-stone-600 dark:bg-stone-800/60 dark:text-stone-300 border border-stone-200/70 dark:border-stone-700/60'
-  }
 
   const formatEvidenceSource = (source: string) => {
     const normalized = (source || '').toLowerCase().replace(/\s+/g, '_')
@@ -134,14 +130,11 @@ export function HookModule({
                 <span className="h-1.5 w-1.5 rounded-full shrink-0 mt-[0.55em] border bg-transparent border-match-dot" />
                 <p className="text-sm font-normal text-stone-900/80 dark:text-slate-300 leading-relaxed">
                   {hook.hook}
-                  <span
-                    className={cn(
-                      'ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium align-middle',
-                      getBadgeStyle(),
-                    )}
-                  >
-                    {finalLabels.evidenceSource}:{' '}
-                    {formatEvidenceSource(hook.evidence_source)}
+                  <span className="ml-2 mt-[1px] inline-flex items-start gap-1 align-middle opacity-90 transition-opacity">
+                    <FileText className="w-3.5 h-3.5 shrink-0 mt-[1px] text-match-text-muted" />
+                    <span className="text-[11px] leading-[1.4] font-medium uppercase tracking-wider text-match-text-muted text-left">
+                      {formatEvidenceSource(hook.evidence_source)}
+                    </span>
                   </span>
                 </p>
               </div>

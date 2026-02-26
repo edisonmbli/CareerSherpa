@@ -763,20 +763,19 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                 size="sm"
                 className={cn(
                   'gap-2 h-8 px-3 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden group relative',
-                  // Base: Solid Pearl/Obsidian
-                  'bg-white/50 dark:bg-zinc-950/50',
-                  // Border: Refined
-                  'border-b border-[0.5px] border-black/10 dark:border-white/20',
-                  // Text: Blue
-                  'text-blue-500/90 hover:text-blue-500/100 dark:text-blue-100 font-semibold',
-                  // Interaction: Lift & Glow Shadow
-                  'shadow-[0_1px_6px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.3)]',
+                  // Base: Ghost, no heavy background/border by default to avoid box-in-box
+                  'bg-transparent hover:bg-stone-100/50 dark:hover:bg-white/5',
+                  // Text: Premium Tech Blue for both modes to maintain identity and contrast
+                  'text-blue-600 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-semibold',
+                  // Border/Shadow: Only on hover for a subtle lift
+                  'border border-transparent hover:border-black/5 dark:hover:border-white/10',
+                  'hover:shadow-[0_2px_8px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_2px_12px_rgba(255,255,255,0.05)]',
                   'hover:-translate-y-0.5',
                 )}
                 onClick={() => setAIPanelOpen(!isAIPanelOpen)}
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
                   <span className="text-xs tracking-wide">
                     {dict.toolbar.aiSuggestions}
                   </span>

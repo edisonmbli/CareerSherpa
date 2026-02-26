@@ -289,18 +289,18 @@ export function ResultCard({
         // V5 Measured Document Styling:
         // 1. Centered "Page" with max-width (Letterhead feel)
         'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
-        // 2. Tinted Neutral Background - Unified with Landing Page
-        'bg-white/70 dark:bg-white/[0.03]',
-        // 3. Double Border Effect - Unified with Landing Page
-        'border-[0.5px] border-black/5 dark:border-white/10',
-        'shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-2xl',
-        'rounded-sm sm:rounded-[2rem] backdrop-blur-2xl',
+        // 2. Tinted Neutral Background - Transparent on mobile for seamless edge-to-edge blend
+        'bg-transparent sm:bg-white/70 dark:bg-transparent sm:dark:bg-white/[0.03]',
+        // 3. Double Border & Shadow Effect - Hidden on mobile to avoid cutting the screen
+        'border-transparent sm:border-[0.5px] sm:border-black/5 sm:dark:border-white/10',
+        'shadow-none sm:shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] sm:dark:shadow-2xl',
+        'rounded-none sm:rounded-[2rem] sm:backdrop-blur-2xl',
         matchThemeClass,
         className,
       )}
     >
       {/* Fine Noise Texture for the glass (matching Landing Page) */}
-      <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+      <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
       <div
         ref={scrollRef}

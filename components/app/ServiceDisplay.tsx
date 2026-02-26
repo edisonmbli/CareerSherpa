@@ -1383,7 +1383,7 @@ export function ServiceDisplay({
               <UserMenu locale={locale} dict={{ shell: dict }} />
             </div>
             <StepperProgress
-              currentStep={currentStep as any}
+              currentStep={tabValue === 'match' ? 1 : tabValue === 'customize' ? 2 : 3}
               maxUnlockedStep={maxUnlockedStep as any}
               onStepClick={(s) => {
                 if (s === 1) setTabValue('match')
