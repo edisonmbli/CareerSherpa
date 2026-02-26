@@ -121,8 +121,8 @@ export function RadarModule({
                     <h4 className="text-lg font-semibold text-foreground leading-tight">
                       {challenge.challenge}
                     </h4>
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
+                    <div className="space-y-6">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
                           <Compass className="h-3 w-3" />
                           <span>{finalLabels.whyImportant}</span>
@@ -131,7 +131,7 @@ export function RadarModule({
                           {challenge.why_important}
                         </p>
                       </div>
-                      <div className="space-y-1.5 bg-match-highlight/[0.05] dark:bg-match-highlight/[0.02] border-l-2 border-match-dot rounded-r-lg p-3">
+                      <div className="space-y-2 border-l-[3px] border-match-dot pl-4 py-1">
                         <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-match-text uppercase mb-1">
                           <Target className="h-3 w-3 text-match-text" />
                           <span>{finalLabels.yourAngle}</span>

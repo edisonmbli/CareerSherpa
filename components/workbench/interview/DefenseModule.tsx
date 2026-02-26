@@ -97,8 +97,8 @@ export function DefenseModule({
               </div>
             </AccordionTrigger>
             <AccordionContent className="relative z-10 px-0 pb-5">
-              <div className="space-y-4 pt-2">
-                <div className="space-y-1.5 bg-white/30 dark:bg-white/[0.01] border-[0.5px] border-black/5 dark:border-white/10 rounded-lg p-3 md:p-4 mb-2 shadow-sm">
+              <div className="space-y-6 pt-2">
+                <div className="space-y-2">
                   <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
                     {finalLabels.anticipatedQuestion}
                   </p>
@@ -108,7 +108,7 @@ export function DefenseModule({
                 </div>
 
                 {defense.supporting_evidence && (
-                  <div className="space-y-1.5 px-1">
+                  <div className="space-y-2">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       {finalLabels.supportingEvidence}
                     </p>
@@ -118,7 +118,7 @@ export function DefenseModule({
                   </div>
                 )}
 
-                <div className="space-y-1.5 mt-4 bg-match-highlight/[0.05] dark:bg-match-highlight/[0.02] border-l-2 border-match-dot rounded-r-lg p-3 md:p-4">
+                <div className="space-y-2 border-l-[3px] border-match-dot pl-4 py-1">
                   <p className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-match-text mb-1">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     {finalLabels.defenseScript}

@@ -66,8 +66,8 @@ export function ReverseModule({
                 {q.question}
               </h4>
 
-              <div className="space-y-4 pt-1">
-                <div className="space-y-1.5 bg-white/30 dark:bg-white/[0.01] border-[0.5px] border-black/5 dark:border-white/10 rounded-lg p-3 md:p-4 shadow-sm">
+              <div className="space-y-6 pt-2">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-muted-foreground mb-1 uppercase">
                     <Flag className="h-3 w-3 text-stone-400" />
                     <span>{finalLabels.askIntent}</span>
@@ -77,7 +77,7 @@ export function ReverseModule({
                   </p>
                 </div>
 
-                <div className="space-y-1.5 bg-match-highlight/[0.05] dark:bg-match-highlight/[0.02] border-l-2 border-match-dot rounded-r-lg p-3 md:p-4">
+                <div className="space-y-2 border-l-[3px] border-match-dot pl-4 py-1">
                   <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-match-text mb-1 uppercase">
                     <Ear className="h-3 w-3" />
                     <span>{finalLabels.listenFor}</span>

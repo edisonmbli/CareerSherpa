@@ -180,18 +180,18 @@ export function EvidenceModule({
           </div>
 
           {story.matched_pain_point && (
-            <div className="space-y-1.5 rounded-lg p-3 md:p-4 bg-white/60 dark:bg-white/[0.02] border-[0.5px] border-black/5 dark:border-white/10 shadow-sm">
+            <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 {finalLabels.matchedPainPoint}
               </p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-l-[3px] border-match-dot pl-4 py-1">
                 {story.matched_pain_point}
               </p>
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3 auto-rows-fr">
-            <div className="rounded-lg border-[0.5px] border-black/5 dark:border-white/10 p-3 space-y-1.5 h-full bg-white/30 dark:bg-white/[0.01]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-4 md:gap-6 pt-2">
+            <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 S · {finalLabels.situation}
               </p>
@@ -199,7 +199,7 @@ export function EvidenceModule({
                 {story.star.situation}
               </p>
             </div>
-            <div className="rounded-lg border-[0.5px] border-black/5 dark:border-white/10 p-3 space-y-1.5 h-full bg-white/30 dark:bg-white/[0.01]">
+            <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 T · {finalLabels.task}
               </p>
@@ -207,7 +207,7 @@ export function EvidenceModule({
                 {story.star.task}
               </p>
             </div>
-            <div className="rounded-lg border-[0.5px] border-black/5 dark:border-white/10 p-3 space-y-1.5 h-full bg-white/30 dark:bg-white/[0.01]">
+            <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 A · {finalLabels.action}
               </p>
@@ -215,7 +215,7 @@ export function EvidenceModule({
                 {story.star.action}
               </p>
             </div>
-            <div className="rounded-lg border-[0.5px] border-black/5 dark:border-white/10 p-3 space-y-1.5 h-full bg-white/30 dark:bg-white/[0.01]">
+            <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 R · {finalLabels.result}
               </p>
