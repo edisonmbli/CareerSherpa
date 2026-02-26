@@ -1754,7 +1754,7 @@ export function ServiceDisplay({
               {shouldShowInterviewPlan ? (
                 <div className="w-full px-0 sm:px-3 md:px-4 pt-0 pb-6 print:px-0 print:py-2">
                   <div className="mx-auto w-full max-w-none sm:max-w-[1180px] relative">
-                    <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                    <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col gap-2 print:hidden">
                       <TooltipProvider>
                         {interviewActions.map((action) => {
                           const themeClasses =
@@ -1793,65 +1793,63 @@ export function ServiceDisplay({
                         })}
 
                         {/* Desktop Global FAB Up/Down */}
-                        <div className="flex flex-col gap-2 mt-2 xl:hidden">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                onClick={() => {
-                                  const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                                  const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
-                                  if (prevItem) {
-                                    setActiveIbpSection(prevItem.id);
-                                    scrollToIbpSection(prevItem.id);
-                                  } else {
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  }
-                                }}
-                                className={cn(
-                                  'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
-                                  getActionThemeClasses(interviewTheme).base,
-                                  getActionThemeClasses(interviewTheme).hover,
-                                  getActionThemeClasses(interviewTheme).ring,
-                                )}
-                                aria-label="Scroll to previous section"
-                              >
-                                <ChevronUp className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                              上一节
-                            </TooltipContent>
-                          </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                                const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
+                                if (prevItem) {
+                                  setActiveIbpSection(prevItem.id);
+                                  scrollToIbpSection(prevItem.id);
+                                } else {
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
+                              }}
+                              className={cn(
+                                'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                getActionThemeClasses(interviewTheme).base,
+                                getActionThemeClasses(interviewTheme).hover,
+                                getActionThemeClasses(interviewTheme).ring,
+                              )}
+                              aria-label="Scroll to previous section"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            上一节
+                          </TooltipContent>
+                        </Tooltip>
 
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                onClick={() => {
-                                  const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                                  const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
-                                  if (nextItem) {
-                                    setActiveIbpSection(nextItem.id);
-                                    scrollToIbpSection(nextItem.id);
-                                  }
-                                }}
-                                className={cn(
-                                  'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
-                                  getActionThemeClasses(interviewTheme).base,
-                                  getActionThemeClasses(interviewTheme).hover,
-                                  getActionThemeClasses(interviewTheme).ring,
-                                )}
-                                aria-label="Scroll to next section"
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                              下一节
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
+                                const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
+                                if (nextItem) {
+                                  setActiveIbpSection(nextItem.id);
+                                  scrollToIbpSection(nextItem.id);
+                                }
+                              }}
+                              className={cn(
+                                'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                getActionThemeClasses(interviewTheme).base,
+                                getActionThemeClasses(interviewTheme).hover,
+                                getActionThemeClasses(interviewTheme).ring,
+                              )}
+                              aria-label="Scroll to next section"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            下一节
+                          </TooltipContent>
+                        </Tooltip>
                       </TooltipProvider>
                     </div>
                     <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
@@ -1992,41 +1990,6 @@ export function ServiceDisplay({
                             })}
                           </div>
 
-                          {/* Up/Down FAB Pair for TOC */}
-                          <div className="mt-8 flex flex-col gap-3 pl-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                                const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
-                                if (prevItem) {
-                                  setActiveIbpSection(prevItem.id);
-                                  scrollToIbpSection(prevItem.id);
-                                } else {
-                                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }
-                              }}
-                              className="flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-xl bg-white/60 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-sm hover:scale-110 hover:bg-white focus:outline-none transition-all duration-300 group"
-                              aria-label="Scroll to previous section"
-                            >
-                              <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400 group-hover:text-foreground group-hover:dark:text-white transition-colors" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                                const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
-                                if (nextItem) {
-                                  setActiveIbpSection(nextItem.id);
-                                  scrollToIbpSection(nextItem.id);
-                                }
-                              }}
-                              className="flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-xl bg-white/60 dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-sm hover:scale-110 hover:bg-white focus:outline-none transition-all duration-300 group"
-                              aria-label="Scroll to next section"
-                            >
-                              <ChevronDown className="w-4 h-4 text-stone-500 dark:text-stone-400 group-hover:text-foreground group-hover:dark:text-white transition-colors" />
-                            </button>
-                          </div>
                         </div>
                       </div>
                     </aside>
