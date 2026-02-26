@@ -43,6 +43,7 @@ export function SmartPitch({
     highlight: 'bg-match-highlight',
     text: 'text-match-text',
     border: 'border-match-border',
+    dotBorder: 'border-match-dot',
   }
 
   const handleCopy = () => {
@@ -102,21 +103,12 @@ export function SmartPitch({
 
   return (
     <div className={cn('w-full group', matchThemeClass)}>
-      {/* Header Row - Matches AnalysisAccordion (Half-Highlight Style) */}
-      <div className="flex items-center w-full mb-6 pl-2">
+      {/* Header Row - Matches AnalysisAccordion (Left Accent Style) */}
+      <div className="flex items-center w-full mb-6 relative pl-2">
         <div className="flex-1 flex items-center justify-between">
-          {/* Title Container with Highlight */}
-          <div className="relative inline-block ml-0">
-            {/* Highlight Block (Background) */}
-            <div
-              className={cn(
-                'absolute bottom-4 -left-4 w-24 h-5 -z-10',
-                styles.highlight,
-              )}
-            />
-
-            {/* Title Text (Foreground) */}
-            <span className="font-[family-name:var(--font-playfair),serif] text-[22px] leading-[30px] font-bold text-stone-900 dark:text-stone-50 tracking-tight z-10 relative">
+          {/* Title Container with Left Border Accent */}
+          <div className={cn('relative ml-0 border-l-[3px] pl-3 py-0.5', styles.dotBorder)}>
+            <span className="font-[family-name:var(--font-playfair),serif] text-xl md:text-[22px] leading-tight font-bold text-stone-900 dark:text-stone-50 tracking-tight z-10 relative">
               {labels?.title || 'Smart Pitch'}
             </span>
           </div>
@@ -184,13 +176,22 @@ export function SmartPitch({
           </div>
         </div>
       </div>
-      {/* Content Row */}
-      <div className="space-y-2">
-        {scriptLines.map((line, index) => (
-          <div key={`${line}-${index}`} className="relative">
-            <div className="py-1.5">{renderAnnotatedText(line)}</div>
+      {/* Content Row - Timeline Style */}
+      <div className="px-1 md:px-2">
+        <div className="space-y-0 relative border-l border-stone-200/60 dark:border-white/10 ml-3 md:ml-4">
+          <div className="group/item relative pt-0 pb-2 pl-6 md:pl-8 origin-top">
+            {/* Timeline Dot */}
+            <div className="absolute left-[-4.5px] top-2.5 w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-600 ring-4 ring-white dark:ring-[#0a0a0a] group-hover/item:bg-match-dot transition-colors duration-300" />
+
+            <div className="space-y-3 relative z-10 pt-1 transition-transform duration-300 group-hover/item:translate-x-1">
+              {scriptLines.map((line, index) => (
+                <div key={`${line}-${index}`} className="relative">
+                  <div className="py-1">{renderAnnotatedText(line)}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        </div>
       </div>
       {/* This closes the "Content Row" div */}
       {/* Mobile Legend (Guide) */}

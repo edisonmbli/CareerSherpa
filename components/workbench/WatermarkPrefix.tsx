@@ -19,7 +19,7 @@ export function WatermarkPrefix({
   return (
     <span
       className={cn(
-        'absolute left-0 -translate-x-[85%] -top-3 sm:-left-4 sm:translate-x-0 sm:-top-3 text-[26px] sm:text-3xl font-semibold tabular-nums select-none pointer-events-none text-match-watermark z-10',
+        'absolute left-0 -translate-x-[85%] sm:-left-4 sm:translate-x-0 text-[26px] sm:text-3xl font-semibold tabular-nums select-none pointer-events-none text-match-watermark z-10',
         matchThemeClass,
         className,
       )}

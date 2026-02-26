@@ -304,7 +304,7 @@ export function ResultCard({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-visible px-0 py-3 sm:p-4 md:p-10 lg:p-12 pb-24 md:pb-16 space-y-8 md:space-y-12 relative z-10"
+        className="flex-1 overflow-visible px-4 py-5 sm:px-6 sm:py-8 md:p-10 lg:p-12 pb-24 md:pb-16 space-y-8 md:space-y-12 relative z-10"
       >
         {/* Module A: Hero Header (Now handles CTA) */}
         <ResultHeader
@@ -318,7 +318,8 @@ export function ResultCard({
         {expertVerdict && (
           <ExpertVerdict
             content={expertVerdict}
-            label={labels?.expertVerdict || ''}
+            label={labels?.expertVerdict || 'EXPERT VERDICT'}
+            themeColor={themeColor}
           />
         )}
 
@@ -329,7 +330,6 @@ export function ResultCard({
               type="strength"
               items={strengths}
               title={labels?.highlights || 'Highlights'}
-              defaultOpen={true}
               themeColor={themeColor}
               labels={{
                 resumeTweak: labels?.resumeTweak || 'Resume Tweak',
@@ -343,7 +343,6 @@ export function ResultCard({
               type="weakness"
               items={weaknesses}
               title={labels?.gapsAndSuggestions || 'Risks & Challenges'}
-              defaultOpen={true}
               themeColor={themeColor}
               labels={{
                 resumeTweak: labels?.resumeTweak || 'Resume Tweak',
@@ -357,7 +356,6 @@ export function ResultCard({
               type="recommendation"
               items={recommendations}
               title={labels?.recommendations || 'Recommendations'}
-              defaultOpen={true}
               themeColor={themeColor}
             />
           )}
