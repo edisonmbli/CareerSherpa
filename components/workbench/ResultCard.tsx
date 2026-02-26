@@ -304,7 +304,7 @@ export function ResultCard({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-visible px-4 py-5 sm:px-6 sm:py-8 md:p-10 lg:p-12 pb-24 md:pb-16 space-y-8 md:space-y-12 relative z-10"
+        className="flex-1 overflow-visible px-4 py-5 sm:px-6 sm:py-8 md:p-10 lg:p-12 pb-24 md:pb-8 space-y-8 md:space-y-12 relative z-10"
       >
         {/* Module A: Hero Header (Now handles CTA) */}
         <ResultHeader

@@ -427,7 +427,7 @@ export function InterviewBattlePlan({
       {/* Fine Noise Texture for the glass (matching Landing Page and Step 1) */}
       <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
-      <div className="relative px-0 py-3 sm:p-4 md:p-10 lg:p-12 pb-24 md:pb-16 print:pt-4 print:pb-4 print:px-2 z-10">
+      <div className="relative px-0 py-3 sm:p-4 md:p-10 lg:p-12 pb-24 md:pb-8 print:pt-4 print:pb-4 print:px-2 z-10">
         <div className="space-y-16 md:space-y-24 mt-0 relative z-10 w-full max-w-full print:mt-4 print:space-y-8">
           {data?.radar && (
             <section

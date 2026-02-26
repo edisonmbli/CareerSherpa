@@ -1453,7 +1453,7 @@ export function ServiceDisplay({
                   matchResult ||
                   matchParsed) && (
                     <>
-                      <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                      <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col items-end gap-2 print:hidden">
                         <TooltipProvider>
                           {matchActions.map((action) => {
                             const themeClasses = getActionThemeClasses(matchTheme)
@@ -2215,7 +2215,7 @@ export function ServiceDisplay({
             </DrawerContent>
           </Drawer>
         )}
-      </div>
+      </div >
 
       {/* Lightweight Free Tier Warning Dialogs */}
       {customizeGuard.GuardDialog}

@@ -203,7 +203,7 @@ export function ResumeEditorLayout({
         <main
           ref={centerContainerRef}
           className={cn(
-            'flex-1 bg-gray-50/50 dark:bg-zinc-950 relative flex flex-col items-stretch md:items-center pb-32',
+            'flex-1 bg-gray-50/50 dark:bg-zinc-950 relative flex flex-col items-stretch md:items-center pb-32 md:pb-8',
             'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent',
             // Fix mobile scrolling by enabling touch scrolling explicitly and ensuring height is constrained
             isMobileView && 'h-full touch-auto',

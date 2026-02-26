@@ -38,10 +38,10 @@ export function WorkbenchColumns({
       className={`grid grid-cols-1 ${cols} gap-6`}
       style={{ ['--workbench-sidebar-width' as any]: sidebarWidth }}
     >
-      <aside className="hidden lg:block lg:sticky lg:top-20 lg:h-[calc(100vh-8rem)]">
+      <aside className="hidden lg:block lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
         {sidebar}
       </aside>
-      <main className="flex flex-col min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] lg:overflow-hidden">
+      <main className="flex flex-col min-h-[calc(100vh-6rem)] lg:h-[calc(100vh-6rem)] lg:overflow-hidden">
         {children}
       </main>
     </div>
