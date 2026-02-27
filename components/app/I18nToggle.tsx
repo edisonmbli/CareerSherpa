@@ -26,6 +26,8 @@ export function I18nToggle({ className }: I18nToggleProps) {
 
   const go = React.useCallback(
     (target: Locale) => {
+      // Persist preference as cookie so middleware can detect it server-side
+      document.cookie = `lang=${target}; path=/; max-age=31536000; SameSite=Lax`
       const next = switchLocalePath(pathname ?? '/', target)
       router.push(next)
     },

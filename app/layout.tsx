@@ -20,6 +20,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { Analytics } from '@vercel/analytics/react'
 import SiteHeaderServer from '@/components/app/SiteHeaderServer'
+import { ThemeProvider } from '@/components/app/ThemeProvider'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -103,7 +104,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`
           ${geistSans.variable} 
@@ -119,29 +120,31 @@ export default function RootLayout({
           antialiased
         `}
       >
-        {isStackAuthReady() ? (
-          <StackProvider app={stackServerApp}>
-            <StackTheme theme={theme}>
-              <TooltipProvider>
-                <Suspense fallback={<div>Loading...</div>}>
-                  <SiteHeaderServer />
-                  {children}
-                </Suspense>
-                <Toaster />
-                <Analytics />
-              </TooltipProvider>
-            </StackTheme>
-          </StackProvider>
-        ) : (
-          <TooltipProvider>
-            <Suspense fallback={<div>Loading...</div>}>
-              <SiteHeaderServer />
-              {children}
-            </Suspense>
-            <Toaster />
-            <Analytics />
-          </TooltipProvider>
-        )}
+        <ThemeProvider>
+          {isStackAuthReady() ? (
+            <StackProvider app={stackServerApp}>
+              <StackTheme theme={theme}>
+                <TooltipProvider>
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <SiteHeaderServer />
+                    {children}
+                  </Suspense>
+                  <Toaster />
+                  <Analytics />
+                </TooltipProvider>
+              </StackTheme>
+            </StackProvider>
+          ) : (
+            <TooltipProvider>
+              <Suspense fallback={<div>Loading...</div>}>
+                <SiteHeaderServer />
+                {children}
+              </Suspense>
+              <Toaster />
+              <Analytics />
+            </TooltipProvider>
+          )}
+        </ThemeProvider>
       </body>
     </html>
   )

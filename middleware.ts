@@ -21,7 +21,7 @@ function getLocale(request: NextRequest): string {
       ?.split(',')[0]
       ?.split('-')[0]
       ?.toLowerCase() ?? '';
-    
+
     if (preferredLang && isSupportedLocale(preferredLang)) {
       return preferredLang;
     }
@@ -54,32 +54,46 @@ export async function middleware(request: NextRequest) {
   if (!pathnameHasLocale) {
     const locale = getLocale(request);
     const newUrl = new URL(`/${locale}${pathname}`, request.url);
-    
+
     // 保持查询参数
     newUrl.search = request.nextUrl.search;
-    
-    return NextResponse.redirect(newUrl);
+
+    const redirectResponse = NextResponse.redirect(newUrl);
+
+    // 如果 Cookie 中没有语言偏好（新用户），种入推断出的 locale。
+    // 这样用户下次直接访问 '/'，中间件就能立刻从 Cookie 读取，无需再推断，避免跳变。
+    const cookieLang = request.cookies.get('lang')?.value;
+    if (!cookieLang || !isSupportedLocale(cookieLang)) {
+      redirectResponse.cookies.set('lang', locale, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+        sameSite: 'lax',
+        httpOnly: false, // 客户端也需要能读取（用于语言切换逻辑）
+      });
+    }
+
+    return redirectResponse;
   }
 
   // 提取当前locale
   const currentLocale = pathname.split('/')[1];
 
   // 定义系统路径和公共资源（不需要认证）
-  const isPublicAsset = pathname.startsWith('/_next/') || 
-                       pathname.startsWith('/favicon.ico') ||
-                       pathname.startsWith('/uploads/') ||
-                       pathname.startsWith('/static/') ||
-                       pathname.startsWith('/robots.txt') ||
-                       pathname.startsWith('/sitemap.xml');
-  
+  const isPublicAsset = pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/uploads/') ||
+    pathname.startsWith('/static/') ||
+    pathname.startsWith('/robots.txt') ||
+    pathname.startsWith('/sitemap.xml');
+
   // Stack Auth 处理页面（登录、注册等）
   const isStackAuthHandler = pathname.startsWith('/handler/');
-  
+
   // 首页作为 landing page（唯一允许匿名访问的业务页面）
   const isLandingPage = pathname === `/${currentLocale}` || pathname === `/${currentLocale}/`;
   const isLocalAuthSignIn = pathname === `/${currentLocale}/auth/sign-in`;
   const isSharePage = pathname.startsWith(`/${currentLocale}/r/`);
-  
+
   // 定义白名单：不需要认证的路径
   const isPublicPath =
     isPublicAsset ||
@@ -99,7 +113,7 @@ export async function middleware(request: NextRequest) {
     try {
       // 使用Stack Auth验证用户
       const user = await stackServerApp.getUser();
-      
+
       if (!user) {
         logInfo({
           reqId,
@@ -111,7 +125,7 @@ export async function middleware(request: NextRequest) {
 
         // 检查是否为页面请求（非 API 路径）
         const isPageRequest = !pathname.startsWith('/api/');
-        
+
         // 对于页面请求，重定向到当前 locale 的 Landing 页面
         if (isPageRequest) {
           const landingUrl = new URL(`/${currentLocale}`, request.url);
@@ -131,7 +145,7 @@ export async function middleware(request: NextRequest) {
       requestHeaders.set('x-user-key', user.id);
       requestHeaders.set('x-user-email', user.primaryEmail || '');
       requestHeaders.set('x-req-id', reqId);
-      
+
       // 添加语言信息到请求头
       if (isSupportedLocale(currentLocale)) {
         requestHeaders.set('x-locale', currentLocale);
@@ -161,7 +175,7 @@ export async function middleware(request: NextRequest) {
 
       // 检查是否为页面请求（非 API 路径）
       const isPageRequest = !pathname.startsWith('/api/');
-      
+
       // 对于页面请求，重定向到错误页面
       if (isPageRequest) {
         const errorUrl = new URL('/handler/signin', request.url);
@@ -181,6 +195,18 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   if (isSupportedLocale(currentLocale)) {
     response.headers.set('x-locale', currentLocale);
+
+    // 如果 Cookie 与当前 URL locale 不一致（例如通过分享链接进入了 /zh/r/xxx），
+    // 以 URL 为准更新 Cookie，令下次访问 '/' 能自动跳转到正确语言。
+    const cookieLang = request.cookies.get('lang')?.value;
+    if (cookieLang !== currentLocale) {
+      response.cookies.set('lang', currentLocale, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+        sameSite: 'lax',
+        httpOnly: false,
+      });
+    }
   }
   response.headers.set('x-req-id', reqId);
 
