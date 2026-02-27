@@ -249,7 +249,7 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerShaper`,
+    documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerSherpa`,
     ignoreGlobalStyles: false,
     pageStyle: printPageStyle,
     // @ts-expect-error - onBeforeGetContent is supported in v3 but types might be outdated

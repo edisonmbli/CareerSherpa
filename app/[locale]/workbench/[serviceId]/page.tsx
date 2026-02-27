@@ -12,6 +12,44 @@ import {
   WORKBENCH_QUOTA_CACHE_SECONDS,
   WORKBENCH_RECENT_COMPLETION_WINDOW_MS,
 } from '@/lib/constants'
+import { Metadata } from 'next'
+import { prisma as db } from '@/lib/prisma'
+
+export async function generateMetadata({
+  params,
+  searchParams
+}: {
+  params: Promise<{ locale: Locale; serviceId: string }>;
+  searchParams: Promise<{ tab?: string }>
+}): Promise<Metadata> {
+  const { locale, serviceId } = await params
+  const sp = await searchParams
+  const tab = sp.tab
+  const dict = await getDictionary(locale)
+
+  const job = await db.job.findFirst({
+    where: { serviceId },
+    select: { jobSummaryJson: true }
+  })
+
+  let jobTitle = ''
+  if (job?.jobSummaryJson) {
+    try {
+      const summary = typeof job.jobSummaryJson === 'string' ? JSON.parse(job.jobSummaryJson) : (job.jobSummaryJson as any)
+      jobTitle = summary?.jobTitle || summary?.job_title || summary?.title || ''
+    } catch (e) { }
+  }
+
+  const stageName = tab === 'customize' ? dict.workbench.tabs.customize :
+    tab === 'interview' ? dict.workbench.tabs.interview :
+      dict.workbench.tabs.match
+
+  const displayTitle = jobTitle ? `${jobTitle} | ${stageName}` : stageName
+
+  return {
+    title: `${displayTitle} - AI CareerSherpa`,
+  }
+}
 
 const isTerminalStatus = (status: string | null | undefined) => {
   if (!status) return false

@@ -93,14 +93,14 @@ export function SharedResumeLayout({
 
   const handleExportPdf = useReactToPrint({
     contentRef: printRef,
-    documentTitle: 'CareerShaper_Resume',
+    documentTitle: 'CareerSherpa_Resume',
     ignoreGlobalStyles: false,
     pageStyle: printPageStyle,
   } as any)
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: 'CareerShaper_Print',
+    documentTitle: 'CareerSherpa_Print',
     ignoreGlobalStyles: false,
     pageStyle: printPageStyle,
   } as any)
@@ -147,7 +147,7 @@ export function SharedResumeLayout({
                 <Sparkles className="h-3.5 w-3.5 sm:h-4 w-4 text-slate-600" />
               </div>
               <span className="text-xs sm:text-sm font-medium text-slate-700 truncate max-w-[150px] sm:max-w-none">
-                CareerShaper AI<span className="hidden sm:inline">, {text.bannerText?.split('，')[1] || text.bannerText?.split(', ')[1] || '你的专属求职教练'}</span>
+                AI CareerSherpa<span className="hidden sm:inline">, {text.bannerText?.split('，')[1] || text.bannerText?.split(', ')[1] || '你的专属求职教练'}</span>
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">

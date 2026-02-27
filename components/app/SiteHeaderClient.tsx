@@ -20,8 +20,7 @@ export function SiteHeaderClient({
   dict: any
 }) {
   const pathname = usePathname()
-  const isZh = /^\/zh(\/|$)/.test(pathname || '')
-  const brand = isZh ? 'AI求职助手' : 'CareerShaper'
+  const brand = dict.brand || 'AI CareerSherpa'
   const brandHref = isAuthenticated ? `/${locale}/workbench` : `/${locale}`
 
   const isWorkbench = pathname?.includes('/workbench')
@@ -43,8 +42,11 @@ export function SiteHeaderClient({
           isWorkbench && 'pl-12 lg:pl-4'
         )}
       >
-        <Link href={brandHref} className="text-xl font-semibold tracking-tight">
-          {brand}
+        <Link href={brandHref} className="text-xl font-semibold tracking-tight flex items-center gap-1.5 group">
+          <span className="bg-foreground text-background w-[1.8em] h-[1.3em] inline-flex items-center justify-center rounded-md text-[0.75em] font-bold leading-none transition-transform group-hover:scale-105">
+            AI
+          </span>
+          <span>CareerSherpa</span>
         </Link>
         <div className="flex items-center gap-2">
           <I18nToggleCompact />

@@ -138,7 +138,7 @@ export function MobileControlFab({ printRef }: MobileControlFabProps) {
 
   const handlePrint = useReactToPrint({
     contentRef: printRef as any,
-    documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerShaper`,
+    documentTitle: `${resumeData?.basics?.name || 'resume'}_CareerSherpa`,
     ignoreGlobalStyles: false,
     pageStyle: `
 @page { margin: var(--resume-page-margin, 10mm); }

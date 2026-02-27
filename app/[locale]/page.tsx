@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
   const dict = (await getDictionary(locale)).landing?.seo
   const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] || 'http://localhost:3000'
   return {
-    title: dict?.title || 'Job Assistant AI',
+    title: dict?.title || 'AI CareerSherpa',
     description: dict?.description || 'Match · Customize · Interview',
     metadataBase: new URL(siteUrl),
     alternates: {
@@ -28,17 +28,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
       },
     },
     openGraph: {
-      title: dict?.title || 'Job Assistant AI',
+      title: dict?.title || 'AI CareerSherpa',
       description: dict?.description || 'Match · Customize · Interview',
       url: `${siteUrl}/${locale}`,
-      siteName: 'Job Assistant AI',
+      siteName: 'AI CareerSherpa',
       locale,
       type: 'website',
       images: [`${siteUrl}/images/workbench-preview.png`],
     },
     twitter: {
       card: 'summary_large_image',
-      title: dict?.title || 'Job Assistant AI',
+      title: dict?.title || 'AI CareerSherpa',
       description: dict?.description || 'Match · Customize · Interview',
       images: [`${siteUrl}/images/workbench-preview.png`],
     },
@@ -85,7 +85,7 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'AI 求职助手 (Job Assistant AI)',
+            name: 'AI CareerSherpa',
             operatingSystem: 'Web',
             applicationCategory: 'BusinessApplication',
             description: dict.seo.description,

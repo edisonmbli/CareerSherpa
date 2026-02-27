@@ -14,7 +14,7 @@ export default async function SiteHeaderServer() {
     quotaBalance = quota?.balance ?? null
   }
   const headerDict = (await getDictionary(locale as any)).shell ?? {
-    brand: 'CareerShaper',
+    brand: 'AI CareerSherpa',
     signIn: 'Sign in',
     coins: 'Coins',
     assets: 'Assets',

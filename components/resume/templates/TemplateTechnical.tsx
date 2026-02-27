@@ -505,7 +505,7 @@ export function TemplateTechnical({
         style={{ fontSize: '0.8em' }}
       >
         <span>PORTFOLIO {new Date().getFullYear()}</span>
-        <span>By CareerShaper AI</span>
+        <span>By AI CareerSherpa</span>
       </footer>
     </div>
   )

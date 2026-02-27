@@ -1,5 +1,14 @@
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/i18n-config'
+import { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params
+  const dict = await getDictionary(locale)
+  return {
+    title: `${dict.profile.title} | AI CareerSherpa`,
+  }
+}
 import Link from 'next/link'
 import {
   AppCard,

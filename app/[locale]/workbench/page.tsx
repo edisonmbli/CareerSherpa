@@ -7,6 +7,15 @@ import { stackServerApp } from '@/stack/server'
 import { prisma as db } from '@/lib/prisma'
 import { NewServiceForm } from '@/components/app/NewServiceForm'
 import { getOrCreateQuota } from '@/lib/dal/quotas'
+import { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params
+  const dict = await getDictionary(locale)
+  return {
+    title: `${dict.workbench_title.split(' · ')[1] || 'Workbench'} | AI CareerSherpa`,
+  }
+}
 
 export default async function WorkbenchPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params

@@ -683,7 +683,7 @@ const dict = {
     },
   },
   header: {
-    brand: 'AI求职助手',
+    brand: 'AI CareerSherpa',
     signIn: '登录',
     myAccount: '我的账户',
     accountSettings: '账户设置',
@@ -721,7 +721,7 @@ const dict = {
   },
   landing: {
     seo: {
-      title: 'AI 求职助手｜匹配度·改简历·面试要点',
+      title: 'AI CareerSherpa｜匹配度·改简历·面试要点',
       description:
         '粘贴岗位JD、上传简历，三步提升面试匹配度：匹配度分析、定制化简历、面试要点。',
     },
@@ -874,7 +874,7 @@ const dict = {
       },
     },
     benefits: {
-      title: '为什么选择 CareerShaper？',
+      title: '为什么选择 AI CareerSherpa？',
       items: [
         {
           title: '精准匹配',
@@ -1124,13 +1124,13 @@ const dict = {
         actionFailed: '操作失败',
       },
       public: {
-        bannerText: 'CareerShaper AI，你的专属求职教练',
+        bannerText: 'AI CareerSherpa，你的专属求职教练',
         cta: '我也要生成',
-        footerText: 'By CareerShaper',
-        printFooter: '由 CareerShaper AI 生成',
+        footerText: 'By AI CareerSherpa',
+        printFooter: '由 AI CareerSherpa 生成',
         exportPdf: '导出',
         print: '打印',
-        metaTitle: '专业简历 - CareerShaper',
+        metaTitle: '专业简历 - AI CareerSherpa',
         metaDesc: '查看由 AI 生成的专业简历。',
         status: {
           expiredBadge: '分享链接已过期',
@@ -1141,7 +1141,7 @@ const dict = {
             '分享者设置了有效期，当前已到期。可联系分享者重新生成链接',
           disabledDesc: '分享者已关闭公开分享，暂时无法访问该内容',
           cta: '免费生成我的简历',
-          ctaHint: '用 CareerShaper AI 快速生成专业简历',
+          ctaHint: '用 AI CareerSherpa 快速生成专业简历',
         },
       },
     },
@@ -1164,7 +1164,7 @@ const dict = {
     highlightKeyword: '更高匹配度',
   },
   shell: {
-    brand: 'AI求职助手',
+    brand: 'AI CareerSherpa',
     signIn: '登录',
     coins: '金币',
     assets: '资产管理',

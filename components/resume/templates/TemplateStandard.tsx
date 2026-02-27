@@ -487,7 +487,7 @@ export function TemplateStandard({ data, config, styleConfig }: TemplateProps) {
         style={{ fontSize: '0.8em' }}
       >
         <span>PORTFOLIO {new Date().getFullYear()}</span>
-        <span>By CareerShaper AI</span>
+        <span>By AI CareerSherpa</span>
       </footer>
     </div>
   )

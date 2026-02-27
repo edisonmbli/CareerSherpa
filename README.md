@@ -1,6 +1,6 @@
-# CareerShaper
+# AI CareerSherpa
 
-CareerShaper is an intelligent job search assistant that provides a three-step closed loop of (a) job description matching, (b) resume customization, and (c) interview key points generation. Built with Next.js 15, Prisma, and advanced LLM orchestration.
+AI CareerSherpa is an intelligent job search assistant that provides a three-step closed loop of (a) job description matching, (b) resume customization, and (c) interview key points generation. Built with Next.js 15, Prisma, and advanced LLM orchestration.
 
 ## Architecture Overview
 
