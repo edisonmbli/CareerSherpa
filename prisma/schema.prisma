@@ -66,6 +66,7 @@ model Resume {
   userId            String          @unique @map("user_id")
   originalText      String?         @map("original_text")
   resumeSummaryJson Json?           @map("resume_summary_json")
+  parsedProfileJson Json?           @map("parsed_profile_json")
   status            AsyncTaskStatus @default(PENDING)
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")

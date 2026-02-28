@@ -16,18 +16,19 @@ import tplProfessional from '@/assets/images/templates/professional.png'
 import tplStandard from '@/assets/images/templates/standard.png'
 import tplTechnical from '@/assets/images/templates/technical.png'
 
+const defaultTemplates = [
+    { src: tplCorporate, alt: "Corporate" },
+    { src: tplCreative, alt: "Creative" },
+    { src: tplDarkSidebar, alt: "Dark Sidebar" },
+    { src: tplElegant, alt: "Elegant" },
+    { src: tplProduct, alt: "Product" },
+    { src: tplProfessional, alt: "Professional" },
+    { src: tplStandard, alt: "Standard" },
+    { src: tplTechnical, alt: "Technical" },
+]
+
 // Template Gallery Animation (Card A)
 function TemplateGalleryAnimation({ t }: { t: any }) {
-    const defaultTemplates = [
-        { src: tplCorporate, alt: "Corporate" },
-        { src: tplCreative, alt: "Creative" },
-        { src: tplDarkSidebar, alt: "Dark Sidebar" },
-        { src: tplElegant, alt: "Elegant" },
-        { src: tplProduct, alt: "Product" },
-        { src: tplProfessional, alt: "Professional" },
-        { src: tplStandard, alt: "Standard" },
-        { src: tplTechnical, alt: "Technical" },
-    ]
 
     const [templates, setTemplates] = useState(defaultTemplates)
     const [currentIndex, setCurrentIndex] = useState(0)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import type { Locale } from '@/i18n-config'
 import {
   AppCard,
@@ -241,6 +241,15 @@ export function NewServiceForm({
     // Execution flow: Guard (Quota Check) -> executeCreateService
     execute()
   }
+
+  // Auto-expand sidebar when on the new service page to provide context
+  useEffect(() => {
+    const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
+    if (isCollapsed) {
+      localStorage.setItem('sidebar_collapsed', '0')
+      window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
+    }
+  }, [])
 
   if (!hasResume) {
     return (

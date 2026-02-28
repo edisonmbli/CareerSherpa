@@ -911,7 +911,7 @@ const dict = {
     },
     cta: {
       title: '准备好斩获心仪的 Offer 了吗？',
-      subtitle: '新用户注册即赠 8 枚启动金币，零压力体验全流程 AI 辅助。',
+      subtitle: '新用户注册即赠 {count} 枚启动金币，零压力体验全流程 AI 辅助。',
       button: '开启智能求职之旅',
     },
     footer: {

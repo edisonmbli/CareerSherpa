@@ -23,6 +23,11 @@ export const ENV = {
   ZHIPU_VISION_MODEL:
     process.env['ZHIPU_VISION_MODEL'] ?? 'glm-4.1v-thinking-flash',
   SUMMARY_MAX_CHARS: Number(process.env['SUMMARY_MAX_CHARS'] ?? '8000'),
+  NEXT_PUBLIC_INITIAL_FREE_QUOTA: Number(
+    process.env['NEXT_PUBLIC_INITIAL_FREE_QUOTA'] ??
+    process.env['INITIAL_FREE_QUOTA'] ??
+    '5',
+  ),
 
   // 配额管理配置
   FREE_QUOTA_LIMIT: Number(process.env['FREE_QUOTA_LIMIT'] ?? '3'), // 免费用户配额限制
@@ -59,13 +64,13 @@ export const ENV = {
   ),
   CONCURRENCY_COUNTER_TTL_SECONDS: Number(
     process.env['CONCURRENCY_COUNTER_TTL_SECONDS'] ??
-      String(
-        Math.ceil(Number(process.env['WORKER_TIMEOUT_MS'] ?? '300000') / 1000),
-      ),
+    String(
+      Math.ceil(Number(process.env['WORKER_TIMEOUT_MS'] ?? '300000') / 1000),
+    ),
   ),
   CONCURRENCY_PERSISTENT_TTL_SECONDS: Number(
     process.env['CONCURRENCY_PERSISTENT_TTL_SECONDS'] ??
-      String(CONCURRENCY_PERSISTENT_TTL_SECONDS),
+    String(CONCURRENCY_PERSISTENT_TTL_SECONDS),
   ),
 
   // Stack Auth 配置
@@ -142,7 +147,7 @@ export const ENV = {
   // Rate Limiting - User-centric (at server action level)
   // Free tier: 5 operations per 24 hours
   // Paid tier: 10 operations per 15 minutes
-  RATE_LIMIT_FREE_DAILY: Number(process.env['RATE_LIMIT_FREE_DAILY'] ?? '5'),
+  RATE_LIMIT_FREE_DAILY: Number(process.env['RATE_LIMIT_FREE_DAILY'] ?? '2'),
   RATE_LIMIT_PAID_WINDOW_SEC: Number(
     process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '900',
   ),

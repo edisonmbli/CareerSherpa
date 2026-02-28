@@ -937,7 +937,7 @@ const dict = {
     },
     cta: {
       title: 'Ready to land your dream offer?',
-      subtitle: 'Register now to get 8 startup coins. Experience the full end-to-end AI career coach with zero pressure.',
+      subtitle: 'Register now to get {count} startup coins. Experience the full end-to-end AI career coach with zero pressure.',
       button: 'Start Your Smart Journey',
     },
     footer: {

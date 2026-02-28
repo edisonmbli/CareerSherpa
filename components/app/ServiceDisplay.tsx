@@ -457,7 +457,7 @@ export function ServiceDisplay({
         }
         showError(
           dict.workbench?.customize?.createFailed ||
-          'Failed to start customization',
+            'Failed to start customization',
           'An unexpected error occurred.',
         )
       }
@@ -565,24 +565,18 @@ export function ServiceDisplay({
     })
   }
 
-  // Auto-collapse sidebar when customization is completed OR when switching to Customize tab
+  // Auto-collapse sidebar when on Step 1/2/3 to maximize screen real estate for content
   useEffect(() => {
-    if (tabValue === 'customize') {
-      // Check if we should auto-collapse (if completed or just by default for editor space)
-      // User mentioned "Step 2 tab... sidebar automatically collapses", so we enforce it here
-      // to ensure consistent behavior.
-      const shouldCollapse =
-        customizeStatus === 'COMPLETED' || customizeStatus === 'PENDING'
-
-      if (shouldCollapse) {
-        const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
-        if (!isCollapsed) {
-          localStorage.setItem('sidebar_collapsed', '1')
-          window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
-        }
+    // If we have a serviceId, we are in Step 1, 2, or 3.
+    // The user wants the sidebar collapsed by default in these content-heavy states.
+    if (serviceId) {
+      const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
+      if (!isCollapsed) {
+        localStorage.setItem('sidebar_collapsed', '1')
+        window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
       }
     }
-  }, [customizeStatus, tabValue])
+  }, [serviceId, status, tabValue])
 
   // Refresh page when status becomes COMPLETED or FAILED to ensure data consistency
   useEffect(() => {
@@ -876,7 +870,9 @@ export function ServiceDisplay({
             const rect = el.getBoundingClientRect()
             return {
               id: item.id,
-              top: isScrollWindow ? rect.top + window.scrollY - 100 : rect.top - rootRect.top + root!.scrollTop,
+              top: isScrollWindow
+                ? rect.top + window.scrollY - 100
+                : rect.top - rootRect.top + root!.scrollTop,
             }
           })
           .filter((s) => s != null) as Array<{ id: string; top: number }>
@@ -890,12 +886,17 @@ export function ServiceDisplay({
           if (sections.length === 0) return
 
           const isScrollWindow = root!.scrollHeight <= root!.clientHeight + 4
-          const scrollHeight = isScrollWindow ? document.documentElement.scrollHeight : root!.scrollHeight
-          const scrollTop = isScrollWindow ? Math.max(window.scrollY, document.documentElement.scrollTop) : root!.scrollTop
-          const clientHeight = isScrollWindow ? window.innerHeight : root!.clientHeight
+          const scrollHeight = isScrollWindow
+            ? document.documentElement.scrollHeight
+            : root!.scrollHeight
+          const scrollTop = isScrollWindow
+            ? Math.max(window.scrollY, document.documentElement.scrollTop)
+            : root!.scrollTop
+          const clientHeight = isScrollWindow
+            ? window.innerHeight
+            : root!.clientHeight
 
-          const atBottom =
-            scrollHeight - (scrollTop + clientHeight) <= 24
+          const atBottom = scrollHeight - (scrollTop + clientHeight) <= 24
           if (atBottom) {
             const last = sections[sections.length - 1]
             if (last?.id) setActiveIbpSection(last.id)
@@ -1186,7 +1187,7 @@ export function ServiceDisplay({
     (tabValue === 'interview' && interviewStatus === 'COMPLETED')
 
   useEffect(() => {
-    if (tabValue === 'match') {
+    if (tabValue === 'match' && !serviceId) {
       const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
       if (isCollapsed) {
         localStorage.removeItem('sidebar_collapsed')
@@ -1200,7 +1201,7 @@ export function ServiceDisplay({
         window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
       }
     }
-  }, [tabValue])
+  }, [tabValue, serviceId])
 
   // CTA Node for Desktop Headers - now uses extracted component
   const ctaNode = (
@@ -1357,7 +1358,7 @@ export function ServiceDisplay({
       document.body.appendChild(el)
     }
     setMobileBarRoot(el)
-    return () => { }
+    return () => {}
   }, [])
 
   return (
@@ -1394,7 +1395,9 @@ export function ServiceDisplay({
               <UserMenu locale={locale} dict={{ shell: dict }} />
             </div>
             <StepperProgress
-              currentStep={tabValue === 'match' ? 1 : tabValue === 'customize' ? 2 : 3}
+              currentStep={
+                tabValue === 'match' ? 1 : tabValue === 'customize' ? 2 : 3
+              }
               maxUnlockedStep={maxUnlockedStep as any}
               onStepClick={(s) => {
                 if (s === 1) setTabValue('match')
@@ -1439,8 +1442,8 @@ export function ServiceDisplay({
             setTabValue(v as 'match' | 'customize' | 'interview')
           }
           className={cn(
-            "flex-1 flex flex-col min-h-0 mb-0",
-            tabValue === 'customize' ? "mt-4 md:mt-4" : "mt-6 md:mt-8"
+            'flex-1 flex flex-col min-h-0 mb-0',
+            tabValue === 'customize' ? 'mt-4 md:mt-4' : 'mt-6 md:mt-8',
           )}
         >
           <TabsContent
@@ -1452,81 +1455,81 @@ export function ServiceDisplay({
                 {(status === 'MATCH_COMPLETED' ||
                   matchResult ||
                   matchParsed) && (
-                    <>
-                      <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col items-end gap-2 print:hidden">
-                        <TooltipProvider>
-                          {matchActions.map((action) => {
-                            const themeClasses = getActionThemeClasses(matchTheme)
-                            const Icon = action.icon
-                            return (
-                              <Tooltip key={action.id}>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    disabled={action.disabled}
-                                    onClick={action.onClick}
-                                    className={cn(
-                                      'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
-                                      themeClasses.base,
-                                      themeClasses.hover,
-                                      themeClasses.ring,
-                                    )}
-                                  >
-                                    <Icon className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">
-                                  {action.label}
-                                </TooltipContent>
-                              </Tooltip>
-                            )
-                          })}
-                        </TooltipProvider>
-                      </div>
-                      <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
-                        {matchFabOpen && (
-                          <div className="flex flex-col items-center gap-2 w-10">
-                            {matchActions.map((action) => {
-                              const themeClasses =
-                                getActionThemeClasses(matchTheme)
-                              const Icon = action.icon
-                              return (
+                  <>
+                    <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                      <TooltipProvider>
+                        {matchActions.map((action) => {
+                          const themeClasses = getActionThemeClasses(matchTheme)
+                          const Icon = action.icon
+                          return (
+                            <Tooltip key={action.id}>
+                              <TooltipTrigger asChild>
                                 <Button
-                                  key={action.id}
                                   size="icon"
                                   disabled={action.disabled}
-                                  onClick={() => {
-                                    action.onClick()
-                                    setMatchFabOpen(false)
-                                  }}
+                                  onClick={action.onClick}
                                   className={cn(
-                                    'h-9 w-9 rounded-full border shadow-lg',
+                                    'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
                                     themeClasses.base,
                                     themeClasses.hover,
                                     themeClasses.ring,
                                   )}
                                 >
                                   <Icon className="h-4 w-4" />
-                                  <span className="sr-only">{action.label}</span>
                                 </Button>
-                              )
-                            })}
-                          </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                {action.label}
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        })}
+                      </TooltipProvider>
+                    </div>
+                    <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                      {matchFabOpen && (
+                        <div className="flex flex-col items-center gap-2 w-10">
+                          {matchActions.map((action) => {
+                            const themeClasses =
+                              getActionThemeClasses(matchTheme)
+                            const Icon = action.icon
+                            return (
+                              <Button
+                                key={action.id}
+                                size="icon"
+                                disabled={action.disabled}
+                                onClick={() => {
+                                  action.onClick()
+                                  setMatchFabOpen(false)
+                                }}
+                                className={cn(
+                                  'h-9 w-9 rounded-full border shadow-lg',
+                                  themeClasses.base,
+                                  themeClasses.hover,
+                                  themeClasses.ring,
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                                <span className="sr-only">{action.label}</span>
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <Button
+                        size="icon"
+                        onClick={() => setMatchFabOpen((prev) => !prev)}
+                        className={cn(
+                          'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                          getActionThemeClasses(matchTheme).base,
+                          getActionThemeClasses(matchTheme).hover,
                         )}
-                        <Button
-                          size="icon"
-                          onClick={() => setMatchFabOpen((prev) => !prev)}
-                          className={cn(
-                            'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                            getActionThemeClasses(matchTheme).base,
-                            getActionThemeClasses(matchTheme).hover,
-                          )}
-                        >
-                          <Menu className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </>
-                  )}
+                      >
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </>
+                )}
                 {USE_SSE_V2 &&
                   v2Bridge &&
                   (v2Bridge.status === 'IDLE' ||
@@ -1637,7 +1640,7 @@ export function ServiceDisplay({
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
-              customizedResumeBase?.customizedResumeJson ? (
+            customizedResumeBase?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
@@ -1695,9 +1698,9 @@ export function ServiceDisplay({
                       // Use executionTier to show correct message based on failed task's tier
                       executionTier === 'free'
                         ? dict?.workbench?.statusConsole?.customizeFailedFree ||
-                        '免费模型暂时繁忙，请稍后重试'
+                          '免费模型暂时繁忙，请稍后重试'
                         : dict?.workbench?.statusConsole?.customizeRefunded ||
-                        '金币已自动返还，请点击重试'
+                          '金币已自动返还，请点击重试'
                     }
                     onRetry={onCustomize}
                     isRetryLoading={isTransitionState || isPending}
@@ -1722,9 +1725,9 @@ export function ServiceDisplay({
                       <h3 className="text-lg font-semibold">
                         {cta?.disabled
                           ? dict.workbench?.statusConsole?.customizeStarting ||
-                          '正在启动定制服务...'
+                            '正在启动定制服务...'
                           : dict.workbench?.statusText?.readyToCustomize ||
-                          'Ready to Customize'}
+                            'Ready to Customize'}
                       </h3>
                       {/* Only show guide text when button is clickable */}
                       {!cta?.disabled && (
@@ -1798,13 +1801,23 @@ export function ServiceDisplay({
                             <Button
                               type="button"
                               onClick={() => {
-                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                                const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
+                                const currentIndex = activeIbpSection
+                                  ? ibpTocItems.findIndex(
+                                      (i) => i.id === activeIbpSection,
+                                    )
+                                  : 0
+                                const prevItem =
+                                  currentIndex > 0
+                                    ? ibpTocItems[currentIndex - 1]
+                                    : undefined
                                 if (prevItem) {
-                                  setActiveIbpSection(prevItem.id);
-                                  scrollToIbpSection(prevItem.id);
+                                  setActiveIbpSection(prevItem.id)
+                                  scrollToIbpSection(prevItem.id)
                                 } else {
-                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  window.scrollTo({
+                                    top: 0,
+                                    behavior: 'smooth',
+                                  })
                                 }
                               }}
                               className={cn(
@@ -1818,9 +1831,7 @@ export function ServiceDisplay({
                               <ChevronUp className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left">
-                            上一节
-                          </TooltipContent>
+                          <TooltipContent side="left">上一节</TooltipContent>
                         </Tooltip>
 
                         <Tooltip>
@@ -1828,11 +1839,18 @@ export function ServiceDisplay({
                             <Button
                               type="button"
                               onClick={() => {
-                                const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                                const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
+                                const currentIndex = activeIbpSection
+                                  ? ibpTocItems.findIndex(
+                                      (i) => i.id === activeIbpSection,
+                                    )
+                                  : 0
+                                const nextItem =
+                                  currentIndex < ibpTocItems.length - 1
+                                    ? ibpTocItems[currentIndex + 1]
+                                    : undefined
                                 if (nextItem) {
-                                  setActiveIbpSection(nextItem.id);
-                                  scrollToIbpSection(nextItem.id);
+                                  setActiveIbpSection(nextItem.id)
+                                  scrollToIbpSection(nextItem.id)
                                 }
                               }}
                               className={cn(
@@ -1846,9 +1864,7 @@ export function ServiceDisplay({
                               <ChevronDown className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left">
-                            下一节
-                          </TooltipContent>
+                          <TooltipContent side="left">下一节</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
@@ -1887,13 +1903,20 @@ export function ServiceDisplay({
                         <Button
                           type="button"
                           onClick={() => {
-                            const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                            const prevItem = currentIndex > 0 ? ibpTocItems[currentIndex - 1] : undefined;
+                            const currentIndex = activeIbpSection
+                              ? ibpTocItems.findIndex(
+                                  (i) => i.id === activeIbpSection,
+                                )
+                              : 0
+                            const prevItem =
+                              currentIndex > 0
+                                ? ibpTocItems[currentIndex - 1]
+                                : undefined
                             if (prevItem) {
-                              setActiveIbpSection(prevItem.id);
-                              scrollToIbpSection(prevItem.id);
+                              setActiveIbpSection(prevItem.id)
+                              scrollToIbpSection(prevItem.id)
                             } else {
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                              window.scrollTo({ top: 0, behavior: 'smooth' })
                             }
                           }}
                           className={cn(
@@ -1909,11 +1932,18 @@ export function ServiceDisplay({
                         <Button
                           type="button"
                           onClick={() => {
-                            const currentIndex = activeIbpSection ? ibpTocItems.findIndex(i => i.id === activeIbpSection) : 0;
-                            const nextItem = currentIndex < ibpTocItems.length - 1 ? ibpTocItems[currentIndex + 1] : undefined;
+                            const currentIndex = activeIbpSection
+                              ? ibpTocItems.findIndex(
+                                  (i) => i.id === activeIbpSection,
+                                )
+                              : 0
+                            const nextItem =
+                              currentIndex < ibpTocItems.length - 1
+                                ? ibpTocItems[currentIndex + 1]
+                                : undefined
                             if (nextItem) {
-                              setActiveIbpSection(nextItem.id);
-                              scrollToIbpSection(nextItem.id);
+                              setActiveIbpSection(nextItem.id)
+                              scrollToIbpSection(nextItem.id)
                             }
                           }}
                           className={cn(
@@ -1989,7 +2019,6 @@ export function ServiceDisplay({
                               )
                             })}
                           </div>
-
                         </div>
                       </div>
                     </aside>
@@ -2061,12 +2090,12 @@ export function ServiceDisplay({
                       description={
                         interviewExecutionTier === 'free'
                           ? dict.workbench?.statusText
-                            ?.INTERVIEW_FAILED_DESC_FREE ||
-                          '免费模型暂时繁忙，请稍后重试'
+                              ?.INTERVIEW_FAILED_DESC_FREE ||
+                            '免费模型暂时繁忙，请稍后重试'
                           : dict.workbench?.statusText
-                            ?.INTERVIEW_FAILED_DESC_PAID ||
-                          dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
-                          '金币已自动返还，请点击重试'
+                              ?.INTERVIEW_FAILED_DESC_PAID ||
+                            dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
+                            '金币已自动返还，请点击重试'
                       }
                       onRetry={onInterview}
                       isRetryLoading={isPending}
@@ -2215,7 +2244,7 @@ export function ServiceDisplay({
             </DrawerContent>
           </Drawer>
         )}
-      </div >
+      </div>
 
       {/* Lightweight Free Tier Warning Dialogs */}
       {customizeGuard.GuardDialog}

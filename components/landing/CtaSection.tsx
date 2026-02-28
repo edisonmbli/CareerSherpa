@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 
+import { ENV } from '@/lib/env'
+
 export function CtaSection({ dict }: { dict: any }) {
   const t = dict.cta || {}
+  const subtitle = (t.subtitle || '').replace('{count}', ENV.NEXT_PUBLIC_INITIAL_FREE_QUOTA.toString())
 
   return (
     <section className="relative w-full">
@@ -37,7 +40,7 @@ export function CtaSection({ dict }: { dict: any }) {
 
             {/* Subtitle / Hook Proposition */}
             <p className="max-w-[700px] text-slate-500 dark:text-slate-400 md:text-lg mb-12 leading-relaxed text-balance">
-              {t.subtitle}
+              {subtitle}
             </p>
 
             {/* The Ultimate CTA Button */}

@@ -2,11 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
 import { Prisma, CoinTxnType, CoinTxnStatus } from '@prisma/client'
 
-// 初始赠送金币（可通过环境变量配置，默认 8）
-const INITIAL_FREE_QUOTA = parseInt(
-  process.env['INITIAL_FREE_QUOTA'] ?? '8',
-  10
-)
+import { ENV } from '@/lib/env'
+
+// 初始赠送金币（从统一环境配置读取）
+const INITIAL_FREE_QUOTA = ENV.NEXT_PUBLIC_INITIAL_FREE_QUOTA
 
 /**
  * 获取或创建用户的金币账户（延迟初始化）

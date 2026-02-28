@@ -23,7 +23,7 @@ export const MATCH_SCORE_THRESHOLDS = {
 } as const
 
 export const TASK_COSTS: Record<string, number> = {
-  job_match: 2,
+  job_match: 1,
   resume_customize: 1,
   interview_prep: 1,
   resume_summary: 1,
