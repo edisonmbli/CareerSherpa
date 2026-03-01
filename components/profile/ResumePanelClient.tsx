@@ -8,7 +8,7 @@ import {
 } from '@/components/app/AssetUploader'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Check, Lock, Sparkles } from 'lucide-react'
+import { Eye, RotateCw, UserRound, Lock } from 'lucide-react'
 
 type ParsedProfile = {
   career_persona: string
@@ -83,6 +83,7 @@ export function ResumePanelClient({
   const [mode, setMode] = useState<'dual' | 'profile' | 'uploader'>(
     hasGeneral && normalizedProfile ? 'profile' : 'dual',
   )
+  const [isReuploading, setIsReuploading] = useState(false)
 
   const normalizeProfile = useCallback((data: any): ParsedProfile | null => {
     if (!data || typeof data !== 'object') return null
@@ -111,11 +112,12 @@ export function ResumePanelClient({
 
   useEffect(() => {
     if (!resumeCompleted || !clientProfile) {
+      setIsReuploading(false)
       setMode('dual')
       return
     }
-    setMode((prev) => (prev === 'dual' ? 'profile' : prev))
-  }, [resumeCompleted, clientProfile])
+    setMode(isReuploading ? 'uploader' : 'profile')
+  }, [resumeCompleted, clientProfile, isReuploading])
 
   useEffect(() => {
     setResumeCompleted(hasGeneral)
@@ -154,6 +156,7 @@ export function ResumePanelClient({
     (json: any) => {
       if (!json) return
       setResumeCompleted(true)
+      setIsReuploading(false)
       const parsed = json?.parsed_profile_json
       const normalized = normalizeProfile(parsed)
       if (normalized) {
@@ -186,7 +189,9 @@ export function ResumePanelClient({
         resumeTitle={resumeTitle}
         detailedTitle={detailedTitle}
         onSummaryJson={handleSummaryJson}
-        hideActions
+        hideActions={!isReuploading}
+        neutralComplete
+        hidePreviewAction
         {...(pdfNotice ? { pdfNotice } : {})}
       />
     ),
@@ -204,16 +209,17 @@ export function ResumePanelClient({
       resumeTitle,
       detailedTitle,
       handleSummaryJson,
+      isReuploading,
     ],
   )
 
   const profilePanelNode = (
     <div
       className={cn(
-        'h-full flex flex-col bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-xl p-6 relative overflow-hidden transition-all duration-500',
+        'h-full flex flex-col rounded-xl p-6 relative overflow-hidden transition-all duration-500',
         resumeCompleted
-          ? 'bg-white ring-1 ring-slate-200 shadow-sm dark:bg-[#121212] dark:ring-white/10'
-          : '',
+          ? 'bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10'
+          : 'bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10',
       )}
     >
       {!resumeCompleted && (
@@ -245,31 +251,8 @@ export function ResumePanelClient({
         </>
       )}
       <div className={cn(!resumeCompleted && 'hidden')}>
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-slate-100 dark:bg-white/[0.06]">
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
-          <span className="text-lg font-semibold text-slate-900 dark:text-white">
-            {profilePanel.title}
-          </span>
-        </div>
         {profileData && (
-          <div className="mt-6 space-y-5 text-sm">
-            <div
-              className="animate-in fade-in slide-in-from-bottom-2"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
-                  {profileData.career_persona}
-                </div>
-              </div>
-              <div className="text-sm text-slate-500 font-medium mt-1">
-                {profileData.experience_focus}
-              </div>
-            </div>
-
+          <div className="mt-2 space-y-5 text-sm">
             {(profileData.domain_expertise.length > 0 ||
               profileData.hard_skills.length > 0) && (
               <div
@@ -281,7 +264,7 @@ export function ResumePanelClient({
                     {profileData.domain_expertise.map((tag, idx) => (
                       <span
                         key={`domain-${tag}-${idx}`}
-                        className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ring-blue-700/10"
+                        className="bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-full px-3 py-1 text-xs"
                       >
                         {tag}
                       </span>
@@ -293,7 +276,7 @@ export function ResumePanelClient({
                     {profileData.hard_skills.map((skill, idx) => (
                       <span
                         key={`skill-${skill}-${idx}`}
-                        className="bg-white text-slate-600 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset ring-slate-200"
+                        className="bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-full px-3 py-1 text-xs"
                       >
                         {skill}
                       </span>
@@ -309,18 +292,25 @@ export function ResumePanelClient({
                 className="animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: '200ms' }}
               >
-                <div className="bg-slate-50 rounded-lg p-4 mt-1 ring-1 ring-slate-900/5">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                <div className="bg-white/40 dark:bg-white/5 rounded-lg p-4 mt-1 border border-slate-200/60 dark:border-white/10">
+                  <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                     SIGNATURE PROJECT
                   </div>
                   {profileData.signature_project.project_name && (
-                    <div className="text-sm font-semibold text-slate-900">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
                       {profileData.signature_project.project_name}
                     </div>
                   )}
                   {profileData.signature_project.core_impact && (
-                    <div className="text-sm text-slate-600 mt-1">
-                      {renderImpact(profileData.signature_project.core_impact)}
+                    <div className="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                        <span className="flex-1">
+                          {renderImpact(
+                            profileData.signature_project.core_impact,
+                          )}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -338,12 +328,14 @@ export function ResumePanelClient({
                       key={`strength-${item.trait}-${idx}`}
                       className="flex gap-2"
                     >
-                      <Check className="h-4 w-4 text-emerald-500 mt-0.5" />
+                      <span className="mt-1 h-2 w-2 rounded-full bg-blue-400/90 shadow-[0_0_8px_rgba(96,165,250,0.55)]" />
                       <div className="text-sm">
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-semibold text-slate-900 dark:text-white">
                           {item.trait}:
                         </span>{' '}
-                        <span className="text-slate-500">{item.evidence}</span>
+                        <span className="text-slate-500 dark:text-slate-300">
+                          {item.evidence}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -380,31 +372,43 @@ export function ResumePanelClient({
 
       {resumeCompleted && profileData ? (
         <div className="relative">
-          <div className="absolute right-0 top-0 flex items-center gap-2">
-            {mode === 'profile' && (
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <div className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                {profileData.career_persona}
+              </div>
+              <div className="text-zinc-400 italic text-sm mt-1">
+                {profileData.experience_focus}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs"
+                className="h-7 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
                 onClick={() => uploaderRef.current?.openPreview()}
               >
+                <Eye className="h-3.5 w-3.5 mr-1" />
                 {uploaderDict.preview}
               </Button>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() =>
-                setMode(mode === 'profile' ? 'uploader' : 'profile')
-              }
-            >
-              {mode === 'profile'
-                ? profilePanel.updateResume
-                : profilePanel.backToProfile}
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-base text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
+                onClick={() => setIsReuploading((prev) => !prev)}
+              >
+                {isReuploading ? (
+                  <UserRound className="h-3.5 w-3.5 mr-1" />
+                ) : (
+                  <RotateCw className="h-3.5 w-3.5 mr-1" />
+                )}
+                {isReuploading
+                  ? profilePanel.backToProfile
+                  : profilePanel.updateResume}
+              </Button>
+            </div>
           </div>
           <div className="relative">
             <div

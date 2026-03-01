@@ -139,6 +139,8 @@ type AssetUploaderProps = {
   className?: string
   onSummaryJson?: (json: any) => void
   hideActions?: boolean
+  neutralComplete?: boolean
+  hidePreviewAction?: boolean
 }
 
 export const AssetUploader = forwardRef<
@@ -162,6 +164,8 @@ export const AssetUploader = forwardRef<
     className,
     onSummaryJson,
     hideActions,
+      neutralComplete,
+      hidePreviewAction,
   },
   ref,
 ) {
@@ -216,15 +220,17 @@ export const AssetUploader = forwardRef<
           }
           // Toast success removed as per feedback
         } else {
-          setStatus('IDLE')
+          setStatus('FAILED')
           const err = getServiceErrorMessage(res.error || 'unknown_error', {
             statusText: statusTextDict,
             notification: notificationDict,
           })
+          setPollError(err.description)
           showError(err.title, err.description)
         }
       } catch (e) {
-        setStatus('IDLE')
+        setStatus('FAILED')
+        setPollError(dict.toast.queueError)
         showError(dict.toast.queueError, '')
       }
     })
@@ -530,12 +536,31 @@ export const AssetUploader = forwardRef<
         : dict.dropzoneHintDetailed || dict.placeholderHintDetailed
 
     if (s === 'COMPLETED') {
+      const completedTone = neutralComplete
+        ? {
+            container:
+              'border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-white/[0.03]',
+            badge: 'bg-slate-100/70 dark:bg-white/[0.06]',
+            icon: 'text-slate-500',
+            status: 'text-slate-500/80 dark:text-slate-300',
+          }
+        : {
+            container:
+              'border-emerald-200/60 dark:border-emerald-500/20 bg-white/70 dark:bg-white/[0.03]',
+            badge: 'bg-emerald-50 dark:bg-emerald-500/10',
+            icon: 'text-emerald-500',
+            status: 'text-emerald-600/80 dark:text-emerald-300',
+          }
       return (
-        <div className="h-full w-full flex flex-col justify-center rounded-2xl border border-emerald-200/60 dark:border-emerald-500/20 bg-white/70 dark:bg-white/[0.03] p-5 sm:p-6 shadow-sm">
+        <div
+          className={`h-full w-full flex flex-col justify-center rounded-2xl border ${completedTone.container} p-5 sm:p-6 shadow-sm`}
+        >
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-3 flex-1">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
-                <FileCheck className="h-6 w-6 text-emerald-500" />
+              <div
+                className={`w-12 h-12 rounded-xl ${completedTone.badge} flex items-center justify-center`}
+              >
+                <FileCheck className={`h-6 w-6 ${completedTone.icon}`} />
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
@@ -544,30 +569,32 @@ export const AssetUploader = forwardRef<
                       ? resumeTitle || 'General Resume'
                       : detailedTitle || 'Detailed Resume')}
                 </div>
-                <div className="text-xs text-emerald-600/80 dark:text-emerald-300">
+                <div className={`text-xs ${completedTone.status}`}>
                   {dict.status.completed}
                 </div>
               </div>
             </div>
             {!hideActions && (
               <div className="flex items-center gap-2">
+                {!hidePreviewAction && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-sm text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/10 transition-colors"
+                    onClick={async () => {
+                      setShowPreview(true)
+                      await ensurePreviewData()
+                    }}
+                  >
+                    {labels?.actionPreview ?? dict.preview}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs"
-                  onClick={async () => {
-                    setShowPreview(true)
-                    await ensurePreviewData()
-                  }}
-                >
-                  {labels?.actionPreview ?? dict.preview}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 text-xs"
+                  className="h-8 px-3 text-base text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/10 transition-colors"
                   onClick={() => {
                     handleReupload()
                     triggerFileSelect()
@@ -891,7 +918,12 @@ export const AssetUploader = forwardRef<
             className="sr-only"
           />
           <div
-            onClick={triggerFileSelect}
+            onClick={() => {
+              if (showPreview) return
+              if (status === 'IDLE' || status === 'FAILED') {
+                triggerFileSelect()
+              }
+            }}
             className={`transition-all duration-300 ${isDragActive ? 'ring-2 ring-cyan-300/60' : ''} flex-1 flex h-full w-full`}
           >
             {renderStatus()}
