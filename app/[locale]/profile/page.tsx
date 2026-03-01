@@ -300,6 +300,7 @@ export default async function ProfilePage({
                         resumeTitle={p.resume.title}
                         detailedTitle={p.detailed.title}
                         dimmed={!hasGeneral}
+                        neutralComplete
                       />
                     </div>
                   </div>

@@ -441,6 +441,9 @@ export const AssetUploader = forwardRef<
     setProgressValue(0)
     setNotification(null)
     setIsFinishing(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const processFile = (file: File) => {
@@ -467,6 +470,9 @@ export const AssetUploader = forwardRef<
     if (f) {
       processFile(f)
     }
+    if (e.target) {
+      e.target.value = ''
+    }
     if (status === 'FAILED') {
       setStatus('IDLE')
       setTaskId(null)
@@ -484,6 +490,9 @@ export const AssetUploader = forwardRef<
   }
 
   const triggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
     fileInputRef.current?.click()
   }
 
