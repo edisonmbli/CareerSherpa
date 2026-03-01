@@ -108,6 +108,17 @@ const dict = {
         'Analyze match between uploaded resume and job description, and suggest outreach pitch lines',
       or: 'or',
       button: 'Start Matching',
+      assetGateTitle: 'Unlock Your AI Career Coach',
+      assetGateDescriptionLine1: 'Set up your career vault to unlock tailored ',
+      assetGateDescriptionLine2: '',
+      assetGateHighlight1: 'Job Matching',
+      assetGateHighlight2: 'Resume Optimization',
+      assetGateHighlight3: 'Interview Coaching',
+      assetGateDelimiter1: ', ',
+      assetGateDelimiter2: ', and ',
+      assetGateMicrocopy: 'Your base resume gives the AI its context.',
+      assetGateButton: 'Build My Career Vault',
+      readyBanner: '✅ AI coach has read your resume and is ready',
       placeholderText:
         'Paste the job description (text) here, or drag in a JD screenshot.',
       uploadCta: 'Upload JD screenshot',
@@ -117,7 +128,7 @@ const dict = {
       segmentedUpload: 'Upload screenshot',
       imageTooLarge: 'Image too large, please upload ≤1MB',
       imageCompressFailed: 'Image compression failed, please try again',
-      jobTextTooLong: 'Text length exceeds 8000 characters',
+      jobTextTooLong: 'Text length exceeds 5000 characters',
       quickTipsLabel: 'Quick tips',
       quickTips: [
         {
@@ -418,10 +429,32 @@ const dict = {
   profile: {
     title: 'Profile',
     tabs: { assets: 'Experience', billing: 'Billing/Top-up' },
+    assetProgress: {
+      title: 'AI Capacity / Corpus Completeness',
+      subtitle: 'The more complete, the more accurate the output',
+      lead: 'Build your career profile and let AI be your ultimate career strategist.',
+      level0: 'AI Standby',
+      level60: 'Core AI Unlocked',
+      level100: 'Fully Powered',
+    },
+    profilePanel: {
+      title: 'Profile Snapshot',
+      emptyTitle: 'Profile not yet unlocked',
+      emptyDesc:
+        'Upload your base resume to intelligently awaken your AI career profile.',
+      lockHint: 'Complete General Resume first',
+      updateResume: 'Update General Resume',
+      backToProfile: 'Back to Profile',
+      tagsLabel: 'Core Tags',
+      focusLabel: 'Experience Focus',
+      projectLabel: 'Signature Project',
+      summaryLabel: 'Strengths Summary',
+      cta: '🚀 Assets ready, go match jobs',
+    },
     resume: {
       title: 'General Resume',
-      description:
-        'The foundation for all AI services. An essential prerequisite for Match Analysis, Resume Customization, and Interview Prep.',
+      description: 'The foundational context for all advanced AI features.',
+      requiredBadge: 'Required',
       defaultFileName: 'General Resume',
       tips: {
         star: 'Use the STAR method (Situation-Task-Action-Result) to quantify your achievements.',
@@ -433,9 +466,10 @@ const dict = {
     detailed: {
       title: 'Detailed Resume',
       badge: 'Recommended',
+      lockHint: 'Complete General Resume first',
       defaultFileName: 'Detailed Resume',
       description:
-        "A 'Power-Up' for advanced insights. Uploading detailed projects and metrics provides rich context for significantly higher quality AI output.",
+        'Add specific project details and metrics. Richer data allows our AI to generate deeper, more personalized career materials.',
       examples: {
         label: 'STAR Method Examples',
         roles: {
@@ -539,6 +573,13 @@ const dict = {
     uploader: {
       button: 'Upload',
       buttonProcessing: 'Uploading...',
+      dropzoneResumeTitle: 'Upload General Resume',
+      dropzoneDetailedTitle: 'Upload Detailed Resume',
+      dropzoneHintResume:
+        'Supports text-based PDFs. Max 5,000 words recommended.',
+      dropzoneHintDetailed:
+        'Supports text-based PDFs. Max 10,000 words recommended.',
+      requiredLabel: 'Required',
       status: {
         pending: 'Parsing',
         completed: 'Completed',
@@ -554,7 +595,7 @@ const dict = {
       chooseFile: 'Choose File',
       noFileSelected: 'No file selected',
       suggestionTextResume:
-        'We recommend keeping the resume text under ~8000 characters for better parsing stability.',
+        'We recommend keeping the resume text under ~5000 characters for better parsing stability.',
       suggestionTextDetailed:
         'We recommend keeping the detailed resume text under ~10000 characters for better parsing stability.',
       processingMarquee: 'Model is processing',
@@ -569,7 +610,7 @@ const dict = {
         failed: 'Failed',
       },
       placeholderHintResume:
-        'Only text-based PDF; ~8000 chars recommended; images not supported',
+        'Only text-based PDF; ~5000 chars recommended; images not supported',
       placeholderHintDetailed:
         'Only text-based PDF; ~10000 chars recommended; images not supported',
       time: {
@@ -759,13 +800,17 @@ const dict = {
     coreValue: {
       tag: 'The Paradigm Shift',
       title: 'Stop the Grind. Let an AI Coach Bridge the Final Mile',
-      subtitle: 'Deposit your master resume into the Asset Library. Then, simply upload a JD and let AI match your strengths, instantly customizing your resume and interview strategy.',
+      subtitle:
+        'Deposit your master resume into the Asset Library. Then, simply upload a JD and let AI match your strengths, instantly customizing your resume and interview strategy.',
       f1Title: 'Data Vault',
-      f1Desc: 'Securely extract and structure your scattered professional history into a unified highlight asset library.',
+      f1Desc:
+        'Securely extract and structure your scattered professional history into a unified highlight asset library.',
       f2Title: 'Collision Engine',
-      f2Desc: 'Deep semantic matching between your capabilities and the multi-dimensional requirements of any target role.',
+      f2Desc:
+        'Deep semantic matching between your capabilities and the multi-dimensional requirements of any target role.',
       f3Title: 'Targeted Output',
-      f3Desc: 'Rapidly generate highly-optimized, role-specific professional resumes and targeted interview strategies.'
+      f3Desc:
+        'Rapidly generate highly-optimized, role-specific professional resumes and targeted interview strategies.',
     },
     bentoGrid: {
       resumeBuilder: {
@@ -780,17 +825,19 @@ const dict = {
           step2: 'Executing Red/Blue Validation...',
           result: 'Match Accuracy: 98.5%',
           pass: 'PASS',
-        }
+        },
       },
       smartPitch: {
         title: 'Smart Pitch',
         desc: 'End "read-but-no-reply". Deliver targeted value that hooks HR attention in one second.',
         pitch: {
-          weakMsg: 'Hello, I am highly interested in this position, looking forward to your reply...',
-          strongMsg: "Based on the JD's '0-100M growth' requirement, I've led similar breakthrough matrices achieving a 300% revenue jump. Open to discussing tactics?",
+          weakMsg:
+            'Hello, I am highly interested in this position, looking forward to your reply...',
+          strongMsg:
+            "Based on the JD's '0-100M growth' requirement, I've led similar breakthrough matrices achieving a 300% revenue jump. Open to discussing tactics?",
           tag: 'Smart Pitch',
-          rejectStamp: 'INSTANT REJECT'
-        }
+          rejectStamp: 'INSTANT REJECT',
+        },
       },
       mockInterview: {
         title: 'Mock Interview',
@@ -801,15 +848,15 @@ const dict = {
           strategy: 'AI Strategy Deployed',
           point1: 'STAR Method',
           point2: 'Focus on Upskilling',
-          point3: 'Pivot to Strength'
-        }
+          point3: 'Pivot to Strength',
+        },
       },
     },
     hero: {
-      title: 'Your Personal AI Career Coach',
+      title: 'Your AI Career Coach',
       subtitle:
-        'Stop applying blindly. Secure every interview opportunity with 1-on-1 personalized match analysis and tailored resumes.',
-      cta: 'Start Your Smart Journey',
+        'Stop sending generic applications.\n Instantly tailor your resume and land more interviews.',
+      cta: 'Start for Free',
       optimizationInsights: 'Optimization Insights',
       mocks: [
         {
@@ -824,7 +871,7 @@ const dict = {
             },
             {
               title: 'Add Data-Driven Models',
-              desc: 'Given the JD\'s focus on data flow analysis, we suggest highlighting a data optimization project in your most recent role.',
+              desc: "Given the JD's focus on data flow analysis, we suggest highlighting a data optimization project in your most recent role.",
             },
           ],
         },
@@ -931,14 +978,15 @@ const dict = {
         },
         {
           q: 'Coins & payment?',
-          a: 'You start with free coins. Purchasing options will be added; tasks refund coins on failure.',
+          a: 'You start with free credits. Purchasing options will be added; tasks refund credits on failure.',
         },
       ],
     },
     cta: {
-      title: 'Ready to land your dream offer?',
-      subtitle: 'Register now to get {count} startup coins. Experience the full end-to-end AI career coach with zero pressure.',
-      button: 'Start Your Smart Journey',
+      title: 'Ready to Land Your Next Role?',
+      subtitle:
+        'Join thousands of successful candidates.\n Sign up now and get {count} free credits on us.',
+      button: 'Get Started Now',
     },
     footer: {
       slogan: 'Your Personal AI Career Coach.',

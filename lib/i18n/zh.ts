@@ -104,6 +104,17 @@ const dict = {
       description: '根据已上传简历与岗位描述，分析匹配度，并建议“敲门”话术',
       or: '或',
       button: '开始分析',
+      assetGateTitle: '唤醒你的 AI 求职私教',
+      assetGateDescriptionLine1: '构建专属档案库，即可解锁精准的',
+      assetGateDescriptionLine2: '',
+      assetGateHighlight1: '岗位匹配',
+      assetGateHighlight2: '简历定制',
+      assetGateHighlight3: '面试辅导',
+      assetGateDelimiter1: '、',
+      assetGateDelimiter2: '与',
+      assetGateMicrocopy: '通用简历是 AI 提供精准服务的思考基石',
+      assetGateButton: '创建我的专属档案库',
+      readyBanner: '✅ AI 私教已读取您的履历，随时待命',
       placeholderText: '请粘贴岗位描述（文本），或直接拖入 JD 截图',
       uploadCta: '上传 JD 截图',
       selectedFile: '已选择文件：',
@@ -112,7 +123,7 @@ const dict = {
       segmentedUpload: '上传截图',
       imageTooLarge: '图片过大，请上传不超过 1MB 的截图',
       imageCompressFailed: '图片压缩失败，请稍后重试',
-      jobTextTooLong: '文本长度超过 8000 字',
+      jobTextTooLong: '文本长度超过 5000 字',
       quickTipsLabel: '快捷引导',
       quickTips: [
         {
@@ -404,10 +415,31 @@ const dict = {
   profile: {
     title: '个人经历',
     tabs: { assets: '个人经历', billing: '账单/充值' },
+    assetProgress: {
+      title: 'AI 算力 / 语料完整度',
+      subtitle: '越完整，匹配与定制越精准',
+      lead: '构建专属职业档案，让 AI 成为你的高阶求职智囊',
+      level0: 'AI 待命',
+      level60: '核心功能解锁',
+      level100: '潜能全开',
+    },
+    profilePanel: {
+      title: 'Profile 画像',
+      emptyTitle: '画像待点亮',
+      emptyDesc: '注入通用简历后，将智能唤醒你的 AI 职场画像',
+      lockHint: '需先完成通用简历',
+      updateResume: '更新通用简历',
+      backToProfile: '返回画像',
+      tagsLabel: '核心标签',
+      focusLabel: '经验主线',
+      projectLabel: '高光项目',
+      summaryLabel: '优势概述',
+      cta: '🚀 资产已就绪，去匹配岗位',
+    },
     resume: {
       title: '通用简历',
-      description:
-        'AI 服务的核心基石与前置依赖。匹配度分析、简历定制、面试辅导等所有高级功能均基于此文件。',
+      description: '驱动所有高阶 AI 服务的底层语料库',
+      requiredBadge: '必填',
       defaultFileName: '个人通用简历',
       tips: {
         star: '建议使用 STAR 法则 (情境-任务-行动-结果) 量化每一段工作成果',
@@ -417,10 +449,11 @@ const dict = {
     },
     detailed: {
       title: '详细履历',
-      badge: '建议上传',
+      badge: '建议',
+      lockHint: '需先完成通用简历',
       defaultFileName: '个人详细履历',
       description:
-        '高阶服务的“加分项”。建议包含项目细节与量化成果，为 AI 提供充足养分，可显著提升定制化质量与深度。',
+        '补充项目细节与量化成果，为 AI 提供更丰富的语料，大幅提升简历定制与面试演练的专业度与深度',
       examples: {
         label: '优秀详历参考 (STAR法则)',
         roles: {
@@ -523,6 +556,11 @@ const dict = {
     uploader: {
       button: '上传',
       buttonProcessing: '正在上传...',
+      dropzoneResumeTitle: '上传通用简历',
+      dropzoneDetailedTitle: '上传详细履历',
+      dropzoneHintResume: '支持文本型 PDF，建议不超过 5000 字',
+      dropzoneHintDetailed: '支持文本型 PDF，建议不超过 10000 字',
+      requiredLabel: '必填',
       status: {
         pending: '解析中',
         completed: '已完成',
@@ -547,7 +585,7 @@ const dict = {
       reupload: '重新上传',
       chooseFile: '选择文件',
       noFileSelected: '未选择任何文件',
-      suggestionTextResume: '建议简历文本不超过约 8000 字，以提升解析稳定性',
+      suggestionTextResume: '建议简历文本不超过约 5000 字，以提升解析稳定性',
       suggestionTextDetailed:
         '建议详细履历文本不超过约 10000 字，以提升解析稳定性',
       processingMarquee: '大模型解析中',
@@ -562,7 +600,7 @@ const dict = {
         failed: '失败',
       },
       placeholderHintResume:
-        '目前支持文本型 PDF；建议不超过约 8000 字；扫描件/图片暂不支持',
+        '目前支持文本型 PDF；建议不超过约 5000 字；扫描件/图片暂不支持',
       placeholderHintDetailed:
         '目前支持文本型 PDF；建议不超过约 10000 字；扫描件/图片暂不支持',
       time: {
@@ -733,13 +771,14 @@ const dict = {
     coreValue: {
       tag: '求职新范式',
       title: '告别海投内耗，AI 教练助你打通求职最后一公里',
-      subtitle: '把通用简历/详细履历存入高光资产库，剩下的只需一键上传 JD，交由 AI 匹配优势、精准定制简历与面试策略',
+      subtitle:
+        '把通用简历/详细履历存入高光资产库，剩下的只需一键上传 JD，交由 AI 匹配优势、精准定制简历与面试策略',
       f1Title: '沉淀 (Data Vault)',
       f1Desc: '将散落的经历安全归档，构建结构化的个人高光资产库',
       f2Title: '碰撞 (Collision Engine)',
       f2Desc: 'AI 引擎将你的能力经验与目标岗位的要求进行多维度的深层匹配',
       f3Title: '赋能 (Targeted Output)',
-      f3Desc: '快速生成高度定制化的专业简历与针对性面试策略'
+      f3Desc: '快速生成高度定制化的专业简历与针对性面试策略',
     },
     bentoGrid: {
       resumeBuilder: {
@@ -754,17 +793,18 @@ const dict = {
           step2: '执行红蓝对抗校验...',
           result: '匹配精准度：98.5%',
           pass: 'PASS',
-        }
+        },
       },
       smartPitch: {
         title: '破冰话术',
         desc: '解决“已读不回”。突出干货价值，打造一秒勾住 HR 眼球的破冰神器',
         pitch: {
           weakMsg: '您好，我对贵司的这个岗位很感兴趣，期待回复...',
-          strongMsg: '基于 JD 要求的“0-1 亿级增长”，我曾主导过同类破局矩阵，实现 300% 营收跃升。有空聊聊具体打法吗？',
+          strongMsg:
+            '基于 JD 要求的“0-1 亿级增长”，我曾主导过同类破局矩阵，实现 300% 营收跃升。有空聊聊具体打法吗？',
           tag: 'Smart Pitch',
-          rejectStamp: '一秒划走'
-        }
+          rejectStamp: '一秒划走',
+        },
       },
       mockInterview: {
         title: '面试沙盘演练',
@@ -775,15 +815,15 @@ const dict = {
           strategy: 'AI 拆解的锦囊妙招',
           point1: 'STAR 法则',
           point2: '强调沉淀',
-          point3: '反转劣势'
-        }
+          point3: '反转劣势',
+        },
       },
     },
     hero: {
       title: '你的 AI 求职私教',
       subtitle:
-        '别再盲目海投了。用一对一专属服务的匹配分析与简历定制，精准拿下每一次面试机会',
-      cta: '免费诊断简历',
+        '上传通用简历与详细履历，AI 将沉淀你的核心画像\n 之后每次投递只需贴 JD，即可精准匹配与高效定制',
+      cta: '立即免费体验',
       optimizationInsights: '优化洞察',
       mocks: [
         {
@@ -911,7 +951,7 @@ const dict = {
     },
     cta: {
       title: '准备好斩获心仪的 Offer 了吗？',
-      subtitle: '新用户注册即赠 {count} 枚启动金币，零压力体验全流程 AI 辅助。',
+      subtitle: '新用户注册即赠 {count} 枚启动金币，零压力体验全流程 AI 辅助',
       button: '开启智能求职之旅',
     },
     footer: {

@@ -43,15 +43,36 @@ export const EN_TEMPLATES: PromptTemplateMap = {
     userPrompt: `Please **extract rather than paraphrase** and **output the complete structured result according to the JSON Schema**.
 
 **Complete Extraction Rules (IMPORTANT):**
-1. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, summary_points, specialties_points, experience, projects, education, skills, certifications, languages, awards, openSource, extras
+1. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, summary_points, specialties_points, experience, projects, education, skills, certifications, languages, awards, openSource, extras, parsed_profile_json
 2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
 3. Even if there is only one item, it must be correctly placed in the corresponding field
+4. You may think step-by-step internally, but output JSON only
 
 **Extraction Guidelines:**
 - **Responsibilities**: copy verbatim all sentences starting with "Responsible for", "Led", "As the sole owner", etc.
 - **Highlights**: retain quantifiable, impactful results (performance improvements, user metrics, etc.)
 - **Projects & Links**: preserve project name/link/brief description
 - **Bullet Preservation**: for summary/specialties, output bullet points by copying the original lines
+
+**Profile Field (parsed_profile_json) Extraction Instruction:**
+You are a seasoned Silicon Valley recruiter and executive coach. Read the resume and extract a highly structured, punchy "Highlight Persona Profile".
+【Chain of Thought】
+1. Scan broadly: compute total years of experience and identify the most central domains and tech stack.
+2. Find the Aha Moment: pick the most quantified, business-impactful project and condense its impact.
+3. Extract core strengths: avoid clichés; summarize 3 traits with evidence from the resume.
+4. Define the persona: craft a high-signal persona label based on the evidence.
+【Output Requirements】
+* Output JSON only and strictly follow the schema
+* Tone: concise, professional, punchy, fact-based
+* core_impact must include a number or a clear outcome boundary
+【Schema Fields】
+- career_persona
+- experience_focus
+- years_of_experience (number)
+- domain_expertise (3-5 tags)
+- hard_skills (5-8 tags)
+- signature_project: { project_name, core_impact }
+- core_strengths: 3 items of { trait, evidence }
 
 Raw Resume Text:
 """

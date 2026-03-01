@@ -73,7 +73,7 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
 
       {/* 2.5 CTA 转化区 (The Push) - 高潮前的宏大留白与停顿 */}
       <div className="mt-32 md:mt-48 lg:mt-56 pb-24 md:pb-32 lg:pb-40">
-        <CtaSection dict={dict} />
+        <CtaSection dict={dict} locale={locale} />
       </div>
 
       {/* 2.6 页脚 (Footer Legitimacy) */}

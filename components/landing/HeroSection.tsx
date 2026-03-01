@@ -187,6 +187,10 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
 
   const currentMock = mockDataList[mockIdx]
 
+  const signInHref = `/${locale}/auth/sign-in?redirect=${encodeURIComponent(
+    `/${locale}/workbench`,
+  )}`
+
   return (
     // Breakout Layout: w-screen absolute trick to break out of container.
     // RESPONSIVE/ABOVE-THE-FOLD: using calc to subtract header height (approx 4rem), with a sane max fallback.
@@ -223,7 +227,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-          className="text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed px-4 text-balance font-medium tracking-tight drop-shadow-sm"
+          className="text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed px-4 text-balance font-medium tracking-tight drop-shadow-sm whitespace-pre-line"
         >
           {dict.subtitle}
         </motion.p>
@@ -238,7 +242,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
           {/* Diffuse glow shadow */}
           <div aria-hidden="true" className="absolute -inset-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-blue-500/0 rounded-full blur-lg opacity-30 group-hover:opacity-60 transition duration-500" />
 
-          <Link href={`/${locale}/workbench`} className={cn(
+          <Link href={signInHref} className={cn(
             "relative inline-flex items-center justify-center px-8 py-3.5 sm:px-10 sm:py-4 text-sm sm:text-base font-bold",
             "rounded-full transition-all duration-300 ease-out overflow-hidden z-10",
             "bg-gradient-to-b from-slate-800 to-slate-900 dark:from-white/10 dark:to-white/5 backdrop-blur-md",

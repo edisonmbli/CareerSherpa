@@ -12,12 +12,11 @@ import {
 } from '@/components/app/AppCard'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { createServiceAction } from '@/lib/actions/service.actions'
 import { StepperProgress } from '@/components/workbench/StepperProgress'
 import { UnifiedJDBox } from '@/components/workbench/UnifiedJDBox'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
-import { Coins } from 'lucide-react'
+import { Archive, Coins } from 'lucide-react'
 import {
   getTaskCost,
   JOB_IMAGE_MAX_BYTES,
@@ -34,7 +33,7 @@ export function NewServiceForm({
   tabsDict,
   statusDict, // New prop for error mapping
   notificationDict,
-  hasResume,
+  isAssetReady,
   quotaBalance,
 }: {
   locale: Locale
@@ -42,7 +41,7 @@ export function NewServiceForm({
   tabsDict: any
   statusDict?: any
   notificationDict?: any
-  hasResume: boolean
+  isAssetReady: boolean
   quotaBalance: number
 }) {
   const router = useRouter()
@@ -234,7 +233,7 @@ export function NewServiceForm({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!hasResume) {
+    if (!isAssetReady) {
       showError(dict.prerequisiteError, '')
       return
     }
@@ -251,24 +250,6 @@ export function NewServiceForm({
     }
   }, [])
 
-  if (!hasResume) {
-    return (
-      <AppCard>
-        <AppCardContent>
-          <Alert>
-            <AlertTitle>{dict.prerequisite.title}</AlertTitle>
-            <AlertDescription>{dict.prerequisite.description}</AlertDescription>
-          </Alert>
-        </AppCardContent>
-        <AppCardFooter>
-          <Button onClick={() => router.push(`/${locale}/profile`)}>
-            {dict.prerequisite.button}
-          </Button>
-        </AppCardFooter>
-      </AppCard>
-    )
-  }
-
   const isBusy = isPending || isSubmitting
   const pendingTitle =
     statusDict?.MATCH_PENDING ||
@@ -278,12 +259,63 @@ export function NewServiceForm({
   const pendingDescription =
     dict.pendingDescription || '已提交请求，正在排队分配计算资源。'
 
+  if (!isAssetReady) {
+    return (
+      <div className="min-h-[calc(100vh-16rem)] flex flex-col items-center justify-center text-center px-6">
+        <div className="flex flex-col items-center justify-center">
+          <div className="mb-6 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm mx-auto transition-colors">
+            <Archive
+              className="h-8 w-8 md:h-10 md:w-10 text-slate-700 dark:text-slate-300"
+              strokeWidth={2}
+            />
+          </div>
+          <div className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-white mb-3 text-center text-balance">
+            {dict.assetGateTitle}
+          </div>
+          <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed md:leading-loose text-center text-pretty">
+            {dict.assetGateDescriptionLine1}
+            <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+              {dict.assetGateHighlight1}
+            </span>
+            {dict.assetGateDelimiter1}
+            <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+              {dict.assetGateHighlight2}
+            </span>
+            {dict.assetGateDelimiter2}
+            <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+              {dict.assetGateHighlight3}
+            </span>
+            {dict.assetGateDescriptionLine2 ? (
+              <>
+                <br className="hidden md:block" />
+                {dict.assetGateDescriptionLine2}
+              </>
+            ) : null}
+          </p>
+          <Button
+            size="lg"
+            className="mt-8 px-8 py-3 rounded-full font-medium transition-all active:scale-95 bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/10 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 dark:shadow-white/10"
+            onClick={() => router.push(`/${locale}/profile?tab=assets`)}
+          >
+            {dict.assetGateButton}
+          </Button>
+          <p className="mt-3 text-sm text-slate-400 dark:text-slate-400">
+            {dict.assetGateMicrocopy}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
+      <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-400/[0.08] px-4 py-3 text-sm text-emerald-900 dark:text-emerald-200">
+        {dict.readyBanner}
+      </div>
       <StepperProgress
         currentStep={0 as any}
         maxUnlockedStep={0 as any}
-        onStepClick={() => { }}
+        onStepClick={() => {}}
         labels={{
           step1: String(tabsDict?.match || 'Step 1'),
           step2: String(tabsDict?.customize || 'Step 2'),
@@ -303,7 +335,7 @@ export function NewServiceForm({
         </AppCard>
       ) : (
         <form onSubmit={onSubmit} className="space-y-6">
-          <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl">
+          <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden">
             <AppCardHeader>
               <AppCardTitle>{dict.title}</AppCardTitle>
               <AppCardDescription>{dict.description}</AppCardDescription>
@@ -353,7 +385,6 @@ export function NewServiceForm({
           </AppCard>
         </form>
       )}
-      {/* Free Tier Confirmation Dialog */}
       {GuardDialog}
     </>
   )

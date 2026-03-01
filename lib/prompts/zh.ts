@@ -42,15 +42,36 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
     userPrompt: `请"提取而非改写"以下简历原文，**严格按照 JSON Schema 输出完整的结构化结果**。
 
 **完整提取规则（重要）：**
-1. 必须填充 JSON Schema 中的**所有字段**，包括：header、summary、summary_points、specialties_points、experience、projects、education、skills、certifications、languages、awards、openSource、extras
+1. 必须填充 JSON Schema 中的**所有字段**，包括：header、summary、summary_points、specialties_points、experience、projects、education、skills、certifications、languages、awards、openSource、extras、parsed_profile_json
 2. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
 3. 即使只有一项内容，也必须正确填入对应字段
+4. 你可以在内部逐步思考，但只输出 JSON 结果
 
 **提取指引：**
 – **职责（responsibilities）**：原样提取所有以"负责/主导/作为唯一负责人"等开头的职责句
 – **成果亮点（highlights）**：提取可量化的、有影响力的结果（如提效、同比提升、用户指标等）
 – **项目与链接**：保留项目名/链接/简短描述
 – **要点还原**：职业摘要与专业特长采用"要点列表"逐条复制原文，不做二次改写
+
+**画像字段（parsed_profile_json）提炼指令：**
+你是一位资深的硅谷猎头与顶级高管教练。你的任务是阅读用户的原始简历，并提取出一份高度结构化、具有极强传播力和专业质感的「个人高光画像」。
+【思考过程】
+1. 先宏观扫描：计算用户的总工作年限，提炼其最核心的行业领域和技术栈。
+2. 寻找 Aha Moment：在所有项目经历中，找出那个最具量化成果、最具商业价值的高光项目，并浓缩其影响力。
+3. 提炼核心优势：不要用套话，基于用户真实经历，总结 3 个具有佐证的专业特质。
+4. 赋予职场人设：基于以上所有信息，给用户定义一个极具专业感和能量感的人设标签。
+【输出要求】
+* 必须严格输出指定的 JSON 格式，且只输出 JSON 结果
+* 语言风格：干练、专业、有力量感（Punchy），拒绝职场套话，必须基于事实
+* core_impact 必须包含具体数字或明确成果边界
+【字段结构】
+- career_persona：职场人设标签（如“0-1 破局者”）
+- experience_focus：一句话概括“X 年 Y 领域经验”
+- years_of_experience：纯数字
+- domain_expertise：3-5 个行业/业务领域标签
+- hard_skills：5-8 个核心硬技能/工具栈
+- signature_project：{ project_name, core_impact }
+- core_strengths：3 个优势项，每项包含 { trait, evidence }
 
 简历原文:
 """

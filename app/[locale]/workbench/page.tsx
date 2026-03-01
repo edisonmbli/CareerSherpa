@@ -20,11 +20,15 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function WorkbenchPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
   const user = await stackServerApp.getUser()
-  const hasResume = user?.id
-    ? Boolean(
-      await db.resume.findFirst({ where: { userId: user.id, status: 'COMPLETED' } })
-    )
-    : false
+  const latestResume = user?.id
+    ? await db.resume.findFirst({
+      where: { userId: user.id },
+      select: { status: true, resumeSummaryJson: true },
+    })
+    : null
+  const isAssetReady = Boolean(
+    latestResume?.status === 'COMPLETED' && latestResume?.resumeSummaryJson,
+  )
 
   // Fetch quota balance for UX guard
   let quotaBalance = 0
@@ -43,7 +47,7 @@ export default async function WorkbenchPage({ params }: { params: Promise<{ loca
         tabsDict={w.tabs}
         statusDict={w.statusText}
         notificationDict={w.notification}
-        hasResume={hasResume}
+        isAssetReady={isAssetReady}
         quotaBalance={quotaBalance}
       />
     </div>

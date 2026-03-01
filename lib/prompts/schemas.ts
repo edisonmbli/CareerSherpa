@@ -200,6 +200,42 @@ const RESUME_SUMMARY_SCHEMA: JsonSchema = {
     summary_points: { type: 'array', items: { type: 'string' } },
     specialties_points: { type: 'array', items: { type: 'string' } },
     extras: { type: 'array', items: { type: 'string' } },
+    parsed_profile_json: {
+      type: 'object',
+      properties: {
+        career_persona: { type: 'string' },
+        experience_focus: { type: 'string' },
+        years_of_experience: { type: 'number' },
+        domain_expertise: { type: 'array', items: { type: 'string' } },
+        hard_skills: { type: 'array', items: { type: 'string' } },
+        signature_project: {
+          type: 'object',
+          properties: {
+            project_name: { type: 'string' },
+            core_impact: { type: 'string' },
+          },
+        },
+        core_strengths: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              trait: { type: 'string' },
+              evidence: { type: 'string' },
+            },
+          },
+        },
+      },
+      required: [
+        'career_persona',
+        'experience_focus',
+        'years_of_experience',
+        'domain_expertise',
+        'hard_skills',
+        'signature_project',
+        'core_strengths',
+      ],
+    },
   },
 }
 
@@ -686,7 +722,8 @@ export const SCHEMAS = {
             },
             listen_for: {
               type: 'string',
-              description: 'What to pay attention to in the interviewer\'s answer',
+              description:
+                "What to pay attention to in the interviewer's answer",
             },
           },
           required: ['question', 'ask_intent', 'listen_for'],
@@ -700,7 +737,8 @@ export const SCHEMAS = {
           properties: {
             topic: {
               type: 'string',
-              description: 'Topic to brush up on (e.g., "Douyin API ecosystem")',
+              description:
+                'Topic to brush up on (e.g., "Douyin API ecosystem")',
             },
             key_points: {
               type: 'array',

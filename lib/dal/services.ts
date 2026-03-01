@@ -310,10 +310,15 @@ export async function setResumeSummaryJson(
   resumeId: string,
   json: any,
   status: AsyncTaskStatus,
+  parsedProfileJson?: any,
 ) {
+  const data: any = { resumeSummaryJson: json, status }
+  if (typeof parsedProfileJson !== 'undefined') {
+    data.parsedProfileJson = parsedProfileJson
+  }
   return prisma.resume.update({
     where: { id: resumeId },
-    data: { resumeSummaryJson: json, status },
+    data,
   })
 }
 
