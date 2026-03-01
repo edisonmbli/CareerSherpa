@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   AssetUploader,
@@ -84,25 +84,7 @@ export function ResumePanelClient({
     hasGeneral && normalizedProfile ? 'profile' : 'dual',
   )
 
-  useEffect(() => {
-    if (!resumeCompleted || !clientProfile) {
-      setMode('dual')
-      return
-    }
-    setMode((prev) => (prev === 'dual' ? 'profile' : prev))
-  }, [resumeCompleted, clientProfile])
-
-  useEffect(() => {
-    setResumeCompleted(hasGeneral)
-  }, [hasGeneral])
-
-  useEffect(() => {
-    setClientProfile(normalizedProfile)
-  }, [normalizedProfile])
-
-  const profileData = clientProfile
-
-  const normalizeProfile = (data: any): ParsedProfile | null => {
+  const normalizeProfile = useCallback((data: any): ParsedProfile | null => {
     if (!data || typeof data !== 'object') return null
     return {
       career_persona: String(data?.career_persona || ''),
@@ -125,7 +107,32 @@ export function ResumePanelClient({
         ? data.core_strengths
         : [],
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!resumeCompleted || !clientProfile) {
+      setMode('dual')
+      return
+    }
+    setMode((prev) => (prev === 'dual' ? 'profile' : prev))
+  }, [resumeCompleted, clientProfile])
+
+  useEffect(() => {
+    setResumeCompleted(hasGeneral)
+  }, [hasGeneral])
+
+  useEffect(() => {
+    setClientProfile(normalizedProfile)
+  }, [normalizedProfile])
+
+  useEffect(() => {
+    if (!normalizedProfile && resumeSummaryJson?.parsed_profile_json) {
+      const normalized = normalizeProfile(resumeSummaryJson.parsed_profile_json)
+      if (normalized) setClientProfile(normalized)
+    }
+  }, [normalizedProfile, resumeSummaryJson, normalizeProfile])
+
+  const profileData = clientProfile
 
   const renderImpact = (text: string) => {
     const parts = text.split(/(\d[\d.,%+]*)/g)
@@ -143,16 +150,19 @@ export function ResumePanelClient({
     )
   }
 
-  const handleSummaryJson = (json: any) => {
-    if (!json) return
-    setResumeCompleted(true)
-    const parsed = json?.parsed_profile_json
-    const normalized = normalizeProfile(parsed)
-    if (normalized) {
-      setClientProfile(normalized)
-      setMode('profile')
-    }
-  }
+  const handleSummaryJson = useCallback(
+    (json: any) => {
+      if (!json) return
+      setResumeCompleted(true)
+      const parsed = json?.parsed_profile_json
+      const normalized = normalizeProfile(parsed)
+      if (normalized) {
+        setClientProfile(normalized)
+        setMode('profile')
+      }
+    },
+    [normalizeProfile],
+  )
 
   const uploaderNode = useMemo(
     () => (
@@ -201,12 +211,12 @@ export function ResumePanelClient({
     <div
       className={cn(
         'h-full flex flex-col bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-xl p-6 relative overflow-hidden transition-all duration-500',
-        hasGeneral
+        resumeCompleted
           ? 'bg-white ring-1 ring-slate-200 shadow-sm dark:bg-[#121212] dark:ring-white/10'
           : '',
       )}
     >
-      {!hasGeneral && (
+      {!resumeCompleted && (
         <>
           <div className="opacity-40 blur-[2px] pointer-events-none select-none">
             <div className="space-y-5">
@@ -234,7 +244,7 @@ export function ResumePanelClient({
           </div>
         </>
       )}
-      <div className={cn(!hasGeneral && 'hidden')}>
+      <div className={cn(!resumeCompleted && 'hidden')}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center justify-center w-7 h-7 shrink-0 rounded-lg bg-slate-100 dark:bg-white/[0.06]">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -341,7 +351,7 @@ export function ResumePanelClient({
               </div>
             )}
 
-            {hasGeneral && (
+            {resumeCompleted && (
               <Button asChild className="w-full">
                 <Link href={workbenchHref}>{profilePanel.cta}</Link>
               </Button>

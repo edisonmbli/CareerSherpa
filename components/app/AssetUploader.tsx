@@ -4,6 +4,7 @@ import {
   useTransition,
   useRef,
   useEffect,
+  useCallback,
   forwardRef,
   useImperativeHandle,
 } from 'react'
@@ -480,7 +481,7 @@ export const AssetUploader = forwardRef<
     fileInputRef.current?.click()
   }
 
-  const ensurePreviewData = async () => {
+  const ensurePreviewData = useCallback(async () => {
     if (summaryJson) return
     setLoadingPreview(true)
     try {
@@ -497,7 +498,7 @@ export const AssetUploader = forwardRef<
     } finally {
       setLoadingPreview(false)
     }
-  }
+  }, [initialSummaryJson, summaryJson, taskTemplateId])
 
   useImperativeHandle(
     ref,

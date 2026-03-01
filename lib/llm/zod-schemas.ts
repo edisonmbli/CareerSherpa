@@ -62,6 +62,27 @@ const openSourceItemSchema = z.object({
   link: z.string().optional(),
   highlights: z.array(z.string()).optional(),
 })
+const parsedProfileSchema = z.object({
+  career_persona: z.string().optional(),
+  experience_focus: z.string().optional(),
+  years_of_experience: z.number().optional(),
+  domain_expertise: z.array(z.string()).optional(),
+  hard_skills: z.array(z.string()).optional(),
+  signature_project: z
+    .object({
+      project_name: z.string().optional(),
+      core_impact: z.string().optional(),
+    })
+    .optional(),
+  core_strengths: z
+    .array(
+      z.object({
+        trait: z.string().optional(),
+        evidence: z.string().optional(),
+      }),
+    )
+    .optional(),
+})
 const resumeSummarySchema = z
   .object({
     header: headerSchema.optional(),
@@ -77,6 +98,7 @@ const resumeSummarySchema = z
     awards: z.array(awardItemSchema).optional(),
     openSource: z.array(openSourceItemSchema).optional(),
     extras: z.array(z.string()).optional(),
+    parsed_profile_json: parsedProfileSchema.optional(),
   })
   .refine(
     (d) =>

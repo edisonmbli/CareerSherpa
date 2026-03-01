@@ -35,7 +35,6 @@ import { ProfileTabs } from '@/components/profile/ProfileTabs'
 import { ResumePanelClient } from '@/components/profile/ResumePanelClient'
 import { AssetProgressClient } from '@/components/profile/AssetProgressClient'
 import { cn } from '@/lib/utils'
-import { Progress } from '@/components/ui/progress'
 
 type ParsedProfile = {
   career_persona: string
@@ -90,7 +89,10 @@ export default async function ProfilePage({
   const hasGeneral = latestResume?.status === 'COMPLETED'
   const hasDetailed = latestDetailed?.status === 'COMPLETED'
   const assetProgress = hasGeneral ? (hasDetailed ? 100 : 60) : 0
-  const parsedProfile = (latestResume as any)?.parsedProfileJson || null
+  const parsedProfile =
+    (latestResume as any)?.parsedProfileJson ||
+    (latestResume as any)?.resumeSummaryJson?.parsed_profile_json ||
+    null
   const normalizedProfile: ParsedProfile | null = parsedProfile
     ? {
         career_persona: String(parsedProfile?.career_persona || ''),
