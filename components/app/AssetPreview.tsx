@@ -46,15 +46,12 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
     return (
         <div
-            className="space-y-4 text-xs text-slate-700 dark:text-slate-300 pb-6 px-4 sm:px-6 md:px-10 leading-relaxed font-sans relative overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-stone-50 dark:bg-white/[0.02] backdrop-blur-2xl"
-            style={{
-                backgroundImage: 'url("/noise.svg")',
-            }}
+            className="prose prose-sm md:prose-base prose-slate dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-indigo-600 prose-li:marker:text-slate-400 space-y-4 text-xs pb-6 px-4 sm:px-6 md:px-8 leading-relaxed font-sans relative overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 shadow-sm bg-white dark:bg-[#121212]"
         >
             {/* Header Info */}
             {d.header && (
-                <div className="text-center mb-5 pt-4">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mb-3 font-[family-name:var(--font-playfair),serif]">
+                <div className="text-center mb-4 pt-4">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mb-2 mt-0 font-[family-name:var(--font-playfair),serif]">
                         {d.header.name}
                     </h1>
                     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-[family-name:var(--font-jetbrains-mono),monospace] uppercase tracking-wide">
@@ -93,12 +90,28 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
             {/* Specialties */}
             {Array.isArray(d.specialties_points) && d.specialties_points.length > 0 ? (
                 <Section title={L.specialties}>
-                    <div className="flex flex-wrap gap-2">
-                        {d.specialties_points.map((s: string, i: number) => (
-                            <span key={i} className="list-disc px-2.5 py-1 bg-emerald-100/20 dark:bg-emerald-400/[0.05] text-gray-600 dark:text-emerald-300 rounded-sm font-[family-name:var(--font-jetbrains-mono),monospace] border border-emerald-100/50 dark:border-emerald-500/20 marker:text-slate-300">
-                                {s}
-                            </span>
-                        ))}
+                    <div className="space-y-4 mt-2">
+                        {d.specialties_points.map((s: string, i: number) => {
+                            const splitMatch = s.match(/^([^:：]+)[:：]\s*(.+)$/)
+                            let title = ''
+                            let desc = s
+                            if (splitMatch && splitMatch[1] && splitMatch[2]) {
+                                title = splitMatch[1]
+                                desc = splitMatch[2]
+                            } else {
+                                const parts = s.split(' ')
+                                if (parts.length > 1 && parts[0] && parts[0].length <= 15) {
+                                    title = parts[0]
+                                    desc = parts.slice(1).join(' ')
+                                }
+                            }
+                            return (
+                                <div key={i} className="pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                                    {title && <span className="text-slate-900 dark:text-white font-semibold text-sm block mb-1">{title}</span>}
+                                    <span className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed block">{desc}</span>
+                                </div>
+                            )
+                        })}
                     </div>
                 </Section>
             ) : null}
@@ -138,9 +151,9 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
                                 {/* Header: Company & Date line */}
                                 <div className="flex justify-between items-baseline mb-1">
-                                    <div className="font-bold text-slate-900 dark:text-slate-100 text-[1.05em]">
+                                    <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                                         {e.company}
-                                        {e.product_or_team && <span className="font-normal text-slate-500 dark:text-slate-400 ml-2 text-sm italic serif"> {e.product_or_team}</span>}
+                                        {e.product_or_team && <span className="font-normal text-slate-500 dark:text-slate-400 ml-2 text-xs italic serif"> {e.product_or_team}</span>}
                                     </div>
                                     <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-bold text-slate-500 dark:text-slate-400 text-[10px] tabular-nums whitespace-nowrap bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded">
                                         {e.duration}
@@ -163,7 +176,7 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                                     </div>
                                 )}
 
-                                <div className="space-y-3 text-gray-600 dark:text-slate-300">
+                                <div className="space-y-3 text-gray-600 dark:text-slate-300 text-xs">
                                     {/* Highlights */}
                                     {Array.isArray(e.highlights) && e.highlights.length > 0 && (
                                         <ul className="list-disc pl-5 space-y-1 marker:text-gray-300 dark:marker:text-slate-600">
@@ -323,17 +336,17 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
                 <Section title={L.education}>
                     <ul className="space-y-6">
                         {d.education.map((e: any, i: number) => (
-                            <li key={i} className="text-slate-600 group relative border-l border-slate-200 dark:border-slate-800 pl-5 ml-1.5 pb-2">
+                            <li key={i} className="text-slate-600 dark:text-slate-300 group relative border-l border-slate-200 dark:border-slate-800 pl-5 ml-1.5 pb-2">
                                 {/* Timeline Dot */}
-                                <div className="absolute top-1.5 -left-[5px] w-2.5 h-2.5 rounded-full border-2 border-slate-200 bg-white dark:border-white/20 dark:bg-transparent" />
+                                <div className="absolute top-1.5 -left-[5px] w-2.5 h-2.5 rounded-full border-2 border-slate-200 bg-white dark:border-white/20 dark:bg-[#121212]" />
 
-                                <div className="flex justify-between font-bold text-slate-900 text-sm mb-0.5">
+                                <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100 text-sm mb-0.5">
                                     <span>{e.school}</span>
-                                    <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-normal text-slate-500 tabular-nums text-[10px] bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded">{e.duration}</span>
+                                    <span className="font-[family-name:var(--font-jetbrains-mono),monospace] font-normal text-slate-500 dark:text-slate-300 tabular-nums text-[10px] bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-white/5">{e.duration}</span>
                                 </div>
-                                <div className="text-sm mb-1 font-medium text-slate-700">{e.degree} {e.major && <span className="text-slate-500 font-normal">· {e.major}</span>}</div>
-                                {e.gpa && <div className="text-xs text-slate-400 font-[family-name:var(--font-jetbrains-mono),monospace]">GPA: {e.gpa}</div>}
-                                {Array.isArray(e.courses) && <div className="text-xs mt-2 text-slate-500 leading-relaxed"><span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">{L.courses}:</span> {e.courses.join(', ')}</div>}
+                                <div className="text-sm mb-1 font-medium text-slate-700 dark:text-slate-300">{e.degree} {e.major && <span className="text-slate-500 dark:text-slate-400 font-normal">· {e.major}</span>}</div>
+                                {e.gpa && <div className="text-xs text-slate-400 dark:text-slate-500 font-[family-name:var(--font-jetbrains-mono),monospace]">GPA: {e.gpa}</div>}
+                                {Array.isArray(e.courses) && <div className="text-xs mt-2 text-slate-500 dark:text-slate-400 leading-relaxed"><span className="font-bold text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-wider">{L.courses}:</span> {e.courses.join(', ')}</div>}
                             </li>
                         ))}
                     </ul>
@@ -361,17 +374,12 @@ export function AssetPreview({ data: rawData, locale, labels: L }: AssetPreviewP
 
 function Section({ title, children }: { title: string, children: React.ReactNode }) {
     return (
-        <div className="mb-10 break-inside-avoid relative">
-            {/* Header: Half-Highlight V6 Style */}
-            <div className="mb-6 relative pl-2">
-                <div className="relative inline-block ml-0">
-                    {/* Highlight Block */}
-                    <div className="absolute bottom-2 -left-2 w-full min-w-[60px] h-3 bg-slate-200/60 dark:bg-white/[0.06] -z-10" />
-                    {/* Title Text */}
-                    <h3 className="font-[family-name:var(--font-playfair),serif] font-bold text-lg text-slate-900 dark:text-slate-100 tracking-tight relative z-10">
-                        {title}
-                    </h3>
-                </div>
+        <div className="mb-10 break-inside-avoid relative mt-6 first:mt-0">
+            {/* Header: V5 Minimalist Typography */}
+            <div className="mb-4 pb-2 border-b border-slate-100 dark:border-white/10">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 tracking-tight">
+                    {title}
+                </h3>
             </div>
 
             <div className="pl-1">

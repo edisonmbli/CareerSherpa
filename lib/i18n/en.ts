@@ -723,7 +723,7 @@ const dict = {
       common: { cancel: 'Close' },
     },
     previewLabels: {
-      previewTitle: 'Resume Preview',
+      previewTitle: 'Asset Details',
       header: 'Header',
       summary: 'Summary',
       summaryPoints: 'Summary Points',

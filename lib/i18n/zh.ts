@@ -630,7 +630,7 @@ const dict = {
       },
     },
     previewLabels: {
-      previewTitle: '简历结构化预览',
+      previewTitle: '档案详情',
       header: '个人信息',
       summary: '摘要',
       summaryPoints: '摘要要点',

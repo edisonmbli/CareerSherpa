@@ -16,11 +16,11 @@ import { toast } from '@/components/ui/use-toast'
 import { useTaskPolling } from '@/lib/hooks/useTaskPolling'
 import { uploadAssetFormDataAction } from '@/lib/actions/asset.actions'
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   getLatestResumeSummaryAction,
   getLatestDetailedSummaryAction,
@@ -631,11 +631,11 @@ export const AssetUploader = forwardRef<
               </div>
             )}
           </div>
-          <Sheet open={showPreview} onOpenChange={setShowPreview}>
-            <SheetContent className="sm:max-w-2xl w-full">
-              <SheetHeader className="flex flex-row items-center justify-between p-4 pr-12 space-y-0">
-                <SheetTitle>{L.previewTitle}</SheetTitle>
-                <div className="flex gap-2">
+          <Dialog open={showPreview} onOpenChange={setShowPreview}>
+            <DialogContent className="sm:max-w-3xl w-[95vw] bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-0 flex flex-col gap-0 overflow-hidden max-h-[85vh]">
+              <DialogHeader className="flex flex-row items-center justify-between px-4 sm:px-6 py-4 pb-3 space-y-0 shrink-0">
+                <DialogTitle>{L.previewTitle}</DialogTitle>
+                <div className="flex gap-2 mr-8">
                   <div className="flex flex-col items-end relative">
                     <Button
                       type="button"
@@ -814,8 +814,8 @@ export const AssetUploader = forwardRef<
                     )}
                   </div>
                 </div>
-              </SheetHeader>
-              <div className="flex-1 overflow-y-auto p-4">
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-0 pb-6 custom-scrollbar">
                 {loadingPreview ? (
                   <div className="space-y-4 p-4">
                     <div className="h-8 w-48 bg-muted animate-pulse rounded" />
@@ -824,8 +824,8 @@ export const AssetUploader = forwardRef<
                 ) : null}
                 <AssetPreview data={summaryJson} locale={locale} labels={L} />
               </div>
-            </SheetContent>
-          </Sheet>
+            </DialogContent>
+          </Dialog>
         </div>
       )
     }
