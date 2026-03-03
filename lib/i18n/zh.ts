@@ -484,90 +484,28 @@ const dict = {
         },
         items: {
           product: [
-            {
-              label: 'Situation',
-              content:
-                '“阅读App”需提升付费转化率，目标是季度内付费人数增长20%。',
-            },
-            {
-              label: 'Challenge',
-              content:
-                '通用打折策略遇到瓶颈，且会伤害利润率。用户对价格不敏感，流失点难以捕捉。',
-            },
-            {
-              label: 'Action',
-              content:
-                '通过数据挖掘发现“阅读时长”与付费强相关。创新设计“预读时长抵扣”机制，让时间即金钱。',
-            },
-            {
-              label: 'Result',
-              content:
-                '上线2个月，付费转化率提升35%（超目标），且新人首单时间缩短40%。',
-            },
+            { label: 'Situation', content: '核心阅读业务需提升付费转化率，目标为季度内新增付费用户数增长 20%。' },
+            { label: 'Challenge', content: '传统打折策略遭遇瓶颈且侵蚀利润。用户对价格不敏感，流失节点难以精准捕捉。' },
+            { label: 'Action', content: '通过数据挖掘确立“阅读时长”与“付费意愿”的强相关性。创新设计“阅读时长抵扣金”机制，提升用户沉没成本与转化动力。' },
+            { label: 'Result', content: '上线 2 个月后，付费转化率大幅提升 35%（超额完成目标），新人首单转化时间缩短 40%。' },
           ],
           ops: [
-            {
-              label: 'Situation',
-              content:
-                '负责提升500+个社群的活跃度，当前DAU仅为5%，用户粘性较低。',
-            },
-            {
-              label: 'Challenge',
-              content:
-                '用户对官方单向广播已经麻木，内容同质化严重，群内互动几乎为零。',
-            },
-            {
-              label: 'Action',
-              content:
-                '去中心化运营。招募KOL为“话题主理人”，引入“社群积分”激励UGC内容生产。',
-            },
-            {
-              label: 'Result',
-              content:
-                'DAU翻倍至11%，日均UGC产出激增300%，核心用户留存率达90%。',
-            },
+            { label: 'Situation', content: '负责盘活 500+ 个沉寂社群，接手时 DAU 仅为 5%，用户粘性极低。' },
+            { label: 'Challenge', content: '用户对官方单向广播产生免疫，群内内容高度同质化，自发互动几乎为零。' },
+            { label: 'Action', content: '推行去中心化运营策略。招募 KOC 担任“话题主理人”，并引入“社群贡献积分”体系激励 UGC 内容生产。' },
+            { label: 'Result', content: '社群 DAU 翻倍至 11%，日均 UGC 产出激增 300%，核心活跃用户次月留存率稳定在 90%+。' },
           ],
           tech: [
-            {
-              label: 'Situation',
-              content: '负责电商大促期间的支付系统稳定性保障。',
-            },
-            {
-              label: 'Challenge',
-              content:
-                '高峰期支付超时率达2%，原有单体数据库不仅读写瓶颈，还无法水平扩展。',
-            },
-            {
-              label: 'Action',
-              content:
-                '实施冷热数据分离，引入MQ削峰填谷，并基于“事件溯源”重构核心交易链路。',
-            },
-            {
-              label: 'Result',
-              content:
-                'QPS承载能力提升5倍，大促期间零故障，订单失败率降至0.01%以下。',
-            },
+            { label: 'Situation', content: '主导电商大促（双十一）期间核心支付系统的稳定性保障与架构升级。' },
+            { label: 'Challenge', content: '日常高峰期支付超时率已达 2%，原有单体数据库面临严重读写瓶颈，且无法进行水平扩展。' },
+            { label: 'Action', content: '实施冷热数据分离，引入 RocketMQ 削峰填谷，并基于“事件溯源(Event Sourcing)”彻底重构核心交易链路。' },
+            { label: 'Result', content: '系统 QPS 承载能力飙升 5 倍。大促期间实现零 P0 级故障，订单支付失败率断崖式降至 0.01% 以下。' },
           ],
           design: [
-            {
-              label: 'Situation',
-              content: '优化B端后台管理系统的移动端审批流程。',
-            },
-            {
-              label: 'Challenge',
-              content:
-                '直接移植PC版复杂表格到手机端，导致误操作率高，审批效率极低。',
-            },
-            {
-              label: 'Action',
-              content:
-                '摒弃表格视图。基于场景重构为“信息卡片”与“操作卡片”分离的视图设计。',
-            },
-            {
-              label: 'Result',
-              content:
-                '移动端审批平均耗时缩短50%，误操作反馈归零，用户满意度提升至4.8分。',
-            },
+            { label: 'Situation', content: '主导 B 端后台管理系统移动端审批链路的体验重构。' },
+            { label: 'Challenge', content: '旧版直接将 PC 端复杂表格暴力移植至手机端，导致字段溢出、误操作率极高，严重拖慢业务审批流转。' },
+            { label: 'Action', content: '摒弃传统表格视图。基于移动端碎片化场景，重构为“信息摘要卡片”与“悬浮操作底座”相分离的全新交互范式。' },
+            { label: 'Result', content: '移动端单次审批平均耗时缩短 50%，界面误操作反馈彻底归零，内部用户满意度跃升至 4.8/5.0。' },
           ],
         },
       },

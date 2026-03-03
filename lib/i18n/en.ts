@@ -491,100 +491,37 @@ const dict = {
         text: 'Feed more granular data to unlock maximum precision.',
       },
       examples: {
-        label: 'STAR Method Examples',
+        label: 'Gold-Standard Examples (STAR Method)',
         roles: {
-          product: 'Product Mgr',
-          ops: 'User Ops',
-          tech: 'Backend Dev',
+          product: 'Product Manager',
+          ops: 'User Operations',
+          tech: 'Backend Eng.',
           design: 'UI/UX Design',
         },
         items: {
           product: [
-            {
-              label: 'Situation',
-              content:
-                'Tried to boost paid conversion for a Reading App. Goal: +20% paid users in Q3.',
-            },
-            {
-              label: 'Challenge',
-              content:
-                'Discount strategies hit a ceiling and hurt margins. Users were price-insensitive.',
-            },
-            {
-              label: 'Action',
-              content:
-                'Discovered correlation between reading time and payment. Created "Time-for-Credit" feature.',
-            },
-            {
-              label: 'Result',
-              content:
-                'Conversion up 35% (beat goal). New user first-order time shortened by 40%.',
-            },
+            { label: 'Situation', content: 'Tasked with increasing the premium conversion rate for a core reading app, targeting a 20% QoQ growth in paid users.' },
+            { label: 'Challenge', content: 'Generic discount strategies plateaued and hurt margins. Users were price-insensitive, making churn points difficult to identify.' },
+            { label: 'Action', content: 'Mined behavioral data to link "reading time" with "willingness to pay". Invented a "Time-to-Credit" mechanism to leverage the sunk cost fallacy and drive conversions.' },
+            { label: 'Result', content: 'Boosted conversion rate by 35% within 2 months (exceeding targets) and reduced time-to-first-purchase for new users by 40%.' },
           ],
           ops: [
-            {
-              label: 'Situation',
-              content: 'Managed 500+ communities with low engagement (5% DAU).',
-            },
-            {
-              label: 'Challenge',
-              content:
-                'Users ignored official broadcasts. Content was generic; zero interaction.',
-            },
-            {
-              label: 'Action',
-              content:
-                'Recruited KOLs as "Topic Leaders" and introduced points system to incentivize UGC.',
-            },
-            {
-              label: 'Result',
-              content:
-                'DAU doubled to 11%. Daily UGC up 300%. Core user retention hit 90%.',
-            },
+            { label: 'Situation', content: 'Assigned to revitalize 500+ dormant community groups. Baseline DAU was stagnant at 5% with minimal user stickiness.' },
+            { label: 'Challenge', content: 'Users experienced fatigue from one-way official broadcasts. Content was highly homogenized with near-zero organic interaction.' },
+            { label: 'Action', content: 'Shifted to a decentralized operational model. Recruited KOCs as "Topic Moderators" and launched a points-based reward system to incentivize UGC.' },
+            { label: 'Result', content: 'Doubled DAU to 11%, skyrocketed daily UGC output by 300%, and achieved a 90% MoM retention rate among core active users.' },
           ],
           tech: [
-            {
-              label: 'Situation',
-              content:
-                'Ensuring payment system stability during Black Friday sales.',
-            },
-            {
-              label: 'Challenge',
-              content:
-                'Timeout rate hit 2%. Monolithic DB was a bottleneck and unscalable.',
-            },
-            {
-              label: 'Action',
-              content:
-                'Implemented cold/hot data separation, MQ for peak shaving, and Event Sourcing.',
-            },
-            {
-              label: 'Result',
-              content:
-                'QPS capacity up 5x. Zero downtime. Failure rate dropped below 0.01%.',
-            },
+            { label: 'Situation', content: 'Led the stability assurance and architectural overhaul of the core payment system for the annual mega-sale event.' },
+            { label: 'Challenge', content: 'Peak-hour payment timeout rates hit 2%. The legacy monolithic database faced severe read/write bottlenecks and lacked horizontal scalability.' },
+            { label: 'Action', content: 'Implemented hot/cold data separation, introduced RocketMQ for peak shaving, and completely refactored the transaction pipeline using Event Sourcing.' },
+            { label: 'Result', content: 'Scaled QPS capacity by 5x. Achieved zero P0 incidents during the mega-sale and slashed the order failure rate to under 0.01%.' },
           ],
           design: [
-            {
-              label: 'Situation',
-              content:
-                'Optimizing mobile approval workflow for B2B admin system.',
-            },
-            {
-              label: 'Challenge',
-              content:
-                'Porting complex PC tables to mobile caused high error rates and slowness.',
-            },
-            {
-              label: 'Action',
-              content:
-                'Ditched tables. Re-designed using "Info Cards" + "Action Cards" separation.',
-            },
-            {
-              label: 'Result',
-              content:
-                'Approval time cut by 50%. Error feedback dropped to zero. Satisfaction 4.8/5.',
-            },
+            { label: 'Situation', content: 'Led the mobile UX redesign for the approval workflow of an enterprise B2B admin portal.' },
+            { label: 'Challenge', content: 'The legacy app brutally ported complex PC tables to mobile screens, causing high error rates and severely bottlenecking approval efficiency.' },
+            { label: 'Action', content: 'Discarded the table view entirely. Redesigned the workflow around mobile-native paradigms, separating "Summary Cards" from a "Sticky Action Dock".' },
+            { label: 'Result', content: 'Slashed average mobile approval time by 50%, completely eliminated misclick reports, and boosted internal user satisfaction to 4.8/5.0.' },
           ],
         },
       },
