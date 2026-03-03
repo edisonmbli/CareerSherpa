@@ -469,7 +469,7 @@ const dict = {
     },
     detailed: {
       title: 'Detailed Resume',
-      badge: 'Recommended',
+      badge: 'Rec.',
       lockHint: 'Complete General Resume first',
       defaultFileName: 'Detailed Resume',
       description:

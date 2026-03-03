@@ -13,8 +13,10 @@ import {
   Layers,
   TrendingUp,
   Zap,
+  Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ResumeGuidanceTooltip } from '@/components/resume/ResumeGuidanceTooltip'
 
 type ParsedDetailedResume = {
   project_metrics: {
@@ -63,6 +65,10 @@ type DetailedResumePanelClientProps = {
   lockHint: string
   maskText: string
   dimmed?: boolean
+  detailedDescription: string
+  detailedBadge: string
+  hasGeneral: boolean
+  detailedExamples: any
 }
 
 function useCountUp(target: number) {
@@ -104,7 +110,11 @@ export function DetailedResumePanelClient({
   actions,
   lockHint,
   maskText,
-  dimmed,
+  dimmed = false,
+  detailedDescription,
+  detailedBadge,
+  hasGeneral,
+  detailedExamples,
 }: DetailedResumePanelClientProps) {
   const uploaderRef = useRef<AssetUploaderHandle | null>(null)
   const carouselRef = useRef<HTMLDivElement | null>(null)
@@ -187,15 +197,15 @@ export function DetailedResumePanelClient({
     if (!isMobile || carouselRef.current === null) return
 
     const timer = setInterval(() => {
+      if (mode !== 'dashboard') return
+
       const nextIndex = (carouselIndex + 1) % cardCount
       const cardNodes = carouselRef.current?.querySelectorAll('.carousel-card')
-      const targetCard = cardNodes?.[nextIndex]
-
-      if (targetCard) {
-        targetCard.scrollIntoView({
+      const targetCard = cardNodes?.[nextIndex] as HTMLElement
+      if (targetCard && carouselRef.current) {
+        carouselRef.current.scrollTo({
+          left: targetCard.offsetLeft,
           behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
         })
       }
     }, 8000)
@@ -272,7 +282,7 @@ export function DetailedResumePanelClient({
   }, [keyInfo, projectCount, impactCount, dashboardDict])
 
   const renderDashboardCards = () => (
-    <div className="relative rounded-2xl ring-1 ring-slate-200 dark:ring-white/10 bg-white/40 dark:bg-white/[0.03] p-4 h-full flex flex-col">
+    <div className="relative rounded-2xl dark:ring-white/10 dark:bg-white/[0.03] p-4 h-full flex flex-col">
       <div
         ref={carouselRef}
         onScroll={handleScroll}
@@ -284,7 +294,7 @@ export function DetailedResumePanelClient({
             data-index={idx}
             className={cn(
               'carousel-card rounded-xl p-5 flex flex-col items-center justify-start text-center relative overflow-hidden h-auto self-stretch shrink-0 snap-always snap-center w-full min-w-full lg:min-w-0 lg:w-auto',
-              'bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 shadow-sm dark:shadow-none',
+              'bg-slate-50 dark:bg-white/[0.03] border-none shadow-sm dark:shadow-none',
               canViewDashboard && mode === 'dashboard' ? 'animate-in fade-in slide-in-from-bottom-2' : ''
             )}
             style={{ animationDelay: `${idx * 120}ms` }}
@@ -341,46 +351,73 @@ export function DetailedResumePanelClient({
   )
 
   return (
-    <div className="mt-6">
-      {canViewDashboard && (
-        <div className="flex justify-end items-center gap-2 mb-4 relative z-20">
-          {mode === 'dashboard' ? (
-            <>
+    <>
+      <div className="mb-6">
+        <div className="flex flex-row items-start justify-between gap-4 mb-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
+              {detailedTitle}
+            </h3>
+            <div className="shrink-0">
+              <ResumeGuidanceTooltip
+                triggerClassName="inline-flex items-center gap-0.5 rounded bg-blue-50 px-2 py-0.5 text-xs font-light text-blue-500 ring-1 ring-inset ring-blue-100/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/10"
+                examples={{
+                  ...(detailedExamples as any),
+                }}
+              >
+                {detailedBadge}
+              </ResumeGuidanceTooltip>
+            </div>
+            {!hasGeneral && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 ml-2 shrink-0">
+                <Lock className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{lockHint}</span>
+              </div>
+            )}
+          </div>
+
+          {canViewDashboard && (
+            <div className="flex items-center gap-2 shrink-0 relative z-20">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
+                className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
                 onClick={() => uploaderRef.current?.openPreview()}
               >
-                <Eye className="h-3.5 w-3.5 mr-1" />
-                {actions.preview}
+                <Eye className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">{actions.preview}</span>
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-base text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
-                onClick={() => handleModeSwitch('uploader')}
-              >
-                <RotateCw className="h-3.5 w-3.5 mr-1" />
-                {actions.reupload}
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-base text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
-              onClick={() => handleModeSwitch('dashboard')}
-            >
-              <LayoutDashboard className="h-3.5 w-3.5 mr-1" />
-              {actions.backToDashboard}
-            </Button>
+              {mode === 'dashboard' ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
+                  onClick={() => handleModeSwitch('uploader')}
+                >
+                  <RotateCw className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">{actions.reupload}</span>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
+                  onClick={() => handleModeSwitch('dashboard')}
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">{actions.backToDashboard}</span>
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      )}
+        <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+          {detailedDescription}
+        </div>
+      </div>
 
       {!canViewDashboard ? (
         // IDLE STATE: Split grid side-by-side
@@ -454,6 +491,6 @@ export function DetailedResumePanelClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

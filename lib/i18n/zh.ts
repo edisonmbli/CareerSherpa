@@ -463,7 +463,7 @@ const dict = {
         projectDepthUnit: '个',
         quantifiedTitle: '捕获量化指标',
         quantifiedUnit: '项',
-        aiReadinessTitle: 'AI定制颗粒度',
+        aiReadinessTitle: 'AI 定制颗粒度',
         backToDashboard: '返回仪表盘',
       },
       actions: {

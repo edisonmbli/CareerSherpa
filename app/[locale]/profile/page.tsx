@@ -243,31 +243,6 @@ export default async function ProfilePage({
                   style={surfaceStyle}
                 >
                   <div className="relative">
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                          {p.detailed.title}
-                        </h3>
-                        <ResumeGuidanceTooltip
-                          triggerClassName="inline-flex items-center gap-0.5 rounded bg-blue-50 px-2 py-0.5 text-xs font-light text-blue-500 ring-1 ring-inset ring-blue-100/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/10"
-                          examples={{
-                            ...(p.detailed.examples as any),
-                            tips: p.resume.tips,
-                          }}
-                        >
-                          {p.detailed.badge}
-                        </ResumeGuidanceTooltip>
-                      </div>
-                      {!hasGeneral && (
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                          <Lock className="h-3.5 w-3.5" />
-                          <span>{p.detailed.lockHint}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4 mt-3 relative">
-                      {p.detailed.description}
-                    </div>
                     <DetailedResumePanelClient
                       locale={locale}
                       uploaderDict={p.uploader}
@@ -277,6 +252,9 @@ export default async function ProfilePage({
                       notificationDict={w.notification}
                       resumeTitle={p.resume.title}
                       detailedTitle={p.detailed.title}
+                      detailedDescription={p.detailed.description}
+                      detailedBadge={p.detailed.badge}
+                      hasGeneral={hasGeneral}
                       pdfNotice={dict.designSystem.samples.pdfNotice}
                       latestStatus={latestDetailed?.status || 'IDLE'}
                       latestFileName={
@@ -295,6 +273,10 @@ export default async function ProfilePage({
                       lockHint={p.detailed.lockHint}
                       maskText={p.detailed.mask.text}
                       dimmed={!hasGeneral}
+                      detailedExamples={{
+                        ...(p.detailed.examples as any),
+                        tips: p.resume.tips,
+                      }}
                     />
                   </div>
                 </div>
@@ -402,8 +384,8 @@ export default async function ProfilePage({
                             }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
                             }`}
                           className={`px-2 py-0.5 rounded border text-xs ${page >= pageCount
-                              ? 'opacity-40 pointer-events-none'
-                              : ''
+                            ? 'opacity-40 pointer-events-none'
+                            : ''
                             }`}
                         >
                           {p.billing.pagination.next}
