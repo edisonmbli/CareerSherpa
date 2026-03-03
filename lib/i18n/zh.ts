@@ -434,7 +434,7 @@ const dict = {
       focusLabel: '经验主线',
       projectLabel: '高光项目',
       summaryLabel: '优势概述',
-      cta: '🚀 资产已就绪，去匹配岗位',
+      cta: '🚀 个人档案已就绪，去匹配岗位',
     },
     resume: {
       title: '通用简历',

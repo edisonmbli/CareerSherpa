@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 type AssetProgressClientProps = {
   initialProgress: number
@@ -40,54 +41,67 @@ export function AssetProgressClient({
     return () => window.removeEventListener('resume:summary', handler)
   }, [])
 
+  const delimiter = lead.includes('，') ? '，' : lead.includes(' and ') ? ' and ' : null
+  const [titlePart, subtitlePart] = delimiter ? lead.split(delimiter) : [lead, '']
+
   return (
-    <div className="p-6 sm:p-8">
-      <div className="text-lg md:text-xl text-slate-600 dark:text-slate-400 font-medium tracking-wide mb-6">
-        {lead}
+    <div className="py-2">
+      <div className="text-center flex flex-col items-center mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white text-balance mb-1">
+          {titlePart}
+        </h2>
+        {subtitlePart && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {delimiter === ' and ' ? 'and ' + subtitlePart : subtitlePart}
+          </p>
+        )}
       </div>
-      <div className="space-y-3">
-        <div className="h-2 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+      <div className="space-y-3 relative">
+        <div className="h-1.5 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
           <div
             className="h-full bg-slate-900 dark:bg-white transition-all duration-700 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-xs sm:text-sm">
           <span
-            className={`${
+            className={cn(
+              'flex items-center transition-colors',
               progress === 0
-                ? 'text-slate-900 dark:text-white font-medium'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
+                ? 'text-slate-900 dark:text-white font-semibold flex-1 justify-start sm:flex-none'
+                : 'text-slate-500 dark:text-slate-400',
+            )}
           >
             {progress === 0 && (
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-500 dark:bg-white shadow-[0_0_8px_rgba(59,130,246,0.8)] dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse mr-2" />
+              <span className="inline-block shrink-0 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500 dark:bg-white shadow-[0_0_8px_rgba(59,130,246,0.8)] dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse mr-2" />
             )}
-            0% {level0}
+            <span className={cn(progress !== 0 && 'hidden sm:inline-block')}>0% {level0}</span>
           </span>
           <span
-            className={`${
-              progress >= 60
-                ? 'text-slate-900 dark:text-white font-medium'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
+            className={cn(
+              'flex items-center transition-colors',
+              progress >= 60 && progress < 100
+                ? 'text-slate-900 dark:text-white font-semibold flex-1 justify-center sm:flex-none'
+                : 'text-slate-500 dark:text-slate-400',
+            )}
           >
             {progress >= 60 && progress < 100 && (
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-500 dark:bg-white shadow-[0_0_8px_rgba(59,130,246,0.8)] dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse mr-2" />
+              <span className="inline-block shrink-0 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500 dark:bg-white shadow-[0_0_8px_rgba(59,130,246,0.8)] dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse mr-2" />
             )}
-            60% {level60}
+            <span className={cn((progress < 60 || progress === 100) && 'hidden sm:inline-block')}>60% {level60}</span>
           </span>
           <span
-            className={`${
+            className={cn(
+              'flex items-center transition-colors',
               progress === 100
-                ? 'text-slate-900 dark:text-white font-medium'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
+                ? 'text-slate-900 dark:text-white font-semibold flex-1 justify-end sm:flex-none'
+                : 'text-slate-500 dark:text-slate-400',
+            )}
           >
             {progress === 100 && (
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-500 dark:bg-white shadow-[0_0_8px_rgba(59,130,246,0.8)] dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse mr-2" />
+              <span className="inline-block shrink-0 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500 dark:bg-white shadow-[0_0_8px_rgba(59,130,246,0.8)] dark:shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse mr-2" />
             )}
-            100% {level100}
+            <span className={cn(progress !== 100 && 'hidden sm:inline-block')}>100% {level100}</span>
           </span>
         </div>
       </div>

@@ -219,7 +219,7 @@ export function DetailedResumePanelClient({
       {
         title: dashboardDict.projectDepthTitle,
         unit: dashboardDict.projectDepthUnit,
-        accent: 'text-slate-400',
+        accent: 'text-slate-400 dark:text-slate-500',
         icon: <Layers className="w-5 h-5" />,
         value: '—',
         detail: '—',
@@ -228,20 +228,21 @@ export function DetailedResumePanelClient({
       {
         title: dashboardDict.quantifiedTitle,
         unit: dashboardDict.quantifiedUnit,
-        accent: 'text-blue-500',
+        accent: 'text-slate-400 dark:text-slate-500',
         icon: <TrendingUp className="w-5 h-5" />,
         value: '—',
         detail: '—',
-        variant: 'blue',
+        variant: 'neutral',
       },
       {
         title: dashboardDict.aiReadinessTitle,
         unit: '',
-        accent: 'text-amber-500',
+        accent: 'text-slate-400 dark:text-slate-500',
         icon: <Zap className="w-5 h-5" />,
         value: '—',
         detail: '—',
         variant: 'neutral',
+        isSpecialText: true,
       },
     ]
 
@@ -253,7 +254,7 @@ export function DetailedResumePanelClient({
       {
         title: dashboardDict.projectDepthTitle,
         unit: dashboardDict.projectDepthUnit,
-        accent: 'text-slate-400',
+        accent: 'text-slate-400 dark:text-slate-500',
         icon: <Layers className="w-5 h-5" />,
         value: `${projectCount}`,
         detail: keyInfo.project_metrics?.highlight || '',
@@ -262,21 +263,21 @@ export function DetailedResumePanelClient({
       {
         title: dashboardDict.quantifiedTitle,
         unit: dashboardDict.quantifiedUnit,
-        accent: 'text-blue-500',
+        accent: 'text-slate-400 dark:text-slate-500',
         icon: <TrendingUp className="w-5 h-5" />,
         value: `${impactCount}`,
         detail: keyInfo.quantified_impact?.top_example || '',
-        variant: 'blue',
+        variant: 'neutral',
       },
       {
         title: dashboardDict.aiReadinessTitle,
         unit: '',
-        accent: 'text-amber-500',
+        accent: 'text-slate-400 dark:text-slate-500',
         icon: <Zap className="w-5 h-5" />,
         value: keyInfo.ai_readiness?.level || '',
         detail: keyInfo.ai_readiness?.feedback || '',
         variant: 'neutral',
-        isGradient: true,
+        isSpecialText: true,
       },
     ]
   }, [keyInfo, projectCount, impactCount, dashboardDict])
@@ -294,7 +295,7 @@ export function DetailedResumePanelClient({
             data-index={idx}
             className={cn(
               'carousel-card rounded-xl p-5 flex flex-col items-center justify-start text-center relative overflow-hidden h-auto self-stretch shrink-0 snap-always snap-center w-full min-w-full lg:min-w-0 lg:w-auto',
-              'bg-slate-50 dark:bg-white/[0.03] border-none shadow-sm dark:shadow-none',
+              'bg-slate-50/50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none',
               canViewDashboard && mode === 'dashboard' ? 'animate-in fade-in slide-in-from-bottom-2' : ''
             )}
             style={{ animationDelay: `${idx * 120}ms` }}
@@ -302,8 +303,8 @@ export function DetailedResumePanelClient({
             <div className={`shrink-0 flex items-center justify-center ${item.accent} mb-3`}>{item.icon}</div>
             <div className="flex flex-col flex-1 w-full gap-1">
               <div className="shrink-0 min-h-[48px] flex items-center justify-center">
-                {item.isGradient ? (
-                  <div className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-orange-500 tracking-wide">
+                {item.isSpecialText ? (
+                  <div className="text-xl font-black text-slate-900 dark:text-white tracking-widest">
                     {item.value}
                   </div>
                 ) : (

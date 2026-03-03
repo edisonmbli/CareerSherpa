@@ -174,8 +174,8 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="container mx-auto px-4 py-4 bg-slate-50/50 dark:bg-[#0a0a0a]">
-      <div className="min-h-[calc(100vh-6rem)]">
+    <div className="container mx-auto px-4 pt-4 pb-32 md:pb-40 bg-slate-50/50 dark:bg-[#0a0a0a]">
+      <div className="min-h-[calc(100vh-6rem)] relative">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-end mb-6">
             <Link href={`/${locale}/workbench`} className="text-sm underline">
@@ -189,14 +189,11 @@ export default async function ProfilePage({
             <div
               className={
                 tab === 'assets'
-                  ? 'mt-6 md:mt-8 space-y-6 md:space-y-8'
+                  ? 'mt-4 md:mt-6 space-y-6 md:space-y-8'
                   : 'hidden'
               }
             >
-              <div
-                className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 p-6 sm:p-8 dark:bg-[#121212] dark:ring-white/10"
-                style={surfaceStyle}
-              >
+              <div className="mb-2">
                 <AssetProgressClient
                   initialProgress={assetProgress}
                   lead={p.assetProgress.lead}
@@ -281,6 +278,16 @@ export default async function ProfilePage({
                   </div>
                 </div>
               </div>
+
+              {hasGeneral && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex justify-center w-full max-w-md px-4 pointer-events-none">
+                  <div className="pointer-events-auto w-full">
+                    <Button asChild className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-full rounded-full py-3.5 px-6 font-semibold shadow-2xl shadow-slate-900/20 ring-1 ring-white/10 hover:scale-[1.02] transition-transform active:scale-95 flex items-center justify-center gap-2 h-auto text-[15px]">
+                      <Link href={`/${locale}/workbench`}>{p.profilePanel.cta}</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div

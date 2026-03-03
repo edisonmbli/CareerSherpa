@@ -8,7 +8,7 @@ import {
 } from '@/components/app/AssetUploader'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Eye, RotateCw, UserRound, Lock } from 'lucide-react'
+import { Eye, RotateCw, UserRound, Lock, Star, CheckCircle2 } from 'lucide-react'
 
 type ParsedProfile = {
   career_persona: string
@@ -55,6 +55,7 @@ type ResumePanelClientProps = {
     cta: string
     updateResume: string
     backToProfile: string
+    projectLabel?: string
   }
   workbenchHref: string
 }
@@ -89,6 +90,7 @@ export function ResumePanelClient({
     hasGeneral && normalizedProfile ? 'profile' : 'dual',
   )
   const [isReuploading, setIsReuploading] = useState(false)
+  const [isTagsExpanded, setIsTagsExpanded] = useState(false)
 
   const normalizeProfile = useCallback((data: any): ParsedProfile | null => {
     if (!data || typeof data !== 'object') return null
@@ -221,9 +223,9 @@ export function ResumePanelClient({
   const profilePanelNode = (
     <div
       className={cn(
-        'h-full flex flex-col rounded-xl p-6 relative overflow-hidden transition-all duration-500',
+        'h-full flex flex-col rounded-2xl p-5 md:p-7 relative overflow-hidden transition-all duration-500',
         resumeCompleted
-          ? 'bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10'
+          ? 'bg-slate-50/60 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5'
           : 'bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10',
       )}
     >
@@ -260,49 +262,83 @@ export function ResumePanelClient({
       )}
       <div className={cn(!resumeCompleted && 'hidden')}>
         {profileData && (
-          <div className="mt-2 space-y-5 text-sm">
-            {(profileData.domain_expertise.length > 0 ||
-              profileData.hard_skills.length > 0) && (
-                <div
-                  className="animate-in fade-in slide-in-from-bottom-2"
-                  style={{ animationDelay: '100ms' }}
-                >
-                  {profileData.domain_expertise.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {profileData.domain_expertise.map((tag, idx) => (
-                        <span
-                          key={`domain-${tag}-${idx}`}
-                          className="bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-full px-3 py-1 text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {profileData.hard_skills.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {profileData.hard_skills.map((skill, idx) => (
-                        <span
-                          key={`skill-${skill}-${idx}`}
-                          className="bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-full px-3 py-1 text-xs"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+          <div className="space-y-5 text-sm">
+            <div className="mb-4">
+              <div className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 text-balance mb-2">
+                {profileData.career_persona}
+              </div>
+              {profileData.experience_focus && (
+                <div className="text-sm text-slate-500 font-medium">
+                  {profileData.experience_focus}
                 </div>
               )}
+            </div>
+
+            {(profileData.domain_expertise.length > 0 ||
+              profileData.hard_skills.length > 0) && (() => {
+                const allTags = [
+                  ...profileData.domain_expertise.map(t => ({ text: t, type: 'domain' })),
+                  ...profileData.hard_skills.map(t => ({ text: t, type: 'skill' }))
+                ]
+                return (
+                  <div
+                    className="animate-in fade-in slide-in-from-bottom-2 mb-6"
+                    style={{ animationDelay: '100ms' }}
+                  >
+                    <div className="flex flex-wrap gap-2">
+                      {allTags.map((tag, idx) => (
+                        <span
+                          key={`${tag.type}-${tag.text}-${idx}`}
+                          className={cn(
+                            "bg-slate-100 dark:bg-zinc-700/50 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-md text-xs font-medium border border-transparent hover:border-slate-200 transition-colors",
+                            !isTagsExpanded && idx >= 6 && "hidden md:inline-flex",
+                            !isTagsExpanded && idx >= 10 && "md:hidden"
+                          )}
+                        >
+                          {tag.text}
+                        </span>
+                      ))}
+                      {!isTagsExpanded && allTags.length > 6 && (
+                        <button
+                          onClick={() => setIsTagsExpanded(true)}
+                          className="bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-all md:hidden"
+                        >
+                          +{allTags.length - 6} 更多
+                        </button>
+                      )}
+                      {!isTagsExpanded && allTags.length > 10 && (
+                        <button
+                          onClick={() => setIsTagsExpanded(true)}
+                          className="hidden md:inline-flex bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-all"
+                        >
+                          +{allTags.length - 10} 更多
+                        </button>
+                      )}
+                      {isTagsExpanded && allTags.length > 6 && (
+                        <button
+                          onClick={() => setIsTagsExpanded(false)}
+                          className={cn(
+                            "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-all",
+                            allTags.length <= 10 && "md:hidden"
+                          )}
+                        >
+                          收起
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
 
             {(profileData.signature_project.project_name ||
               profileData.signature_project.core_impact) && (
                 <div
-                  className="animate-in fade-in slide-in-from-bottom-2"
+                  className="animate-in fade-in slide-in-from-bottom-2 mt-6"
                   style={{ animationDelay: '200ms' }}
                 >
-                  <div className="bg-white/40 dark:bg-white/5 rounded-lg p-4 mt-1 border border-slate-200/60 dark:border-white/10">
-                    <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                      SIGNATURE PROJECT
+                  <div className="bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-[#1A1A1A] rounded-xl p-5 border border-indigo-100/50 dark:border-indigo-500/10 shadow-sm relative overflow-hidden">
+                    <div className="text-[11px] font-bold text-sky-500/50 dark:text-sky-400/50 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-sky-500/50 dark:text-sky-400/50" /> {profilePanel.projectLabel || 'SIGNATURE PROJECT'}
                     </div>
                     {profileData.signature_project.project_name && (
                       <div className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -310,15 +346,10 @@ export function ResumePanelClient({
                       </div>
                     )}
                     {profileData.signature_project.core_impact && (
-                      <div className="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                        <div className="flex items-start gap-2">
-                          <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                          <span className="flex-1">
-                            {renderImpact(
-                              profileData.signature_project.core_impact,
-                            )}
-                          </span>
-                        </div>
+                      <div className="mt-1.5 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {renderImpact(
+                          profileData.signature_project.core_impact,
+                        )}
                       </div>
                     )}
                   </div>
@@ -327,34 +358,26 @@ export function ResumePanelClient({
 
             {profileData.core_strengths.length > 0 && (
               <div
-                className="animate-in fade-in slide-in-from-bottom-2"
+                className="animate-in fade-in slide-in-from-bottom-2 mt-6 space-y-4"
                 style={{ animationDelay: '300ms' }}
               >
-                <div className="space-y-2">
-                  {profileData.core_strengths.map((item, idx) => (
-                    <div
-                      key={`strength-${item.trait}-${idx}`}
-                      className="flex gap-2"
-                    >
-                      <span className="mt-1 h-2 w-2 rounded-full bg-blue-400/90 shadow-[0_0_8px_rgba(96,165,250,0.55)]" />
-                      <div className="text-sm">
-                        <span className="font-semibold text-slate-900 dark:text-white">
-                          {item.trait}:
-                        </span>{' '}
-                        <span className="text-slate-500 dark:text-slate-300">
-                          {item.evidence}
-                        </span>
-                      </div>
+                {profileData.core_strengths.map((item, idx) => (
+                  <div
+                    key={`strength-${item.trait}-${idx}`}
+                    className="flex items-start gap-3"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="font-semibold text-slate-900 dark:text-white mr-1.5">
+                        {item.trait}:
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400 leading-relaxed text-pretty">
+                        {item.evidence}
+                      </span>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            )}
-
-            {resumeCompleted && (
-              <Button asChild className="w-full">
-                <Link href={workbenchHref}>{profilePanel.cta}</Link>
-              </Button>
             )}
           </div>
         )}
@@ -413,16 +436,6 @@ export function ResumePanelClient({
 
       {resumeCompleted && profileData ? (
         <div className="relative">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <div className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-                {profileData.career_persona}
-              </div>
-              <div className="text-zinc-400 italic text-sm mt-1">
-                {profileData.experience_focus}
-              </div>
-            </div>
-          </div>
           <div className="relative">
             <div
               className={cn(
