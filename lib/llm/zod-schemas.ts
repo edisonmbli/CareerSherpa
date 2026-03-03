@@ -83,6 +83,26 @@ const parsedProfileSchema = z.object({
     )
     .optional(),
 })
+const parsedDetailedResumeSchema = z.object({
+  project_metrics: z
+    .object({
+      count: z.number().optional(),
+      highlight: z.string().optional(),
+    })
+    .optional(),
+  quantified_impact: z
+    .object({
+      metrics_count: z.number().optional(),
+      top_example: z.string().optional(),
+    })
+    .optional(),
+  ai_readiness: z
+    .object({
+      level: z.string().optional(),
+      feedback: z.string().optional(),
+    })
+    .optional(),
+})
 const resumeSummarySchema = z
   .object({
     header: headerSchema.optional(),
@@ -173,6 +193,7 @@ const detailedResumeV4Schema = z
         }),
       )
       .optional(),
+    parsed_detailed_resume_json: parsedDetailedResumeSchema.optional(),
   })
   .refine(
     (d) =>
@@ -268,6 +289,7 @@ export const detailedResumeDeepSchema = z
         }),
       )
       .optional(),
+    parsed_detailed_resume_json: parsedDetailedResumeSchema.optional(),
   })
   .refine(
     (d) => Boolean(d.summary || d.experiences?.length || d.education?.length),

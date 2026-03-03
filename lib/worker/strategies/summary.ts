@@ -132,10 +132,14 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       } else if (this.templateId === 'detailed_resume_summary') {
         const detailedId = String(variables.detailedResumeId || '')
         if (detailedId) {
+          const parsedKeyInfoJson = execResult.ok
+            ? (execResult.data as any)?.parsed_detailed_resume_json
+            : undefined
           await setDetailedResumeSummaryJson(
             detailedId,
             execResult.ok ? execResult.data : undefined,
             execResult.ok ? AsyncTaskStatus.COMPLETED : AsyncTaskStatus.FAILED,
+            parsedKeyInfoJson,
           )
         }
       } else if (this.templateId === 'job_summary') {

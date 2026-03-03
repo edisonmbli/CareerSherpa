@@ -326,10 +326,15 @@ export async function setDetailedResumeSummaryJson(
   detailedResumeId: string,
   json: any,
   status: AsyncTaskStatus,
+  parsedKeyInfoJson?: any,
 ) {
+  const data: any = { detailedSummaryJson: json, status }
+  if (typeof parsedKeyInfoJson !== 'undefined') {
+    data.parsedKeyInfoJson = parsedKeyInfoJson
+  }
   return prisma.detailedResume.update({
     where: { id: detailedResumeId },
-    data: { detailedSummaryJson: json, status },
+    data,
   })
 }
 

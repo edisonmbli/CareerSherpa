@@ -905,5 +905,35 @@ export const DETAILED_RESUME_SCHEMA: JsonSchema = {
         required: ['title', 'points'],
       },
     },
+    parsed_detailed_resume_json: {
+      type: 'object',
+      properties: {
+        project_metrics: {
+          type: 'object',
+          properties: {
+            count: { type: 'number' },
+            highlight: { type: 'string' },
+          },
+          required: ['count', 'highlight'],
+        },
+        quantified_impact: {
+          type: 'object',
+          properties: {
+            metrics_count: { type: 'number' },
+            top_example: { type: 'string' },
+          },
+          required: ['metrics_count', 'top_example'],
+        },
+        ai_readiness: {
+          type: 'object',
+          properties: {
+            level: { type: 'string' },
+            feedback: { type: 'string' },
+          },
+          required: ['level', 'feedback'],
+        },
+      },
+      required: ['project_metrics', 'quantified_impact', 'ai_readiness'],
+    },
   },
 }

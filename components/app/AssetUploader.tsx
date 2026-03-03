@@ -164,8 +164,8 @@ export const AssetUploader = forwardRef<
     className,
     onSummaryJson,
     hideActions,
-      neutralComplete,
-      hidePreviewAction,
+    neutralComplete,
+    hidePreviewAction,
   },
   ref,
 ) {
@@ -250,8 +250,8 @@ export const AssetUploader = forwardRef<
   })
 
   // --- Progress Simulation ---
-  // Standard time: Resume ~1.5m (90s), Detailed ~2.5m (150s)
-  const expectedDurationSec = taskTemplateId === 'resume_summary' ? 90 : 150
+  // Standard time: Resume ~1.5m (90s), Detailed ~6m (360s)
+  const expectedDurationSec = taskTemplateId === 'resume_summary' ? 90 : 360
 
   useEffect(() => {
     if (status !== 'PENDING' || isFinishing) return
@@ -259,10 +259,10 @@ export const AssetUploader = forwardRef<
     // Update every 15 seconds
     const interval = setInterval(() => {
       setProgressValue((prev) => {
-        if (prev >= 95) return 95
+        if (prev >= 99) return 99
         // Linear increment based on 15s checks
-        const step = Math.ceil(90 / (expectedDurationSec / 15))
-        return Math.min(95, prev + step)
+        const step = Math.ceil(95 / (expectedDurationSec / 15))
+        return Math.min(99, prev + step)
       })
     }, 15000)
 
@@ -301,6 +301,21 @@ export const AssetUploader = forwardRef<
   })
 
   const [copyFeedback, setCopyFeedback] = useState<'json' | 'md' | null>(null)
+
+  const extractSummaryJson = useCallback(
+    (data: any) => {
+      if (!data) return null
+      if (
+        taskTemplateId === 'detailed_resume_summary' &&
+        typeof data === 'object' &&
+        'detailedSummaryJson' in data
+      ) {
+        return (data as any).detailedSummaryJson ?? null
+      }
+      return data
+    },
+    [taskTemplateId],
+  )
 
   const handleCopy = (type: 'json' | 'md', text: string) => {
     navigator.clipboard.writeText(text)
@@ -364,12 +379,13 @@ export const AssetUploader = forwardRef<
               : await getLatestDetailedSummaryAction()
           if ((res as any)?.ok) {
             const nextData = (res as any)?.data || null
-            setSummaryJson(nextData)
+            const nextSummary = extractSummaryJson(nextData)
+            setSummaryJson(nextSummary)
             onSummaryJson?.(nextData)
             if (typeof window !== 'undefined') {
               window.dispatchEvent(
                 new CustomEvent('resume:summary', {
-                  detail: { taskTemplateId, summaryJson: nextData },
+                  detail: { taskTemplateId, summaryJson: nextSummary },
                 }),
               )
             }
@@ -506,14 +522,15 @@ export const AssetUploader = forwardRef<
           : await getLatestDetailedSummaryAction()
       if ((res as any)?.ok) {
         const data = (res as any)?.data || null
-        setSummaryJson(data || initialSummaryJson || null)
+        const nextSummary = extractSummaryJson(data)
+        setSummaryJson(nextSummary || initialSummaryJson || null)
       } else {
         setSummaryJson(initialSummaryJson || null)
       }
     } finally {
       setLoadingPreview(false)
     }
-  }, [initialSummaryJson, summaryJson, taskTemplateId])
+  }, [extractSummaryJson, initialSummaryJson, summaryJson, taskTemplateId])
 
   useImperativeHandle(
     ref,
@@ -547,19 +564,19 @@ export const AssetUploader = forwardRef<
     if (s === 'COMPLETED') {
       const completedTone = neutralComplete
         ? {
-            container:
-              'border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-white/[0.03]',
-            badge: 'bg-slate-100/70 dark:bg-white/[0.06]',
-            icon: 'text-slate-500',
-            status: 'text-slate-500/80 dark:text-slate-300',
-          }
+          container:
+            'border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-white/[0.03]',
+          badge: 'bg-slate-100/70 dark:bg-white/[0.06]',
+          icon: 'text-slate-500',
+          status: 'text-slate-500/80 dark:text-slate-300',
+        }
         : {
-            container:
-              'border-emerald-200/60 dark:border-emerald-500/20 bg-white/70 dark:bg-white/[0.03]',
-            badge: 'bg-emerald-50 dark:bg-emerald-500/10',
-            icon: 'text-emerald-500',
-            status: 'text-emerald-600/80 dark:text-emerald-300',
-          }
+          container:
+            'border-emerald-200/60 dark:border-emerald-500/20 bg-white/70 dark:bg-white/[0.03]',
+          badge: 'bg-emerald-50 dark:bg-emerald-500/10',
+          icon: 'text-emerald-500',
+          status: 'text-emerald-600/80 dark:text-emerald-300',
+        }
       return (
         <div
           className={`h-full w-full flex flex-col justify-center rounded-2xl border ${completedTone.container} p-5 sm:p-6 shadow-sm`}
@@ -718,10 +735,10 @@ export const AssetUploader = forwardRef<
                           const arr = Array.isArray(d.skills)
                             ? d.skills
                             : [
-                                ...(d.skills.technical || []),
-                                ...(d.skills.soft || []),
-                                ...(d.skills.tools || []),
-                              ]
+                              ...(d.skills.technical || []),
+                              ...(d.skills.soft || []),
+                              ...(d.skills.tools || []),
+                            ]
                           sections.push(`## ${L.skills}`, `- ${arr.join(', ')}`)
                         }
                         if (

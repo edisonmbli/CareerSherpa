@@ -33,8 +33,15 @@ export async function getLatestResumeSummaryJson(userId: string) {
 }
 
 export async function getLatestDetailedSummaryJson(userId: string) {
-  const rec = await prisma.detailedResume.findUnique({ where: { userId }, select: { detailedSummaryJson: true } })
-  return rec?.detailedSummaryJson ?? null
+  const rec = await prisma.detailedResume.findUnique({
+    where: { userId },
+    select: { detailedSummaryJson: true, parsedKeyInfoJson: true },
+  })
+  if (!rec) return null
+  return {
+    detailedSummaryJson: rec.detailedSummaryJson ?? null,
+    parsedKeyInfoJson: rec.parsedKeyInfoJson ?? null,
+  }
 }
 
 export async function getResumeOriginalTextById(resumeId: string) {
@@ -48,4 +55,3 @@ export async function getDetailedResumeOriginalTextById(detailedResumeId: string
   const rec = await prisma.detailedResume.findUnique({ where: { id: detailedResumeId }, select: { originalText: true } })
   return rec?.originalText ?? null
 }
-

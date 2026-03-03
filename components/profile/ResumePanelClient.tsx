@@ -43,6 +43,10 @@ type ResumePanelClientProps = {
   resumeSummaryJson?: any
   hasGeneral: boolean
   normalizedProfile: ParsedProfile | null
+  actions: {
+    preview: string
+    reupload: string
+  }
   profilePanel: {
     title: string
     emptyTitle: string
@@ -72,6 +76,7 @@ export function ResumePanelClient({
   resumeSummaryJson,
   hasGeneral,
   normalizedProfile,
+  actions,
   profilePanel,
   workbenchHref,
 }: ResumePanelClientProps) {
@@ -243,8 +248,11 @@ export function ResumePanelClient({
             </div>
           </div>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <Lock className="w-8 h-8 text-slate-400 mb-3" />
-            <div className="text-sm text-slate-500 dark:text-slate-400 max-w-[80%] text-center text-balance">
+            <div className="relative w-8 h-8 text-slate-400 mb-3">
+              <UserRound className="w-8 h-8" />
+              <Lock className="w-3.5 h-3.5 absolute -right-0.5 -bottom-0.5 rounded-full bg-white/80 dark:bg-black/60 p-0.5" />
+            </div>
+            <div className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-[80%] text-center text-balance">
               {profilePanel.emptyDesc}
             </div>
           </div>
@@ -390,7 +398,7 @@ export function ResumePanelClient({
                 onClick={() => uploaderRef.current?.openPreview()}
               >
                 <Eye className="h-3.5 w-3.5 mr-1" />
-                {uploaderDict.preview}
+                {actions.preview}
               </Button>
               <Button
                 type="button"
@@ -404,9 +412,7 @@ export function ResumePanelClient({
                 ) : (
                   <RotateCw className="h-3.5 w-3.5 mr-1" />
                 )}
-                {isReuploading
-                  ? profilePanel.backToProfile
-                  : profilePanel.updateResume}
+                {isReuploading ? profilePanel.backToProfile : actions.reupload}
               </Button>
             </div>
           </div>

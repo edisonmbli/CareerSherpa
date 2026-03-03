@@ -462,6 +462,10 @@ const dict = {
           'Record your career highlights in detail so the AI can better understand your potential.',
       },
       note: '',
+      actions: {
+        preview: 'View More',
+        reupload: 'Update General Resume',
+      },
     },
     detailed: {
       title: 'Detailed Resume',
@@ -470,6 +474,22 @@ const dict = {
       defaultFileName: 'Detailed Resume',
       description:
         'Add specific project details and metrics. Richer data allows our AI to generate deeper, more personalized career materials.',
+      dashboard: {
+        projectDepthTitle: 'Project Depth',
+        projectDepthUnit: 'items',
+        quantifiedTitle: 'Quantified Impact',
+        quantifiedUnit: 'metrics',
+        aiReadinessTitle: 'AI Readiness',
+        backToDashboard: 'Back to Dashboard',
+      },
+      actions: {
+        preview: 'View More',
+        reupload: 'Re-upload',
+        backToDashboard: 'Back to Dashboard',
+      },
+      mask: {
+        text: 'Feed more granular data to unlock maximum precision.',
+      },
       examples: {
         label: 'STAR Method Examples',
         roles: {

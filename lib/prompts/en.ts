@@ -99,6 +99,14 @@ Raw Resume Text:
 2) Project Highlights: Merge task/actions/results into highlights[] string array, each string is a self-contained bullet point; record quantified metrics in metrics[] string array (e.g., "7-day retention +3.2%").
 3) Capability Sections: detect sections like "Learning Capability", "Recommendation System", "Creator Growth", etc.; store them in capabilities[] string array, each string is one capability bullet point.
 4) Fallback: if a section cannot be classified, store it in rawSections[] with its original title and bullet points.
+5) You must also output parsed_detailed_resume_json for the data dashboard. You may think step-by-step internally, but output JSON only.
+
+**Data Density Extraction Instruction (parsed_detailed_resume_json):**
+You are a hyper-sensitive AI signal extractor. Your task is to scan the detailed resume and quantify its data density.
+1. Project inventory: count deep projects/workstreams and summarize the highest-value trait.
+2. Metric radar: scan all numbers, percentages, money, time reductions; count them and pick the most impactful example.
+3. AI readiness: evaluate how strong this resume is for AI customization and assign a geeky rating (e.g., Lv.MAX).
+Output requirements: strictly follow the JSON schema; tone is futuristic, gamified, highly quantitative; JSON only.
 
 Minimal Examples (for company/project recognition and field mapping):
 — Company Block —

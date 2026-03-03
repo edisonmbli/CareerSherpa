@@ -446,6 +446,10 @@ const dict = {
         detail: '尽可能详细、完整地记录您职业生涯中的高光时刻，让 AI 更懂你',
       },
       note: '',
+      actions: {
+        preview: '查看更多',
+        reupload: '重新上传',
+      },
     },
     detailed: {
       title: '详细履历',
@@ -454,6 +458,22 @@ const dict = {
       defaultFileName: '个人详细履历',
       description:
         '补充项目细节与量化成果，为 AI 提供更丰富的语料，大幅提升简历定制与面试演练的专业度与深度',
+      dashboard: {
+        projectDepthTitle: '深度项目解析',
+        projectDepthUnit: '个',
+        quantifiedTitle: '捕获量化指标',
+        quantifiedUnit: '项',
+        aiReadinessTitle: 'AI定制颗粒度',
+        backToDashboard: '返回仪表盘',
+      },
+      actions: {
+        preview: '查看更多',
+        reupload: '重新上传',
+        backToDashboard: '返回仪表盘',
+      },
+      mask: {
+        text: '注入详细履历，为 AI 扩充深度语料，释放高阶定制的潜能。',
+      },
       examples: {
         label: '优秀详历参考 (STAR法则)',
         roles: {
