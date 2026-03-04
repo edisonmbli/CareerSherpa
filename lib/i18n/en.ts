@@ -103,11 +103,12 @@ const dict = {
       loadMore: 'Load more',
     },
     new: {
-      title: 'Job Match Analysis',
+      title: 'Job Fit Diagnostics',
       description:
-        'Analyze match between uploaded resume and job description, and suggest outreach pitch lines',
+        'Leverage your AI profile to decode the JD, predict match rate, and craft high-converting pitches.',
       or: 'or',
-      button: 'Start Matching',
+      button: 'Generate Strategy',
+      statusMicroIndicator: 'AI engine connected. Ready to analyze.',
       assetGateTitle: 'Unlock Your AI Career Coach',
       assetGateDescriptionLine1: 'Set up your career vault to unlock tailored ',
       assetGateDescriptionLine2: '',
@@ -120,7 +121,7 @@ const dict = {
       assetGateButton: 'Build My Career Vault',
       readyBanner: '✅ AI coach has read your resume and is ready',
       placeholderText:
-        'Paste the job description (text) here, or drag in a JD screenshot.',
+        'Paste the job description text, or upload a screenshot to parse...',
       uploadCta: 'Upload JD screenshot',
       selectedFile: 'Selected file:',
       noFile: 'No file chosen',

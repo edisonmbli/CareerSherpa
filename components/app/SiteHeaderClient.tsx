@@ -32,7 +32,6 @@ export function SiteHeaderClient({
     <header
       className={cn(
         'w-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b border-border/40 print:hidden',
-        isWorkbench && 'hidden md:block',
       )}
     >
       <div
@@ -42,12 +41,15 @@ export function SiteHeaderClient({
           isWorkbench && 'pl-12 lg:pl-4'
         )}
       >
-        <Link href={brandHref} className="text-xl font-semibold tracking-tight flex items-center gap-1.5 group">
+        <Link href={brandHref} className={cn("text-xl font-semibold tracking-tight items-center gap-1.5 group", isWorkbench ? "hidden md:flex" : "flex")}>
           <span className="bg-foreground text-background w-[1.8em] h-[1.3em] inline-flex items-center justify-center rounded-md text-[0.75em] font-bold leading-none transition-transform group-hover:scale-105">
             AI
           </span>
           <span>CareerSherpa</span>
         </Link>
+        {isWorkbench && (
+          <div className="md:hidden flex-1"></div>
+        )}
         <div className="flex items-center gap-2">
           <I18nToggleCompact />
           <ThemeToggle />

@@ -35,13 +35,13 @@ export function WorkbenchColumns({
   const sidebarWidth = collapsed ? '48px' : '280px'
   return (
     <div
-      className={`grid grid-cols-1 ${cols} gap-6`}
+      className={`grid grid-cols-1 ${cols} gap-6 flex-1 min-h-0`}
       style={{ ['--workbench-sidebar-width' as any]: sidebarWidth }}
     >
       <aside className="hidden lg:block lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
         {sidebar}
       </aside>
-      <main className="flex flex-col min-h-[calc(100vh-6rem)] lg:h-[calc(100vh-6rem)] lg:overflow-hidden">
+      <main className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {children}
       </main>
     </div>

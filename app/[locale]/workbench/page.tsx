@@ -40,7 +40,7 @@ export default async function WorkbenchPage({ params }: { params: Promise<{ loca
   const dict = await getDictionary(locale)
   const w = dict.workbench
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
       <NewServiceForm
         locale={locale}
         dict={w.new}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { SidebarClient } from '@/components/app/SidebarClient'
 import { MobileDrawer } from '@/components/workbench/MobileDrawer'
 import { WorkbenchColumns } from '@/components/workbench/WorkbenchColumns'
+import { NeuralNetworkBackground } from '@/components/ui/neural-network-bg'
 
 import { getDictionary } from '@/lib/i18n/dictionaries'
 
@@ -112,8 +113,11 @@ export default async function WorkbenchLayout(props: any) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-4">
-      <div className="lg:hidden mb-4">
+    <div className="container mx-auto sm:px-6 md:px-8 sm:py-6 flex flex-col min-h-0 h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem-3rem)]">
+      {/* V7 Ambient Background Layer (Neural Network Visual Echo) */}
+      <NeuralNetworkBackground variant="workbench" className="fixed" />
+
+      <div className="lg:hidden mb-0 sm:mb-8 flex items-center px-6 pt-4 sm:px-0 sm:pt-0 relative z-[50]">
         <MobileDrawer
           locale={locale}
           quotaBalance={quotaBalance}
@@ -126,7 +130,7 @@ export default async function WorkbenchLayout(props: any) {
           dict={dict}
         />
       </div>
-      <div className="min-h-[calc(100vh-6rem)]">
+      <div className="flex-1 flex flex-col min-h-0 relative z-10">
         <WorkbenchColumns
           sidebar={
             <SidebarClient

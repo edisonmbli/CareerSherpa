@@ -309,22 +309,21 @@ export function NewServiceForm({
 
   return (
     <>
-      <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-400/[0.08] px-4 py-3 text-sm text-emerald-900 dark:text-emerald-200">
-        {dict.readyBanner}
+      <div className="pt-2 sm:pt-6 mb-2 md:mb-6 w-full px-6 sm:px-0 relative z-10 border-0">
+        <StepperProgress
+          currentStep={0 as any}
+          maxUnlockedStep={0 as any}
+          onStepClick={() => { }}
+          labels={{
+            step1: String(tabsDict?.match || 'Step 1'),
+            step2: String(tabsDict?.customize || 'Step 2'),
+            step3: String(tabsDict?.interview || 'Step 3'),
+          }}
+          className="shrink-0"
+        />
       </div>
-      <StepperProgress
-        currentStep={0 as any}
-        maxUnlockedStep={0 as any}
-        onStepClick={() => {}}
-        labels={{
-          step1: String(tabsDict?.match || 'Step 1'),
-          step2: String(tabsDict?.customize || 'Step 2'),
-          step3: String(tabsDict?.interview || 'Step 3'),
-        }}
-        className="shrink-0"
-      />
       {isBusy ? (
-        <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl">
+        <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl mx-4 sm:mx-0">
           <AppCardContent className="pt-6">
             <BatchProgressPanel
               title={pendingTitle}
@@ -334,13 +333,17 @@ export function NewServiceForm({
           </AppCardContent>
         </AppCard>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-6">
-          <AppCard className="border-[0.5px] border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] shadow-sm dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden">
-            <AppCardHeader>
-              <AppCardTitle>{dict.title}</AppCardTitle>
-              <AppCardDescription>{dict.description}</AppCardDescription>
+        <form onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0 pb-4 sm:pb-0 h-full relative z-10">
+          <AppCard padded={false} className="flex flex-col flex-1 min-h-0 relative z-10 overflow-visible sm:overflow-hidden rounded-none sm:rounded-2xl bg-transparent sm:bg-white/80 dark:bg-transparent sm:dark:bg-[#121212]/90 backdrop-blur-none sm:backdrop-blur-xl border-0 !border-0 sm:!border sm:border-white/50 sm:dark:!border-white/10 shadow-none !shadow-none sm:!shadow-sm ring-0 sm:ring-1 ring-slate-900/5 dark:ring-white/5">
+            <AppCardHeader className="pb-0 px-6 sm:px-6 mt-0 sm:mt-0 shrink-0">
+              <AppCardTitle className="text-xl font-bold text-slate-900 dark:text-white">
+                {dict.title}
+              </AppCardTitle>
+              <AppCardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {dict.description}
+              </AppCardDescription>
             </AppCardHeader>
-            <AppCardContent className="space-y-4">
+            <AppCardContent className="space-y-4 px-6 sm:px-6 flex-1 flex flex-col mt-4 sm:mt-0">
               <UnifiedJDBox
                 dict={dict}
                 disabled={isPending}
@@ -351,36 +354,52 @@ export function NewServiceForm({
               />
               <input type="hidden" name="jd_text" value={text} />
             </AppCardContent>
-            <AppCardFooter className="flex-col items-start gap-4 sm:flex-row sm:items-center justify-start">
-              <div className="flex items-center gap-3 order-2 sm:order-1 w-full sm:w-auto">
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  className="relative inline-flex items-center justify-center font-bold overflow-hidden z-10 bg-gradient-to-b from-slate-800 to-slate-900 text-white hover:from-slate-700 hover:to-slate-800 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_4px_14px_rgba(0,0,0,0.15)] dark:from-slate-100 dark:to-slate-300 dark:text-slate-900 dark:hover:from-white dark:hover:to-slate-200 dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_4px_20px_rgba(0,0,0,0.3)] border border-slate-900/10 dark:border-white/10 active:scale-[0.98] transition-all duration-300 ease-out backdrop-blur-md"
-                >
-                  {dict.button}
-                </Button>
-                <span
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground"
-                  title={`Cost: ${getTaskCost('job_match')} coins`}
-                >
-                  <Coins className="w-3 h-3 text-yellow-500" />
-                  {getTaskCost('job_match')}
-                </span>
+            <AppCardFooter className="flex-col w-full px-6 sm:px-6 pb-2 pt-4 sm:pt-2 mt-auto z-10 border-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full sm:mt-6">
+                {/* 左侧：状态指示器 */}
+                <div className="flex items-center gap-2 mb-2 sm:mb-0 shrink-0">
+                  <div className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {dict.statusMicroIndicator || 'AI 引擎已连接专属档案，随时待命'}
+                  </span>
+                </div>
+
+                {/* 右侧：行动组 (仅主按钮) */}
+                <div className="flex items-center w-full sm:w-auto">
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full sm:w-auto bg-slate-900 dark:bg-white text-white dark:text-slate-900 h-11 px-1 rounded-xl font-medium shadow-sm hover:scale-[1.02] transition-transform active:scale-95 flex items-center justify-center overflow-hidden disabled:opacity-50"
+                  >
+                    {/* 左侧：核心动作 */}
+                    <span className="px-5">{dict.button}</span>
+
+                    {/* 中间：半透明分割线 */}
+                    <div className="w-px h-5 bg-white/20 dark:bg-slate-900/20"></div>
+
+                    {/* 右侧：消耗提示 (弱化透明度，提升高级感) */}
+                    <span className="px-4 flex items-center gap-1.5 opacity-80 text-sm">
+                      <span className="text-base">🪙</span> {getTaskCost('job_match')}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              <div className="order-1 sm:order-2 w-full sm:w-auto flex items-center min-h-[40px]">
-                {notification && (
+              {notification && (
+                <div className="w-full mt-4">
                   <ServiceNotification
                     type={notification.type}
                     title={notification.title}
                     description={notification.description}
                     onClose={() => setNotification(null)}
                     autoDismiss={3000}
-                    className="w-full sm:w-auto"
+                    className="w-full"
                   />
-                )}
-              </div>
+                </div>
+              )}
             </AppCardFooter>
           </AppCard>
         </form>
