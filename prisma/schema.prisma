@@ -50,6 +50,37 @@ enum AnalyticsCategory {
   @@schema("public")
 }
 
+enum AnalyticsSource {
+  ACTION
+  PRODUCER
+  WORKER
+  PUBLIC_SHARE
+  CRON
+  LEGACY
+  @@schema("public")
+}
+
+enum AnalyticsRuntime {
+  NEXTJS
+  HONO_WORKER
+  @@schema("public")
+}
+
+enum AnalyticsQueueKind {
+  STREAM
+  BATCH
+  @@schema("public")
+}
+
+enum AnalyticsOutcome {
+  SUCCESS
+  FAILED
+  GUARD_BLOCKED
+  REPLAYED
+  ACCEPTED
+  @@schema("public")
+}
+
 model PaymentWaitlist {
   id        String     @id @default(cuid())
   userId    String     @unique @map("user_id")
@@ -216,21 +247,54 @@ model KnowledgeEntry {
 }
 
 model AnalyticsEvent {
-  id        String            @id @default(cuid())
-  userId    String?           @map("user_id")
-  eventName String            @map("event_name")
-  payload   Json?
-  traceId   String?           @map("trace_id")
-  duration  Int?              @default(0)
-  category  AnalyticsCategory @default(BUSINESS)
-  createdAt DateTime          @default(now()) @map("created_at")
-  user      users_sync?       @relation(fields: [userId], references: [id])
+  id             String             @id @default(cuid())
+  userId         String?            @map("user_id")
+  serviceId      String?            @map("service_id")
+  taskId         String?            @map("task_id")
+  eventName      String             @map("event_name")
+  payload        Json?
+  traceId        String?            @map("trace_id")
+  templateId     String?            @map("template_id")
+  queueKind      AnalyticsQueueKind? @map("queue_kind")
+  category       AnalyticsCategory  @default(BUSINESS)
+  source         AnalyticsSource    @default(ACTION)
+  runtime        AnalyticsRuntime   @default(NEXTJS)
+  outcome        AnalyticsOutcome?
+  errorCode      String?            @map("error_code")
+  idempotencyKey String?            @map("idempotency_key")
+  duration       Int?
+  occurredAt     DateTime           @default(now()) @map("occurred_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  user           users_sync?        @relation(fields: [userId], references: [id])
+  outbox         AnalyticsOutbox?
 
   @@index([eventName, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([serviceId, createdAt(sort: Desc)])
+  @@index([taskId, createdAt(sort: Desc)])
   @@index([traceId])
+  @@index([templateId, createdAt(sort: Desc)])
+  @@index([source, createdAt(sort: Desc)])
   @@index([category, createdAt(sort: Desc)])
+  @@unique([eventName, idempotencyKey])
   @@map("analytics_events")
+  @@schema("public")
+}
+
+model AnalyticsOutbox {
+  id         String         @id @default(cuid())
+  eventId    String         @unique @map("event_id")
+  payload    Json
+  retryCount Int            @default(0) @map("retry_count")
+  lastError  String?        @map("last_error")
+  nextRetryAt DateTime?     @map("next_retry_at")
+  exportedAt DateTime?      @map("exported_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at")
+  event      AnalyticsEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([exportedAt, nextRetryAt, createdAt(sort: Asc)])
+  @@map("analytics_outbox")
   @@schema("public")
 }
 

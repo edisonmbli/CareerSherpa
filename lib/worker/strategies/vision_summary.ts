@@ -220,7 +220,7 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
     ctx: StrategyContext,
     matchTaskId: string,
   ) {
-    const { serviceId, userId, locale, requestId } = ctx
+    const { serviceId, userId, locale, requestId, traceId } = ctx
     await markTimeline(serviceId, 'worker_batch_enqueue_match_start', {
       taskId: matchTaskId,
     })
@@ -236,6 +236,7 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
       kind: 'stream',
       serviceId,
       taskId: matchTaskId,
+      traceId,
       userId,
       locale: locale as 'en' | 'zh',
       templateId: 'job_match',

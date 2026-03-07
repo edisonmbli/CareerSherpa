@@ -326,6 +326,7 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           kind: 'batch',
           serviceId,
           taskId: `job_${serviceId}_${sessionId}`,
+          traceId,
           userId,
           locale: locale as 'en' | 'zh',
           templateId: 'job_summary',

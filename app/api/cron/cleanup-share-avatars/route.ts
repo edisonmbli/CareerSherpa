@@ -3,23 +3,19 @@ import {
   clearResumeShareAvatarUrls,
   getExpiredResumeSharesWithAvatar,
 } from '@/lib/dal/resumeShare'
+import { verifyCronAuthorization } from '@/lib/cron/auth'
 import { logError, logInfo } from '@/lib/logger'
 import { deleteShareAvatar } from '@/lib/storage/avatar-server'
 
 export const dynamic = 'force-dynamic'
-
-const LOOKBACK_DAYS = 5
+export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env['CRON_SECRET']
-  const authHeader = req.headers.get('authorization')
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return new NextResponse('Unauthorized', { status: 401 })
-  }
+  const authResult = verifyCronAuthorization(req, 'api/cron/cleanup-share-avatars')
+  if (authResult) return authResult
 
   try {
-    const records = await getExpiredResumeSharesWithAvatar(LOOKBACK_DAYS)
+    const records = await getExpiredResumeSharesWithAvatar()
     if (!records.length) {
       return NextResponse.json({
         success: true,

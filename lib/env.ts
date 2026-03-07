@@ -152,6 +152,23 @@ export const ENV = {
     process.env['RATE_LIMIT_PAID_WINDOW_SEC'] ?? '900',
   ),
   RATE_LIMIT_PAID_MAX: Number(process.env['RATE_LIMIT_PAID_MAX'] ?? '10'),
+
+  // Analytics
+  ANALYTICS_HASH_SALT: process.env['ANALYTICS_HASH_SALT'] ?? '',
+  ANALYTICS_OUTBOX_BATCH_SIZE: Number(
+    process.env['ANALYTICS_OUTBOX_BATCH_SIZE'] ?? '200',
+  ),
+  ANALYTICS_OUTBOX_RETENTION_DAYS: Number(
+    process.env['ANALYTICS_OUTBOX_RETENTION_DAYS'] ?? '7',
+  ),
+  POSTHOG_API_KEY: process.env['POSTHOG_API_KEY'] ?? '',
+  POSTHOG_HOST: process.env['POSTHOG_HOST'] ?? 'https://us.i.posthog.com',
+  NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'] ?? '',
+  NEXT_PUBLIC_POSTHOG_HOST:
+    process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://us.i.posthog.com',
+  NEXT_PUBLIC_POSTHOG_ENABLED:
+    (process.env['NEXT_PUBLIC_POSTHOG_ENABLED'] ?? 'false').toLowerCase() ===
+      'true',
 }
 
 export function isProdRedisReady() {

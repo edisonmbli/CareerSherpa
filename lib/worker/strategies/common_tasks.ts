@@ -18,6 +18,13 @@ import {
 } from '@/lib/worker/common'
 import { retrieveInterviewContext } from '@/lib/rag/retriever'
 import { validateJson } from '@/lib/llm/json-validator'
+import {
+  trackEvent,
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
 
 function normalizeJson(value: unknown): string {
   if (value === null || value === undefined) return ''
@@ -86,6 +93,10 @@ export class InterviewStrategy implements WorkerStrategy<any> {
     ctx: StrategyContext,
   ) {
     const { serviceId, userId, requestId } = ctx
+    const runDuration =
+      typeof ctx.startedAtMs === 'number'
+        ? Math.max(0, Date.now() - ctx.startedAtMs)
+        : undefined
     const raw = String(execResult.raw || execResult.data?.raw || '')
     let parsed = execResult.data
     if (!parsed && raw) {
@@ -122,6 +133,18 @@ export class InterviewStrategy implements WorkerStrategy<any> {
           ExecutionStatus.INTERVIEW_COMPLETED,
           { executionSessionId: variables.executionSessionId },
         )
+        trackEvent('INTERVIEW_COMPLETED', {
+          userId,
+          serviceId,
+          taskId: interviewTaskId,
+          traceId: interviewTaskId,
+          category: AnalyticsCategory.BUSINESS,
+          source: AnalyticsSource.WORKER,
+          runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+          outcome: AnalyticsOutcome.SUCCESS,
+          ...(runDuration !== undefined ? { duration: runDuration } : {}),
+          payload: { interviewId: String(variables.interviewId || '') },
+        })
         try {
           await publishEvent(channel, {
             type: 'status',
@@ -140,6 +163,22 @@ export class InterviewStrategy implements WorkerStrategy<any> {
           ExecutionStatus.INTERVIEW_FAILED,
           { executionSessionId: variables.executionSessionId },
         )
+        trackEvent('INTERVIEW_FAILED', {
+          userId,
+          serviceId,
+          taskId: interviewTaskId,
+          traceId: interviewTaskId,
+          category: AnalyticsCategory.BUSINESS,
+          source: AnalyticsSource.WORKER,
+          runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+          outcome: AnalyticsOutcome.FAILED,
+          errorCode: execResult.error || 'INTERVIEW_FAILED',
+          ...(runDuration !== undefined ? { duration: runDuration } : {}),
+          payload: {
+            interviewId: String(variables.interviewId || ''),
+            reason: execResult.error || 'parse_failed',
+          },
+        })
         try {
           await publishEvent(channel, {
             type: 'status',

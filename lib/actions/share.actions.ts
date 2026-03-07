@@ -5,24 +5,189 @@ import {
   getResumeShareContextForUser,
   upsertResumeShareByCustomizedId,
 } from '@/lib/dal/resumeShare'
-import { createAnalyticsEvent } from '@/lib/dal/analyticsEvent'
+import {
+  trackEvent,
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
+import { checkRateLimit } from '@/lib/rateLimiter'
+import { extractReferrerDomain } from '@/lib/analytics/privacy'
 import { resolveAvatarForShare } from '@/lib/storage/avatar-server'
 import { logError } from '@/lib/logger'
+import { z } from 'zod'
 
 export type ShareLinkResult =
   | { ok: true; data: any }
   | { ok: false; error: string }
 
+const shareViewPayloadSchema = z.object({
+  shareId: z.string().min(1).max(120),
+  templateId: z.string().min(1).max(60),
+  source: z.string().max(24).optional(),
+  referrer: z.string().max(2000).optional(),
+  utm_source: z.string().max(80).nullable().optional(),
+  utm_medium: z.string().max(80).nullable().optional(),
+  utm_campaign: z.string().max(80).nullable().optional(),
+  utm_content: z.string().max(120).nullable().optional(),
+  utm_term: z.string().max(120).nullable().optional(),
+})
+
+const shareCtaPayloadSchema = z.object({
+  shareId: z.string().min(1).max(120),
+  templateId: z.string().min(1).max(60),
+  target: z.string().max(64).optional(),
+  source: z.string().max(24).optional(),
+  utm_source: z.string().max(80).nullable().optional(),
+  utm_medium: z.string().max(80).nullable().optional(),
+  utm_campaign: z.string().max(80).nullable().optional(),
+  utm_content: z.string().max(120).nullable().optional(),
+  utm_term: z.string().max(120).nullable().optional(),
+})
+
+type ShareEventName = 'RESUME_SHARE_VIEW' | 'RESUME_SHARE_CTA_CLICK'
+
 export async function trackShareEventAction(params: {
-  eventName: string
-  payload: any
+  eventName: ShareEventName
+  payload: unknown
 }) {
-  // Public action, no auth required
-  await createAnalyticsEvent({
-    eventName: params.eventName,
-    payload: params.payload,
+  if (params.eventName === 'RESUME_SHARE_VIEW') {
+    const parsed = shareViewPayloadSchema.safeParse(params.payload)
+    if (!parsed.success) {
+      return { ok: false, error: 'invalid_payload' as const }
+    }
+    const payload = parsed.data
+    const rate = await checkRateLimit(
+      `share_event:${params.eventName}`,
+      `share:${payload.shareId}`,
+      false,
+    )
+    if (!rate.ok) {
+      return { ok: false, error: 'rate_limited' as const }
+    }
+    const referrerDomain = extractReferrerDomain(payload.referrer)
+    trackEvent('RESUME_SHARE_VIEW', {
+      category: AnalyticsCategory.BUSINESS,
+      source: AnalyticsSource.PUBLIC_SHARE,
+      runtime: AnalyticsRuntime.NEXTJS,
+      outcome: AnalyticsOutcome.ACCEPTED,
+      payload: {
+        shareId: payload.shareId,
+        templateId: payload.templateId,
+        ...(payload.source ? { source: payload.source } : {}),
+        ...(referrerDomain ? { referrerDomain } : {}),
+        ...(payload.utm_source !== undefined
+          ? { utm_source: payload.utm_source }
+          : {}),
+        ...(payload.utm_medium !== undefined
+          ? { utm_medium: payload.utm_medium }
+          : {}),
+        ...(payload.utm_campaign !== undefined
+          ? { utm_campaign: payload.utm_campaign }
+          : {}),
+        ...(payload.utm_content !== undefined
+          ? { utm_content: payload.utm_content }
+          : {}),
+        ...(payload.utm_term !== undefined
+          ? { utm_term: payload.utm_term }
+          : {}),
+      },
+    })
+    return { ok: true as const }
+  }
+
+  const parsed = shareCtaPayloadSchema.safeParse(params.payload)
+  if (!parsed.success) {
+    return { ok: false, error: 'invalid_payload' as const }
+  }
+  const payload = parsed.data
+  const rate = await checkRateLimit(
+    `share_event:${params.eventName}`,
+    `share:${payload.shareId}`,
+    false,
+  )
+  if (!rate.ok) {
+    return { ok: false, error: 'rate_limited' as const }
+  }
+  trackEvent('RESUME_SHARE_CTA_CLICK', {
+    category: AnalyticsCategory.BUSINESS,
+    source: AnalyticsSource.PUBLIC_SHARE,
+    runtime: AnalyticsRuntime.NEXTJS,
+    outcome: AnalyticsOutcome.ACCEPTED,
+    payload: {
+      shareId: payload.shareId,
+      templateId: payload.templateId,
+      ...(payload.target ? { target: payload.target } : {}),
+      ...(payload.source ? { source: payload.source } : {}),
+      ...(payload.utm_source !== undefined
+        ? { utm_source: payload.utm_source }
+        : {}),
+      ...(payload.utm_medium !== undefined
+        ? { utm_medium: payload.utm_medium }
+        : {}),
+      ...(payload.utm_campaign !== undefined
+        ? { utm_campaign: payload.utm_campaign }
+        : {}),
+      ...(payload.utm_content !== undefined
+        ? { utm_content: payload.utm_content }
+        : {}),
+      ...(payload.utm_term !== undefined ? { utm_term: payload.utm_term } : {}),
+    },
   })
+  return { ok: true as const }
 }
+
+const customizeShareClickSchema = z.object({
+  serviceId: z.string().min(1).max(80),
+  shareId: z.string().min(1).max(120),
+  shareMethod: z
+    .enum(['generate_link', 'copy_link', 'preview_open', 'renew_link'])
+    .default('copy_link'),
+  templateId: z.string().max(60).optional(),
+})
+
+export const trackCustomizeShareClickAction = withServerActionAuthWrite<
+  {
+    serviceId: string
+    shareId: string
+    shareMethod: 'generate_link' | 'copy_link' | 'preview_open' | 'renew_link'
+    templateId?: string
+  },
+  { ok: true } | { ok: false; error: string }
+>('trackCustomizeShareClickAction', async (params, ctx) => {
+  const parsed = customizeShareClickSchema.safeParse(params)
+  if (!parsed.success) {
+    return { ok: false, error: 'invalid_payload' }
+  }
+  const payload = parsed.data
+
+  const rate = await checkRateLimit(
+    'customize_share_click',
+    `user:${ctx.userId}:service:${payload.serviceId}`,
+    false,
+  )
+  if (!rate.ok) {
+    return { ok: false, error: 'rate_limited' }
+  }
+
+  trackEvent('CUSTOMIZE_SHARE_CLICKED', {
+    userId: ctx.userId,
+    serviceId: payload.serviceId,
+    category: AnalyticsCategory.BUSINESS,
+    source: AnalyticsSource.ACTION,
+    runtime: AnalyticsRuntime.NEXTJS,
+    outcome: AnalyticsOutcome.ACCEPTED,
+    payload: {
+      shareId: payload.shareId,
+      source: 'web',
+      shareMethod: payload.shareMethod,
+      ...(payload.templateId ? { templateId: payload.templateId } : {}),
+    },
+  })
+
+  return { ok: true }
+})
 
 export const generateShareLinkAction = withServerActionAuthWrite<
   {
@@ -78,6 +243,21 @@ export const generateShareLinkAction = withServerActionAuthWrite<
         ...(avatarUrl ? { avatarUrl } : {}),
       },
     )
+
+    trackEvent('CUSTOMIZE_SHARE_CLICKED', {
+      userId,
+      serviceId,
+      category: AnalyticsCategory.BUSINESS,
+      source: AnalyticsSource.ACTION,
+      runtime: AnalyticsRuntime.NEXTJS,
+      outcome: AnalyticsOutcome.ACCEPTED,
+      payload: {
+        shareId: share.shareKey,
+        source: 'web',
+        shareMethod: shareCtx.share?.shareKey ? 'renew_link' : 'generate_link',
+      },
+    })
+
     return { ok: true, data: share }
   },
 )

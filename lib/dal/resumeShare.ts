@@ -126,14 +126,18 @@ export async function upsertResumeShareByCustomizedId(
   })
 }
 
-export async function getExpiredResumeSharesWithAvatar(lookbackDays: number) {
+export async function getExpiredResumeSharesWithAvatar(lookbackDays?: number) {
   const now = new Date()
-  const from = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000)
+  const hasLowerBound =
+    typeof lookbackDays === 'number' && Number.isFinite(lookbackDays) && lookbackDays > 0
+  const from = hasLowerBound
+    ? new Date(now.getTime() - Math.floor(lookbackDays) * 24 * 60 * 60 * 1000)
+    : null
   return prisma.resumeShare.findMany({
     where: {
       expireAt: {
         lt: now,
-        gte: from,
+        ...(from ? { gte: from } : {}),
       },
       avatarUrl: { not: null },
     },

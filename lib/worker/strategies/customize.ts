@@ -22,6 +22,13 @@ import {
   publishEvent,
   buildCustomizeTaskId,
 } from '@/lib/worker/common'
+import {
+  trackEvent,
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
 
 // Helper for debug logging (M9 pattern)
 function logDebugFile(filename: string, content: string) {
@@ -147,7 +154,10 @@ export const customizeStrategy: WorkerStrategy = {
     ctx: StrategyContext,
   ) {
     const { serviceId, userId, requestId } = ctx
-    const result = execResult.data
+    const runDuration =
+      typeof ctx.startedAtMs === 'number'
+        ? Math.max(0, Date.now() - ctx.startedAtMs)
+        : undefined
     const sessionId = String(variables.executionSessionId || '')
     const customizeTaskId = buildCustomizeTaskId(serviceId, sessionId)
     const channel = getChannel(userId, serviceId, customizeTaskId)
@@ -200,6 +210,22 @@ export const customizeStrategy: WorkerStrategy = {
         userId,
         ctx.shouldRefund,
       )
+      trackEvent('CUSTOMIZE_GENERATED', {
+        userId,
+        serviceId,
+        taskId: customizeTaskId,
+        traceId: customizeTaskId,
+        category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: execResult.error || 'CUSTOMIZE_FAILED',
+        ...(runDuration !== undefined ? { duration: runDuration } : {}),
+        payload: {
+          success: false,
+          reason: execResult.error || 'empty_result',
+        },
+      })
       return
     }
 
@@ -277,6 +303,18 @@ export const customizeStrategy: WorkerStrategy = {
           })
         }
       }
+      trackEvent('CUSTOMIZE_GENERATED', {
+        userId,
+        serviceId,
+        taskId: customizeTaskId,
+        traceId: customizeTaskId,
+        category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.SUCCESS,
+        ...(runDuration !== undefined ? { duration: runDuration } : {}),
+        payload: { success: true },
+      })
     } catch (error) {
       logError({
         reqId: requestId,
@@ -329,6 +367,23 @@ export const customizeStrategy: WorkerStrategy = {
         userId,
         ctx.shouldRefund,
       )
+
+      trackEvent('CUSTOMIZE_GENERATED', {
+        userId,
+        serviceId,
+        taskId: customizeTaskId,
+        traceId: customizeTaskId,
+        category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: String(error),
+        ...(runDuration !== undefined ? { duration: runDuration } : {}),
+        payload: {
+          success: false,
+          reason: String(error),
+        },
+      })
 
       if (error instanceof z.ZodError) {
         throw new Error(`JSON Validation Failed: ${error.message}`)

@@ -1,12 +1,20 @@
 {
   "crons": [
     {
+      "path": "/api/cron/flush-analytics-outbox",
+      "schedule": "2,12,22,32,42,52 * * * *"
+    },
+    {
       "path": "/api/cron/cleanup-analytics",
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/cleanup-analytics-outbox",
+      "schedule": "20 0 * * *"
+    },
+    {
       "path": "/api/cron/cleanup-share-avatars",
-      "schedule": "0 0 * * *"
+      "schedule": "40 0 * * *"
     }
   ]
 }

@@ -6,6 +6,7 @@ import { SidebarClient } from '@/components/app/SidebarClient'
 import { MobileDrawer } from '@/components/workbench/MobileDrawer'
 import { WorkbenchColumns } from '@/components/workbench/WorkbenchColumns'
 import { NeuralNetworkBackground } from '@/components/ui/neural-network-bg'
+import { PostHogProvider } from '@/components/analytics/PostHogProvider'
 
 import { getDictionary } from '@/lib/i18n/dictionaries'
 
@@ -113,38 +114,40 @@ export default async function WorkbenchLayout(props: any) {
   }
 
   return (
-    <div className="container mx-auto sm:px-6 md:px-8 sm:py-6 flex flex-col min-h-0 h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem-3rem)]">
-      {/* V7 Ambient Background Layer (Neural Network Visual Echo) */}
-      <NeuralNetworkBackground variant="workbench" className="fixed" />
+    <PostHogProvider scope="workbench" locale={locale}>
+      <div className="container mx-auto sm:px-6 md:px-8 sm:py-6 flex flex-col min-h-0 h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem-3rem)]">
+        {/* V7 Ambient Background Layer (Neural Network Visual Echo) */}
+        <NeuralNetworkBackground variant="workbench" className="fixed" />
 
-      <div className="lg:hidden mb-0 sm:mb-8 flex items-center px-6 pt-4 sm:px-0 sm:pt-0 relative z-[50]">
-        <MobileDrawer
-          locale={locale}
-          quotaBalance={quotaBalance}
-          services={services.map((s) => ({
-            id: s.id,
-            title: s.title,
-            createdAt: s.createdAt,
-            ...(s.updatedAt ? { updatedAt: s.updatedAt } : {}),
-          }))}
-          dict={dict}
-        />
+        <div className="lg:hidden mb-0 sm:mb-8 flex items-center px-6 pt-4 sm:px-0 sm:pt-0 relative z-[50]">
+          <MobileDrawer
+            locale={locale}
+            quotaBalance={quotaBalance}
+            services={services.map((s) => ({
+              id: s.id,
+              title: s.title,
+              createdAt: s.createdAt,
+              ...(s.updatedAt ? { updatedAt: s.updatedAt } : {}),
+            }))}
+            dict={dict}
+          />
+        </div>
+        <div className="flex-1 flex flex-col min-h-0 relative z-10">
+          <WorkbenchColumns
+            sidebar={
+              <SidebarClient
+                locale={locale}
+                quotaBalance={quotaBalance}
+                services={services}
+                dict={dict}
+              />
+            }
+          >
+            {children}
+          </WorkbenchColumns>
+        </div>
       </div>
-      <div className="flex-1 flex flex-col min-h-0 relative z-10">
-        <WorkbenchColumns
-          sidebar={
-            <SidebarClient
-              locale={locale}
-              quotaBalance={quotaBalance}
-              services={services}
-              dict={dict}
-            />
-          }
-        >
-          {children}
-        </WorkbenchColumns>
-      </div>
-    </div>
+    </PostHogProvider>
   )
 }
 

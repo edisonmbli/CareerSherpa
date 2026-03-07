@@ -138,6 +138,7 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
       kind: 'stream',
       serviceId,
       taskId: variables.nextTaskId, // Must match the ID expected by frontend
+      traceId,
       userId,
       locale: locale as 'en' | 'zh',
       templateId: 'job_match',

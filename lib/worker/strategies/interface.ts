@@ -8,6 +8,8 @@ export interface StrategyContext {
   taskId: string
   requestId: string
   traceId: string
+  runtime?: import('@prisma/client').AnalyticsRuntime
+  startedAtMs?: number
   shouldRefund?: boolean
 }
 
@@ -27,6 +29,7 @@ export interface DeferredTask<T extends TaskTemplateId = TaskTemplateId> {
   kind: 'stream' | 'batch'
   serviceId: string
   taskId: string
+  traceId?: string
   userId: string
   locale: Locale
   templateId: T

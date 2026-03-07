@@ -13,7 +13,12 @@ import {
 } from '@/lib/dal/coinLedger'
 import { logError } from '@/lib/logger'
 import { FailureCode, AnalyticsCategory } from '@prisma/client'
-import { trackEvent } from '@/lib/analytics/index'
+import {
+  trackEvent,
+  AnalyticsOutcome,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
 
 import { retrieveMatchContext } from '@/lib/rag/retriever'
 import { validateJson } from '@/lib/llm/json-validator'
@@ -402,6 +407,21 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       await publishFailure(channel, serviceId, taskId, requestId, traceId, failure.failureCode, failure.reason)
       execResult.ok = false
       execResult.error = failure.reason
+      trackEvent('MATCH_FAILED', {
+        userId,
+        serviceId,
+        taskId,
+        traceId,
+        category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: String(failure.failureCode),
+        payload: {
+          failureCode: String(failure.failureCode),
+          reason: failure.reason,
+        },
+      })
       await handleRefunds(
         execResult,
         variables,
@@ -429,6 +449,21 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
       await publishFailure(channel, serviceId, taskId, requestId, traceId, logicFailure.failureCode, logicFailure.reason)
       execResult.ok = false
       execResult.error = logicFailure.reason
+      trackEvent('MATCH_FAILED', {
+        userId,
+        serviceId,
+        taskId,
+        traceId,
+        category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: String(logicFailure.failureCode),
+        payload: {
+          failureCode: String(logicFailure.failureCode),
+          reason: logicFailure.reason,
+        },
+      })
       await handleRefunds(
         execResult,
         variables,
@@ -450,6 +485,9 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
         taskId,
         traceId,
         category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.SUCCESS,
         payload: {
           matchScore: score,
           jobId: (variables as any)['jobId'],
@@ -463,6 +501,21 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
         error: String(e),
         phase: 'save_retry_failed',
         serviceId,
+      })
+      trackEvent('MATCH_FAILED', {
+        userId,
+        serviceId,
+        taskId,
+        traceId,
+        category: AnalyticsCategory.BUSINESS,
+        source: AnalyticsSource.WORKER,
+        runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: 'SAVE_RETRY_FAILED',
+        payload: {
+          failureCode: 'SAVE_RETRY_FAILED',
+          reason: String(e),
+        },
       })
       // Even if save fails, try to notify frontend
       // But we should probably mark as failed?

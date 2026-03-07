@@ -25,11 +25,20 @@ import {
   QSTASH_RETRY_BACKOFF_BASE_MS,
   QSTASH_WORKER_RETRIES,
 } from '@/lib/constants'
+import {
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsQueueKind,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@prisma/client'
 
 export interface PushTaskParams<T extends TaskTemplateId> {
   kind: 'stream' | 'batch'
   serviceId: string
   taskId: string
+  /** Optional workflow-level trace id; defaults to taskId. */
+  traceId?: string
   userId: string
   locale: Locale
   templateId: T
@@ -72,6 +81,7 @@ export async function pushTask<T extends TaskTemplateId>(
     !!params.variables.image
       ? getJobVisionTaskRouting(hasQuota)
       : getTaskRouting(params.templateId, hasQuota)
+  const effectiveTraceId = params.traceId || params.taskId
   // Phase 4: Respect the kind parameter from action layer
   // Previously had a hardcoded override forcing vision→batch, now removed to enable streaming
   const kindSegment = params.kind
@@ -114,7 +124,7 @@ export async function pushTask<T extends TaskTemplateId>(
       code,
       stage: 'enqueue',
       requestId: params.taskId,
-      traceId: params.taskId,
+      traceId: effectiveTraceId,
       lastUpdatedAt: new Date().toISOString(),
     }).catch((e) =>
       logError({
@@ -171,6 +181,18 @@ export async function pushTask<T extends TaskTemplateId>(
           taskId: params.taskId,
         },
         { templateId: params.templateId, kind: params.kind, idemKey },
+        {
+          category: AnalyticsCategory.SYSTEM,
+          source: AnalyticsSource.PRODUCER,
+          runtime: AnalyticsRuntime.NEXTJS,
+          traceId: effectiveTraceId,
+          outcome: AnalyticsOutcome.REPLAYED,
+          ...(idemKey ? { idempotencyKey: idemKey } : {}),
+          queueKind:
+            params.kind === 'stream'
+              ? AnalyticsQueueKind.STREAM
+              : AnalyticsQueueKind.BATCH,
+        },
       )
       return { url, replay: true, idemKey }
     }
@@ -204,6 +226,18 @@ export async function pushTask<T extends TaskTemplateId>(
         maxSize,
         ...(bp.pending !== undefined ? { pending: bp.pending } : {}),
         retryAfter: bp.retryAfter,
+      },
+      {
+        category: AnalyticsCategory.SYSTEM,
+        source: AnalyticsSource.PRODUCER,
+        runtime: AnalyticsRuntime.NEXTJS,
+        traceId: effectiveTraceId,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: 'BACKPRESSURED',
+        queueKind:
+          params.kind === 'stream'
+            ? AnalyticsQueueKind.STREAM
+            : AnalyticsQueueKind.BATCH,
       },
     )
     const wasPaid = !!params.variables.wasPaid
@@ -266,6 +300,7 @@ export async function pushTask<T extends TaskTemplateId>(
         url,
         body: {
           taskId: params.taskId,
+          traceId: effectiveTraceId,
           userId: params.userId,
           serviceId: params.serviceId,
           locale: params.locale,
@@ -335,7 +370,7 @@ export async function pushTask<T extends TaskTemplateId>(
       }
     }
     logEvent(
-      'TASK_FAILED',
+      'TASK_ENQUEUE_FAILED',
       {
         userId: params.userId,
         serviceId: params.serviceId,
@@ -345,6 +380,18 @@ export async function pushTask<T extends TaskTemplateId>(
         templateId: params.templateId,
         kind: params.kind,
         error: error instanceof Error ? error.message : String(error),
+      },
+      {
+        category: AnalyticsCategory.SYSTEM,
+        source: AnalyticsSource.PRODUCER,
+        runtime: AnalyticsRuntime.NEXTJS,
+        traceId: effectiveTraceId,
+        outcome: AnalyticsOutcome.FAILED,
+        errorCode: 'ENQUEUE_FAILED',
+        queueKind:
+          params.kind === 'stream'
+            ? AnalyticsQueueKind.STREAM
+            : AnalyticsQueueKind.BATCH,
       },
     )
     return { url, refunded: wasPaid && cost > 0, error: 'enqueue_failed' }
@@ -375,6 +422,18 @@ export async function pushTask<T extends TaskTemplateId>(
       messageId: res.messageId,
       ...(idemKey ? { idemKey } : {}),
     },
+    {
+      category: AnalyticsCategory.SYSTEM,
+      source: AnalyticsSource.PRODUCER,
+      runtime: AnalyticsRuntime.NEXTJS,
+      traceId: effectiveTraceId,
+      outcome: AnalyticsOutcome.ACCEPTED,
+      ...(idemKey ? { idempotencyKey: idemKey } : {}),
+      queueKind:
+        params.kind === 'stream'
+          ? AnalyticsQueueKind.STREAM
+          : AnalyticsQueueKind.BATCH,
+    },
   )
 
   // Phase 4: Emit "Queued" status immediately for UI feedback
@@ -398,7 +457,7 @@ export async function pushTask<T extends TaskTemplateId>(
       code: 'queued',
       stage: 'enqueue',
       requestId: params.taskId,
-      traceId: params.taskId,
+      traceId: effectiveTraceId,
       lastUpdatedAt: new Date().toISOString(),
     }).catch((err) => {
       logError({

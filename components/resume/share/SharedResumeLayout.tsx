@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Sparkles, ExternalLink, FileDown, Printer } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useReactToPrint } from 'react-to-print'
+import { trackShareEventAction } from '@/lib/actions/share.actions'
 import {
   RESUME_SCREEN_BASE_WIDTH_PX,
   RESUME_SCREEN_DESKTOP_PADDING_PX,
@@ -18,6 +20,8 @@ import {
 interface SharedResumeLayoutProps {
   children: React.ReactNode
   locale: string
+  shareKey?: string
+  templateId?: string
   showHook?: boolean
   text: {
     bannerText: string
@@ -32,6 +36,8 @@ interface SharedResumeLayoutProps {
 export function SharedResumeLayout({
   children,
   locale,
+  shareKey,
+  templateId,
   showHook = true,
   text,
 }: SharedResumeLayoutProps) {
@@ -42,6 +48,7 @@ export function SharedResumeLayout({
   const scaleWrapperRef = useRef<HTMLDivElement>(null)
   const [screenScale, setScreenScale] = useState(1)
   const [isMobileView, setIsMobileView] = useState(false)
+  const searchParams = useSearchParams()
   // printRef is resolved at click time (see handleExportPdfClick / handlePrintClick)
   // NOT in useEffect — the useEffect fires before PublicResumeViewer finishes
   // its own initialization (setReady(true)), so .resume-paper wouldn't exist yet.
@@ -131,6 +138,46 @@ export function SharedResumeLayout({
     }, 500)
   }, [showBanner])
 
+  const handleTrackCtaClick = useCallback((target: string) => {
+    if (!shareKey || !templateId) return
+    const utmSource = searchParams.get('utm_source') || 'resume_share'
+    const utmMedium = searchParams.get('utm_medium') || 'referral'
+    const utmCampaign = searchParams.get('utm_campaign') || 'resume_share'
+    const utmContent = searchParams.get('utm_content') || shareKey
+    const utmTerm = searchParams.get('utm_term')
+    void trackShareEventAction({
+      eventName: 'RESUME_SHARE_CTA_CLICK',
+      payload: {
+        shareId: shareKey,
+        templateId,
+        target,
+        source: 'web',
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmCampaign,
+        utm_content: utmContent,
+        ...(utmTerm ? { utm_term: utmTerm } : {}),
+      },
+    })
+  }, [searchParams, shareKey, templateId])
+
+  const landingHref = useMemo(() => {
+    const params = new URLSearchParams()
+    params.set('utm_source', searchParams.get('utm_source') || 'resume_share')
+    params.set('utm_medium', searchParams.get('utm_medium') || 'referral')
+    params.set('utm_campaign', searchParams.get('utm_campaign') || 'resume_share')
+    if (shareKey) {
+      params.set('utm_content', searchParams.get('utm_content') || shareKey)
+      params.set('share_id', shareKey)
+      params.set('src', 'share')
+    } else if (searchParams.get('utm_content')) {
+      params.set('utm_content', String(searchParams.get('utm_content')))
+    }
+    const utmTerm = searchParams.get('utm_term')
+    if (utmTerm) params.set('utm_term', utmTerm)
+    return `/${locale}?${params.toString()}`
+  }, [locale, searchParams, shareKey])
+
   return (
     <>
       {showHook && (
@@ -151,10 +198,11 @@ export function SharedResumeLayout({
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link href={`/${locale}`} target="_blank">
+              <Link href={landingHref} target="_blank">
                 <Button
                   size="sm"
                   className="h-7 px-3 sm:h-8 sm:px-4 text-[11px] sm:text-xs font-medium shadow-sm"
+                  onClick={() => handleTrackCtaClick('banner_cta')}
                 >
                   {text.cta}
                 </Button>

@@ -107,6 +107,8 @@ export default async function SharedResumePage({ params }: PageProps) {
       <SharedResumeLayout
         locale={locale}
         showHook={!isOwner}
+        shareKey={shareKey}
+        templateId={templateId}
         text={dict.resume.share.public}
       >
         <PublicResumeViewer 

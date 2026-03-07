@@ -28,6 +28,13 @@ import {
 } from '@/lib/dal/coinLedger'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
 import { logInfo, logError } from '@/lib/logger'
+import {
+  trackEvent,
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
 
 /**
  * Strategy for Summary tasks (Job, Resume, Detailed Resume).
@@ -114,10 +121,15 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     ctx: StrategyContext,
   ) {
     const { serviceId, userId, requestId } = ctx
+    const parseDuration =
+      typeof ctx.startedAtMs === 'number'
+        ? Math.max(0, Date.now() - ctx.startedAtMs)
+        : undefined
 
     try {
       if (this.templateId === 'resume_summary') {
         const resumeId = String(variables.resumeId || '')
+        const success = execResult.ok
         if (resumeId) {
           const parsedProfileJson = execResult.ok
             ? (execResult.data as any)?.parsed_profile_json
@@ -129,8 +141,28 @@ export class SummaryStrategy implements WorkerStrategy<any> {
             parsedProfileJson,
           )
         }
+        trackEvent('RESUME_PARSE_COMPLETED', {
+          userId,
+          serviceId,
+          taskId: ctx.taskId,
+          traceId: ctx.traceId,
+          category: AnalyticsCategory.BUSINESS,
+          source: AnalyticsSource.WORKER,
+          runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+          outcome: success ? AnalyticsOutcome.SUCCESS : AnalyticsOutcome.FAILED,
+          ...(parseDuration !== undefined ? { duration: parseDuration } : {}),
+          ...(success
+            ? {}
+            : { errorCode: execResult.error || 'RESUME_SUMMARY_FAILED' }),
+          payload: {
+            templateId: 'resume_summary',
+            success,
+            ...(success ? {} : { failureCode: execResult.error || 'RESUME_SUMMARY_FAILED' }),
+          },
+        })
       } else if (this.templateId === 'detailed_resume_summary') {
         const detailedId = String(variables.detailedResumeId || '')
+        const success = execResult.ok
         if (detailedId) {
           const parsedKeyInfoJson = execResult.ok
             ? (execResult.data as any)?.parsed_detailed_resume_json
@@ -142,6 +174,25 @@ export class SummaryStrategy implements WorkerStrategy<any> {
             parsedKeyInfoJson,
           )
         }
+        trackEvent('RESUME_PARSE_COMPLETED', {
+          userId,
+          serviceId,
+          taskId: ctx.taskId,
+          traceId: ctx.traceId,
+          category: AnalyticsCategory.BUSINESS,
+          source: AnalyticsSource.WORKER,
+          runtime: ctx.runtime ?? AnalyticsRuntime.NEXTJS,
+          outcome: success ? AnalyticsOutcome.SUCCESS : AnalyticsOutcome.FAILED,
+          ...(parseDuration !== undefined ? { duration: parseDuration } : {}),
+          ...(success
+            ? {}
+            : { errorCode: execResult.error || 'DETAILED_SUMMARY_FAILED' }),
+          payload: {
+            templateId: 'detailed_resume_summary',
+            success,
+            ...(success ? {} : { failureCode: execResult.error || 'DETAILED_SUMMARY_FAILED' }),
+          },
+        })
       } else if (this.templateId === 'job_summary') {
         await this.handleJobSummaryWrite(execResult, variables, ctx)
       }
@@ -335,7 +386,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
     ctx: StrategyContext,
     matchTaskId: string,
   ) {
-    const { serviceId, userId, locale, requestId } = ctx
+    const { serviceId, userId, locale, requestId, traceId } = ctx
     await markTimeline(serviceId, 'worker_batch_enqueue_match_start', {
       taskId: matchTaskId,
     })
@@ -356,6 +407,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
         kind: 'stream', // Phase 2: Converted to streaming for real-time feedback
         serviceId,
         taskId: `pre_${matchTaskId}`, // Distinct task ID for audit
+        traceId,
         userId,
         locale: locale as 'en' | 'zh',
         templateId: 'pre_match_audit',
@@ -418,6 +470,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       kind: 'stream',
       serviceId,
       taskId: matchTaskId,
+      traceId,
       userId,
       locale: locale as 'en' | 'zh',
       templateId: 'job_match',

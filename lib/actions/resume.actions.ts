@@ -11,7 +11,13 @@ import {
   getLatestDetailedSummaryJson,
 } from '@/lib/dal/resume'
 import { pushTask } from '@/lib/queue/producer'
-import { trackEvent, AnalyticsCategory } from '@/lib/analytics/index'
+import {
+  trackEvent,
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
 import { checkOperationRateLimit } from '@/lib/rateLimiter'
 import type { Locale } from '@/i18n-config'
 import type { TaskTemplateId } from '@/lib/prompts/types'
@@ -90,19 +96,16 @@ export const uploadResumeAction = withServerActionAuthWrite<
           isFree: !hasQuota,
           error: enq.error,
         }
-
-      trackEvent('TASK_ENQUEUED', {
-        userId,
-        serviceId: rec.id,
-        traceId: rec.id,
-        category: AnalyticsCategory.SYSTEM,
-        payload: { task: 'resume_summary', isFree: !hasQuota },
-      })
     }
-    trackEvent('RESUME_UPLOAD_COMPLETED', {
+    trackEvent('RESUME_UPLOAD_ACCEPTED', {
       userId,
       serviceId: rec.id,
+      taskId: rec.id,
+      traceId: rec.id,
       category: AnalyticsCategory.BUSINESS,
+      source: AnalyticsSource.ACTION,
+      runtime: AnalyticsRuntime.NEXTJS,
+      outcome: AnalyticsOutcome.ACCEPTED,
       payload: { type: 'resume', isFree: !hasQuota, length: len },
     })
     return { ok: true, taskId: rec.id, isFree: !hasQuota, taskType: 'resume' }
@@ -163,19 +166,16 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
           isFree: !hasQuota,
           error: enq.error,
         }
-
-      trackEvent('TASK_ENQUEUED', {
-        userId,
-        serviceId: rec.id,
-        traceId: rec.id,
-        category: AnalyticsCategory.SYSTEM,
-        payload: { task: 'detailed_resume_summary', isFree: !hasQuota },
-      })
     }
-    trackEvent('RESUME_UPLOAD_COMPLETED', {
+    trackEvent('RESUME_UPLOAD_ACCEPTED', {
       userId,
       serviceId: rec.id,
+      taskId: rec.id,
+      traceId: rec.id,
       category: AnalyticsCategory.BUSINESS,
+      source: AnalyticsSource.ACTION,
+      runtime: AnalyticsRuntime.NEXTJS,
+      outcome: AnalyticsOutcome.ACCEPTED,
       payload: { type: 'detailed', isFree: !hasQuota, length: len },
     })
     return {

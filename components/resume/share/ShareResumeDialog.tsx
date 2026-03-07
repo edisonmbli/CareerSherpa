@@ -41,6 +41,7 @@ import {
   generateShareLinkAction,
   disableShareLinkAction,
   getResumeShareAction,
+  trackCustomizeShareClickAction,
 } from '@/lib/actions/share.actions'
 import { cn } from '@/lib/utils'
 import { useResumeDict } from '@/components/resume/ResumeDictContext'
@@ -289,15 +290,26 @@ export function ShareResumeDialog({
   const localeMatch = pathname?.match(/^\/(en|zh)(?:\/|$)/)
   const currentLocale = localeMatch?.[1] ?? 'en'
   const sharePath = shareKey ? `/${currentLocale}/r/${shareKey}` : ''
+  const shareTrackingQuery = shareKey
+    ? `?utm_source=resume_share&utm_medium=referral&utm_campaign=resume_share&utm_content=${encodeURIComponent(
+        shareKey,
+      )}&share_id=${encodeURIComponent(shareKey)}&src=share`
+    : ''
+  const sharePathWithTracking = `${sharePath}${shareTrackingQuery}`
 
   const handleCopy = () => {
     if (!shareKey) return
-    const url = `${window.location.origin}${sharePath}`
+    const url = `${window.location.origin}${sharePathWithTracking}`
     navigator.clipboard
       .writeText(url)
       .then(() => {
         setCopied(true)
         showFeedback('success', dict.share.feedback.copySuccess, 'link')
+        void trackCustomizeShareClickAction({
+          serviceId,
+          shareId: shareKey,
+          shareMethod: 'copy_link',
+        })
         window.setTimeout(() => setCopied(false), 2000)
       })
       .catch(() => {
@@ -307,11 +319,18 @@ export function ShareResumeDialog({
 
   const isExpired = expireAt && new Date() > expireAt
   const shareUrl = shareKey
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}${sharePath}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}${sharePathWithTracking}`
     : ''
   const handlePreview = () => {
     if (!sharePath) return
-    window.open(sharePath, '_blank', 'noopener,noreferrer')
+    window.open(sharePathWithTracking, '_blank', 'noopener,noreferrer')
+    if (shareKey) {
+      void trackCustomizeShareClickAction({
+        serviceId,
+        shareId: shareKey,
+        shareMethod: 'preview_open',
+      })
+    }
   }
   const feedbackClasses =
     feedback?.type === 'error'

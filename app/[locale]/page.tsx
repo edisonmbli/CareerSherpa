@@ -11,6 +11,7 @@ import { CoreValueSection } from '@/components/landing/CoreValueSection'
 import { BentoGrid } from '@/components/landing/BentoGrid'
 import { CtaSection } from '@/components/landing/CtaSection'
 import { Footer } from '@/components/landing/Footer'
+import { LandingAttributionTracker } from '@/components/analytics/LandingAttributionTracker'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -55,6 +56,7 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-clip">
+      <LandingAttributionTracker />
       {/* 2.1 Hero 区 (The Hook) */}
       <HeroSection dict={dict.hero} locale={locale} />
 

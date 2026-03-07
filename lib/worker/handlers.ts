@@ -13,7 +13,14 @@ import { getTaskConfig } from '@/lib/llm/config'
 import { ENV } from '@/lib/env'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { logEvent } from '@/lib/observability/logger'
-import { trackEvent, AnalyticsCategory } from '@/lib/analytics/index'
+import {
+  trackEvent,
+  AnalyticsCategory,
+  AnalyticsOutcome,
+  AnalyticsQueueKind,
+  AnalyticsRuntime,
+  AnalyticsSource,
+} from '@/lib/analytics/index'
 import { publishStart, emitStreamIdle } from '@/lib/worker/pipeline'
 import { guardUser, guardModel, guardQueue } from '@/lib/worker/steps/guards'
 import { executeStreaming, executeStructured } from '@/lib/worker/steps/execute'
@@ -23,7 +30,6 @@ import { cleanupFinal } from '@/lib/worker/steps/cleanup'
 import { getStrategy } from '@/lib/worker/strategies'
 import { markTimeline } from '@/lib/observability/timeline'
 import { logDebug, logError } from '@/lib/logger'
-import { getProvider } from '@/lib/llm/utils'
 import {
   recordRefund,
   markDebitFailed,
@@ -61,6 +67,28 @@ function isTimeoutError(message: string): boolean {
     normalized.includes('deadline') ||
     normalized.includes('abort')
   )
+}
+
+function isProviderNotConfiguredError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('missing_') ||
+    normalized.includes('api_key') ||
+    normalized.includes('api key') ||
+    normalized.includes('no auth credentials') ||
+    normalized.includes('provider not configured')
+  )
+}
+
+function deriveProviderFromModelId(modelId?: string): string | undefined {
+  const normalized = String(modelId || '').toLowerCase()
+  if (!normalized) return undefined
+  if (normalized.includes('deepseek')) return 'deepseek'
+  if (normalized.includes('gemini')) return 'gemini'
+  if (normalized.includes('glm') || normalized.includes('zhipu')) return 'zhipu'
+  if (normalized.includes('openai') || normalized.includes('gpt')) return 'openai'
+  if (normalized.includes('baidu')) return 'baidu'
+  return normalized.split(/[-:_/]/)[0] || undefined
 }
 
 type RetryMeta = {
@@ -103,6 +131,12 @@ function getRetryMeta(req: Request, body: Body): RetryMeta {
   return meta
 }
 
+function getWorkerRuntime(req: Request): AnalyticsRuntime {
+  return req.url.includes('/api/execute/')
+    ? AnalyticsRuntime.HONO_WORKER
+    : AnalyticsRuntime.NEXTJS
+}
+
 /**
  * Centralized handler for guard failures (429 errors).
  * Handles refund, SSE error notification, and logging.
@@ -119,6 +153,8 @@ async function handleGuardFailure(params: {
   traceId: string
   billing: BillingVars
   kind: 'stream' | 'batch'
+  runtime: AnalyticsRuntime
+  startedAt?: number
   retryAfter?: number
   pending?: number
   maxSize?: number
@@ -137,6 +173,8 @@ async function handleGuardFailure(params: {
     traceId,
     billing,
     kind,
+    runtime,
+    startedAt,
     retryAfter,
     pending,
     maxSize,
@@ -145,6 +183,8 @@ async function handleGuardFailure(params: {
     shouldRefund,
   } = params
   const { wasPaid, cost = 0, debitId } = billing
+  const queueKind =
+    kind === 'stream' ? AnalyticsQueueKind.STREAM : AnalyticsQueueKind.BATCH
 
   // 1. SSE error notification (so frontend can show error state)
   try {
@@ -209,6 +249,55 @@ async function handleGuardFailure(params: {
       ...(maxSize !== undefined ? { maxSize } : {}),
       ...(retryCount !== undefined ? { retryCount } : {}),
       ...(maxRetries !== undefined ? { maxRetries } : {}),
+    },
+  })
+
+  const guardPayload = {
+    reason,
+    templateId,
+    kind,
+    ...(retryAfter !== undefined ? { retryAfter } : {}),
+    ...(pending !== undefined ? { pending } : {}),
+    ...(maxSize !== undefined ? { maxSize } : {}),
+    ...(retryCount !== undefined ? { retryCount } : {}),
+    ...(maxRetries !== undefined ? { maxRetries } : {}),
+    ...(shouldRefund !== undefined ? { refunded: shouldRefund && !!wasPaid } : {}),
+  }
+
+  trackEvent('WORKER_GUARDS_BLOCKED', {
+    userId,
+    serviceId,
+    taskId,
+    traceId,
+    category: AnalyticsCategory.SYSTEM,
+    source: AnalyticsSource.WORKER,
+    runtime,
+    queueKind,
+    outcome: AnalyticsOutcome.GUARD_BLOCKED,
+    errorCode: reason,
+    ...(startedAt ? { duration: Date.now() - startedAt } : {}),
+    payload: guardPayload,
+  })
+
+  trackEvent('WORKER_JOB_FINISHED', {
+    userId,
+    serviceId,
+    taskId,
+    traceId,
+    category: AnalyticsCategory.SYSTEM,
+    source: AnalyticsSource.WORKER,
+    runtime,
+    queueKind,
+    outcome: AnalyticsOutcome.GUARD_BLOCKED,
+    errorCode: reason,
+    ...(startedAt ? { duration: Date.now() - startedAt } : {}),
+    payload: {
+      templateId,
+      kind,
+      success: false,
+      reason,
+      ...(pending !== undefined ? { pending } : {}),
+      ...(retryAfter !== undefined ? { retryAfter } : {}),
     },
   })
 
@@ -342,6 +431,7 @@ export async function handleStream(
 
       const {
         taskId,
+        traceId: bodyTraceId,
         userId,
         serviceId,
         locale,
@@ -349,19 +439,27 @@ export async function handleStream(
         variables,
         enqueuedAt,
       } = body
+      const reqMeta = getRequestMeta(req, taskId)
+      const requestId = reqMeta.requestId
+      const traceId = bodyTraceId || reqMeta.traceId
       const retryMeta = getRetryMeta(req, body)
       const startTime = Date.now()
+      const runtime = getWorkerRuntime(req)
       const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
       trackEvent('WORKER_JOB_STARTED', {
         userId,
         serviceId,
         taskId,
-        traceId: taskId,
+        traceId,
         category: AnalyticsCategory.SYSTEM,
+        source: AnalyticsSource.WORKER,
+        runtime,
+        queueKind: AnalyticsQueueKind.STREAM,
+        outcome: AnalyticsOutcome.ACCEPTED,
         payload: {
           templateId,
           queueWaitTime,
-          enqueuedAt,
+          ...(enqueuedAt !== undefined ? { enqueuedAt } : {}),
           startedAt: startTime,
         },
       })
@@ -372,8 +470,6 @@ export async function handleStream(
           status: 400,
         })
       }
-
-      const { requestId, traceId } = getRequestMeta(req, taskId)
       const ctxBase = {
         serviceId,
         userId,
@@ -381,6 +477,8 @@ export async function handleStream(
         taskId,
         requestId,
         traceId,
+        runtime,
+        startedAtMs: startTime,
         shouldRefund: retryMeta.shouldRefund,
       }
 
@@ -465,6 +563,8 @@ export async function handleStream(
             ? { maxRetries: retryMeta.maxRetries }
             : {}),
           shouldRefund: retryMeta.shouldRefund,
+          runtime,
+          startedAt: startTime,
         })
       userGuarded = true
 
@@ -499,6 +599,8 @@ export async function handleStream(
             ? { maxRetries: retryMeta.maxRetries }
             : {}),
           shouldRefund: retryMeta.shouldRefund,
+          runtime,
+          startedAt: startTime,
         })
       }
       modelGuarded = true
@@ -535,6 +637,15 @@ export async function handleStream(
                 ? { retryAfter: gQueue.retryAfter }
                 : {}),
             },
+            {
+              category: AnalyticsCategory.SYSTEM,
+              source: AnalyticsSource.WORKER,
+              runtime,
+              traceId,
+              outcome: AnalyticsOutcome.FAILED,
+              errorCode: 'BACKPRESSURED',
+              queueKind: AnalyticsQueueKind.STREAM,
+            },
           )
         }
         await releaseGuardsOnFailure()
@@ -561,6 +672,8 @@ export async function handleStream(
             ? { maxRetries: retryMeta.maxRetries }
             : {}),
           shouldRefund: retryMeta.shouldRefund,
+          runtime,
+          startedAt: startTime,
         })
       }
 
@@ -741,12 +854,16 @@ export async function handleStream(
         })
 
         const execDuration = Date.now() - startTime
-        trackEvent('WORKER_JOB_COMPLETED', {
+        trackEvent('WORKER_JOB_FINISHED', {
           userId,
           serviceId,
           taskId,
-          traceId: taskId,
+          traceId,
           category: AnalyticsCategory.SYSTEM,
+          source: AnalyticsSource.WORKER,
+          runtime,
+          queueKind: AnalyticsQueueKind.STREAM,
+          outcome: AnalyticsOutcome.SUCCESS,
           duration: execDuration,
           payload: { templateId, success: execResult.result.ok },
         })
@@ -754,6 +871,26 @@ export async function handleStream(
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
+        if (isProviderNotConfiguredError(errMsg)) {
+          const provider = deriveProviderFromModelId(decision.modelId)
+          trackEvent('WORKER_PROVIDER_NOT_CONFIGURED', {
+            userId,
+            serviceId,
+            taskId,
+            traceId,
+            category: AnalyticsCategory.SYSTEM,
+            source: AnalyticsSource.WORKER,
+            runtime,
+            queueKind: AnalyticsQueueKind.STREAM,
+            outcome: AnalyticsOutcome.FAILED,
+            errorCode: 'PROVIDER_NOT_CONFIGURED',
+            payload: {
+              templateId,
+              modelId: decision.modelId,
+              ...(provider ? { provider } : {}),
+            },
+          })
+        }
         logDebug({
           reqId: requestId,
           route: 'worker/stream',
@@ -798,6 +935,8 @@ export async function handleStream(
                 requestId,
                 traceId,
                 taskId,
+                runtime,
+                startedAtMs: startTime,
               },
             )
             break
@@ -857,12 +996,17 @@ export async function handleStream(
         }
 
         const execDuration = Date.now() - startTime
-        trackEvent('WORKER_JOB_COMPLETED', {
+        trackEvent('WORKER_JOB_FINISHED', {
           userId,
           serviceId,
           taskId,
-          traceId: taskId,
+          traceId,
           category: AnalyticsCategory.SYSTEM,
+          source: AnalyticsSource.WORKER,
+          runtime,
+          queueKind: AnalyticsQueueKind.STREAM,
+          outcome: AnalyticsOutcome.FAILED,
+          errorCode: errMsg,
           duration: execDuration,
           payload: { templateId, success: false, error: errMsg },
         })
@@ -887,6 +1031,7 @@ export async function handleBatch(
 
       const {
         taskId,
+        traceId: bodyTraceId,
         userId,
         serviceId,
         locale,
@@ -894,19 +1039,27 @@ export async function handleBatch(
         variables,
         enqueuedAt,
       } = body
+      const reqMeta = getRequestMeta(req, taskId)
+      const requestId = reqMeta.requestId
+      const traceId = bodyTraceId || reqMeta.traceId
       const retryMeta = getRetryMeta(req, body)
       const startTime = Date.now()
+      const runtime = getWorkerRuntime(req)
       const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
       trackEvent('WORKER_JOB_STARTED', {
         userId,
         serviceId,
         taskId,
-        traceId: taskId,
+        traceId,
         category: AnalyticsCategory.SYSTEM,
+        source: AnalyticsSource.WORKER,
+        runtime,
+        queueKind: AnalyticsQueueKind.BATCH,
+        outcome: AnalyticsOutcome.ACCEPTED,
         payload: {
           templateId,
           queueWaitTime,
-          enqueuedAt,
+          ...(enqueuedAt !== undefined ? { enqueuedAt } : {}),
           startedAt: startTime,
         },
       })
@@ -917,8 +1070,6 @@ export async function handleBatch(
           status: 400,
         })
       }
-
-      const { requestId, traceId } = getRequestMeta(req, taskId)
       const ctxBase = {
         serviceId,
         userId,
@@ -926,6 +1077,8 @@ export async function handleBatch(
         taskId,
         requestId,
         traceId,
+        runtime,
+        startedAtMs: startTime,
         shouldRefund: retryMeta.shouldRefund,
       }
 
@@ -1014,6 +1167,8 @@ export async function handleBatch(
             ? { maxRetries: retryMeta.maxRetries }
             : {}),
           shouldRefund: retryMeta.shouldRefund,
+          runtime,
+          startedAt: startTime,
         })
       userGuarded = true
 
@@ -1048,6 +1203,8 @@ export async function handleBatch(
             ? { maxRetries: retryMeta.maxRetries }
             : {}),
           shouldRefund: retryMeta.shouldRefund,
+          runtime,
+          startedAt: startTime,
         })
       }
       modelGuarded = true
@@ -1084,6 +1241,15 @@ export async function handleBatch(
                 ? { retryAfter: gQueue.retryAfter }
                 : {}),
             },
+            {
+              category: AnalyticsCategory.SYSTEM,
+              source: AnalyticsSource.WORKER,
+              runtime,
+              traceId,
+              outcome: AnalyticsOutcome.FAILED,
+              errorCode: 'BACKPRESSURED',
+              queueKind: AnalyticsQueueKind.BATCH,
+            },
           )
         }
         await releaseGuardsOnFailure()
@@ -1110,6 +1276,8 @@ export async function handleBatch(
             ? { maxRetries: retryMeta.maxRetries }
             : {}),
           shouldRefund: retryMeta.shouldRefund,
+          runtime,
+          startedAt: startTime,
         })
       }
 
@@ -1281,12 +1449,16 @@ export async function handleBatch(
         }
 
         const execDuration = Date.now() - startTime
-        trackEvent('WORKER_JOB_COMPLETED', {
+        trackEvent('WORKER_JOB_FINISHED', {
           userId,
           serviceId,
           taskId,
-          traceId: taskId,
+          traceId,
           category: AnalyticsCategory.SYSTEM,
+          source: AnalyticsSource.WORKER,
+          runtime,
+          queueKind: AnalyticsQueueKind.BATCH,
+          outcome: AnalyticsOutcome.SUCCESS,
           duration: execDuration,
           payload: { templateId, success: execResult.result.ok },
         })
@@ -1294,6 +1466,26 @@ export async function handleBatch(
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
+        if (isProviderNotConfiguredError(errMsg)) {
+          const provider = deriveProviderFromModelId(decision.modelId)
+          trackEvent('WORKER_PROVIDER_NOT_CONFIGURED', {
+            userId,
+            serviceId,
+            taskId,
+            traceId,
+            category: AnalyticsCategory.SYSTEM,
+            source: AnalyticsSource.WORKER,
+            runtime,
+            queueKind: AnalyticsQueueKind.BATCH,
+            outcome: AnalyticsOutcome.FAILED,
+            errorCode: 'PROVIDER_NOT_CONFIGURED',
+            payload: {
+              templateId,
+              modelId: decision.modelId,
+              ...(provider ? { provider } : {}),
+            },
+          })
+        }
         logDebug({
           reqId: requestId,
           route: 'worker/batch',
@@ -1338,6 +1530,8 @@ export async function handleBatch(
                 requestId,
                 traceId,
                 taskId,
+                runtime,
+                startedAtMs: startTime,
               },
             )
             break
@@ -1387,12 +1581,17 @@ export async function handleBatch(
         }
 
         const execDuration = Date.now() - startTime
-        trackEvent('WORKER_JOB_COMPLETED', {
+        trackEvent('WORKER_JOB_FINISHED', {
           userId,
           serviceId,
           taskId,
-          traceId: taskId,
+          traceId,
           category: AnalyticsCategory.SYSTEM,
+          source: AnalyticsSource.WORKER,
+          runtime,
+          queueKind: AnalyticsQueueKind.BATCH,
+          outcome: AnalyticsOutcome.FAILED,
+          errorCode: errMsg,
           duration: execDuration,
           payload: { templateId, success: false, error: errMsg },
         })

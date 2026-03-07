@@ -36,6 +36,7 @@ import { ResumePanelClient } from '@/components/profile/ResumePanelClient'
 import { AssetProgressClient } from '@/components/profile/AssetProgressClient'
 import { DetailedResumePanelClient } from '@/components/profile/DetailedResumePanelClient'
 import { cn } from '@/lib/utils'
+import { PostHogProvider } from '@/components/analytics/PostHogProvider'
 
 type ParsedProfile = {
   career_persona: string
@@ -174,9 +175,10 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="container mx-auto px-4 pt-4 pb-32 md:pb-40 bg-slate-50/50 dark:bg-[#0a0a0a]">
-      <div className="min-h-[calc(100vh-6rem)] relative">
-        <div className="max-w-4xl mx-auto">
+    <PostHogProvider scope="profile" locale={locale}>
+      <div className="container mx-auto px-4 pt-4 pb-32 md:pb-40 bg-slate-50/50 dark:bg-[#0a0a0a]">
+        <div className="min-h-[calc(100vh-6rem)] relative">
+          <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-end mb-6">
             <Link href={`/${locale}/workbench`} className="text-sm underline">
               {w.sidebar.backToWorkbench}
@@ -404,8 +406,9 @@ export default async function ProfilePage({
               </AppCard>
             </div>
           </div>
+          </div>
         </div>
       </div>
-    </div>
+    </PostHogProvider>
   )
 }
