@@ -108,7 +108,7 @@ export default async function SharedResumePage({ params }: PageProps) {
       </div>
 
       <div className="relative z-10">
-        <ShareViewTracker shareKey={shareKey} templateId={templateId} />
+        <ShareViewTracker shareKey={shareKey} templateId={templateId} enabled={!isOwner} />
 
         <SharedResumeLayout
           locale={locale}

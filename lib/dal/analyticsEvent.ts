@@ -70,26 +70,58 @@ export async function createAnalyticsEvent(
     const created = await withPrismaGuard(
       async (client) => {
         return await client.$transaction(async (tx) => {
-          const event = await tx.analyticsEvent.create({
-            data: {
-              userId: userId ?? null,
-              serviceId: serviceId ?? null,
-              taskId: taskId ?? null,
-              eventName,
-              payload: finalPayload,
-              traceId: traceId ?? null,
-              templateId: templateId ?? null,
-              queueKind: queueKind ?? null,
-              source: source ?? AnalyticsSource.ACTION,
-              runtime: runtime ?? AnalyticsRuntime.NEXTJS,
-              outcome: outcome ?? null,
-              errorCode: errorCode ?? null,
-              idempotencyKey: idempotencyKey ?? null,
-              duration: duration ?? null,
-              occurredAt: finalOccurredAt,
-              category: category ?? AnalyticsCategory.BUSINESS,
-            },
-          })
+          if (idempotencyKey) {
+            const existing = await tx.analyticsEvent.findFirst({
+              where: {
+                eventName,
+                idempotencyKey,
+              },
+            })
+            if (existing) {
+              return existing
+            }
+          }
+
+          let event: { id: string }
+          try {
+            event = await tx.analyticsEvent.create({
+              data: {
+                userId: userId ?? null,
+                serviceId: serviceId ?? null,
+                taskId: taskId ?? null,
+                eventName,
+                payload: finalPayload,
+                traceId: traceId ?? null,
+                templateId: templateId ?? null,
+                queueKind: queueKind ?? null,
+                source: source ?? AnalyticsSource.ACTION,
+                runtime: runtime ?? AnalyticsRuntime.NEXTJS,
+                outcome: outcome ?? null,
+                errorCode: errorCode ?? null,
+                idempotencyKey: idempotencyKey ?? null,
+                duration: duration ?? null,
+                occurredAt: finalOccurredAt,
+                category: category ?? AnalyticsCategory.BUSINESS,
+              },
+            })
+          } catch (error) {
+            if (
+              idempotencyKey &&
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === 'P2002'
+            ) {
+              const duplicated = await tx.analyticsEvent.findFirst({
+                where: {
+                  eventName,
+                  idempotencyKey,
+                },
+              })
+              if (duplicated) {
+                return duplicated
+              }
+            }
+            throw error
+          }
 
           const outboxPayload: Record<string, unknown> = {
             eventId: event.id,

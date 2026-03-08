@@ -12,6 +12,7 @@ import { BentoGrid } from '@/components/landing/BentoGrid'
 import { CtaSection } from '@/components/landing/CtaSection'
 import { Footer } from '@/components/landing/Footer'
 import { LandingAttributionTracker } from '@/components/analytics/LandingAttributionTracker'
+import { PostHogProvider } from '@/components/analytics/PostHogProvider'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -55,10 +56,11 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
   const dict = (await getDictionary(locale)).landing
 
   return (
-    <div className="flex flex-col min-h-screen overflow-x-clip">
-      <LandingAttributionTracker />
-      {/* 2.1 Hero 区 (The Hook) */}
-      <HeroSection dict={dict.hero} locale={locale} />
+    <PostHogProvider scope="landing" locale={locale}>
+      <div className="flex flex-col min-h-screen overflow-x-clip">
+        <LandingAttributionTracker />
+        {/* 2.1 Hero 区 (The Hook) */}
+        <HeroSection dict={dict.hero} locale={locale} />
 
       {/* 2.2 信任背书区 (Trust & Social Proof Banner) */}
       <TrustBanner dict={dict} />
@@ -79,22 +81,23 @@ export default async function LocaleRootPage({ params }: { params: Promise<{ loc
       </div>
 
       {/* 2.6 页脚 (Footer Legitimacy) */}
-      <Footer dict={dict.footer} />
+        <Footer dict={dict.footer} />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'SoftwareApplication',
-            name: 'AI CareerSherpa',
-            operatingSystem: 'Web',
-            applicationCategory: 'BusinessApplication',
-            description: dict.seo.description,
-            offers: { '@type': 'Offer', price: '0', priceCurrency: 'CNY' },
-          }),
-        }}
-      />
-    </div>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'AI CareerSherpa',
+              operatingSystem: 'Web',
+              applicationCategory: 'BusinessApplication',
+              description: dict.seo.description,
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'CNY' },
+            }),
+          }}
+        />
+      </div>
+    </PostHogProvider>
   )
 }

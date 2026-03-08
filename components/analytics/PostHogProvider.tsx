@@ -9,7 +9,7 @@ let hasInitialized = false
 
 export function PostHogProvider(props: {
   children: React.ReactNode
-  scope: 'workbench' | 'profile'
+  scope: 'workbench' | 'profile' | 'landing'
   locale?: string
 }) {
   const enabled =
@@ -37,6 +37,18 @@ export function PostHogProvider(props: {
       })
       hasInitialized = true
     }
+
+    // Replay only for workbench/profile. Landing keeps capture on and replay off.
+    try {
+      if (props.scope === 'landing') {
+        if (posthog.sessionRecordingStarted()) {
+          posthog.stopSessionRecording()
+        }
+      } else if (!posthog.sessionRecordingStarted()) {
+        posthog.startSessionRecording()
+      }
+    } catch {}
+
     posthog.register({
       analytics_scope: props.scope,
       ...(props.locale ? { locale: props.locale } : {}),

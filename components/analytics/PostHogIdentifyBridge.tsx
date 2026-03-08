@@ -3,8 +3,10 @@
 import { useEffect } from 'react'
 import { useUser } from '@stackframe/stack'
 import posthog from 'posthog-js'
+import { trackSignupCompletedAction } from '@/lib/actions/landing.actions'
 
 let activeDistinctId: string | null = null
+const signupTrackedUsers = new Set<string>()
 
 function asOptionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
@@ -12,7 +14,10 @@ function asOptionalString(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined
 }
 
-export function PostHogIdentifyBridge(props: { locale?: string; scope: 'workbench' | 'profile' }) {
+export function PostHogIdentifyBridge(props: {
+  locale?: string
+  scope: 'workbench' | 'profile' | 'landing'
+}) {
   const user = useUser() as any
 
   useEffect(() => {
@@ -51,6 +56,11 @@ export function PostHogIdentifyBridge(props: { locale?: string; scope: 'workbenc
       analytics_scope: props.scope,
     })
     activeDistinctId = userId
+
+    if (!signupTrackedUsers.has(userId)) {
+      signupTrackedUsers.add(userId)
+      void trackSignupCompletedAction({ method: 'stack_auth' }).catch(() => {})
+    }
   }, [props.locale, props.scope, user?.id, user?.primaryEmail, user?.email, user?.name, user?.displayName])
 
   return null

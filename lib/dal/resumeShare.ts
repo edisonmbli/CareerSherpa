@@ -153,6 +153,23 @@ export async function clearResumeShareAvatarUrls(ids: string[]) {
   })
 }
 
+export async function incrementResumeShareViewCountByShareKey(shareKey: string) {
+  if (!shareKey) return
+  try {
+    await prisma.resumeShare.update({
+      where: { shareKey },
+      data: { viewCount: { increment: 1 } },
+    })
+  } catch (e) {
+    logError({
+      reqId: shareKey,
+      route: 'dal/resumeShare',
+      phase: 'increment_view_count_failed',
+      error: e instanceof Error ? e : String(e),
+    })
+  }
+}
+
 export type GetSharedResumeResult =
   | { status: 'success'; data: any }
   | { status: 'not_found' }
@@ -191,22 +208,6 @@ export async function getSharedResumeByKey(
   if (!share.isEnabled) return { status: 'disabled' }
   if (share.expireAt && share.expireAt < new Date())
     return { status: 'expired' }
-
-  // Increment view count (fire and forget, or await)
-  // We await to ensure it's counted, but catch error to not block view
-  prisma.resumeShare
-    .update({
-      where: { id: share.id },
-      data: { viewCount: { increment: 1 } },
-    })
-    .catch((e) => {
-      logError({
-        reqId: share.id,
-        route: 'dal/resumeShare',
-        phase: 'increment_view_count_failed',
-        error: e instanceof Error ? e : String(e),
-      })
-    })
 
   // Construct the return object similar to getServiceForUser structure
   // The page expects: service, resume, customizedResume

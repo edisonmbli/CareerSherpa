@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import type { Locale } from '@/i18n-config'
 import {
   AppCard,
@@ -27,6 +27,7 @@ import { ServiceNotification } from '@/components/common/ServiceNotification'
 import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
 import { useServiceGuard } from '@/lib/hooks/use-service-guard'
 import { uiLog } from '@/lib/ui/sse-debug-logger'
+import posthog from 'posthog-js'
 
 export function NewServiceForm({
   locale,
@@ -50,6 +51,7 @@ export function NewServiceForm({
   const [file, setFile] = useState<File | null>(null)
   const [text, setText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const assetGateViewedTracked = useRef(false)
 
   const MAX_IMAGE_BYTES = JOB_IMAGE_MAX_BYTES
 
@@ -263,6 +265,15 @@ export function NewServiceForm({
     }
   }, [isAssetReady])
 
+  useEffect(() => {
+    if (isAssetReady || assetGateViewedTracked.current) return
+    assetGateViewedTracked.current = true
+    posthog.capture('WORKBENCH_ASSET_GATE_VIEWED', {
+      source: 'new_service_form',
+      locale,
+    })
+  }, [isAssetReady, locale])
+
   const isBusy = isPending || isSubmitting
   const pendingTitle =
     statusDict?.MATCH_PENDING ||
@@ -326,6 +337,10 @@ export function NewServiceForm({
               className="rounded-full px-8 py-3.5 font-semibold transition-transform hover:scale-[1.03] active:scale-95 bg-slate-900 text-white shadow-[0_8px_20px_rgba(0,0,0,0.1)] hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] dark:hover:bg-slate-100"
               onClick={(e) => {
                 e.preventDefault()
+                posthog.capture('WORKBENCH_ASSET_GATE_CTA_CLICKED', {
+                  source: 'new_service_form',
+                  locale,
+                })
                 router.push(`/${locale}/profile?tab=assets`)
               }}
             >

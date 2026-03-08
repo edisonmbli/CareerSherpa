@@ -5,6 +5,8 @@ import { motion, useMotionValue, useTransform, animate, AnimatePresence, useInVi
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import posthog from 'posthog-js'
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -40,6 +42,7 @@ import { NeuralNetworkBackground } from '@/components/ui/neural-network-bg'
 export function HeroSection({ dict, locale }: HeroSectionProps) {
   // Setup cyclic mock data (3 scenarios)
   const [mockIdx, setMockIdx] = useState(0)
+  const searchParams = useSearchParams()
 
   // Fallback mock strictly matches the data schema defined in zh.ts / en.ts
   const mockDataList = dict.mocks && dict.mocks.length > 0 ? dict.mocks : [
@@ -67,6 +70,18 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
   const signInHref = `/${locale}/auth/sign-in?redirect=${encodeURIComponent(
     `/${locale}/workbench`,
   )}`
+
+  const trackLandingCtaClick = (placement: string) => {
+    posthog.capture('LANDING_CTA_CLICKED', {
+      placement,
+      locale,
+      utm_source: searchParams.get('utm_source'),
+      utm_medium: searchParams.get('utm_medium'),
+      utm_campaign: searchParams.get('utm_campaign'),
+      utm_content: searchParams.get('utm_content'),
+      utm_term: searchParams.get('utm_term'),
+    })
+  }
 
   return (
     // Breakout Layout: w-screen absolute trick to break out of container.
@@ -119,7 +134,7 @@ export function HeroSection({ dict, locale }: HeroSectionProps) {
           {/* Diffuse glow shadow */}
           <div aria-hidden="true" className="absolute -inset-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/40 to-blue-500/0 rounded-full blur-lg opacity-30 group-hover:opacity-60 transition duration-500" />
 
-          <Link href={signInHref} className={cn(
+          <Link href={signInHref} onClick={() => trackLandingCtaClick('hero')} className={cn(
             "relative inline-flex items-center justify-center px-8 py-3.5 sm:px-10 sm:py-4 text-sm sm:text-base font-bold",
             "rounded-full transition-all duration-300 ease-out overflow-hidden z-10",
             "bg-gradient-to-b from-slate-800 to-slate-900 dark:from-white/10 dark:to-white/5 backdrop-blur-md",

@@ -9,6 +9,7 @@ import {
   AnalyticsRuntime,
   AnalyticsSource,
 } from '@/lib/analytics/index'
+import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import {
   sanitizeAttributionSnapshot,
   type AttributionTouch,
@@ -83,3 +84,29 @@ export async function trackLandingAttributionAction(params: unknown): Promise<{
 
   return { ok: true }
 }
+
+const signupCompletedSchema = z.object({
+  method: z.string().max(40).optional(),
+})
+
+export const trackSignupCompletedAction = withServerActionAuthWrite<
+  { method?: string },
+  { ok: true } | { ok: false; error: string }
+>('trackSignupCompletedAction', async (params, ctx) => {
+  const parsed = signupCompletedSchema.safeParse(params || {})
+  if (!parsed.success) return { ok: false, error: 'invalid_payload' }
+
+  trackEvent('USER_SIGNUP_COMPLETED', {
+    userId: ctx.userId,
+    category: AnalyticsCategory.BUSINESS,
+    source: AnalyticsSource.ACTION,
+    runtime: AnalyticsRuntime.NEXTJS,
+    outcome: AnalyticsOutcome.SUCCESS,
+    idempotencyKey: `signup:${ctx.userId}`,
+    payload: {
+      ...(parsed.data.method ? { method: parsed.data.method } : {}),
+    },
+  })
+
+  return { ok: true }
+})

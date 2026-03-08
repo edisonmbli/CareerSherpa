@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useSearchParams } from 'next/navigation'
+import posthog from 'posthog-js'
 
 import { ENV } from '@/lib/env'
 
 export function CtaSection({ dict, locale }: { dict: any; locale: string }) {
   const t = dict.cta || {}
+  const searchParams = useSearchParams()
   const subtitle = (t.subtitle || '').replace(
     '{count}',
     ENV.NEXT_PUBLIC_INITIAL_FREE_QUOTA.toString(),
@@ -16,6 +19,18 @@ export function CtaSection({ dict, locale }: { dict: any; locale: string }) {
   const signInHref = `/${locale}/auth/sign-in?redirect=${encodeURIComponent(
     `/${locale}/workbench`,
   )}`
+
+  const trackLandingCtaClick = (placement: string) => {
+    posthog.capture('LANDING_CTA_CLICKED', {
+      placement,
+      locale,
+      utm_source: searchParams.get('utm_source'),
+      utm_medium: searchParams.get('utm_medium'),
+      utm_campaign: searchParams.get('utm_campaign'),
+      utm_content: searchParams.get('utm_content'),
+      utm_term: searchParams.get('utm_term'),
+    })
+  }
 
   return (
     <section className="relative w-full">
@@ -68,7 +83,11 @@ export function CtaSection({ dict, locale }: { dict: any; locale: string }) {
                 size="lg"
                 className="relative z-10 h-20 px-12 sm:px-14 rounded-full text-xl font-bold bg-slate-900 dark:bg-cyan-500/10 text-white dark:text-cyan-400 hover:bg-slate-800 dark:hover:bg-cyan-500/20 border border-transparent dark:border-cyan-500/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] dark:shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all duration-300 overflow-hidden"
               >
-                <Link href={signInHref} className="flex items-center gap-3">
+                <Link
+                  href={signInHref}
+                  className="flex items-center gap-3"
+                  onClick={() => trackLandingCtaClick('cta_section')}
+                >
                   <Sparkles
                     aria-hidden="true"
                     focusable="false"

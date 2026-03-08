@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useReactToPrint } from 'react-to-print'
 import { trackShareEventAction } from '@/lib/actions/share.actions'
 import { ThemeProvider } from 'next-themes'
+import { getOrCreateShareSessionId } from '@/lib/analytics/shareSession'
 import {
   RESUME_SCREEN_BASE_WIDTH_PX,
   RESUME_SCREEN_DESKTOP_PADDING_PX,
@@ -147,6 +148,7 @@ export function SharedResumeLayout({
     const utmCampaign = searchParams.get('utm_campaign') || 'resume_share'
     const utmContent = searchParams.get('utm_content') || shareKey
     const utmTerm = searchParams.get('utm_term')
+    const sessionId = getOrCreateShareSessionId()
     void trackShareEventAction({
       eventName: 'RESUME_SHARE_CTA_CLICK',
       payload: {
@@ -154,6 +156,7 @@ export function SharedResumeLayout({
         templateId,
         target,
         source: 'web',
+        sessionId,
         utm_source: utmSource,
         utm_medium: utmMedium,
         utm_campaign: utmCampaign,

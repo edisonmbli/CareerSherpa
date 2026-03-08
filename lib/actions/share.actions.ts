@@ -3,6 +3,7 @@
 import { withServerActionAuthWrite } from '@/lib/auth/wrapper'
 import {
   getResumeShareContextForUser,
+  incrementResumeShareViewCountByShareKey,
   upsertResumeShareByCustomizedId,
 } from '@/lib/dal/resumeShare'
 import {
@@ -26,6 +27,7 @@ const shareViewPayloadSchema = z.object({
   shareId: z.string().min(1).max(120),
   templateId: z.string().min(1).max(60),
   source: z.string().max(24).optional(),
+  sessionId: z.string().max(80).optional(),
   referrer: z.string().max(2000).optional(),
   utm_source: z.string().max(80).nullable().optional(),
   utm_medium: z.string().max(80).nullable().optional(),
@@ -39,6 +41,7 @@ const shareCtaPayloadSchema = z.object({
   templateId: z.string().min(1).max(60),
   target: z.string().max(64).optional(),
   source: z.string().max(24).optional(),
+  sessionId: z.string().max(80).optional(),
   utm_source: z.string().max(80).nullable().optional(),
   utm_medium: z.string().max(80).nullable().optional(),
   utm_campaign: z.string().max(80).nullable().optional(),
@@ -58,14 +61,16 @@ export async function trackShareEventAction(params: {
       return { ok: false, error: 'invalid_payload' as const }
     }
     const payload = parsed.data
+    const sessionIdentity = payload.sessionId || 'anonymous'
     const rate = await checkRateLimit(
       `share_event:${params.eventName}`,
-      `share:${payload.shareId}`,
+      `share:${payload.shareId}:session:${sessionIdentity}`,
       false,
     )
     if (!rate.ok) {
       return { ok: false, error: 'rate_limited' as const }
     }
+    await incrementResumeShareViewCountByShareKey(payload.shareId)
     const referrerDomain = extractReferrerDomain(payload.referrer)
     trackEvent('RESUME_SHARE_VIEW', {
       category: AnalyticsCategory.BUSINESS,
@@ -102,9 +107,10 @@ export async function trackShareEventAction(params: {
     return { ok: false, error: 'invalid_payload' as const }
   }
   const payload = parsed.data
+  const sessionIdentity = payload.sessionId || 'anonymous'
   const rate = await checkRateLimit(
     `share_event:${params.eventName}`,
-    `share:${payload.shareId}`,
+    `share:${payload.shareId}:session:${sessionIdentity}`,
     false,
   )
   if (!rate.ok) {

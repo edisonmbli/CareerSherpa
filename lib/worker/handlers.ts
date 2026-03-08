@@ -854,6 +854,12 @@ export async function handleStream(
         })
 
         const execDuration = Date.now() - startTime
+        const workerSucceeded = execResult.result.ok === true
+        const workerError =
+          !workerSucceeded &&
+          typeof (execResult.result as any)?.error === 'string'
+            ? String((execResult.result as any).error)
+            : undefined
         trackEvent('WORKER_JOB_FINISHED', {
           userId,
           serviceId,
@@ -863,9 +869,14 @@ export async function handleStream(
           source: AnalyticsSource.WORKER,
           runtime,
           queueKind: AnalyticsQueueKind.STREAM,
-          outcome: AnalyticsOutcome.SUCCESS,
+          outcome: workerSucceeded ? AnalyticsOutcome.SUCCESS : AnalyticsOutcome.FAILED,
+          ...(workerError ? { errorCode: workerError } : {}),
           duration: execDuration,
-          payload: { templateId, success: execResult.result.ok },
+          payload: {
+            templateId,
+            success: workerSucceeded,
+            ...(workerError ? { error: workerError } : {}),
+          },
         })
 
         return Response.json({ ok: execResult.result.ok })
@@ -1449,6 +1460,12 @@ export async function handleBatch(
         }
 
         const execDuration = Date.now() - startTime
+        const workerSucceeded = execResult.result.ok === true
+        const workerError =
+          !workerSucceeded &&
+          typeof (execResult.result as any)?.error === 'string'
+            ? String((execResult.result as any).error)
+            : undefined
         trackEvent('WORKER_JOB_FINISHED', {
           userId,
           serviceId,
@@ -1458,9 +1475,14 @@ export async function handleBatch(
           source: AnalyticsSource.WORKER,
           runtime,
           queueKind: AnalyticsQueueKind.BATCH,
-          outcome: AnalyticsOutcome.SUCCESS,
+          outcome: workerSucceeded ? AnalyticsOutcome.SUCCESS : AnalyticsOutcome.FAILED,
+          ...(workerError ? { errorCode: workerError } : {}),
           duration: execDuration,
-          payload: { templateId, success: execResult.result.ok },
+          payload: {
+            templateId,
+            success: workerSucceeded,
+            ...(workerError ? { error: workerError } : {}),
+          },
         })
 
         return Response.json({ ok: execResult.result.ok })
