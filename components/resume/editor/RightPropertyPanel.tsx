@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { Button } from '@/components/ui/button'
 import { X, ArrowLeft, Bot } from 'lucide-react'
 import { BasicsForm } from '../forms/BasicsForm'
@@ -140,7 +140,7 @@ export function RightPropertyPanel({
                 <div className="absolute -top-2 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/50 to-transparent pointer-events-none rounded-t-lg" />
 
                 {/* Content container */}
-                <div className="relative space-y-4 pl-3 text-zinc-500/80 dark:text-zinc-300/80  border-l-[0.1px] border-border">
+                <div className="relative space-y-4 pl-3 text-zinc-500/80 dark:text-zinc-300/80">
                   <ReactMarkdown
                     components={{
                       // H3 = Main title
@@ -269,7 +269,7 @@ export function RightPropertyPanel({
     <div className="flex flex-col h-full bg-transparent transition-colors">
       <div
         className={cn(
-          'flex items-center justify-between sticky top-0 bg-transparent z-10 border-b border-black/5 dark:border-white/10',
+          'flex items-center justify-between sticky top-0 bg-transparent z-10',
           isMobile ? 'p-3 h-10' : 'p-2'
         )}
       >

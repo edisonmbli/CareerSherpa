@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'

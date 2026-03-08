@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { uiLog } from '@/lib/ui/sse-debug-logger'
 
 // Constants for error backoff (scaled to 15s base interval)

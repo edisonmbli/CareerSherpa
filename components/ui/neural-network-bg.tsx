@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useUiStore } from '@/lib/stores/ui-store'
 
 interface NeuralNetworkBackgroundProps {
-    variant?: 'hero' | 'workbench'
+    variant?: 'hero' | 'workbench' | 'subdued'
     className?: string
 }
 
@@ -14,14 +15,21 @@ export function NeuralNetworkBackground({ variant = 'hero', className }: NeuralN
     const containerRef = useRef<HTMLDivElement>(null)
     const isInView = useInView(containerRef)
 
+    const globalVariant = useUiStore((state) => state.bgVariant)
+    const activeVariant = globalVariant ?? variant
+
     // Configure variant opacities and densities
-    const isHero = variant === 'hero'
+    const isHero = activeVariant === 'hero'
+    const isSubdued = activeVariant === 'subdued'
+    const isWorkbench = activeVariant === 'workbench'
+
     const nodeCount = isHero ? 40 : 25
     const connCount = isHero ? 30 : 20
     const svgOpacityClasses = isHero
         ? "opacity-[0.5] dark:opacity-[0.6]"
-        // V10: Remove blanket opacity for workbench to prevent dimming active glowing elements
-        : ""
+        : isSubdued
+            ? "opacity-[0.25] dark:opacity-[0.2]"
+            : ""
 
     const nodes = useMemo(() => {
         const arr = []
@@ -68,10 +76,10 @@ export function NeuralNetworkBackground({ variant = 'hero', className }: NeuralN
                     aria-hidden="true"
                     focusable="false"
                     className={cn("absolute inset-0 w-full h-full", svgOpacityClasses)}
-                    animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+                    animate={{ rotate: 360, scale: isSubdued ? [1, 1.02, 1] : [1, 1.05, 1] }}
                     transition={{
-                        rotate: { duration: 250, repeat: Infinity, ease: 'linear' },
-                        scale: { duration: 30, repeat: Infinity, ease: 'easeInOut' }
+                        rotate: { duration: isSubdued ? 600 : 250, repeat: Infinity, ease: 'linear' },
+                        scale: { duration: isSubdued ? 120 : 30, repeat: Infinity, ease: 'easeInOut' }
                     }}
                     viewBox="0 0 100 100"
                     preserveAspectRatio="xMidYMid slice"
@@ -94,8 +102,8 @@ export function NeuralNetworkBackground({ variant = 'hero', className }: NeuralN
                         />
                     ))}
 
-                    {/* V11: Increase active pulses to 20 */}
-                    {connections.slice(0, 20).map((conn, idx) => (
+                    {/* Laser pulses - drastically reduced in subdued mode. Workbench capped at 8 to save CPU/GPU overhead */}
+                    {connections.slice(0, isHero ? 20 : isSubdued ? 3 : 8).map((conn, idx) => (
                         <motion.path
                             key={`pulse-${conn.id}`}
                             d={`M ${conn.source.x} ${conn.source.y} L ${conn.target.x} ${conn.target.y}`}
@@ -113,15 +121,14 @@ export function NeuralNetworkBackground({ variant = 'hero', className }: NeuralN
                                 opacity: [0, 1, 1, 0]
                             }}
                             transition={{
-                                // V12: Slow down lasers from 2.5s base to 8s base on Workbench
-                                duration: (isHero ? 2.5 : 8) + Math.random() * 2.5,
+                                // Slower lasers for background distraction-free feel
+                                duration: (isHero ? 2.5 : isSubdued ? 25 : 8) + Math.random() * (isSubdued ? 10 : 2.5),
                                 repeat: Infinity,
                                 delay: Math.random() * 3,
                                 ease: "linear"
                             }}
-                            style={{
-                                filter: 'drop-shadow(0 0 1px rgba(252,211,77,0.8))'
-                            }}
+                        // V13: Completely removed the drop-shadow SVG filter. 
+                        // This filter operating continuously on up to 20 animated paths was causing extreme CPU/GPU usage and thermal spikes
                         />
                     ))}
 
@@ -134,7 +141,7 @@ export function NeuralNetworkBackground({ variant = 'hero', className }: NeuralN
                             className={
                                 isHero
                                     ? "fill-slate-500 dark:fill-slate-600"
-                                    : "fill-slate-200/50 dark:fill-slate-600/80" // V10: Faint nodes
+                                    : "fill-slate-200/50 dark:fill-slate-600/80" // Faint nodes
                             }
                         />
                     ))}
@@ -151,9 +158,9 @@ export function NeuralNetworkBackground({ variant = 'hero', className }: NeuralN
                                 isHero || "dark:fill-cyan-400 fill-cyan-400/30",
                                 isHero && "fill-cyan-500 dark:fill-cyan-400"
                             )}
-                            animate={{ opacity: [0, 0.9, 0], scale: [1, 2, 1] }}
-                            // V12: Slow down breathing from 3s base to 6s base on Workbench
-                            transition={{ duration: (isHero ? 3 : 6) + Math.random() * 3, repeat: Infinity, delay: Math.random() * 5 }}
+                            animate={{ opacity: [0, isSubdued ? 0.3 : 0.9, 0], scale: isSubdued ? [1, 1.2, 1] : [1, 2, 1] }}
+                            // Slow down breathing significantly on the subdued layer
+                            transition={{ duration: (isHero ? 3 : isSubdued ? 15 : 6) + Math.random() * 3, repeat: Infinity, delay: Math.random() * 5 }}
                         />
                     ))}
                 </motion.svg>

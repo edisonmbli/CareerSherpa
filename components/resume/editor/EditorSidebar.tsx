@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Accordion } from '@/components/ui/accordion'
 import { cn } from '@/lib/utils'

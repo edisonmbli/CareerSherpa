@@ -1,4 +1,4 @@
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { Switch } from '../../ui/switch'
 import { Label } from '@/components/ui/label'
 import { useResumeDict } from '../ResumeDictContext'

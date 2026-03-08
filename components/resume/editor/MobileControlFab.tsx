@@ -26,7 +26,7 @@ import {
   DrawerClose,
 } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { StructureOutline } from './StructureOutline'
 import { RightPropertyPanel } from './RightPropertyPanel'
 import { RESUME_TEMPLATES } from '../constants'

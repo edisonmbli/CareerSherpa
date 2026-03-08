@@ -10,6 +10,7 @@ import { stackServerApp } from '@/stack/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Clock, Ban } from 'lucide-react'
+import { NeuralNetworkBackground } from '@/components/ui/neural-network-bg'
 
 interface PageProps {
   params: Promise<{
@@ -93,7 +94,7 @@ export default async function SharedResumePage({ params }: PageProps) {
   // Determine which data to use (edited takes precedence)
   const finalResumeData = editedResumeJson || customizedResumeJson
   const finalSectionConfig = sectionConfig
-  
+
   // Parse ops_json for styleConfig
   const ops = ops_json as any
   const templateId = ops?.currentTemplate || 'standard'
@@ -101,24 +102,30 @@ export default async function SharedResumePage({ params }: PageProps) {
   const avatarUrl = data.share?.avatarUrl ?? null
 
   return (
-    <div className="min-h-screen bg-slate-100/50 relative pb-20 print:bg-white print:pb-0">
-      <ShareViewTracker shareKey={shareKey} templateId={templateId} />
-      
-      <SharedResumeLayout
-        locale={locale}
-        showHook={!isOwner}
-        shareKey={shareKey}
-        templateId={templateId}
-        text={dict.resume.share.public}
-      >
-        <PublicResumeViewer 
-          serviceId={data.id}
-          resumeData={finalResumeData}
-          sectionConfig={finalSectionConfig}
-          opsJson={ops}
-          avatarUrl={avatarUrl}
-        />
-      </SharedResumeLayout>
+    <div className="min-h-screen bg-slate-50/60 dark:bg-zinc-950/60 backdrop-blur-[2px] relative pb-20 print:bg-white print:pb-0 overflow-hidden">
+      <div className="absolute inset-0 z-0 pointer-events-none print:hidden">
+        <NeuralNetworkBackground variant="subdued" />
+      </div>
+
+      <div className="relative z-10">
+        <ShareViewTracker shareKey={shareKey} templateId={templateId} />
+
+        <SharedResumeLayout
+          locale={locale}
+          showHook={!isOwner}
+          shareKey={shareKey}
+          templateId={templateId}
+          text={dict.resume.share.public}
+        >
+          <PublicResumeViewer
+            serviceId={data.id}
+            resumeData={finalResumeData}
+            sectionConfig={finalSectionConfig}
+            opsJson={ops}
+            avatarUrl={avatarUrl}
+          />
+        </SharedResumeLayout>
+      </div>
     </div>
   )
 }

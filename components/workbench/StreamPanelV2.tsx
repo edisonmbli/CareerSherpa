@@ -609,7 +609,7 @@ export function StreamPanelV2({
   return (
     <div
       className={cn(
-        'rounded-xl border-[0.5px] border-black/5 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] backdrop-blur-2xl dark:shadow-2xl p-4 flex flex-col h-[280px] overflow-hidden',
+        'rounded-xl border border-black/[0.03] dark:border-white/[0.05] bg-white/60 dark:bg-zinc-900/50 backdrop-blur-xl shadow-sm dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 flex flex-col w-full h-full min-h-[360px] flex-1 overflow-hidden transition-all duration-300',
         className,
       )}
       aria-live="polite"
@@ -638,7 +638,7 @@ export function StreamPanelV2({
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 w-full h-full rounded-md border border-slate-200 dark:border-white/10 dark:border-dashed bg-white/40 dark:bg-white/[0.01] p-3 overflow-y-auto">
+      <ScrollArea className="flex-1 w-full h-full rounded-md shadow-inner bg-black/[0.02] dark:bg-white/[0.02] p-3 overflow-y-auto mix-blend-multiply dark:mix-blend-screen">
         <div
           ref={scrollerRef}
           className="h-full font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground/90"

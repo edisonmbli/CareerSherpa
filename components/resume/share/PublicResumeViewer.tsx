@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { ResumePreview } from '@/components/resume/editor/ResumePreview'
 import { Loader2 } from 'lucide-react'
 

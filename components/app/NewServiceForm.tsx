@@ -12,6 +12,7 @@ import {
 } from '@/components/app/AppCard'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import { createServiceAction } from '@/lib/actions/service.actions'
 import { StepperProgress } from '@/components/workbench/StepperProgress'
 import { UnifiedJDBox } from '@/components/workbench/UnifiedJDBox'
@@ -241,14 +242,26 @@ export function NewServiceForm({
     execute()
   }
 
+  // Auto-collapse sidebar when on the empty state to focus user on CTA
   // Auto-expand sidebar when on the new service page to provide context
   useEffect(() => {
-    const isCollapsed = localStorage.getItem('sidebar_collapsed') === '1'
-    if (isCollapsed) {
-      localStorage.setItem('sidebar_collapsed', '0')
-      window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
+    const isCollapsedString = localStorage.getItem('sidebar_collapsed')
+    const isCurrentlyCollapsed = isCollapsedString === '1'
+
+    if (!isAssetReady) {
+      // New user empty state -> Force collapse
+      if (!isCurrentlyCollapsed) {
+        localStorage.setItem('sidebar_collapsed', '1')
+        window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
+      }
+    } else {
+      // Ready state (has resume) -> Force expand to show history
+      if (isCurrentlyCollapsed) {
+        localStorage.setItem('sidebar_collapsed', '0')
+        window.dispatchEvent(new CustomEvent('sidebar:collapsed-changed'))
+      }
     }
-  }, [])
+  }, [isAssetReady])
 
   const isBusy = isPending || isSubmitting
   const pendingTitle =
@@ -261,47 +274,61 @@ export function NewServiceForm({
 
   if (!isAssetReady) {
     return (
-      <div className="min-h-[calc(100vh-16rem)] flex flex-col items-center justify-center text-center px-6">
-        <div className="flex flex-col items-center justify-center">
-          <div className="mb-6 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm mx-auto transition-colors">
-            <Archive
-              className="h-8 w-8 md:h-10 md:w-10 text-slate-700 dark:text-slate-300"
-              strokeWidth={2}
-            />
+      <div className="min-h-[calc(100vh-16rem)] flex flex-col items-center justify-center text-center px-4 sm:px-6 w-full">
+        <div
+          className={cn(
+            'max-w-none sm:max-w-[880px] w-full mx-auto relative px-6 py-12 sm:px-12 sm:py-24',
+            'bg-white/70 dark:bg-white/[0.03]',
+            'border-[0.5px] border-black/5 dark:border-white/10',
+            'shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-2xl',
+            'rounded-[2rem] backdrop-blur-2xl',
+            'flex flex-col items-center justify-center animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out z-10'
+          )}
+        >
+          {/* Fine Noise Texture for the glass */}
+          <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+
+          <div className="relative z-10 flex flex-col items-center justify-center w-full">
+            <div className="mb-6 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm mx-auto transition-colors">
+              <Archive
+                className="h-8 w-8 md:h-10 md:w-10 text-slate-700 dark:text-slate-300"
+                strokeWidth={2}
+              />
+            </div>
+            <div className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-white mb-3 text-center text-balance">
+              {dict.assetGateTitle}
+            </div>
+            <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed md:leading-loose text-center text-pretty">
+              {dict.assetGateDescriptionLine1}
+              <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+                {dict.assetGateHighlight1}
+              </span>
+              {dict.assetGateDelimiter1}
+              <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+                {dict.assetGateHighlight2}
+              </span>
+              {dict.assetGateDelimiter2}
+              <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
+                {dict.assetGateHighlight3}
+              </span>
+              {dict.assetGateDescriptionLine2 ? (
+                <>
+                  <br className="hidden md:block" />
+                  {dict.assetGateDescriptionLine2}
+                </>
+              ) : null}
+            </p>
+            <Button
+              size="lg"
+              className="mt-8 px-8 py-3 rounded-full font-medium transition-all active:scale-95 bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/10 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 dark:shadow-white/10"
+              onClick={() => router.push(`/${locale}/profile?tab=assets`)}
+            >
+              {dict.assetGateButton}
+            </Button>
+            <p className="mt-3 text-sm text-slate-400 dark:text-slate-400">
+              {dict.assetGateMicrocopy}
+            </p>
           </div>
-          <div className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-white mb-3 text-center text-balance">
-            {dict.assetGateTitle}
-          </div>
-          <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed md:leading-loose text-center text-pretty">
-            {dict.assetGateDescriptionLine1}
-            <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-              {dict.assetGateHighlight1}
-            </span>
-            {dict.assetGateDelimiter1}
-            <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-              {dict.assetGateHighlight2}
-            </span>
-            {dict.assetGateDelimiter2}
-            <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-              {dict.assetGateHighlight3}
-            </span>
-            {dict.assetGateDescriptionLine2 ? (
-              <>
-                <br className="hidden md:block" />
-                {dict.assetGateDescriptionLine2}
-              </>
-            ) : null}
-          </p>
-          <Button
-            size="lg"
-            className="mt-8 px-8 py-3 rounded-full font-medium transition-all active:scale-95 bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/10 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 dark:shadow-white/10"
-            onClick={() => router.push(`/${locale}/profile?tab=assets`)}
-          >
-            {dict.assetGateButton}
-          </Button>
-          <p className="mt-3 text-sm text-slate-400 dark:text-slate-400">
-            {dict.assetGateMicrocopy}
-          </p>
         </div>
       </div>
     )

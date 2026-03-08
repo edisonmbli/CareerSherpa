@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore, TemplateDefaultsMap } from '@/store/resume-store'
+import { useResumeStore, TemplateDefaultsMap } from '@/lib/stores/resume-store'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -290,112 +290,140 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
   // Template name now comes from dictionary via TemplateSelector component
 
   return (
-    <header className="shrink-0 z-30 transition-colors no-print relative">
-      <div className="w-full px-3 md:px-4">
-        <div className="mx-auto w-full max-w-[1180px]">
-          <div className="flex h-10 items-center justify-between rounded-md border-[0.5px] border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] shadow-sm dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden">
-            {/* Ambient Noise Texture (Unified with other immersive cards) */}
-            <div aria-hidden="true" className="absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-md z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+    <header className="shrink-0 z-30 transition-colors no-print relative w-full">
+      <div className="flex h-10 items-center justify-between relative overflow-visible w-full">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-2 md:mr-4 relative z-10">
+          {/* Left Sidebar Toggle - Chapters */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
+            onClick={() => setStructureOpen(!isStructureOpen)}
+          >
+            <PanelLeft
+              className={cn(
+                'h-4 w-4',
+                isStructureOpen ? 'text-zinc-900 dark:text-zinc-100' : '',
+              )}
+            />
+            <span className="hidden lg:inline">
+              {dict.toolbar.chapters}
+            </span>
+          </Button>
 
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mask-gradient-r flex-1 mr-4 relative z-10">
-              {/* Left Sidebar Toggle - Chapters */}
+          <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+          {/* Template Selector */}
+          <TemplateSelector />
+
+          <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+          {/* Style Tweaks */}
+          <Popover open={isStyleOpen} onOpenChange={setIsStyleOpen}>
+            <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
-                onClick={() => setStructureOpen(!isStructureOpen)}
+                className="h-8 gap-2 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
               >
-                <PanelLeft
-                  className={cn(
-                    'h-4 w-4',
-                    isStructureOpen ? 'text-zinc-900 dark:text-zinc-100' : '',
-                  )}
-                />
+                <Palette className="h-4 w-4" />
                 <span className="hidden lg:inline">
-                  {dict.toolbar.chapters}
+                  {dict.toolbar.style}
                 </span>
               </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-80 p-4 relative max-h-[80vh] overflow-y-auto"
+              align="end"
+              alignOffset={-70}
+            >
+              {/* Native Color Input positioned relative to Popover Content */}
+              <input
+                ref={colorInputRef}
+                type="color"
+                value={styleConfig.themeColor}
+                onChange={(e) => {
+                  const val = e.target.value
+                  updateStyleConfig({ themeColor: val })
+                  if (commitTimerRef.current) {
+                    window.clearTimeout(commitTimerRef.current)
+                  }
+                  commitTimerRef.current = window.setTimeout(() => {
+                    handleColorCommit()
+                    commitTimerRef.current = null
+                  }, 400)
+                }}
+                onBlur={() => handleColorCommit()}
+                className="sr-only"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+                tabIndex={-1}
+              />
 
-              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+              <div className="space-y-6">
+                {/* Theme Color */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      {dict.toolbar.themeColor}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[10px] gap-1.5 px-2"
+                        onClick={() => colorInputRef.current?.click()}
+                      >
+                        <Pipette className="w-3.5 h-3.5 text-indigo-500" />
+                        {dict.toolbar.colorPicker}
+                      </Button>
+                    </div>
+                  </div>
 
-              {/* Template Selector */}
-              <TemplateSelector />
-
-              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
-
-              {/* Style Tweaks */}
-              <Popover open={isStyleOpen} onOpenChange={setIsStyleOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 gap-2 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
-                  >
-                    <Palette className="h-4 w-4" />
-                    <span className="hidden lg:inline">
-                      {dict.toolbar.style}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-80 p-4 relative max-h-[80vh] overflow-y-auto"
-                  align="end"
-                  alignOffset={-70}
-                >
-                  {/* Native Color Input positioned relative to Popover Content */}
-                  <input
-                    ref={colorInputRef}
-                    type="color"
-                    value={styleConfig.themeColor}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      updateStyleConfig({ themeColor: val })
-                      if (commitTimerRef.current) {
-                        window.clearTimeout(commitTimerRef.current)
-                      }
-                      commitTimerRef.current = window.setTimeout(() => {
-                        handleColorCommit()
-                        commitTimerRef.current = null
-                      }, 400)
-                    }}
-                    onBlur={() => handleColorCommit()}
-                    className="sr-only"
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      opacity: 0,
-                      pointerEvents: 'none',
-                      zIndex: -1,
-                    }}
-                    tabIndex={-1}
-                  />
-
-                  <div className="space-y-6">
-                    {/* Theme Color */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-muted-foreground">
-                          {dict.toolbar.themeColor}
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 text-[10px] gap-1.5 px-2"
-                            onClick={() => colorInputRef.current?.click()}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      {/* Presets */}
+                      <div className="flex gap-1.5">
+                        {PRESET_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            className={cn(
+                              'w-6 h-6 rounded-full border border-gray-200 shadow-sm transition-all hover:scale-110 flex items-center justify-center',
+                              styleConfig.themeColor === color
+                                ? 'scale-110 ring-1 ring-offset-1'
+                                : 'hover:border-gray-400',
+                            )}
+                            style={{
+                              backgroundColor: color,
+                              ...(styleConfig.themeColor === color
+                                ? {
+                                  boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
+                                }
+                                : {}),
+                            }}
+                            onClick={() =>
+                              updateStyleConfig({ themeColor: color })
+                            }
                           >
-                            <Pipette className="w-3.5 h-3.5 text-indigo-500" />
-                            {dict.toolbar.colorPicker}
-                          </Button>
-                        </div>
+                            {styleConfig.themeColor === color && (
+                              <Check className="w-3 h-3 text-white drop-shadow-md" />
+                            )}
+                          </button>
+                        ))}
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          {/* Presets */}
+                      {/* Divider & Recent Colors */}
+                      {recentColors.length > 0 && (
+                        <>
+                          <div className="w-px h-6 bg-border shrink-0" />
                           <div className="flex gap-1.5">
-                            {PRESET_COLORS.map((color) => (
+                            {recentColors.map((color) => (
                               <button
                                 key={color}
                                 className={cn(
@@ -422,369 +450,334 @@ export function ResumeToolbar({ printRef }: ResumeToolbarProps) {
                               </button>
                             ))}
                           </div>
-
-                          {/* Divider & Recent Colors */}
-                          {recentColors.length > 0 && (
-                            <>
-                              <div className="w-px h-6 bg-border shrink-0" />
-                              <div className="flex gap-1.5">
-                                {recentColors.map((color) => (
-                                  <button
-                                    key={color}
-                                    className={cn(
-                                      'w-6 h-6 rounded-full border border-gray-200 shadow-sm transition-all hover:scale-110 flex items-center justify-center',
-                                      styleConfig.themeColor === color
-                                        ? 'scale-110 ring-1 ring-offset-1'
-                                        : 'hover:border-gray-400',
-                                    )}
-                                    style={{
-                                      backgroundColor: color,
-                                      ...(styleConfig.themeColor === color
-                                        ? {
-                                          boxShadow: `0 0 0 2px white, 0 0 0 3px ${color}`,
-                                        }
-                                        : {}),
-                                    }}
-                                    onClick={() =>
-                                      updateStyleConfig({ themeColor: color })
-                                    }
-                                  >
-                                    {styleConfig.themeColor === color && (
-                                      <Check className="w-3 h-3 text-white drop-shadow-md" />
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
+                        </>
+                      )}
                     </div>
+                  </div>
+                </div>
 
-                    {/* Font Family */}
-                    <div className="space-y-2">
+                {/* Font Family */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {dict.toolbar.font}
+                  </label>
+                  <Select
+                    value={styleConfig.fontFamily}
+                    onValueChange={(v) =>
+                      updateStyleConfig({ fontFamily: v })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="roboto">
+                        Roboto / Inter (默认)
+                      </SelectItem>
+                      <SelectItem value="inter">Inter (Modern)</SelectItem>
+                      <SelectItem value="sans">System Sans</SelectItem>
+                      <SelectItem value="serif">
+                        Noto Serif / Song
+                      </SelectItem>
+                      <SelectItem value="jetbrains-mono">
+                        JetBrains Mono
+                      </SelectItem>
+                      <SelectItem value="ibm-plex-mono">
+                        IBM Plex Mono
+                      </SelectItem>
+                      <SelectItem value="lato">Lato</SelectItem>
+                      <SelectItem value="open-sans">Open Sans</SelectItem>
+                      <SelectItem value="playfair">
+                        Playfair Display
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="h-px bg-border" />
+                {/* Compact & Smart Fill Row */}
+                <TooltipProvider>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <label className="text-xs font-medium text-muted-foreground">
-                        {dict.toolbar.font}
+                        {dict.toolbar.compactMode}
                       </label>
-                      <Select
-                        value={styleConfig.fontFamily}
-                        onValueChange={(v) =>
-                          updateStyleConfig({ fontFamily: v })
-                        }
+                      <button
+                        role="switch"
+                        aria-checked={styleConfig.compactMode}
+                        onClick={handleCompactMode}
+                        className={cn(
+                          'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+                          styleConfig.compactMode
+                            ? 'bg-primary'
+                            : 'bg-input',
+                        )}
                       >
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="roboto">
-                            Roboto / Inter (默认)
-                          </SelectItem>
-                          <SelectItem value="inter">Inter (Modern)</SelectItem>
-                          <SelectItem value="sans">System Sans</SelectItem>
-                          <SelectItem value="serif">
-                            Noto Serif / Song
-                          </SelectItem>
-                          <SelectItem value="jetbrains-mono">
-                            JetBrains Mono
-                          </SelectItem>
-                          <SelectItem value="ibm-plex-mono">
-                            IBM Plex Mono
-                          </SelectItem>
-                          <SelectItem value="lato">Lato</SelectItem>
-                          <SelectItem value="open-sans">Open Sans</SelectItem>
-                          <SelectItem value="playfair">
-                            Playfair Display
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <span
+                          className={cn(
+                            'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                            styleConfig.compactMode
+                              ? 'translate-x-4'
+                              : 'translate-x-0',
+                          )}
+                        />
+                      </button>
                     </div>
 
-                    <div className="h-px bg-border" />
-                    {/* Compact & Smart Fill Row */}
-                    <TooltipProvider>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            {dict.toolbar.compactMode}
-                          </label>
-                          <button
-                            role="switch"
-                            aria-checked={styleConfig.compactMode}
-                            onClick={handleCompactMode}
-                            className={cn(
-                              'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
-                              styleConfig.compactMode
-                                ? 'bg-primary'
-                                : 'bg-input',
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
-                                styleConfig.compactMode
-                                  ? 'translate-x-4'
-                                  : 'translate-x-0',
-                              )}
-                            />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            {dict.toolbar.proportionalScale}
-                          </label>
-                          <button
-                            role="switch"
-                            aria-checked={styleConfig.proportionalScale}
-                            onClick={handleProportionalScaleToggle}
-                            className={cn(
-                              'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
-                              styleConfig.proportionalScale
-                                ? 'bg-primary'
-                                : 'bg-input',
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
-                                styleConfig.proportionalScale
-                                  ? 'translate-x-4'
-                                  : 'translate-x-0',
-                              )}
-                            />
-                          </button>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded-full hover:bg-muted"
-                              >
-                                <HelpCircle className="h-3 w-3 text-muted-foreground/50" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-xs text-muted-foreground bg-popover border shadow-sm">
-                              {dict.toolbar.proportionalTip}
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    </TooltipProvider>
-
-                    <div className="h-px bg-border" />
-
-                    {/* 等比缩放总控制条 - 仅在启用时显示 */}
-                    {styleConfig.proportionalScale && (
-                      <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                        <RangeControl
-                          label={dict.toolbar.masterScale}
-                          value={styleConfig.scaleFactor ?? 1.0}
-                          min={0.7}
-                          max={1.3}
-                          step={0.01}
-                          onChange={handleMasterScaleChange}
-                          formatValue={(v) => `${v.toFixed(2)}x`}
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {dict.toolbar.proportionalScale}
+                      </label>
+                      <button
+                        role="switch"
+                        aria-checked={styleConfig.proportionalScale}
+                        onClick={handleProportionalScaleToggle}
+                        className={cn(
+                          'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+                          styleConfig.proportionalScale
+                            ? 'bg-primary'
+                            : 'bg-input',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                            styleConfig.proportionalScale
+                              ? 'translate-x-4'
+                              : 'translate-x-0',
+                          )}
                         />
-                        <p className="text-[10px] text-muted-foreground/70">
-                          {dict.toolbar.masterScaleTip}
-                        </p>
-                      </div>
-                    )}
+                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full hover:bg-muted"
+                          >
+                            <HelpCircle className="h-3 w-3 text-muted-foreground/50" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs text-muted-foreground bg-popover border shadow-sm">
+                          {dict.toolbar.proportionalTip}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </TooltipProvider>
 
-                    {/* 独立样式滑块 - 等比缩放开启时 disabled */}
+                <div className="h-px bg-border" />
+
+                {/* 等比缩放总控制条 - 仅在启用时显示 */}
+                {styleConfig.proportionalScale && (
+                  <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
                     <RangeControl
-                      label={dict.toolbar.fontSize}
-                      value={styleConfig.fontSize}
+                      label={dict.toolbar.masterScale}
+                      value={styleConfig.scaleFactor ?? 1.0}
                       min={0.7}
                       max={1.3}
                       step={0.01}
-                      disabled={!!styleConfig.proportionalScale}
-                      onChange={(v) => updateStyleConfig({ fontSize: v })}
+                      onChange={handleMasterScaleChange}
                       formatValue={(v) => `${v.toFixed(2)}x`}
                     />
-
-                    <RangeControl
-                      label={dict.toolbar.lineHeight}
-                      value={styleConfig.lineHeight}
-                      min={0.8}
-                      max={3.0}
-                      step={0.05}
-                      disabled={!!styleConfig.proportionalScale}
-                      onChange={(v) => updateStyleConfig({ lineHeight: v })}
-                      formatValue={(v) => v.toFixed(2)}
-                    />
-
-                    <RangeControl
-                      label={dict.toolbar.itemSpacing}
-                      value={styleConfig.itemSpacing}
-                      min={0}
-                      max={48}
-                      step={1}
-                      disabled={!!styleConfig.proportionalScale}
-                      onChange={(v) => updateStyleConfig({ itemSpacing: v })}
-                      formatValue={(v) => `${v}px`}
-                    />
-
-                    <RangeControl
-                      label={dict.toolbar.sectionSpacing}
-                      value={styleConfig.sectionSpacing}
-                      min={0}
-                      max={64}
-                      step={2}
-                      disabled={!!styleConfig.proportionalScale}
-                      onChange={(v) => updateStyleConfig({ sectionSpacing: v })}
-                      formatValue={(v) => `${v}px`}
-                    />
-
-                    <RangeControl
-                      label={dict.toolbar.pageMargin}
-                      value={styleConfig.pageMargin}
-                      min={5}
-                      max={35}
-                      step={1}
-                      onChange={(v) => updateStyleConfig({ pageMargin: v })}
-                      formatValue={(v) => `${v}mm`}
-                    />
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {dict.toolbar.masterScaleTip}
+                    </p>
                   </div>
-                </PopoverContent>
-              </Popover>
+                )}
 
-              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+                {/* 独立样式滑块 - 等比缩放开启时 disabled */}
+                <RangeControl
+                  label={dict.toolbar.fontSize}
+                  value={styleConfig.fontSize}
+                  min={0.7}
+                  max={1.3}
+                  step={0.01}
+                  disabled={!!styleConfig.proportionalScale}
+                  onChange={(v) => updateStyleConfig({ fontSize: v })}
+                  formatValue={(v) => `${v.toFixed(2)}x`}
+                />
 
-              {/* Reset */}
+                <RangeControl
+                  label={dict.toolbar.lineHeight}
+                  value={styleConfig.lineHeight}
+                  min={0.8}
+                  max={3.0}
+                  step={0.05}
+                  disabled={!!styleConfig.proportionalScale}
+                  onChange={(v) => updateStyleConfig({ lineHeight: v })}
+                  formatValue={(v) => v.toFixed(2)}
+                />
+
+                <RangeControl
+                  label={dict.toolbar.itemSpacing}
+                  value={styleConfig.itemSpacing}
+                  min={0}
+                  max={48}
+                  step={1}
+                  disabled={!!styleConfig.proportionalScale}
+                  onChange={(v) => updateStyleConfig({ itemSpacing: v })}
+                  formatValue={(v) => `${v}px`}
+                />
+
+                <RangeControl
+                  label={dict.toolbar.sectionSpacing}
+                  value={styleConfig.sectionSpacing}
+                  min={0}
+                  max={64}
+                  step={2}
+                  disabled={!!styleConfig.proportionalScale}
+                  onChange={(v) => updateStyleConfig({ sectionSpacing: v })}
+                  formatValue={(v) => `${v}px`}
+                />
+
+                <RangeControl
+                  label={dict.toolbar.pageMargin}
+                  value={styleConfig.pageMargin}
+                  min={5}
+                  max={35}
+                  step={1}
+                  onChange={(v) => updateStyleConfig({ pageMargin: v })}
+                  formatValue={(v) => `${v}mm`}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+          {/* Reset */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
+            onClick={() => setIsResetOpen(true)}
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span className="hidden lg:inline">{dict.toolbar.reset}</span>
+          </Button>
+
+          <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+          {/* Export */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
-                onClick={() => setIsResetOpen(true)}
               >
-                <RotateCcw className="h-4 w-4" />
-                <span className="hidden lg:inline">{dict.toolbar.reset}</span>
-              </Button>
-
-              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
-
-              {/* Export */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span className="hidden lg:inline">
-                      {dict.toolbar.export}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={handlePrint}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span>{dict.toolbar.exportPdf}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportMarkdown}>
-                    <FileJson className="mr-2 h-4 w-4" />
-                    <span>{dict.toolbar.exportMd}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
-
-              {serviceId && (
-                <ShareResumeDialog
-                  serviceId={serviceId}
-                  trigger={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
-                    >
-                      <Share2 className="h-4 w-4" />
-                      <span className="hidden lg:inline">
-                        {dict.share.button}
-                      </span>
-                    </Button>
-                  }
-                />
-              )}
-
-              {/* Save Indicator - Shows when dirty */}
-              <SaveIndicator variant="inline" />
-
-              {/* Status Message In-Flow */}
-              {statusMessage && (
-                <div className="ml-4 animate-in fade-in slide-in-from-left-2 duration-300 whitespace-nowrap">
-                  <div className="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5" />
-                    {statusMessage.text}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex-1" />
-
-              <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{dict.toolbar.resetConfirm}</DialogTitle>
-                    <DialogDescription>
-                      {dict.toolbar.resetDesc}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsResetOpen(false)}
-                    >
-                      {dict.toolbar.cancel}
-                    </Button>
-                    <Button
-                      className="bg-red-600/70 dark:bg-red-500/70 hover:bg-red-700 text-white"
-                      onClick={() => {
-                        resetToOriginal()
-                        setIsResetOpen(false)
-                      }}
-                    >
-                      {dict.toolbar.confirmReset}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Right Actions - AI Only */}
-            <div className="flex items-center gap-0 pl-4 pr-2 shrink-0 relative z-10">
-              {/* AI Suggestions - Premium Chip Style */}
-              {/* AI Suggestions - Obsidian & Pearl Style */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'gap-2 h-8 px-3 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden group relative',
-                  // Base: Ghost, no heavy background/border by default to avoid box-in-box
-                  'bg-transparent hover:bg-stone-100/50 dark:hover:bg-white/5',
-                  // Text: Premium Tech Blue for both modes to maintain identity and contrast
-                  'text-blue-600 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-semibold',
-                  // Border/Shadow: Only on hover for a subtle lift
-                  'border border-transparent hover:border-black/5 dark:hover:border-white/10',
-                  'hover:shadow-[0_2px_8px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_2px_12px_rgba(255,255,255,0.05)]',
-                  'hover:-translate-y-0.5',
-                )}
-                onClick={() => setAIPanelOpen(!isAIPanelOpen)}
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
-                  <span className="text-xs tracking-wide">
-                    {dict.toolbar.aiSuggestions}
-                  </span>
+                <Download className="h-4 w-4" />
+                <span className="hidden lg:inline">
+                  {dict.toolbar.export}
                 </span>
-                {/* Shimmer Effect */}
-                <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-blue-400/10 dark:via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
               </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={handlePrint}>
+                <FileText className="mr-2 h-4 w-4" />
+                <span>{dict.toolbar.exportPdf}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportMarkdown}>
+                <FileJson className="mr-2 h-4 w-4" />
+                <span>{dict.toolbar.exportMd}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="h-4 w-px bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+          {serviceId && (
+            <ShareResumeDialog
+              serviceId={serviceId}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 h-8 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 shrink-0 px-2 transition-colors cursor-pointer"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span className="hidden lg:inline">
+                    {dict.share.button}
+                  </span>
+                </Button>
+              }
+            />
+          )}
+
+          {/* Save Indicator - Shows when dirty */}
+          <SaveIndicator variant="inline" />
+
+          {/* Status Message In-Flow */}
+          {statusMessage && (
+            <div className="ml-4 animate-in fade-in slide-in-from-left-2 duration-300 whitespace-nowrap">
+              <div className="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs text-muted-foreground flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                {statusMessage.text}
+              </div>
             </div>
-          </div>
+          )}
+
+          <div className="flex-1" />
+
+          <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{dict.toolbar.resetConfirm}</DialogTitle>
+                <DialogDescription>
+                  {dict.toolbar.resetDesc}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsResetOpen(false)}
+                >
+                  {dict.toolbar.cancel}
+                </Button>
+                <Button
+                  className="bg-red-600/70 dark:bg-red-500/70 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    resetToOriginal()
+                    setIsResetOpen(false)
+                  }}
+                >
+                  {dict.toolbar.confirmReset}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Right Actions - AI Only */}
+        <div className="flex items-center gap-0 pl-4 pr-2 shrink-0 relative z-10">
+          {/* AI Suggestions - Premium Chip Style */}
+          {/* AI Suggestions - Obsidian & Pearl Style */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'gap-2 h-8 px-3 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden group relative',
+              // Base: Ghost, no heavy background/border by default to avoid box-in-box
+              'bg-transparent hover:bg-stone-100/50 dark:hover:bg-white/5',
+              // Text: Premium Tech Blue for both modes to maintain identity and contrast
+              'text-blue-600 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-semibold',
+              // Border/Shadow: Only on hover for a subtle lift
+              'border border-transparent hover:border-black/5 dark:hover:border-white/10',
+              'hover:shadow-[0_2px_8px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_2px_12px_rgba(255,255,255,0.05)]',
+              'hover:-translate-y-0.5',
+            )}
+            onClick={() => setAIPanelOpen(!isAIPanelOpen)}
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+              <span className="text-xs tracking-wide">
+                {dict.toolbar.aiSuggestions}
+              </span>
+            </span>
+            {/* Shimmer Effect */}
+            <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-blue-400/10 dark:via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+          </Button>
         </div>
       </div>
     </header>

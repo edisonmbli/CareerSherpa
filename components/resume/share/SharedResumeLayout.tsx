@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useReactToPrint } from 'react-to-print'
 import { trackShareEventAction } from '@/lib/actions/share.actions'
+import { ThemeProvider } from 'next-themes'
 import {
   RESUME_SCREEN_BASE_WIDTH_PX,
   RESUME_SCREEN_DESKTOP_PADDING_PX,
@@ -49,6 +50,7 @@ export function SharedResumeLayout({
   const [screenScale, setScreenScale] = useState(1)
   const [isMobileView, setIsMobileView] = useState(false)
   const searchParams = useSearchParams()
+
   // printRef is resolved at click time (see handleExportPdfClick / handlePrintClick)
   // NOT in useEffect — the useEffect fires before PublicResumeViewer finishes
   // its own initialization (setReady(true)), so .resume-paper wouldn't exist yet.
@@ -179,7 +181,7 @@ export function SharedResumeLayout({
   }, [locale, searchParams, shareKey])
 
   return (
-    <>
+    <ThemeProvider attribute="class" forcedTheme="light">
       {showHook && (
         <div
           className={cn(
@@ -284,6 +286,6 @@ export function SharedResumeLayout({
           </div>
         </div>
       </main>
-    </>
+    </ThemeProvider>
   )
 }

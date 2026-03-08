@@ -11,7 +11,7 @@ import { TemplateElegant } from '../templates/TemplateElegant'
 import { TemplateDarkSidebar } from '../templates/TemplateDarkSidebar'
 import { TemplateDesign } from '../templates/TemplateDesign'
 import { TemplateProduct } from '../templates/TemplateProduct'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { SpacerContext } from '@/components/resume/SpacerContext'
 
 interface ResumePreviewProps {

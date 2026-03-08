@@ -103,6 +103,7 @@ import { useWorkbenchV2Bridge } from '@/lib/hooks/useWorkbenchV2Bridge'
 import { type WorkbenchStatusV2 } from '@/lib/stores/workbench-v2.store'
 import { StatusConsoleV2 } from '@/components/workbench/StatusConsoleV2'
 import { StreamPanelV2 } from '@/components/workbench/StreamPanelV2'
+import { useUiStore } from '@/lib/stores/ui-store'
 
 // Helper to check terminal status (Legacy V1 Status string)
 const isTerminalStatus = (status: string | undefined | null) => {
@@ -271,6 +272,8 @@ export function ServiceDisplay({
   }, [v2Bridge?.errorMessage, dict?.workbench])
 
   // Local state
+  const setBgVariant = useUiStore((state) => state.setBgVariant)
+
   const [tabValue, setTabValue] = useState<'match' | 'customize' | 'interview'>(
     () => {
       // Smart Default: Deepest completed step
@@ -373,6 +376,23 @@ export function ServiceDisplay({
     return getTaskCost('job_match')
   })()
 
+  // Bg Variant Control based on step finalization
+  useEffect(() => {
+    let subdued = false
+    const matchDone = status === 'MATCH_COMPLETED' || matchBase?.status === 'COMPLETED'
+    const customizeDone = customizeStatus === 'COMPLETED'
+    const interviewDone = interviewStatus === 'COMPLETED'
+
+    if (tabValue === 'match' && matchDone) subdued = true
+    else if (tabValue === 'customize' && customizeDone) subdued = true
+    else if (tabValue === 'interview' && interviewDone) subdued = true
+
+    setBgVariant(subdued ? 'subdued' : 'workbench')
+
+    // Reset on unmount
+    return () => setBgVariant(null)
+  }, [tabValue, status, matchBase?.status, customizeStatus, interviewStatus, setBgVariant])
+
   // Tier is 'free' if balance < task cost (will use free model)
   const tier: 'free' | 'paid' =
     tierOverride ?? ((quotaBalance ?? 0) < currentTaskCost ? 'free' : 'paid')
@@ -457,7 +477,7 @@ export function ServiceDisplay({
         }
         showError(
           dict.workbench?.customize?.createFailed ||
-            'Failed to start customization',
+          'Failed to start customization',
           'An unexpected error occurred.',
         )
       }
@@ -1358,7 +1378,7 @@ export function ServiceDisplay({
       document.body.appendChild(el)
     }
     setMobileBarRoot(el)
-    return () => {}
+    return () => { }
   }, [])
 
   return (
@@ -1366,7 +1386,7 @@ export function ServiceDisplay({
       <div
         className={cn(
           'h-full flex flex-col pt-2 md:pt-0',
-          tabValue === 'customize' && 'bg-gray-50/50 dark:bg-zinc-950',
+          tabValue === 'customize' && 'bg-transparent',
         )}
       >
         <div className="md:hidden fixed top-0 inset-x-0 h-12 z-[50] bg-background/70 backdrop-blur border-border/40 print:hidden" />
@@ -1448,88 +1468,88 @@ export function ServiceDisplay({
         >
           <TabsContent
             value="match"
-            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-auto print:overflow-visible print:h-auto"
+            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-auto print:overflow-visible print:h-auto h-full"
           >
-            <div className="w-full px-0 sm:px-3 md:px-4">
-              <div className="mx-auto w-full max-w-none sm:max-w-[1180px]">
+            <div className="w-full px-0 sm:px-3 md:px-4 flex-1 flex flex-col min-h-0">
+              <div className="mx-auto w-full max-w-none sm:max-w-[1180px] flex-1 flex flex-col min-h-0">
                 {(status === 'MATCH_COMPLETED' ||
                   matchResult ||
                   matchParsed) && (
-                  <>
-                    <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col items-end gap-2 print:hidden">
-                      <TooltipProvider>
-                        {matchActions.map((action) => {
-                          const themeClasses = getActionThemeClasses(matchTheme)
-                          const Icon = action.icon
-                          return (
-                            <Tooltip key={action.id}>
-                              <TooltipTrigger asChild>
+                    <>
+                      <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                        <TooltipProvider>
+                          {matchActions.map((action) => {
+                            const themeClasses = getActionThemeClasses(matchTheme)
+                            const Icon = action.icon
+                            return (
+                              <Tooltip key={action.id}>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    disabled={action.disabled}
+                                    onClick={action.onClick}
+                                    className={cn(
+                                      'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                      themeClasses.base,
+                                      themeClasses.hover,
+                                      themeClasses.ring,
+                                    )}
+                                  >
+                                    <Icon className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  {action.label}
+                                </TooltipContent>
+                              </Tooltip>
+                            )
+                          })}
+                        </TooltipProvider>
+                      </div>
+                      <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                        {matchFabOpen && (
+                          <div className="flex flex-col items-center gap-2 w-10">
+                            {matchActions.map((action) => {
+                              const themeClasses =
+                                getActionThemeClasses(matchTheme)
+                              const Icon = action.icon
+                              return (
                                 <Button
+                                  key={action.id}
                                   size="icon"
                                   disabled={action.disabled}
-                                  onClick={action.onClick}
+                                  onClick={() => {
+                                    action.onClick()
+                                    setMatchFabOpen(false)
+                                  }}
                                   className={cn(
-                                    'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
+                                    'h-9 w-9 rounded-full border shadow-lg',
                                     themeClasses.base,
                                     themeClasses.hover,
                                     themeClasses.ring,
                                   )}
                                 >
                                   <Icon className="h-4 w-4" />
+                                  <span className="sr-only">{action.label}</span>
                                 </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left">
-                                {action.label}
-                              </TooltipContent>
-                            </Tooltip>
-                          )
-                        })}
-                      </TooltipProvider>
-                    </div>
-                    <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
-                      {matchFabOpen && (
-                        <div className="flex flex-col items-center gap-2 w-10">
-                          {matchActions.map((action) => {
-                            const themeClasses =
-                              getActionThemeClasses(matchTheme)
-                            const Icon = action.icon
-                            return (
-                              <Button
-                                key={action.id}
-                                size="icon"
-                                disabled={action.disabled}
-                                onClick={() => {
-                                  action.onClick()
-                                  setMatchFabOpen(false)
-                                }}
-                                className={cn(
-                                  'h-9 w-9 rounded-full border shadow-lg',
-                                  themeClasses.base,
-                                  themeClasses.hover,
-                                  themeClasses.ring,
-                                )}
-                              >
-                                <Icon className="h-4 w-4" />
-                                <span className="sr-only">{action.label}</span>
-                              </Button>
-                            )
-                          })}
-                        </div>
-                      )}
-                      <Button
-                        size="icon"
-                        onClick={() => setMatchFabOpen((prev) => !prev)}
-                        className={cn(
-                          'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                          getActionThemeClasses(matchTheme).base,
-                          getActionThemeClasses(matchTheme).hover,
+                              )
+                            })}
+                          </div>
                         )}
-                      >
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </>
-                )}
+                        <Button
+                          size="icon"
+                          onClick={() => setMatchFabOpen((prev) => !prev)}
+                          className={cn(
+                            'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
+                            getActionThemeClasses(matchTheme).base,
+                            getActionThemeClasses(matchTheme).hover,
+                          )}
+                        >
+                          <Menu className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 {USE_SSE_V2 &&
                   v2Bridge &&
                   (v2Bridge.status === 'IDLE' ||
@@ -1552,7 +1572,7 @@ export function ServiceDisplay({
                     v2Bridge.status === 'SUMMARY_FAILED' ||
                     v2Bridge.status === 'PREMATCH_FAILED' ||
                     v2Bridge.status === 'MATCH_FAILED') && (
-                    <div>
+                    <div className="flex flex-col flex-1 min-h-0 px-3 md:px-0">
                       <StreamPanelV2
                         status={v2Bridge.status}
                         tier={v2Bridge.tier}
@@ -1636,11 +1656,11 @@ export function ServiceDisplay({
 
           <TabsContent
             value="customize"
-            className="flex-1 flex flex-col min-h-0 print:hidden bg-gray-50/50 dark:bg-zinc-950"
+            className="flex-1 flex flex-col min-h-0 print:hidden bg-transparent"
           >
             {/* Customize Tab Content */}
             {(customizeStatus as string) === 'COMPLETED' &&
-            customizedResumeBase?.customizedResumeJson ? (
+              customizedResumeBase?.customizedResumeJson ? (
               <StepCustomize
                 serviceId={initialService.id}
                 initialData={
@@ -1657,77 +1677,94 @@ export function ServiceDisplay({
                 initialOpsJson={customizedResumeBase.ops_json || undefined}
                 ctaAction={ctaNode}
                 dict={dict.resume}
+                matchScore={getMatchScore(matchResult || matchParsed)}
               />
             ) : (
               <>
                 {isTransitionState ? (
-                  <BatchProgressPanel
-                    title={
-                      dict.workbench?.statusText?.CUSTOMIZE_STARTING ||
-                      dict.workbench?.statusConsole?.customizeStarting ||
-                      '正在启动定制任务...'
-                    }
-                    description={
-                      dict.workbench?.statusText?.CUSTOMIZE_STARTING_DESC ||
-                      '已提交请求，正在排队分配计算资源。'
-                    }
-                    progress={12}
-                  />
+                  <div className="w-full px-3 md:px-4">
+                    <div className="mx-auto w-full max-w-[1180px]">
+                      <BatchProgressPanel
+                        title={
+                          dict.workbench?.statusText?.CUSTOMIZE_STARTING ||
+                          dict.workbench?.statusConsole?.customizeStarting ||
+                          '正在启动定制任务...'
+                        }
+                        description={
+                          dict.workbench?.statusText?.CUSTOMIZE_STARTING_DESC ||
+                          '已提交请求，正在排队分配计算资源。'
+                        }
+                        progress={12}
+                      />
+                    </div>
+                  </div>
                 ) : (customizeStatus as string) === 'PENDING' ? (
-                  <BatchProgressPanel
-                    title={
-                      dict.workbench?.statusText?.CUSTOMIZE_PENDING ||
-                      dict.workbench?.statusConsole?.customizePending ||
-                      '正在定制简历...'
-                    }
-                    description={
-                      dict.workbench?.statusText?.CUSTOMIZE_PENDING_DESC ||
-                      '正在分析岗位要求并重写你的简历内容。'
-                    }
-                    progress={30}
-                  />
+                  <div className="w-full px-3 md:px-4">
+                    <div className="mx-auto w-full max-w-[1180px]">
+                      <BatchProgressPanel
+                        title={
+                          dict.workbench?.statusText?.CUSTOMIZE_PENDING ||
+                          dict.workbench?.statusConsole?.customizePending ||
+                          '正在定制简历...'
+                        }
+                        description={
+                          dict.workbench?.statusText?.CUSTOMIZE_PENDING_DESC ||
+                          '正在分析岗位要求并重写你的简历内容。'
+                        }
+                        progress={30}
+                      />
+                    </div>
+                  </div>
                 ) : (customizeStatus as string) === 'CUSTOMIZE_FAILED' ||
                   (customizeStatus as string) === 'FAILED' ? (
-                  <BatchProgressPanel
-                    mode="error"
-                    title={
-                      dict.workbench?.statusConsole?.customizeFailed ||
-                      '简历定制失败'
-                    }
-                    description={
-                      // Use executionTier to show correct message based on failed task's tier
-                      executionTier === 'free'
-                        ? dict?.workbench?.statusConsole?.customizeFailedFree ||
-                          '免费模型暂时繁忙，请稍后重试'
-                        : dict?.workbench?.statusConsole?.customizeRefunded ||
-                          '金币已自动返还，请点击重试'
-                    }
-                    onRetry={onCustomize}
-                    isRetryLoading={isTransitionState || isPending}
-                    retryLabel={dict.workbench?.customize?.start || '定制简历'}
-                  />
+                  <div className="w-full px-3 md:px-4">
+                    <div className="mx-auto w-full max-w-[1180px]">
+                      <BatchProgressPanel
+                        mode="error"
+                        title={
+                          dict.workbench?.statusConsole?.customizeFailed ||
+                          '简历定制失败'
+                        }
+                        description={
+                          // Use executionTier to show correct message based on failed task's tier
+                          executionTier === 'free'
+                            ? dict?.workbench?.statusConsole?.customizeFailedFree ||
+                            '免费模型暂时繁忙，请稍后重试'
+                            : dict?.workbench?.statusConsole?.customizeRefunded ||
+                            '金币已自动返还，请点击重试'
+                        }
+                        onRetry={onCustomize}
+                        isRetryLoading={isTransitionState || isPending}
+                        retryLabel={dict.workbench?.customize?.start || '定制简历'}
+                      />
+                    </div>
+                  </div>
                 ) : (customizeStatus as string) === 'COMPLETED' ? (
                   // COMPLETED but data not yet loaded - show loading while router refreshes
-                  <BatchProgressPanel
-                    title={
-                      dict.workbench?.statusText?.CUSTOMIZE_LOADING ||
-                      '正在加载定制简历...'
-                    }
-                    description={
-                      dict.workbench?.statusText?.CUSTOMIZE_LOADING_DESC ||
-                      '定制内容已生成，正在整理与排版，请稍候。'
-                    }
-                    progress={100}
-                  />
+                  <div className="w-full px-3 md:px-4">
+                    <div className="mx-auto w-full max-w-[1180px]">
+                      <BatchProgressPanel
+                        title={
+                          dict.workbench?.statusText?.CUSTOMIZE_LOADING ||
+                          '正在加载定制简历...'
+                        }
+                        description={
+                          dict.workbench?.statusText?.CUSTOMIZE_LOADING_DESC ||
+                          '定制内容已生成，正在整理与排版，请稍候。'
+                        }
+                        progress={100}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
                     <div className="text-center space-y-2">
                       <h3 className="text-lg font-semibold">
                         {cta?.disabled
                           ? dict.workbench?.statusConsole?.customizeStarting ||
-                            '正在启动定制服务...'
+                          '正在启动定制服务...'
                           : dict.workbench?.statusText?.readyToCustomize ||
-                            'Ready to Customize'}
+                          'Ready to Customize'}
                       </h3>
                       {/* Only show guide text when button is clickable */}
                       {!cta?.disabled && (
@@ -1747,11 +1784,11 @@ export function ServiceDisplay({
 
           <TabsContent
             value="interview"
-            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-hidden print:overflow-visible"
+            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-auto print:overflow-visible"
           >
             <div
               ref={interviewScrollRef}
-              className="flex-1 min-h-0 overflow-x-visible overflow-y-visible sm:overflow-y-auto print:overflow-visible"
+              className="flex-1 min-h-0 overflow-x-visible overflow-y-auto print:overflow-visible"
               style={{ scrollbarGutter: 'stable' }}
             >
               {shouldShowInterviewPlan ? (
@@ -1803,8 +1840,8 @@ export function ServiceDisplay({
                               onClick={() => {
                                 const currentIndex = activeIbpSection
                                   ? ibpTocItems.findIndex(
-                                      (i) => i.id === activeIbpSection,
-                                    )
+                                    (i) => i.id === activeIbpSection,
+                                  )
                                   : 0
                                 const prevItem =
                                   currentIndex > 0
@@ -1841,8 +1878,8 @@ export function ServiceDisplay({
                               onClick={() => {
                                 const currentIndex = activeIbpSection
                                   ? ibpTocItems.findIndex(
-                                      (i) => i.id === activeIbpSection,
-                                    )
+                                    (i) => i.id === activeIbpSection,
+                                  )
                                   : 0
                                 const nextItem =
                                   currentIndex < ibpTocItems.length - 1
@@ -1905,8 +1942,8 @@ export function ServiceDisplay({
                           onClick={() => {
                             const currentIndex = activeIbpSection
                               ? ibpTocItems.findIndex(
-                                  (i) => i.id === activeIbpSection,
-                                )
+                                (i) => i.id === activeIbpSection,
+                              )
                               : 0
                             const prevItem =
                               currentIndex > 0
@@ -1934,8 +1971,8 @@ export function ServiceDisplay({
                           onClick={() => {
                             const currentIndex = activeIbpSection
                               ? ibpTocItems.findIndex(
-                                  (i) => i.id === activeIbpSection,
-                                )
+                                (i) => i.id === activeIbpSection,
+                              )
                               : 0
                             const nextItem =
                               currentIndex < ibpTocItems.length - 1
@@ -2025,17 +2062,21 @@ export function ServiceDisplay({
                   </div>
                 </div>
               ) : shouldShowInterviewLoading ? (
-                <BatchProgressPanel
-                  title={
-                    dict.workbench?.statusText?.INTERVIEW_LOADING ||
-                    '正在加载面试作战手卡...'
-                  }
-                  description={
-                    dict.workbench?.statusText?.INTERVIEW_LOADING_DESC ||
-                    '内容已生成，正在整理与排版，请稍候。'
-                  }
-                  progress={96}
-                />
+                <div className="w-full px-3 md:px-4">
+                  <div className="mx-auto w-full max-w-[1180px]">
+                    <BatchProgressPanel
+                      title={
+                        dict.workbench?.statusText?.INTERVIEW_LOADING ||
+                        '正在加载面试作战手卡...'
+                      }
+                      description={
+                        dict.workbench?.statusText?.INTERVIEW_LOADING_DESC ||
+                        '内容已生成，正在整理与排版，请稍候。'
+                      }
+                      progress={96}
+                    />
+                  </div>
+                </div>
               ) : USE_SSE_V2 &&
                 v2Bridge &&
                 (v2Bridge.status === 'INTERVIEW_PENDING' ||
@@ -2057,52 +2098,64 @@ export function ServiceDisplay({
               ) : (
                 <>
                   {isInterviewTransitionState ? (
-                    <BatchProgressPanel
-                      title={
-                        dict.workbench?.statusText?.INTERVIEW_STARTING ||
-                        '正在启动面试建议任务...'
-                      }
-                      description={
-                        dict.workbench?.statusText?.INTERVIEW_STARTING_DESC ||
-                        '已提交请求，正在排队分配计算资源。'
-                      }
-                      progress={12}
-                    />
+                    <div className="w-full px-3 md:px-4">
+                      <div className="mx-auto w-full max-w-[1180px]">
+                        <BatchProgressPanel
+                          title={
+                            dict.workbench?.statusText?.INTERVIEW_STARTING ||
+                            '正在启动面试建议任务...'
+                          }
+                          description={
+                            dict.workbench?.statusText?.INTERVIEW_STARTING_DESC ||
+                            '已提交请求，正在排队分配计算资源。'
+                          }
+                          progress={12}
+                        />
+                      </div>
+                    </div>
                   ) : interviewStatus === 'PENDING' ? (
-                    <BatchProgressPanel
-                      title={
-                        dict.workbench?.statusText?.INTERVIEW_PENDING ||
-                        '准备生成面试作战手卡...'
-                      }
-                      description={
-                        dict.workbench?.statusText?.INTERVIEW_PENDING_DESC ||
-                        '正在分析匹配度结果和定制简历，准备个性化面试建议。'
-                      }
-                      progress={30}
-                    />
+                    <div className="w-full px-3 md:px-4">
+                      <div className="mx-auto w-full max-w-[1180px]">
+                        <BatchProgressPanel
+                          title={
+                            dict.workbench?.statusText?.INTERVIEW_PENDING ||
+                            '准备生成面试作战手卡...'
+                          }
+                          description={
+                            dict.workbench?.statusText?.INTERVIEW_PENDING_DESC ||
+                            '正在分析匹配度结果和定制简历，准备个性化面试建议。'
+                          }
+                          progress={30}
+                        />
+                      </div>
+                    </div>
                   ) : interviewStatus === 'FAILED' ? (
-                    <BatchProgressPanel
-                      mode="error"
-                      title={
-                        dict.workbench?.statusText?.INTERVIEW_FAILED ||
-                        '面试建议生成失败'
-                      }
-                      description={
-                        interviewExecutionTier === 'free'
-                          ? dict.workbench?.statusText
-                              ?.INTERVIEW_FAILED_DESC_FREE ||
-                            '免费模型暂时繁忙，请稍后重试'
-                          : dict.workbench?.statusText
-                              ?.INTERVIEW_FAILED_DESC_PAID ||
-                            dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
-                            '金币已自动返还，请点击重试'
-                      }
-                      onRetry={onInterview}
-                      isRetryLoading={isPending}
-                      retryLabel={
-                        dict.workbench?.interviewUi?.start || '生成面试建议'
-                      }
-                    />
+                    <div className="w-full px-3 md:px-4">
+                      <div className="mx-auto w-full max-w-[1180px]">
+                        <BatchProgressPanel
+                          mode="error"
+                          title={
+                            dict.workbench?.statusText?.INTERVIEW_FAILED ||
+                            '面试建议生成失败'
+                          }
+                          description={
+                            interviewExecutionTier === 'free'
+                              ? dict.workbench?.statusText
+                                ?.INTERVIEW_FAILED_DESC_FREE ||
+                              '免费模型暂时繁忙，请稍后重试'
+                              : dict.workbench?.statusText
+                                ?.INTERVIEW_FAILED_DESC_PAID ||
+                              dict.workbench?.statusText?.INTERVIEW_FAILED_DESC ||
+                              '金币已自动返还，请点击重试'
+                          }
+                          onRetry={onInterview}
+                          isRetryLoading={isPending}
+                          retryLabel={
+                            dict.workbench?.interviewUi?.start || '生成面试建议'
+                          }
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 space-y-6 border rounded-md bg-card min-h-[300px]">
                       <div className="text-center space-y-2">

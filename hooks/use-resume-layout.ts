@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { debounce } from 'lodash'
 
 const PX_PER_MM = 96 / 25.4

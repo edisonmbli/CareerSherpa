@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Check, Save } from 'lucide-react'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { useAutoSave } from '@/hooks/use-auto-save'
 
 type SaveState = 'hidden' | 'dirty' | 'success'

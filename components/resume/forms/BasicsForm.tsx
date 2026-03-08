@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { saveLocalAvatar } from '@/lib/storage/avatar-client'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

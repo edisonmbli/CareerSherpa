@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { cn } from '@/lib/utils'
 import { Edit2 } from 'lucide-react'
 import { useSpacer } from '@/components/resume/SpacerContext'

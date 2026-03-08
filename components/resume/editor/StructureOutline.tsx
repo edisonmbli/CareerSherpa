@@ -1,6 +1,6 @@
 'use client'
 
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { cn } from '@/lib/utils'
 import {
   DndContext,
@@ -100,23 +100,23 @@ function SortableItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none',
+        'relative flex items-center gap-3 rounded-[1rem] mb-1 transition-all group overflow-hidden select-none',
         isMobile
-          ? 'py-3 px-3 border border-gray-100 bg-white/50 dark:bg-transparent dark:border-white/10'
+          ? 'py-3 px-3 bg-white/30 dark:bg-white/5 border border-white/40 dark:border-white/10'
           : 'p-2',
         isActive && !isMobile
-          ? 'bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-100 font-medium'
-          : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300',
+          ? 'bg-white/80 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 font-medium shadow-[0_2px_10px_rgba(0,0,0,0.04)] ring-1 ring-black/5 dark:ring-white/5'
+          : 'hover:bg-white/50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300',
         isDragging &&
-        'opacity-50 bg-gray-50 dark:bg-white/10 ring-2 ring-zinc-500/20 z-50 shadow-lg',
+        'opacity-50 bg-white/90 dark:bg-white/20 ring-1 ring-zinc-500/20 z-50 shadow-xl',
         isHidden && 'opacity-60 grayscale',
-        hasPageBreak && 'border-l-2 border-orange-300'
+        hasPageBreak && 'border-l-[3px] border-orange-300'
       )}
       onClick={onClick}
     >
-      {/* Active Indicator Strip */}
+      {/* Active Indicator Strip - Omitted for a cleaner pill look, but kept logical structure */}
       {isActive && !isMobile && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-900 dark:bg-zinc-100 rounded-l-md" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-[3px] bg-primary/70 dark:bg-primary/50 rounded-r-full" />
       )}
 
       {/* Drag Handle */}
@@ -209,17 +209,17 @@ function FixedItem({
   return (
     <div
       className={cn(
-        'relative flex items-center gap-3 rounded-md mb-1 transition-all group overflow-hidden select-none border-b border-dashed border-gray-200 dark:border-white/10 pb-2',
-        isMobile ? 'py-3 px-3 bg-white/50 dark:bg-transparent' : 'p-2',
+        'relative flex items-center gap-3 rounded-[1rem] mb-3 transition-all group overflow-hidden select-none',
+        isMobile ? 'py-3 px-3 bg-white/30 dark:bg-white/5 border border-white/40 dark:border-white/10' : 'p-2',
         isActive && !isMobile
-          ? 'bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-100 font-medium'
-          : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300'
+          ? 'bg-white/80 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 font-medium shadow-[0_2px_10px_rgba(0,0,0,0.04)] ring-1 ring-black/5 dark:ring-white/5'
+          : 'hover:bg-white/50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300'
       )}
       onClick={onClick}
     >
       {/* Active Indicator Strip */}
       {isActive && !isMobile && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-900 dark:bg-zinc-100 rounded-l-md" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-[3px] bg-primary/70 dark:bg-primary/50 rounded-r-full" />
       )}
 
       {/* Placeholder for Drag Handle alignment */}
@@ -299,7 +299,7 @@ export function StructureOutline({ isMobile, onClose }: StructureOutlineProps) {
   return (
     <div className="h-full flex flex-col bg-transparent transition-colors">
       {!isMobile && (
-        <div className="p-3 flex items-center justify-between sticky top-0 bg-transparent z-10 border-b border-transparent">
+        <div className="p-3 flex items-center justify-between sticky top-0 bg-transparent z-10">
           <h3 className="font-medium text-sm text-foreground/80 pl-1">
             {dict.editor.structure}
           </h3>

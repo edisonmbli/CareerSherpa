@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import { MOCK_RESUME_DATA } from '@/lib/mocks/resume-data'
 
 // Zustand testing often requires mocking the store creation or resetting state
@@ -66,7 +66,7 @@ describe('Resume Store', () => {
     const newState = useResumeStore.getState()
     const works = newState.resumeData?.workExperiences
     if (works) {
-      expect(works.find((i) => i.id === targetId)).toBeUndefined()
+      expect(works.find((i: any) => i.id === targetId)).toBeUndefined()
     } else {
       expect(works).toBeUndefined()
     }

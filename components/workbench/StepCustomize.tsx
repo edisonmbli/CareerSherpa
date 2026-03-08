@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useResumeStore } from '@/store/resume-store'
+import { useResumeStore } from '@/lib/stores/resume-store'
 import type { ResumeData, SectionConfig } from '@/lib/types/resume-schema'
 import { ResumeEditorLayout } from '@/components/resume/editor/ResumeEditorLayout'
 import { useExitProtection } from '@/hooks/use-exit-protection'
@@ -18,6 +18,7 @@ interface StepCustomizeProps {
   initialOpsJson?: any
   ctaAction?: React.ReactNode
   dict?: ResumeDict
+  matchScore?: number | undefined
 }
 
 export function StepCustomize({
@@ -29,6 +30,7 @@ export function StepCustomize({
   initialOpsJson,
   ctaAction,
   dict,
+  matchScore,
 }: StepCustomizeProps) {
   const { initStore } = useResumeStore()
 
@@ -69,7 +71,7 @@ export function StepCustomize({
   return (
     <ResumeDictProvider dict={dict}>
       <div className="h-full w-full relative">
-        <ResumeEditorLayout ctaAction={ctaAction} />
+        <ResumeEditorLayout ctaAction={ctaAction} matchScore={matchScore} />
 
         {/* Mobile floating save button - hidden on desktop (toolbar has inline version) */}
         <div className="md:hidden">
