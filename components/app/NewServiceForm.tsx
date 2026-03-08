@@ -17,7 +17,7 @@ import { createServiceAction } from '@/lib/actions/service.actions'
 import { StepperProgress } from '@/components/workbench/StepperProgress'
 import { UnifiedJDBox } from '@/components/workbench/UnifiedJDBox'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
-import { Archive, Coins } from 'lucide-react'
+import { Archive, Coins, Bot } from 'lucide-react'
 import {
   getTaskCost,
   JOB_IMAGE_MAX_BYTES,
@@ -277,55 +277,63 @@ export function NewServiceForm({
       <div className="min-h-[calc(100vh-16rem)] flex flex-col items-center justify-center text-center px-4 sm:px-6 w-full">
         <div
           className={cn(
-            'max-w-none sm:max-w-[880px] w-full mx-auto relative px-6 py-12 sm:px-12 sm:py-24',
-            'bg-white/70 dark:bg-white/[0.03]',
-            'border-[0.5px] border-black/5 dark:border-white/10',
-            'shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] dark:shadow-2xl',
-            'rounded-[2rem] backdrop-blur-2xl',
-            'flex flex-col items-center justify-center animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out z-10'
+            'relative mx-auto flex w-full max-w-2xl flex-col items-center overflow-hidden rounded-3xl border border-slate-200/60 bg-white/70 p-8 text-center shadow-2xl shadow-slate-200/50 backdrop-blur-2xl md:p-12 dark:border-white/5 dark:bg-[#0a0a0a]/60 dark:shadow-none',
+            'animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out z-10'
           )}
         >
           {/* Fine Noise Texture for the glass */}
           <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
+          {/* Internal Top Ambient Glow */}
+          <div className="absolute left-1/2 top-0 h-32 w-3/4 -translate-x-1/2 bg-cyan-500/10 blur-[100px] pointer-events-none dark:bg-cyan-500/15 z-0" />
+
           <div className="relative z-10 flex flex-col items-center justify-center w-full">
-            <div className="mb-6 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm mx-auto transition-colors">
-              <Archive
-                className="h-8 w-8 md:h-10 md:w-10 text-slate-700 dark:text-slate-300"
-                strokeWidth={2}
-              />
+            {/* The Visual Anchor */}
+            <div className="relative mb-6 inline-flex h-20 w-20 items-center justify-center">
+              {/* Diffused light backplate */}
+              <div className="absolute inset-0 rounded-full bg-cyan-400/20 blur-xl dark:bg-cyan-500/20"></div>
+              {/* Solid 3D base */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-slate-200/50 bg-white/50 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <Bot className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />
+              </div>
             </div>
-            <div className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-white mb-3 text-center text-balance">
+
+            {/* Typography */}
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-slate-900 dark:text-white text-balance">
               {dict.assetGateTitle}
-            </div>
-            <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed md:leading-loose text-center text-pretty">
+            </h2>
+            <p className="mb-10 text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto text-balance">
               {dict.assetGateDescriptionLine1}
-              <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-                {dict.assetGateHighlight1}
-              </span>
-              {dict.assetGateDelimiter1}
-              <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-                {dict.assetGateHighlight2}
-              </span>
-              {dict.assetGateDelimiter2}
-              <span className="font-semibold text-slate-900 dark:text-slate-200 whitespace-nowrap">
-                {dict.assetGateHighlight3}
-              </span>
-              {dict.assetGateDescriptionLine2 ? (
-                <>
-                  <br className="hidden md:block" />
-                  {dict.assetGateDescriptionLine2}
-                </>
-              ) : null}
             </p>
-            <Button
-              size="lg"
-              className="mt-8 px-8 py-3 rounded-full font-medium transition-all active:scale-95 bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/10 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 dark:shadow-white/10"
-              onClick={() => router.push(`/${locale}/profile?tab=assets`)}
+
+            {/* Value Badges Matrix */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-12 w-full max-w-2xl">
+              {[
+                { icon: '🎯', text: dict.assetGateHighlight1 },
+                { icon: '✍️', text: dict.assetGateHighlight2 },
+                { icon: '🎙️', text: dict.assetGateHighlight3 }
+              ].map((item, i) => (
+                <span key={i} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium bg-slate-100/80 text-slate-700 dark:bg-white/5 dark:text-slate-300 dark:border dark:border-white/5 transition-transform hover:scale-105">
+                  <span className="text-base leading-none">{item.icon}</span>
+                  <span>{item.text}</span>
+                </span>
+              ))}
+            </div>
+
+            {/* Strong Magnetic CTA Area */}
+            <button
+              type="button"
+              className="rounded-full px-8 py-3.5 font-semibold transition-transform hover:scale-[1.03] active:scale-95 bg-slate-900 text-white shadow-[0_8px_20px_rgba(0,0,0,0.1)] hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] dark:hover:bg-slate-100"
+              onClick={(e) => {
+                e.preventDefault()
+                router.push(`/${locale}/profile?tab=assets`)
+              }}
             >
               {dict.assetGateButton}
-            </Button>
-            <p className="mt-3 text-sm text-slate-400 dark:text-slate-400">
+            </button>
+
+            {/* CTA Microcopy Desk Noise Reduction */}
+            <p className="mt-4 max-w-sm text-xs text-slate-400 dark:text-slate-500">
               {dict.assetGateMicrocopy}
             </p>
           </div>

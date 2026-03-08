@@ -106,7 +106,7 @@ const dict = {
       button: '生成匹配策略',
       statusMicroIndicator: 'AI 引擎已连接专属档案，随时待命',
       assetGateTitle: '唤醒你的 AI 求职私教',
-      assetGateDescriptionLine1: '构建专属档案库，即可解锁精准的',
+      assetGateDescriptionLine1: '构建你的专属职业档案库，全面解锁 AI 超能力',
       assetGateDescriptionLine2: '',
       assetGateHighlight1: '岗位匹配',
       assetGateHighlight2: '简历定制',

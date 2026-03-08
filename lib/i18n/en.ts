@@ -110,7 +110,7 @@ const dict = {
       button: 'Generate Strategy',
       statusMicroIndicator: 'AI engine connected. Ready to analyze.',
       assetGateTitle: 'Unlock Your AI Career Coach',
-      assetGateDescriptionLine1: 'Set up your career vault to unlock tailored ',
+      assetGateDescriptionLine1: 'Build your career vault to unleash AI superpowers',
       assetGateDescriptionLine2: '',
       assetGateHighlight1: 'Job Matching',
       assetGateHighlight2: 'Resume Optimization',
