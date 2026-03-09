@@ -43,7 +43,7 @@ function getMatchScore(data: any): number {
 }
 
 function getScoreAccentColor(score: number): string {
-    if (score >= 80) return '#059669'
+    if (score >= 85) return '#059669'
     if (score >= 60) return '#d97706'
     return '#e11d48'
 }
@@ -93,10 +93,16 @@ export default async function PrintPage({ params, searchParams }: PageProps) {
             Array.isArray(matchJson?.gaps)
                 ? matchJson.gaps.map((g: any) => ({ point: String(g ?? ''), evidence: '' }))
                 : Array.isArray(matchJson?.weaknesses)
-                    ? matchJson.weaknesses.map((w: any) => ({
-                        point: String(w?.Point ?? w?.point ?? w ?? ''),
-                        evidence: String(w?.Evidence ?? w?.evidence ?? w?.suggestion ?? '').trim(),
-                    }))
+                    ? matchJson.weaknesses.map((w: any) => {
+                        const point = String(w?.Point ?? w?.point ?? w ?? '')
+                        const evidence = String(w?.Evidence ?? w?.evidence ?? w?.suggestion ?? '').trim()
+                        const tip = typeof w?.tip === 'object' && w.tip !== null
+                            ? { interview: w.tip.interview ?? '', resume: w.tip.resume ?? '' }
+                            : typeof w?.tip === 'string'
+                                ? { interview: w.tip, resume: '' }
+                                : undefined
+                        return { point, evidence, ...(tip ? { tip } : {}) }
+                    })
                     : []
         ).filter((w: any) => w.point)
 
@@ -130,6 +136,11 @@ export default async function PrintPage({ params, searchParams }: PageProps) {
             gapsAndSuggestions: wbDict?.resultCard?.gapsAndSuggestions,
             recommendations: wbDict?.resultCard?.recommendations,
             smartPitch: wbDict?.resultCard?.smartPitch?.label,
+            highlyMatched: wbDict?.resultCard?.highlyMatched,
+            goodFit: wbDict?.resultCard?.goodFit,
+            lowMatch: wbDict?.resultCard?.lowMatch,
+            resumeTweak: wbDict?.resultCard?.resumeTweak,
+            interviewPrep: wbDict?.resultCard?.interviewPrep,
         }
 
         return (
@@ -176,6 +187,7 @@ export default async function PrintPage({ params, searchParams }: PageProps) {
             },
             evidence: {
                 title: ibpDict?.evidence?.title,
+                storyTitle: ibpDict?.evidence?.storyTitle,
                 storyLabel: ibpDict?.evidence?.storyLabel,
                 matchedPainPoint: ibpDict?.evidence?.matchedPainPoint,
                 situation: ibpDict?.evidence?.situation,
