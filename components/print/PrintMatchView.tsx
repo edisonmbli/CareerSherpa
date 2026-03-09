@@ -136,7 +136,7 @@ function TimelineList({
 }: {
     items: any[]
     theme: ReturnType<typeof getTheme>
-    labels?: { resumeTweak?: string; interviewPrep?: string }
+    labels?: { resumeTweak?: string | undefined; interviewPrep?: string | undefined }
     withTip?: boolean
 }) {
     return (
@@ -273,7 +273,6 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
                         fontFamily: SERIF,
                         fontSize: '28px',
                         fontWeight: 700,
-                        trackingTight: true,
                         lineHeight: 1.2,
                         color: 'rgb(28 25 23)',
                         letterSpacing: '-0.02em',
