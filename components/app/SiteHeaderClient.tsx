@@ -25,8 +25,9 @@ export function SiteHeaderClient({
 
   const isWorkbench = pathname?.includes('/workbench')
   const isResumeShare = pathname?.includes('/r/')
+  const isPrint = pathname?.includes('/print/')
 
-  if (isResumeShare) return null
+  if (isResumeShare || isPrint) return null
 
   return (
     <header

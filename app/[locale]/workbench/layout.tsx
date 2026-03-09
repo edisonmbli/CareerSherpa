@@ -117,7 +117,7 @@ export default async function WorkbenchLayout(props: any) {
     <PostHogProvider scope="workbench" locale={locale}>
       <div className="container mx-auto sm:px-6 md:px-8 sm:py-6 flex flex-col min-h-0 h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem-3rem)]">
         {/* V7 Ambient Background Layer (Neural Network Visual Echo) */}
-        <NeuralNetworkBackground variant="workbench" className="fixed" />
+        <NeuralNetworkBackground variant="workbench" className="fixed print:hidden" />
 
         <div className="lg:hidden mb-0 sm:mb-8 flex items-center px-6 pt-4 sm:px-0 sm:pt-0 relative z-[50]">
           <MobileDrawer

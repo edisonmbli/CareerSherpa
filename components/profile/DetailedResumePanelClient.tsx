@@ -369,51 +369,54 @@ export function DetailedResumePanelClient({
                 {detailedBadge}
               </ResumeGuidanceTooltip>
             </div>
-            {!hasGeneral && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 ml-2 shrink-0">
-                <Lock className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{lockHint}</span>
-              </div>
-            )}
           </div>
 
-          {canViewDashboard && (
-            <div className="flex items-center gap-2 shrink-0 relative z-20">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
-                onClick={() => uploaderRef.current?.openPreview()}
-              >
-                <Eye className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden sm:inline">{actions.preview}</span>
-              </Button>
-              {mode === 'dashboard' ? (
+          <div className="flex items-center justify-end gap-2 flex-wrap shrink-0 relative z-20">
+            {!hasGeneral && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md border border-slate-200 dark:border-white/10 dark:text-slate-400 shrink-0">
+                <Lock className="h-3.5 w-3.5" />
+                <span className="font-medium">{lockHint}</span>
+              </div>
+            )}
+
+            {canViewDashboard && (
+              <>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
-                  onClick={() => handleModeSwitch('uploader')}
+                  onClick={() => uploaderRef.current?.openPreview()}
                 >
-                  <RotateCw className="h-3.5 w-3.5 sm:mr-1" />
-                  <span className="hidden sm:inline">{actions.reupload}</span>
+                  <Eye className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">{actions.preview}</span>
                 </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
-                  onClick={() => handleModeSwitch('dashboard')}
-                >
-                  <LayoutDashboard className="h-3.5 w-3.5 sm:mr-1" />
-                  <span className="hidden sm:inline">{actions.backToDashboard}</span>
-                </Button>
-              )}
-            </div>
-          )}
+                {mode === 'dashboard' ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
+                    onClick={() => handleModeSwitch('uploader')}
+                  >
+                    <RotateCw className="h-3.5 w-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">{actions.reupload}</span>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 transition-colors"
+                    onClick={() => handleModeSwitch('dashboard')}
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">{actions.backToDashboard}</span>
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         </div>
         <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
           {detailedDescription}
@@ -491,7 +494,8 @@ export function DetailedResumePanelClient({
             />
           </div>
         </div>
-      )}
+      )
+      }
     </>
   )
 }

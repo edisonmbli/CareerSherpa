@@ -966,6 +966,28 @@ export function ServiceDisplay({
 
   useEffect(() => {
     if (tabValue !== 'interview') return
+    if (shouldShowInterviewPlan) return
+    if (!v2Bridge) return
+
+    const isInterviewStreaming =
+      v2Bridge.status === 'INTERVIEW_PENDING' ||
+      v2Bridge.status === 'INTERVIEW_STREAMING'
+    if (!isInterviewStreaming) return
+
+    const root = interviewScrollRef.current
+    if (root) root.scrollTop = root.scrollHeight
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' })
+  }, [
+    tabValue,
+    shouldShowInterviewPlan,
+    v2Bridge,
+    v2Bridge?.status,
+    v2Bridge?.interviewContent,
+    v2Bridge?.interviewJson,
+  ])
+
+  useEffect(() => {
+    if (tabValue !== 'interview') return
     if (interviewStatus !== 'COMPLETED') return
     if (!ibpTocItems.length) return
     const recalc = ibpRecalcRef.current
@@ -1116,7 +1138,7 @@ export function ServiceDisplay({
     const isActiveStatus =
       v2Status?.includes('PENDING') || v2Status?.includes('STREAMING')
     const shouldPreserveInterview =
-      status.startsWith('INTERVIEW') || hasInterviewData
+      status.startsWith('INTERVIEW') || hasInterviewData || v2Status === 'INTERVIEW_COMPLETED' || v2Status === 'INTERVIEW_STREAMING'
 
     if (
       serviceChanged ||
@@ -1263,7 +1285,6 @@ export function ServiceDisplay({
   const stepActionNode = cta?.show ? ctaNode : null
   const [copiedMatch, setCopiedMatch] = useState(false)
   const [copiedInterview, setCopiedInterview] = useState(false)
-
   const handleCopyMatch = async () => {
     const text = buildMatchResultCopyText(matchResult || matchParsed, {
       company: displayCompany,
@@ -1292,6 +1313,75 @@ export function ServiceDisplay({
   const interviewTheme = getMatchThemeColor(
     getMatchScore(matchResult || matchParsed),
   )
+  const printMatchData = useMemo(() => {
+    const source = matchResult || matchParsed
+    if (!source) return null
+
+    const score = getMatchScore(source)
+    const expertVerdict = String(source?.overall_assessment || '').trim()
+
+    const strengths = (
+      Array.isArray(source?.highlights)
+        ? source.highlights.map((s: unknown) => ({
+          point: String(s ?? ''),
+          evidence: '',
+        }))
+        : Array.isArray(source?.strengths)
+          ? source.strengths.map((s: any) => ({
+            point: String(s?.Point ?? s?.point ?? s ?? ''),
+            evidence: String(s?.Evidence ?? s?.evidence ?? '').trim(),
+          }))
+          : []
+    )
+      .map((s: { point: string; evidence: string }) => ({
+        ...s,
+        point: s.point.trim(),
+      }))
+      .filter((s: { point: string }) => s.point)
+
+    const weaknesses = (
+      Array.isArray(source?.gaps)
+        ? source.gaps.map((s: unknown) => ({
+          point: String(s ?? ''),
+          evidence: '',
+        }))
+        : Array.isArray(source?.weaknesses)
+          ? source.weaknesses.map((w: any) => ({
+            point: String(w?.Point ?? w?.point ?? w ?? ''),
+            evidence: String(w?.Evidence ?? w?.evidence ?? w?.suggestion ?? '').trim(),
+          }))
+          : []
+    )
+      .map((w: { point: string; evidence: string }) => ({
+        ...w,
+        point: w.point.trim(),
+      }))
+      .filter((w: { point: string }) => w.point)
+
+    const recommendations = Array.isArray(source?.recommendations)
+      ? source.recommendations.map((r: unknown) => String(r ?? '').trim()).filter(Boolean)
+      : []
+
+    const dmScript = typeof source?.dm_script === 'string'
+      ? source.dm_script
+      : typeof source?.cover_letter_script?.script === 'string'
+        ? source.cover_letter_script.script
+        : ''
+
+    return {
+      score,
+      expertVerdict,
+      strengths,
+      weaknesses,
+      recommendations,
+      dmScript,
+    }
+  }, [matchResult, matchParsed])
+
+  const printInterviewData = useMemo(() => {
+    if (!(interviewStatus === 'COMPLETED' && interviewParsed)) return null
+    return interviewParsed
+  }, [interviewStatus, interviewParsed])
 
   const getActionThemeClasses = (theme: 'emerald' | 'amber' | 'rose') => {
     switch (theme) {
@@ -1316,12 +1406,31 @@ export function ServiceDisplay({
     }
   }
 
+  const matchPrintRef = useRef<HTMLDivElement>(null)
+  const interviewPrintRef = useRef<HTMLDivElement>(null)
+
+  const handleMatchPrint = useCallback(() => {
+    window.open(
+      `/${locale}/print/${serviceId}?type=match`,
+      '_blank',
+    )
+  }, [locale, serviceId])
+
+  const handleInterviewPrint = useCallback(() => {
+    window.open(
+      `/${locale}/print/${serviceId}?type=interview`,
+      '_blank',
+    )
+  }, [locale, serviceId])
+
+
+
   const matchActions = [
     {
       id: 'print',
       label: String(dict.workbench?.interviewBattlePlan?.print || '打印'),
       icon: Printer,
-      onClick: () => window.print(),
+      onClick: handleMatchPrint,
       disabled: !(status === 'MATCH_COMPLETED' || matchResult || matchParsed),
     },
     {
@@ -1340,7 +1449,7 @@ export function ServiceDisplay({
       id: 'print',
       label: String(dict.workbench?.interviewBattlePlan?.print || '打印'),
       icon: Printer,
-      onClick: () => window.print(),
+      onClick: handleInterviewPrint,
       disabled: !(interviewStatus === 'COMPLETED' && interviewParsed),
     },
     {
@@ -1468,7 +1577,10 @@ export function ServiceDisplay({
         >
           <TabsContent
             value="match"
-            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-auto print:overflow-visible print:h-auto h-full"
+            className={cn(
+              "flex-1 flex flex-col min-h-0 overflow-x-visible print:overflow-visible print:h-auto h-full",
+              status === 'MATCH_COMPLETED' || matchResult || matchParsed ? 'overflow-y-auto' : ''
+            )}
           >
             <div className="w-full px-0 sm:px-3 md:px-4 flex-1 flex flex-col min-h-0">
               <div className="mx-auto w-full max-w-none sm:max-w-[1180px] flex-1 flex flex-col min-h-0">
@@ -1603,52 +1715,57 @@ export function ServiceDisplay({
                     status === 'PREMATCH_PENDING' ||
                     status === 'SUMMARY_PENDING'
                   ) && (
-                    <ResultCard
-                      data={matchResult || matchParsed}
-                      company={displayCompany}
-                      jobTitle={displayJob}
-                      className="mt-0"
-                      labels={{
-                        title: dict.workbench?.resultCard?.title,
-                        loading: dict.workbench?.resultCard?.loading,
-                        empty: dict.workbench?.resultCard?.empty,
-                        matchScore: dict.workbench?.resultCard?.matchScore,
-                        overallAssessment:
-                          dict.workbench?.resultCard?.overallAssessment,
-                        highlights: dict.workbench?.resultCard?.highlights,
-                        gapsAndSuggestions:
-                          dict.workbench?.resultCard?.gapsAndSuggestions,
-                        smartPitch:
-                          dict.workbench?.resultCard?.smartPitch?.label,
-                        copyTooltip:
-                          dict.workbench?.resultCard?.smartPitch?.copyTooltip,
-                        copy: dict.workbench?.resultCard?.copy,
-                        copied: dict.workbench?.resultCard?.copied,
-                        copySuccess: dict.workbench?.resultCard?.copySuccess,
-                        highlyMatched:
-                          dict.workbench?.resultCard?.highlyMatched,
-                        goodFit: dict.workbench?.resultCard?.goodFit,
-                        lowMatch: dict.workbench?.resultCard?.lowMatch,
-                        targetCompany:
-                          dict.workbench?.resultCard?.targetCompany,
-                        targetPosition:
-                          dict.workbench?.resultCard?.targetPosition,
-                        noHighlights: dict.workbench?.resultCard?.noHighlights,
-                        noGaps: dict.workbench?.resultCard?.noGaps,
-                        tip: dict.workbench?.resultCard?.tip,
-                        expertVerdict:
-                          dict.workbench?.resultCard?.expertVerdict,
-                        recommendations:
-                          dict.workbench?.resultCard?.recommendations,
-                        resumeTweak: dict.workbench?.analysis?.resumeTweak,
-                        interviewPrep: dict.workbench?.analysis?.interviewPrep,
-                        cleanCopied:
-                          dict.workbench?.resultCard?.smartPitch?.cleanCopied,
-                        definitions: dict.workbench?.resultCard?.definitions,
-                        smartPitchDefs:
-                          dict.workbench?.resultCard?.smartPitch?.definitions,
-                      }}
-                    />
+                    <div
+                      ref={matchPrintRef}
+                      className="print-workbench-document print-target-match-node print:w-full"
+                    >
+                      <ResultCard
+                        data={matchResult || matchParsed}
+                        company={displayCompany}
+                        jobTitle={displayJob}
+                        className="mt-0"
+                        labels={{
+                          title: dict.workbench?.resultCard?.title,
+                          loading: dict.workbench?.resultCard?.loading,
+                          empty: dict.workbench?.resultCard?.empty,
+                          matchScore: dict.workbench?.resultCard?.matchScore,
+                          overallAssessment:
+                            dict.workbench?.resultCard?.overallAssessment,
+                          highlights: dict.workbench?.resultCard?.highlights,
+                          gapsAndSuggestions:
+                            dict.workbench?.resultCard?.gapsAndSuggestions,
+                          smartPitch:
+                            dict.workbench?.resultCard?.smartPitch?.label,
+                          copyTooltip:
+                            dict.workbench?.resultCard?.smartPitch?.copyTooltip,
+                          copy: dict.workbench?.resultCard?.copy,
+                          copied: dict.workbench?.resultCard?.copied,
+                          copySuccess: dict.workbench?.resultCard?.copySuccess,
+                          highlyMatched:
+                            dict.workbench?.resultCard?.highlyMatched,
+                          goodFit: dict.workbench?.resultCard?.goodFit,
+                          lowMatch: dict.workbench?.resultCard?.lowMatch,
+                          targetCompany:
+                            dict.workbench?.resultCard?.targetCompany,
+                          targetPosition:
+                            dict.workbench?.resultCard?.targetPosition,
+                          noHighlights: dict.workbench?.resultCard?.noHighlights,
+                          noGaps: dict.workbench?.resultCard?.noGaps,
+                          tip: dict.workbench?.resultCard?.tip,
+                          expertVerdict:
+                            dict.workbench?.resultCard?.expertVerdict,
+                          recommendations:
+                            dict.workbench?.resultCard?.recommendations,
+                          resumeTweak: dict.workbench?.analysis?.resumeTweak,
+                          interviewPrep: dict.workbench?.analysis?.interviewPrep,
+                          cleanCopied:
+                            dict.workbench?.resultCard?.smartPitch?.cleanCopied,
+                          definitions: dict.workbench?.resultCard?.definitions,
+                          smartPitchDefs:
+                            dict.workbench?.resultCard?.smartPitch?.definitions,
+                        }}
+                      />
+                    </div>
                   )}
               </div>
             </div>
@@ -1784,11 +1901,17 @@ export function ServiceDisplay({
 
           <TabsContent
             value="interview"
-            className="flex-1 flex flex-col min-h-0 overflow-x-visible overflow-y-auto print:overflow-visible"
+            className={cn(
+              'flex-1 flex flex-col min-h-0 overflow-x-visible print:overflow-visible',
+              shouldShowInterviewPlan ? 'overflow-y-auto' : 'overflow-y-hidden'
+            )}
           >
             <div
               ref={interviewScrollRef}
-              className="flex-1 min-h-0 overflow-x-visible overflow-y-auto print:overflow-visible"
+              className={cn(
+                'flex-1 min-h-0 overflow-x-visible print:overflow-visible',
+                shouldShowInterviewPlan ? 'overflow-y-auto' : 'overflow-y-hidden'
+              )}
               style={{ scrollbarGutter: 'stable' }}
             >
               {shouldShowInterviewPlan ? (
@@ -2005,7 +2128,12 @@ export function ServiceDisplay({
                         <Menu className="h-5 w-5" />
                       </Button>
                     </div>
-                    <div className="mx-auto w-full max-w-[880px] relative print:max-w-none print:mx-0 print:w-full">
+                    <div
+                      ref={interviewPrintRef}
+                      className={cn(
+                        'mx-auto w-full max-w-[880px] relative print-workbench-document print-target-interview-node print:max-w-none print:mx-0 print:w-full',
+                      )}
+                    >
                       <InterviewBattlePlan
                         data={interviewParsed}
                         matchScore={getMatchScore(matchParsed)}
@@ -2061,6 +2189,25 @@ export function ServiceDisplay({
                     </aside>
                   </div>
                 </div>
+              ) : USE_SSE_V2 &&
+                v2Bridge &&
+                (v2Bridge.status === 'INTERVIEW_PENDING' ||
+                  v2Bridge.status === 'INTERVIEW_STREAMING' ||
+                  v2Bridge.status === 'INTERVIEW_COMPLETED') &&
+                (v2Bridge.interviewContent || v2Bridge.interviewJson) ? (
+                <div className="flex flex-col flex-1 min-h-0 w-full px-0 sm:px-4 md:px-6 print:hidden">
+                  <div className="flex flex-col flex-1 min-h-0 mx-auto w-full max-w-[1180px]">
+                    <StreamPanelV2
+                      className="flex-1 min-h-0 h-full"
+                      status={v2Bridge.status}
+                      tier={v2Bridge.tier!}
+                      interviewContent={v2Bridge.interviewContent}
+                      interviewJson={v2Bridge.interviewJson}
+                      errorMessage={localizedError!}
+                      dict={dict?.workbench?.streamPanel}
+                    />
+                  </div>
+                </div>
               ) : shouldShowInterviewLoading ? (
                 <div className="w-full px-3 md:px-4">
                   <div className="mx-auto w-full max-w-[1180px]">
@@ -2074,24 +2221,6 @@ export function ServiceDisplay({
                         '内容已生成，正在整理与排版，请稍候。'
                       }
                       progress={96}
-                    />
-                  </div>
-                </div>
-              ) : USE_SSE_V2 &&
-                v2Bridge &&
-                (v2Bridge.status === 'INTERVIEW_PENDING' ||
-                  v2Bridge.status === 'INTERVIEW_STREAMING' ||
-                  v2Bridge.status === 'INTERVIEW_COMPLETED') &&
-                (v2Bridge.interviewContent || v2Bridge.interviewJson) ? (
-                <div className="w-full px-0 sm:px-4 md:px-6">
-                  <div className="mx-auto w-full max-w-[1180px]">
-                    <StreamPanelV2
-                      status={v2Bridge.status}
-                      tier={v2Bridge.tier!}
-                      interviewContent={v2Bridge.interviewContent}
-                      interviewJson={v2Bridge.interviewJson}
-                      errorMessage={localizedError!}
-                      dict={dict?.workbench?.streamPanel}
                     />
                   </div>
                 </div>
@@ -2297,6 +2426,141 @@ export function ServiceDisplay({
             </DrawerContent>
           </Drawer>
         )}
+
+        {printMatchData && (
+          <section className="print-sheet print-sheet-match">
+            <header className="print-sheet-header">
+              <div>
+                <h1>{displayCompany || 'Target Company'}</h1>
+                <p>{displayJob || 'Target Position'}</p>
+              </div>
+              <div className="print-score-chip">{printMatchData.score}</div>
+            </header>
+
+            {printMatchData.expertVerdict && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.resultCard?.overallAssessment || '总体评估'}</h2>
+                <p>{printMatchData.expertVerdict}</p>
+              </section>
+            )}
+
+            {printMatchData.strengths.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.resultCard?.highlights || '亮点分析'}</h2>
+                <ol>
+                  {printMatchData.strengths.map((s: any, idx: number) => (
+                    <li key={`ms-${idx}`}>
+                      <p>{s.point}</p>
+                      {s.evidence && <p>{s.evidence}</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {printMatchData.weaknesses.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.resultCard?.gapsAndSuggestions || '差距与应对'}</h2>
+                <ol>
+                  {printMatchData.weaknesses.map((w: any, idx: number) => (
+                    <li key={`mw-${idx}`}>
+                      <p>{w.point}</p>
+                      {w.evidence && <p>{w.evidence}</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {printMatchData.recommendations.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.resultCard?.recommendations || '建议'}</h2>
+                <ol>
+                  {printMatchData.recommendations.map((r: string, idx: number) => (
+                    <li key={`mr-${idx}`}>
+                      <p>{r}</p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </section>
+        )}
+
+        {printInterviewData && (
+          <section className="print-sheet print-sheet-interview">
+            <header className="print-sheet-header">
+              <div>
+                <h1>{dict.workbench?.interviewBattlePlan?.title || '面试作战手卡'}</h1>
+                <p>
+                  {displayCompany || 'Target Company'}
+                  {displayJob ? ` · ${displayJob}` : ''}
+                </p>
+              </div>
+            </header>
+
+            {printInterviewData?.radar?.core_challenges?.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.interviewBattlePlan?.radar?.title || '情报透视'}</h2>
+                <ol>
+                  {printInterviewData.radar.core_challenges.map((item: any, idx: number) => (
+                    <li key={`irc-${idx}`}>
+                      <p>{item.challenge}</p>
+                      {item.why_important && <p>{item.why_important}</p>}
+                      {item.your_angle && <p>{item.your_angle}</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {printInterviewData?.evidence?.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.interviewBattlePlan?.evidence?.title || '核心论据'}</h2>
+                <ol>
+                  {printInterviewData.evidence.map((item: any, idx: number) => (
+                    <li key={`iev-${idx}`}>
+                      <p>{item.story_title}</p>
+                      {item.matched_pain_point && <p>{item.matched_pain_point}</p>}
+                      {item.quantified_impact && <p>{item.quantified_impact}</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {printInterviewData?.defense?.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.interviewBattlePlan?.defense?.title || '弱项演练'}</h2>
+                <ol>
+                  {printInterviewData.defense.map((item: any, idx: number) => (
+                    <li key={`idf-${idx}`}>
+                      <p>{item.weakness}</p>
+                      {item.anticipated_question && <p>{item.anticipated_question}</p>}
+                      {item.defense_script && <p>{item.defense_script}</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {printInterviewData?.reverse_questions?.length > 0 && (
+              <section className="print-sheet-block">
+                <h2>{dict.workbench?.interviewBattlePlan?.reverse?.title || '提问利器'}</h2>
+                <ol>
+                  {printInterviewData.reverse_questions.map((item: any, idx: number) => (
+                    <li key={`irv-${idx}`}>
+                      <p>{item.question}</p>
+                      {item.ask_intent && <p>{item.ask_intent}</p>}
+                      {item.listen_for && <p>{item.listen_for}</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </section>
+        )}
+
       </div>
 
       {/* Lightweight Free Tier Warning Dialogs */}

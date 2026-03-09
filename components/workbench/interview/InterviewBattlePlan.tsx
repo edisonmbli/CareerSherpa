@@ -414,7 +414,7 @@ export function InterviewBattlePlan({
   return (
     <div
       className={cn(
-        'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible print:max-w-none print:w-full print:mt-0 print:break-before-auto print:break-inside-auto animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
+        'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible print:max-w-none print:w-full print:mt-0 print:break-before-auto print:break-inside-auto animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out print:animate-none print:opacity-100 print:transform-none',
         'bg-transparent sm:bg-white/70 dark:bg-transparent sm:dark:bg-white/[0.03]',
         'border-transparent sm:border-[0.5px] sm:border-black/5 sm:dark:border-white/10',
         'shadow-none sm:shadow-[inset_0_2px_5px_rgba(255,255,255,0.9),0_40px_80px_-20px_rgba(14,165,233,0.15)] sm:dark:shadow-2xl',
@@ -425,7 +425,7 @@ export function InterviewBattlePlan({
       )}
     >
       {/* Fine Noise Texture for the glass (matching Landing Page and Step 1) */}
-      <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+      <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0 print:hidden" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
       <div className="relative px-0 py-3 sm:p-4 md:p-10 lg:p-12 pb-24 md:pb-8 print:pt-4 print:pb-4 print:px-2 z-10">
         <div className="space-y-16 md:space-y-24 mt-0 relative z-10 w-full max-w-full print:mt-4 print:space-y-8">

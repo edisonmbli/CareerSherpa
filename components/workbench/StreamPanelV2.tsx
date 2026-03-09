@@ -241,7 +241,7 @@ export function StreamPanelV2({
   onRetry,
   className,
 }: StreamPanelV2Props) {
-  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const scrollAreaRootRef = useRef<HTMLDivElement | null>(null)
 
   const hasMatchContent = !!(matchContent || matchJson)
   const hasPreMatchContent = !!(preMatchContent || preMatchJson)
@@ -442,16 +442,21 @@ export function StreamPanelV2({
     fastSpeed: 2,
   })
 
-  // Auto-scroll to bottom
+  // Keep the latest streamed lines in view by scrolling the internal Radix viewport,
+  // not the outer page container. This matches the Step 1 behavior and avoids the
+  // panel growing past the user's visible focus area during streaming.
   useEffect(() => {
-    const viewport = scrollerRef.current?.closest(
+    const root = scrollAreaRootRef.current
+    const viewport = root?.querySelector(
       '[data-slot="scroll-area-viewport"]',
-    )
-    if (viewport) {
-      requestAnimationFrame(() => {
-        viewport.scrollTop = viewport.scrollHeight
-      })
-    }
+    ) as HTMLDivElement | null
+    if (!viewport) return
+
+    const rafId = window.requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight
+    })
+
+    return () => window.cancelAnimationFrame(rafId)
   }, [
     status,
     displayedMatchContent,
@@ -638,17 +643,18 @@ export function StreamPanelV2({
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 w-full h-full rounded-md shadow-inner bg-black/[0.02] dark:bg-white/[0.02] p-3 overflow-y-auto mix-blend-multiply dark:mix-blend-screen">
+      <div ref={scrollAreaRootRef} className="flex-1 min-h-0">
+        <ScrollArea className="h-full w-full rounded-md bg-black/[0.02] p-3 shadow-inner mix-blend-multiply dark:bg-white/[0.02] dark:mix-blend-screen">
         <div
-          ref={scrollerRef}
-          className="h-full font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground/90"
+          className="min-h-full font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground/90 pb-4 relative"
         >
           {displayContent}
           {showCursor && (
             <span className="inline-block w-1.5 h-3 ml-0.5 align-middle bg-blue-500 animate-pulse" />
           )}
         </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     </div>
   )
 }

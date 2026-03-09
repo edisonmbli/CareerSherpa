@@ -288,7 +288,7 @@ export function ResultCard({
       className={cn(
         // V5 Measured Document Styling:
         // 1. Centered "Page" with max-width (Letterhead feel)
-        'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out',
+        'max-w-none sm:max-w-[880px] mx-0 sm:mx-auto w-full relative mt-4 overflow-visible animate-in fade-in slide-in-from-bottom-6 duration-[800ms] ease-out print:animate-none print:opacity-100 print:transform-none',
         // 2. Tinted Neutral Background - Transparent on mobile for seamless edge-to-edge blend
         'bg-transparent sm:bg-white/70 dark:bg-transparent sm:dark:bg-white/[0.03]',
         // 3. Double Border & Shadow Effect - Hidden on mobile to avoid cutting the screen
@@ -300,7 +300,7 @@ export function ResultCard({
       )}
     >
       {/* Fine Noise Texture for the glass (matching Landing Page) */}
-      <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
+      <div aria-hidden="true" className="hidden sm:block absolute inset-0 mix-blend-overlay opacity-10 pointer-events-none rounded-sm sm:rounded-[2rem] z-0 print:hidden" style={{ backgroundImage: 'url("/noise.svg")', backgroundRepeat: 'repeat' }} />
 
       <div
         ref={scrollRef}

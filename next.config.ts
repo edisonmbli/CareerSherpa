@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         hostname: 'content.stack-auth.com',
         pathname: '/user-profile-images/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
     ],
   },
 }
