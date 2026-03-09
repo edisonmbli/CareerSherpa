@@ -113,7 +113,7 @@ function SectionTitle({ children, theme }: { children: React.ReactNode; theme: R
             <div style={{ borderLeft: `3px solid ${theme.text}`, paddingLeft: '10px', paddingBottom: '2px' }}>
                 <span style={{
                     fontFamily: SERIF,
-                    fontSize: '18px',
+                    fontSize: '17px',
                     fontWeight: 700,
                     color: 'rgb(28 25 23)',
                     lineHeight: 1.2,
@@ -140,7 +140,7 @@ function TimelineList({
     withTip?: boolean
 }) {
     return (
-        <div style={{ paddingLeft: '12px', borderLeft: '1px solid rgb(214 211 209 / 0.6)', marginLeft: '12px' }}>
+        <div style={{ paddingLeft: '14px', borderLeft: '1px solid rgb(214 211 209 / 0.6)', marginLeft: '12px' }}>
             {items.map((item, idx) => {
                 const isStr = typeof item === 'string'
                 const point = isStr ? item : (item.point || String(item))
@@ -150,12 +150,38 @@ function TimelineList({
                     : undefined
 
                 return (
-                    <div key={idx} style={{ position: 'relative', paddingLeft: '24px', paddingBottom: '28px' }}>
+                    <div
+                        key={idx}
+                        style={{
+                            position: 'relative',
+                            paddingLeft: '28px',
+                            paddingBottom: idx === items.length - 1 ? '14px' : '24px',
+                            breakInside: 'avoid',
+                            pageBreakInside: 'avoid',
+                        }}
+                    >
+                        {/* Prefix watermark number */}
+                        <div style={{
+                            position: 'absolute',
+                            left: '-22px',
+                            top: '-32px',
+                            fontSize: '48px',
+                            lineHeight: 1,
+                            fontWeight: 800,
+                            fontFamily: SERIF,
+                            color: 'rgb(148 163 184)',
+                            opacity: 0.22,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                        }}>
+                            {idx + 1}
+                        </div>
+
                         {/* Dot */}
                         <div style={{
                             position: 'absolute',
-                            left: '-5px',
-                            top: '6px',
+                            left: '-4px',
+                            top: '8px',
                             width: '8px',
                             height: '8px',
                             borderRadius: '50%',
@@ -166,8 +192,8 @@ function TimelineList({
                         {/* Point */}
                         <div style={{
                             fontFamily: NOTO_SERIF,
-                            fontSize: '13px',
-                            lineHeight: '1.65',
+                            fontSize: '12.5px',
+                            lineHeight: '1.68',
                             color: 'rgb(41 37 36)',
                         }}>
                             {point}
@@ -177,7 +203,7 @@ function TimelineList({
                         {evidence && (
                             <div style={{
                                 marginTop: '5px',
-                                fontSize: '11.5px',
+                                fontSize: '11px',
                                 color: 'rgb(120 113 108)',
                                 lineHeight: '1.55',
                             }}>
@@ -203,7 +229,7 @@ function TimelineList({
                                         }}>
                                             &#128196; {labels?.resumeTweak || '简历调整'}
                                         </div>
-                                        <div style={{ fontSize: '12px', color: 'rgb(87 83 78)', lineHeight: 1.55, paddingLeft: '2px' }}>
+                                        <div style={{ fontSize: '11.5px', color: 'rgb(87 83 78)', lineHeight: 1.52, paddingLeft: '2px' }}>
                                             {tip.resume}
                                         </div>
                                     </div>
@@ -223,7 +249,7 @@ function TimelineList({
                                         }}>
                                             &#127908; {labels?.interviewPrep || '面试建议'}
                                         </div>
-                                        <div style={{ fontSize: '12px', color: 'rgb(87 83 78)', lineHeight: 1.55, paddingLeft: '2px' }}>
+                                        <div style={{ fontSize: '11.5px', color: 'rgb(87 83 78)', lineHeight: 1.52, paddingLeft: '2px' }}>
                                             {tip.interview}
                                         </div>
                                     </div>
@@ -242,6 +268,7 @@ function TimelineList({
 export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
     const { score, expertVerdict, strengths, weaknesses, recommendations = [], dmScript, company, jobTitle } = data
     const theme = getTheme(score)
+    const generatedAt = new Date().toLocaleString('zh-CN', { hour12: false })
 
     const assessmentLabel = score >= 85
         ? (labels?.highlyMatched || theme.label)
@@ -252,14 +279,15 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
     return (
         <div style={{
             fontFamily: CJK,
-            fontSize: '13px',
+            fontSize: '13.5px',
             color: 'rgb(15 23 42)',
             background: 'white',
-            maxWidth: '794px',
+            maxWidth: '880px',
             margin: '0 auto',
-            padding: '36px 40px 48px',
+            padding: '30px 32px 40px',
+            border: '1px solid rgb(241 245 249)',
+            borderRadius: '24px',
         }}>
-
             {/* ── Header ─────────────────────────────────────────────────────────── */}
             <div style={{
                 display: 'flex',
@@ -271,7 +299,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
                     <h1 style={{
                         margin: 0,
                         fontFamily: SERIF,
-                        fontSize: '28px',
+                        fontSize: '27px',
                         fontWeight: 700,
                         lineHeight: 1.2,
                         color: 'rgb(28 25 23)',
@@ -282,7 +310,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
                     {jobTitle && (
                         <p style={{
                             margin: '6px 0 0',
-                            fontSize: '11px',
+                            fontSize: '10.5px',
                             color: 'rgb(120 113 108)',
                             fontWeight: 600,
                             letterSpacing: '0.08em',
@@ -296,7 +324,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
                 {/* Score + label */}
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                     <span style={{
-                        fontSize: '13px',
+                        fontSize: '12.5px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
@@ -312,8 +340,8 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
             {expertVerdict && (
                 <div style={{
                     position: 'relative',
-                    marginBottom: '36px',
-                    background: `${theme.bg}40`,
+                    marginBottom: '32px',
+                    background: 'rgb(248 250 252)',
                     border: `1px solid ${theme.border}40`,
                     borderRadius: '12px',
                     padding: '20px 24px',
@@ -354,7 +382,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
                         <p style={{
                             margin: 0,
                             fontFamily: NOTO_SERIF,
-                            fontSize: '13px',
+                            fontSize: '12.5px',
                             lineHeight: '1.75',
                             color: 'rgb(68 64 60)',
                         }}>
@@ -366,7 +394,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
 
             {/* ── Strengths ──────────────────────────────────────────────────────── */}
             {strengths.length > 0 && (
-                <div style={{ marginBottom: '32px' }}>
+                <div style={{ marginBottom: '28px' }}>
                     <SectionTitle theme={theme}>{labels?.highlights || '亮点分析'}</SectionTitle>
                     <TimelineList items={strengths} theme={theme} />
                 </div>
@@ -374,7 +402,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
 
             {/* ── Gaps ───────────────────────────────────────────────────────────── */}
             {weaknesses.length > 0 && (
-                <div style={{ marginBottom: '32px' }}>
+                <div style={{ marginBottom: '28px' }}>
                     <SectionTitle theme={theme}>{labels?.gapsAndSuggestions || '差距与应对'}</SectionTitle>
                     <TimelineList
                         items={weaknesses}
@@ -387,7 +415,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
 
             {/* ── Recommendations ────────────────────────────────────────────────── */}
             {recommendations.length > 0 && (
-                <div style={{ marginBottom: '32px' }}>
+                <div style={{ marginBottom: '28px' }}>
                     <SectionTitle theme={theme}>{labels?.recommendations || '行动建议'}</SectionTitle>
                     <TimelineList items={recommendations} theme={theme} />
                 </div>
@@ -395,7 +423,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
 
             {/* ── Smart Pitch ────────────────────────────────────────────────────── */}
             {dmScript && (
-                <div style={{ marginBottom: '32px', pageBreakBefore: 'auto' }}>
+                <div style={{ marginBottom: '28px', pageBreakBefore: 'auto' }}>
                     <SectionTitle theme={theme}>{labels?.smartPitch || '沟通话术'}</SectionTitle>
                     <div style={{
                         padding: '16px 18px',
@@ -403,7 +431,7 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
                         border: `1px solid ${theme.border}60`,
                         borderLeft: `3px solid ${theme.text}`,
                         borderRadius: '8px',
-                        fontSize: '13px',
+                        fontSize: '12.5px',
                         lineHeight: '1.8',
                         whiteSpace: 'pre-wrap',
                         fontFamily: NOTO_SERIF,
@@ -416,15 +444,19 @@ export function PrintMatchView({ data, labels }: PrintMatchViewProps) {
 
             {/* Footer */}
             <div style={{
-                marginTop: '40px',
-                paddingTop: '10px',
+                marginTop: '34px',
+                paddingTop: '8px',
                 borderTop: '1px solid rgb(231 229 228)',
-                fontSize: '10px',
-                color: 'rgb(168 162 158)',
-                textAlign: 'center',
-                letterSpacing: '0.04em',
+                fontSize: '9.5px',
+                color: 'rgb(148 163 184)',
+                letterSpacing: '0.03em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
             }}>
-                AI CareerSherpa · {new Date().toLocaleDateString('zh-CN')}
+                <span>匹配分析报告 · AI CareerSherpa</span>
+                <span>生成时间 {generatedAt}</span>
             </div>
         </div>
     )

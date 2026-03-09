@@ -45,6 +45,12 @@ interface PrintInterviewViewProps {
         knowledgeRefresh?: { title?: string }
     }
     accentColor?: string
+    meta?: {
+        company?: string
+        jobTitle?: string
+        score?: number
+        assessmentLabel?: string
+    }
 }
 
 const L = {
@@ -62,10 +68,20 @@ const CJK = "var(--font-noto-sans-sc,'Noto Sans SC'),'PingFang SC','Microsoft Ya
 const SERIF = "var(--font-playfair,'Playfair Display'),'Georgia',serif"
 const NOTO_SERIF = "var(--font-noto-serif,'Noto Serif'),'Georgia',serif"
 
+function getScoreTheme(score: number) {
+    if (score >= 85) {
+        return { stop1: '#059669', stop2: '#34d399', text: '#059669' }
+    }
+    if (score >= 60) {
+        return { stop1: '#d97706', stop2: '#fbbf24', text: '#d97706' }
+    }
+    return { stop1: '#e11d48', stop2: '#fb7185', text: '#e11d48' }
+}
+
 const S = {
     card: {
         position: 'relative',
-        background: 'rgb(248 250 252)', // very light slate
+        background: 'rgba(248,250,252,0.86)', // closer to web glass card
         border: '0.5px solid rgba(0,0,0,0.05)',
         borderRadius: '12px',
         padding: '20px',
@@ -86,7 +102,7 @@ const S = {
     } as React.CSSProperties,
 
     miniLabel: {
-        fontSize: '9.5px', // slightly smaller than xs (12px) to match 3/4 ratio in print
+        fontSize: '9px', // compact print scale
         fontWeight: 700,
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
@@ -98,9 +114,9 @@ const S = {
     } as React.CSSProperties,
 
     textValue: {
-        fontSize: '13px',
+        fontSize: '12.5px',
         color: 'rgb(71 85 105)', // slate-600
-        lineHeight: '1.65',
+        lineHeight: '1.6',
         fontFamily: NOTO_SERIF,
     } as React.CSSProperties,
 
@@ -114,7 +130,7 @@ const S = {
     }),
 
     h4: {
-        fontSize: '15px',
+        fontSize: '14.5px',
         fontWeight: 600,
         color: 'rgb(15 23 42)', // foreground slate-900
         lineHeight: 1.3,
@@ -124,13 +140,17 @@ const S = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function PrintInterviewView({ data, labels, accentColor = '#059669' }: PrintInterviewViewProps) {
+export function PrintInterviewView({ data, labels, accentColor = '#059669', meta }: PrintInterviewViewProps) {
     const rl = { radar: { ...L.radar, ...labels?.radar }, hook: { ...L.hook, ...labels?.hook }, evidence: { ...L.evidence, ...labels?.evidence }, defense: { ...L.defense, ...labels?.defense }, reverse: { ...L.reverse, ...labels?.reverse }, knowledgeRefresh: { ...L.knowledgeRefresh, ...labels?.knowledgeRefresh } }
+    const score = Number(meta?.score ?? 0)
+    const hasScore = Number.isFinite(score) && score > 0
+    const scoreTheme = getScoreTheme(score)
+    const generatedAt = new Date().toLocaleString('zh-CN', { hour12: false })
 
     const SectionTitle = ({ children }: { children: React.ReactNode }) => (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px', paddingLeft: '8px' }}>
             <div style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: '12px', paddingBottom: '2px' }}>
-                <h2 style={{ margin: 0, fontFamily: SERIF, fontSize: '24px', fontWeight: 700, color: 'rgb(15 23 42)', lineHeight: 1.2 }}>
+                <h2 style={{ margin: 0, fontFamily: SERIF, fontSize: '23px', fontWeight: 700, color: 'rgb(15 23 42)', lineHeight: 1.2 }}>
                     {children}
                 </h2>
             </div>
@@ -138,19 +158,116 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
     )
 
     const SubHeader = ({ children }: { children: React.ReactNode }) => (
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'rgb(15 23 42)', marginBottom: '16px', marginTop: '16px' }}>
+        <h3 style={{ fontSize: '14.5px', fontWeight: 600, color: 'rgb(15 23 42)', marginBottom: '14px', marginTop: '14px' }}>
             {children}
         </h3>
     )
 
     const ListIcon = () => <span style={S.roundBullet(accentColor)} />
 
+    const ScoreRing = ({ value }: { value: number }) => {
+        const radius = 32
+        const circ = 2 * Math.PI * radius
+        const clamped = Math.max(0, Math.min(100, value))
+        const offset = circ - (clamped / 100) * circ
+        const uid = 'interview-print-score'
+        return (
+            <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
+                <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+                    <defs>
+                        <linearGradient id={uid} x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor={scoreTheme.stop1} />
+                            <stop offset="100%" stopColor={scoreTheme.stop2} />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 100 100">
+                    <circle stroke="#e7e5e4" strokeWidth="8" fill="transparent" r={radius} cx="50" cy="50" />
+                    <circle
+                        stroke={`url(#${uid})`}
+                        strokeWidth="8"
+                        strokeDasharray={circ}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        r={radius}
+                        cx="50"
+                        cy="50"
+                    />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '16px', fontWeight: 800, color: scoreTheme.text, fontFamily: 'monospace', letterSpacing: '-0.03em' }}>
+                        {Math.round(clamped)}
+                    </span>
+                </div>
+            </div>
+        )
+    }
+
     return (
-        <div style={{ fontFamily: CJK, fontSize: '13px', lineHeight: '1.65', color: 'rgb(15 23 42)', background: 'white', maxWidth: '794px', margin: '0 auto', padding: '36px 40px 48px' }}>
+        <div style={{
+            fontFamily: CJK,
+            fontSize: '13.5px',
+            lineHeight: '1.62',
+            color: 'rgb(15 23 42)',
+            background: 'white',
+            maxWidth: '880px',
+            margin: '0 auto',
+            padding: '30px 32px 40px',
+            border: '1px solid rgb(241 245 249)',
+            borderRadius: '24px',
+        }}>
+            {(meta?.company || meta?.jobTitle || hasScore) && (
+                <header style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '18px',
+                    marginBottom: '30px',
+                    paddingBottom: '18px',
+                    borderBottom: '1px solid rgb(226 232 240)',
+                    breakInside: 'avoid',
+                    pageBreakInside: 'avoid',
+                }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <h1 style={{ margin: 0, fontFamily: SERIF, fontSize: '26px', fontWeight: 700, color: 'rgb(15 23 42)', lineHeight: 1.2 }}>
+                            {meta?.company || '—'}
+                        </h1>
+                        {meta?.jobTitle && (
+                            <p style={{
+                                margin: '6px 0 0',
+                                fontSize: '10.5px',
+                                color: 'rgb(100 116 139)',
+                                fontWeight: 600,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                            }}>
+                                {meta.jobTitle}
+                            </p>
+                        )}
+                    </div>
+                    {hasScore && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                            {meta?.assessmentLabel && (
+                                <span style={{
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.06em',
+                                    textTransform: 'uppercase',
+                                    color: scoreTheme.text,
+                                }}>
+                                    {meta.assessmentLabel}
+                                </span>
+                            )}
+                            <ScoreRing value={score} />
+                        </div>
+                    )}
+                </header>
+            )}
 
             {/* ── Section 1: Radar ─────────────────────────────── */}
             {data?.radar && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '34px' }}>
                     <SectionTitle>{rl.radar.title}</SectionTitle>
 
                     {/* Core Challenges */}
@@ -226,7 +343,7 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
 
             {/* ── Section 2: Hook ───────────────────────────────── */}
             {data?.hook && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '34px' }}>
                     <SectionTitle>{rl.hook.title}</SectionTitle>
 
                     {data.hook.ppf_script && (
@@ -282,7 +399,7 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
 
             {/* ── Section 3: Evidence ───────────────────────────── */}
             {data?.evidence && data.evidence.length > 0 && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '34px' }}>
                     <SectionTitle>{rl.evidence.title} <span style={{ color: accentColor, fontSize: '13px', marginLeft: '12px', fontFamily: CJK, fontWeight: 500 }}>{data.evidence.length}</span></SectionTitle>
 
                     {data.evidence.map((story, i) => (
@@ -345,7 +462,7 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
 
             {/* ── Section 4: Defense ────────────────────────────── */}
             {data?.defense && data.defense.length > 0 && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '34px' }}>
                     <SectionTitle>{rl.defense.title} <span style={{ color: accentColor, fontSize: '13px', marginLeft: '12px', fontFamily: CJK, fontWeight: 500 }}>{data.defense.length}</span></SectionTitle>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -382,7 +499,7 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
 
             {/* ── Section 5: Reverse Questions ──────────────────── */}
             {data?.reverse_questions && data.reverse_questions.length > 0 && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '34px' }}>
                     <SectionTitle>{rl.reverse.title}</SectionTitle>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -414,7 +531,7 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
 
             {/* ── Section 6: Knowledge Refresh ──────────────────── */}
             {data?.knowledge_refresh && data.knowledge_refresh.length > 0 && (
-                <section style={{ marginBottom: '40px' }}>
+                <section style={{ marginBottom: '34px' }}>
                     <SectionTitle>{rl.knowledgeRefresh.title}</SectionTitle>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -445,8 +562,20 @@ export function PrintInterviewView({ data, labels, accentColor = '#059669' }: Pr
             )}
 
             {/* Footer */}
-            <div style={{ marginTop: '40px', paddingTop: '10px', borderTop: '1px solid rgb(231 229 228)', fontSize: '10px', color: 'rgb(168 162 158)', textAlign: 'center', letterSpacing: '0.04em' }}>
-                AI CareerSherpa · {new Date().toLocaleDateString('zh-CN')}
+            <div style={{
+                marginTop: '34px',
+                paddingTop: '8px',
+                borderTop: '1px solid rgb(231 229 228)',
+                fontSize: '9.5px',
+                color: 'rgb(148 163 184)',
+                letterSpacing: '0.03em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+            }}>
+                <span>面试战术报告 · AI CareerSherpa</span>
+                <span>生成时间 {generatedAt}</span>
             </div>
         </div>
     )

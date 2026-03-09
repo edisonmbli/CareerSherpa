@@ -162,8 +162,16 @@ export default async function PrintPage({ params, searchParams }: PageProps) {
         const matchJson = parseJson(service.match?.matchSummaryJson)
         const score = getMatchScore(matchJson)
         const accentColor = getScoreAccentColor(score)
+        const jobJson = parseJson(service.job?.jobSummaryJson)
+        const company = jobJson?.company || jobJson?.company_name || jobJson?.org || ''
+        const jobTitle = jobJson?.jobTitle || jobJson?.job_title || jobJson?.title || ''
 
         const ibpDict = wbDict?.interviewBattlePlan
+        const assessmentLabel = score >= 85
+            ? (wbDict?.resultCard?.highlyMatched || '高度匹配')
+            : score >= 60
+                ? (wbDict?.resultCard?.goodFit || '良好匹配')
+                : (wbDict?.resultCard?.lowMatch || '低度匹配')
 
         const labels = {
             radar: {
@@ -222,7 +230,17 @@ export default async function PrintPage({ params, searchParams }: PageProps) {
                 <Script id="auto-print" strategy="afterInteractive">{`
           setTimeout(function() { window.print(); }, 1500);
         `}</Script>
-                <PrintInterviewView data={interviewJson} labels={labels} accentColor={accentColor} />
+                <PrintInterviewView
+                    data={interviewJson}
+                    labels={labels}
+                    accentColor={accentColor}
+                    meta={{
+                        ...(company ? { company } : {}),
+                        ...(jobTitle ? { jobTitle } : {}),
+                        ...(score > 0 ? { score } : {}),
+                        assessmentLabel,
+                    }}
+                />
             </>
         )
     }
