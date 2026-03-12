@@ -163,12 +163,27 @@ export const ENV = {
   ),
   POSTHOG_API_KEY: process.env['POSTHOG_API_KEY'] ?? '',
   POSTHOG_HOST: process.env['POSTHOG_HOST'] ?? 'https://us.i.posthog.com',
+  POSTHOG_APP_BASE_URL: process.env['POSTHOG_APP_BASE_URL'] ?? '',
+  POSTHOG_PROJECT_ID: process.env['POSTHOG_PROJECT_ID'] ?? '',
+  POSTHOG_PERSON_URL_TEMPLATE:
+    process.env['POSTHOG_PERSON_URL_TEMPLATE'] ?? '',
   NEXT_PUBLIC_POSTHOG_KEY: process.env['NEXT_PUBLIC_POSTHOG_KEY'] ?? '',
   NEXT_PUBLIC_POSTHOG_HOST:
     process.env['NEXT_PUBLIC_POSTHOG_HOST'] ?? 'https://us.i.posthog.com',
   NEXT_PUBLIC_POSTHOG_ENABLED:
     (process.env['NEXT_PUBLIC_POSTHOG_ENABLED'] ?? 'false').toLowerCase() ===
       'true',
+  FEEDBACK_SLACK_WEBHOOK_URL:
+    process.env['FEEDBACK_SLACK_WEBHOOK_URL'] ?? '',
+  FEEDBACK_SLACK_MENTION: process.env['FEEDBACK_SLACK_MENTION'] ?? '',
+  FEEDBACK_SLACK_BOT_TOKEN:
+    process.env['FEEDBACK_SLACK_BOT_TOKEN'] ?? '',
+  FEEDBACK_SLACK_CHANNEL_ID:
+    process.env['FEEDBACK_SLACK_CHANNEL_ID'] ?? '',
+  FEEDBACK_RESEND_API_KEY: process.env['FEEDBACK_RESEND_API_KEY'] ?? '',
+  FEEDBACK_RESEND_FROM_EMAIL:
+    process.env['FEEDBACK_RESEND_FROM_EMAIL'] ?? '',
+  FEEDBACK_RESEND_TO_EMAIL: process.env['FEEDBACK_RESEND_TO_EMAIL'] ?? '',
 }
 
 export function isProdRedisReady() {

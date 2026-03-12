@@ -71,6 +71,54 @@ const dict = {
         '目前仅支持文本型 PDF，扫描件/图片暂不支持；请上传含文本内容的 PDF。',
     },
   },
+  feedbackInbox: {
+    trigger: '反馈',
+    tooltip: '反馈给创始人',
+    title: '告诉我发生了什么',
+    description:
+      '你专注描述问题、需求或困惑，系统会自动附带当前页面、模块、时间与上下文线索。',
+    typeLabel: '反馈类型',
+    messageLabel: '详细说明',
+    messageHint:
+      '不用手动补 service ID、模块名、时间点，这些会自动附带到 founder inbox。',
+    includeEmail: '允许我通过账户邮箱联系你',
+    includeEmailHint: '打开后，系统会把你的账户邮箱一并带上，方便我追问细节。',
+    contextTitle: '自动附带上下文',
+    submit: '提交反馈',
+    submitting: '提交中...',
+    cancel: '取消',
+    successTitle: '已发送',
+    successDesc: '反馈已进入 founder inbox，我会结合回放和错误线索继续排查。',
+    errorTitle: '提交失败',
+    errorDesc: '反馈暂时没有发送成功，请稍后重试。',
+    unavailable: '当前尚未配置反馈投递通道，请先完成 Slack/Resend 配置。',
+    types: {
+      bug: {
+        title: '报告问题',
+        desc: 'Bug、报错、异常结果',
+        placeholder:
+          '例如：在第 2 步点击“定制简历”后一直停在加载状态；我期望看到结果页。',
+      },
+      feature: {
+        title: '提出需求',
+        desc: '新功能、效率改进',
+        placeholder:
+          '例如：希望在匹配结果里支持一键收起低优先级建议，便于快速浏览。',
+      },
+      confusion: {
+        title: '这里困惑',
+        desc: '不清楚下一步或文案不明',
+        placeholder:
+          '例如：我看不懂这里的评分含义，不确定接下来该先改简历还是先准备面试。',
+      },
+    },
+    contextLabels: {
+      surface: '页面',
+      tab: '模块',
+      status: '状态',
+      serviceId: 'Service ID',
+    },
+  },
   worker: {
     preMatch: {
       auditing: '正在模拟 HR 点评',

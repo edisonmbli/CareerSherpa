@@ -76,6 +76,57 @@ const dict = {
         'Only text-based PDFs are supported for now; scanned/image PDFs are not supported.',
     },
   },
+  feedbackInbox: {
+    trigger: 'Feedback',
+    tooltip: 'Send feedback to founder',
+    title: 'Tell me what happened',
+    description:
+      'Describe the issue, request, or confusion. The app will automatically attach page, module, time, and context clues.',
+    typeLabel: 'Feedback type',
+    messageLabel: 'Details',
+    messageHint:
+      'You do not need to manually include service ID, module name, or timestamp. Those are attached automatically.',
+    includeEmail: 'Allow follow-up via my account email',
+    includeEmailHint:
+      'When enabled, your account email is attached so I can ask follow-up questions.',
+    contextTitle: 'Context attached automatically',
+    submit: 'Send feedback',
+    submitting: 'Sending...',
+    cancel: 'Cancel',
+    successTitle: 'Sent',
+    successDesc:
+      'Your feedback is in the founder inbox. I will use replay and error clues to investigate.',
+    errorTitle: 'Send failed',
+    errorDesc: 'The feedback could not be sent right now. Please try again later.',
+    unavailable:
+      'Feedback delivery is not configured yet. Finish the Slack or Resend setup first.',
+    types: {
+      bug: {
+        title: 'Report issue',
+        desc: 'Bug, error, or wrong result',
+        placeholder:
+          'Example: After clicking \"Customize Resume\" in step 2, the page stays loading and never shows the result.',
+      },
+      feature: {
+        title: 'Request feature',
+        desc: 'New capability or speed-up',
+        placeholder:
+          'Example: I want a one-click collapse for low-priority suggestions in the match result so I can scan faster.',
+      },
+      confusion: {
+        title: 'I am confused',
+        desc: 'Unclear next step or wording',
+        placeholder:
+          'Example: I do not understand this score and I am not sure whether I should optimize the resume or prepare interview first.',
+      },
+    },
+    contextLabels: {
+      surface: 'Page',
+      tab: 'Module',
+      status: 'Status',
+      serviceId: 'Service ID',
+    },
+  },
   worker: {
     preMatch: {
       auditing: 'Simulating HR Review...',

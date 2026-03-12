@@ -50,6 +50,7 @@ import {
   PenLine,
   Loader2,
   Menu,
+  MessageSquare,
   Printer,
   Copy,
   Check,
@@ -80,6 +81,7 @@ import {
 } from '@/components/ui/tooltip'
 
 import { ServiceNotification } from '@/components/common/ServiceNotification'
+import { FounderFeedbackDialog } from '@/components/feedback/FounderFeedbackDialog'
 
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
@@ -137,6 +139,29 @@ const pickEffectiveStatus = (
     return serverStatus
   if (dataStatus && getStatusRank(dataStatus) === maxRank) return dataStatus
   return fallbackStatus
+}
+
+function inferFeedbackTaskTemplateId(
+  tab: string,
+  status: string,
+): string | undefined {
+  if (tab === 'customize') return 'resume_customize'
+  if (tab === 'interview') return 'interview_prep'
+
+  if (status.startsWith('JOB_VISION')) return 'job_vision_summary'
+  if (status.startsWith('OCR')) return 'ocr_extract'
+  if (status.startsWith('SUMMARY')) return 'job_summary'
+  if (status.startsWith('PREMATCH')) return 'pre_match_audit'
+  if (status.startsWith('MATCH')) return 'job_match'
+
+  return tab === 'match' ? 'job_match' : undefined
+}
+
+function getFeedbackTaskStorageKey(
+  tab: 'match' | 'customize' | 'interview',
+  serviceId: string,
+) {
+  return `feedbackTaskId_${tab}_${serviceId}`
 }
 
 export function ServiceDisplay({
@@ -460,6 +485,10 @@ export function ServiceDisplay({
               uiLog.debug('customize setTaskId', { taskId: newTaskId })
             }
             setMatchTaskId(newTaskId)
+            localStorage.setItem(
+              getFeedbackTaskStorageKey('customize', serviceId!),
+              newTaskId,
+            )
           }
           setTabValue('customize')
           // Set status and start progress simulation immediately (before SSE confirms)
@@ -531,6 +560,10 @@ export function ServiceDisplay({
               res.executionSessionId,
             )
             setMatchTaskId(newTaskId)
+            localStorage.setItem(
+              getFeedbackTaskStorageKey('interview', serviceId!),
+              newTaskId,
+            )
           }
           setTabValue('interview')
           // Set status and start progress simulation immediately (before SSE confirms)
@@ -576,7 +609,12 @@ export function ServiceDisplay({
       const res = await serverRetry({ locale, serviceId: serviceId! })
       if (res?.ok) {
         if (res.executionSessionId) {
-          setMatchTaskId(`match_${serviceId}_${String(res.executionSessionId)}`)
+          const newTaskId = `match_${serviceId}_${String(res.executionSessionId)}`
+          setMatchTaskId(newTaskId)
+          localStorage.setItem(
+            getFeedbackTaskStorageKey('match', serviceId!),
+            newTaskId,
+          )
         }
         requestRefresh()
       } else {
@@ -1474,6 +1512,124 @@ export function ServiceDisplay({
     ? { [activeActionStep]: stepActionNode }
     : undefined
   const step3Label = String(dict.workbench?.tabs?.interview || 'Step 3')
+  const feedbackLabels = dict.feedbackInbox
+  const feedbackTaskTemplateId = inferFeedbackTaskTemplateId(tabValue, status)
+  const feedbackTabStatus = useMemo(() => {
+    if (tabValue === 'customize') {
+      return customizeStatus === 'IDLE'
+        ? 'CUSTOMIZE_IDLE'
+        : `CUSTOMIZE_${customizeStatus}`
+    }
+    if (tabValue === 'interview') {
+      return interviewStatus === 'IDLE'
+        ? 'INTERVIEW_IDLE'
+        : `INTERVIEW_${interviewStatus}`
+    }
+
+    if (
+      status.startsWith('OCR') ||
+      status.startsWith('JOB_VISION') ||
+      status.startsWith('SUMMARY') ||
+      status.startsWith('PREMATCH') ||
+      status.startsWith('MATCH')
+    ) {
+      return status
+    }
+    if (matchBase?.status === 'COMPLETED') return 'MATCH_COMPLETED'
+    if (matchBase?.status === 'FAILED') return 'MATCH_FAILED'
+    return 'MATCH_IDLE'
+  }, [customizeStatus, interviewStatus, matchBase?.status, status, tabValue])
+  const feedbackTaskId = useMemo(() => {
+    if (!serviceId || typeof window === 'undefined') return null
+
+    if (tabValue === 'customize') {
+      if (matchTaskId?.startsWith('customize_')) return matchTaskId
+      const stored = localStorage.getItem(
+        getFeedbackTaskStorageKey('customize', serviceId),
+      )
+      if (stored) return stored
+      if (status.startsWith('CUSTOMIZE') && computedTaskId?.startsWith('customize_')) {
+        return computedTaskId
+      }
+      return null
+    }
+
+    if (tabValue === 'interview') {
+      if (matchTaskId?.startsWith('interview_')) return matchTaskId
+      const stored = localStorage.getItem(
+        getFeedbackTaskStorageKey('interview', serviceId),
+      )
+      if (stored) return stored
+      if (status.startsWith('INTERVIEW') && computedTaskId?.startsWith('interview_')) {
+        return computedTaskId
+      }
+      return null
+    }
+
+    if (
+      computedTaskId?.startsWith('match_') ||
+      computedTaskId?.startsWith('job_')
+    ) {
+      return computedTaskId
+    }
+    if (matchTaskId?.startsWith('match_') || matchTaskId?.startsWith('job_')) {
+      return matchTaskId
+    }
+    return (
+      localStorage.getItem(getFeedbackTaskStorageKey('match', serviceId)) ||
+      null
+    )
+  }, [computedTaskId, matchTaskId, serviceId, status, tabValue])
+  const feedbackContext = {
+    locale,
+    surface: 'workbench',
+    tab: tabValue,
+    serviceId,
+    ...(feedbackTaskId ? { taskId: feedbackTaskId } : {}),
+    ...(feedbackTaskTemplateId
+      ? { taskTemplateId: feedbackTaskTemplateId }
+      : {}),
+    status,
+    tier,
+    taskTierHint: tier,
+    ...(tierOverride ? { queueType: tierOverride } : {}),
+    extras: {
+      currentStatus: initialService?.currentStatus || null,
+      currentTabStatus: feedbackTabStatus,
+      matchReady: Boolean(matchParsed),
+      interviewReady: Boolean(interviewParsed),
+      connected: isConnected,
+      currentTabCostPreview: currentTaskCost,
+      serviceNetCoinDelta: lastCost ?? null,
+    },
+  }
+  const renderFeedbackButton = (className: string) => (
+    <FounderFeedbackDialog
+      labels={feedbackLabels}
+      context={feedbackContext}
+      trigger={
+        <Button
+          type="button"
+          size="icon"
+          className={cn(
+            'rounded-full border border-amber-200 bg-amber-400/90 text-slate-950 shadow-lg hover:bg-amber-300',
+            className,
+          )}
+          aria-label={feedbackLabels.tooltip}
+          title={feedbackLabels.tooltip}
+        >
+          <MessageSquare className="h-4 w-4" />
+        </Button>
+      }
+    />
+  )
+  const showMatchFeedbackInFabStack =
+    tabValue === 'match' &&
+    Boolean(status === 'MATCH_COMPLETED' || matchResult || matchParsed)
+  const showInterviewFeedbackInFabStack =
+    tabValue === 'interview' && Boolean(shouldShowInterviewPlan)
+  const showStandaloneFeedbackFab =
+    !showMatchFeedbackInFabStack && !showInterviewFeedbackInFabStack
 
   const [mobileBarRoot, setMobileBarRoot] = useState<Element | null>(null)
   const [matchFabOpen, setMatchFabOpen] = useState(false)
@@ -1616,6 +1772,7 @@ export function ServiceDisplay({
                               </Tooltip>
                             )
                           })}
+                          {renderFeedbackButton('h-10 w-10')}
                         </TooltipProvider>
                       </div>
                       <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
@@ -1659,6 +1816,7 @@ export function ServiceDisplay({
                         >
                           <Menu className="h-5 w-5" />
                         </Button>
+                        {renderFeedbackButton('h-10 w-10')}
                       </div>
                     </>
                   )}
@@ -1954,6 +2112,7 @@ export function ServiceDisplay({
                             button
                           )
                         })}
+                        {renderFeedbackButton('h-10 w-10')}
 
                         {/* Desktop Global FAB Up/Down */}
                         <Tooltip>
@@ -2127,6 +2286,7 @@ export function ServiceDisplay({
                       >
                         <Menu className="h-5 w-5" />
                       </Button>
+                      {renderFeedbackButton('h-10 w-10')}
                     </div>
                     <div
                       ref={interviewPrintRef}
@@ -2308,6 +2468,17 @@ export function ServiceDisplay({
             </div>
           </TabsContent>
         </Tabs>
+
+        {showStandaloneFeedbackFab && (
+          <>
+            <div className="hidden md:block fixed right-6 bottom-8 z-40 print:hidden">
+              {renderFeedbackButton('h-11 w-11')}
+            </div>
+            <div className="md:hidden fixed right-4 bottom-[85px] z-40 print:hidden">
+              {renderFeedbackButton('h-10 w-10')}
+            </div>
+          </>
+        )}
 
         {mobileBarRoot &&
           createPortal(

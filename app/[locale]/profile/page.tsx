@@ -21,7 +21,7 @@ import {
   AppCardTitle,
 } from '@/components/app/AppCard'
 import { AssetUploader } from '@/components/app/AssetUploader'
-import { FileText, NotebookText, Lock, Zap } from 'lucide-react'
+import { FileText, NotebookText, Lock, Zap, MessageSquare } from 'lucide-react'
 import { stackServerApp } from '@/stack/server'
 import { getLatestResume, getLatestDetailedResume } from '@/lib/dal/resume'
 import { listLedgerByUser } from '@/lib/dal/coinLedger'
@@ -37,6 +37,7 @@ import { AssetProgressClient } from '@/components/profile/AssetProgressClient'
 import { DetailedResumePanelClient } from '@/components/profile/DetailedResumePanelClient'
 import { cn } from '@/lib/utils'
 import { PostHogProvider } from '@/components/analytics/PostHogProvider'
+import { FounderFeedbackDialog } from '@/components/feedback/FounderFeedbackDialog'
 
 type ParsedProfile = {
   career_persona: string
@@ -405,6 +406,33 @@ export default async function ProfilePage({
                 </AppCardContent>
               </AppCard>
             </div>
+          </div>
+          <div className="fixed right-4 bottom-[92px] z-40 md:bottom-6 md:right-6 print:hidden">
+            <FounderFeedbackDialog
+              labels={dict.feedbackInbox}
+              context={{
+                locale,
+                surface: tab === 'billing' ? 'billing' : 'profile',
+                tab,
+                extras: {
+                  hasGeneralResume: hasGeneral,
+                  hasDetailedResume: hasDetailed,
+                  assetProgress,
+                  ledgerPage: tab === 'billing' ? page : null,
+                },
+              }}
+              trigger={
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-11 w-11 rounded-full border border-amber-200 bg-amber-400/90 text-slate-950 shadow-lg hover:bg-amber-300"
+                  aria-label={dict.feedbackInbox.tooltip}
+                  title={dict.feedbackInbox.tooltip}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+              }
+            />
           </div>
           </div>
         </div>
