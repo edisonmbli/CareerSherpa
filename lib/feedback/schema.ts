@@ -46,7 +46,7 @@ export const feedbackSubmissionSchema = z.object({
   context: feedbackContextSchema,
 })
 
-export const feedbackDispatchSchema = feedbackSubmissionSchema.extend({
+export const feedbackStoredPayloadSchema = feedbackSubmissionSchema.extend({
   feedbackId: z.string().trim().min(6).max(64),
   submittedAt: z.string().trim().min(10).max(64),
   authUser: z.object({
@@ -55,6 +55,12 @@ export const feedbackDispatchSchema = feedbackSubmissionSchema.extend({
   }),
 })
 
+export const feedbackDispatchRequestSchema = z.object({
+  feedbackId: z.string().trim().min(6).max(64),
+  deliveryMode: z.enum(['direct', 'qstash']).default('qstash'),
+})
+
 export type FeedbackType = z.infer<typeof feedbackTypeSchema>
 export type FeedbackSubmission = z.infer<typeof feedbackSubmissionSchema>
-export type FeedbackDispatchPayload = z.infer<typeof feedbackDispatchSchema>
+export type FeedbackDispatchPayload = z.infer<typeof feedbackStoredPayloadSchema>
+export type FeedbackDispatchRequest = z.infer<typeof feedbackDispatchRequestSchema>

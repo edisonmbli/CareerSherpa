@@ -1,13 +1,13 @@
 import { verifySignatureAppRouter } from '@upstash/qstash/nextjs'
 import { ENV } from '@/lib/env'
-import { feedbackDispatchSchema } from '@/lib/feedback/schema'
-import { deliverFounderFeedback } from '@/lib/feedback/delivery'
+import { feedbackDispatchRequestSchema } from '@/lib/feedback/schema'
+import { processQueuedFounderFeedback } from '@/lib/feedback/inbox-service'
 import { logError } from '@/lib/logger'
 
 const handler = verifySignatureAppRouter(
   async (req: Request) => {
     const rawBody = await req.json().catch(() => null)
-    const parsed = feedbackDispatchSchema.safeParse(rawBody)
+    const parsed = feedbackDispatchRequestSchema.safeParse(rawBody)
     if (!parsed.success) {
       return Response.json(
         {
@@ -23,16 +23,24 @@ const handler = verifySignatureAppRouter(
     }
 
     try {
-      const result = await deliverFounderFeedback(parsed.data, {
-        deliveryMode: 'qstash',
-      })
-      return Response.json({ ok: true, destinations: result.delivered })
+      const result = await processQueuedFounderFeedback(parsed.data)
+      return Response.json(
+        'skipped' in result
+          ? {
+              ok: true,
+              destinations: result.delivered,
+              skipped: result.skipped,
+            }
+          : {
+              ok: true,
+              destinations: result.delivered,
+            },
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : 'feedback_dispatch_failed'
       logError({
         reqId: parsed.data.feedbackId,
         route: 'api/feedback/dispatch',
-        userKey: parsed.data.authUser.id,
         phase: 'dispatch_failed',
         error: message,
       })

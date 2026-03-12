@@ -21,6 +21,7 @@ model users_sync {
   analyticsEvents  AnalyticsEvent[]
   coinTransactions CoinTransaction[]
   detailedResumes  DetailedResume?
+  feedbackInbox    FeedbackInbox[]
   paymentWaitlists PaymentWaitlist?
   quota            Quota?
   resumes          Resume?
@@ -348,6 +349,42 @@ model CoinTransaction {
   @@index([taskId, createdAt(sort: Desc)])
   @@index([serviceId, createdAt(sort: Desc)])
   @@map("coin_transactions")
+  @@schema("public")
+}
+
+enum FeedbackInboxStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  FAILED
+
+  @@schema("public")
+}
+
+model FeedbackInbox {
+  id               String              @id @default(cuid())
+  feedbackId       String              @unique @map("feedback_id")
+  userId           String              @map("user_id")
+  accountEmail     String?             @map("account_email")
+  type             String
+  message          String
+  serviceId        String?             @map("service_id")
+  taskId           String?             @map("task_id")
+  taskTemplateId   String?             @map("task_template_id")
+  context          Json
+  status           FeedbackInboxStatus @default(PENDING)
+  deliveryAttempts Int                 @default(0) @map("delivery_attempts")
+  lastDeliveryError String?            @map("last_delivery_error")
+  lastDeliveredAt  DateTime?           @map("last_delivered_at")
+  nextRetryAt      DateTime?           @map("next_retry_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at")
+  user             users_sync          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRetryAt, createdAt(sort: Asc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([serviceId, createdAt(sort: Desc)])
+  @@map("feedback_inbox")
   @@schema("public")
 }
 

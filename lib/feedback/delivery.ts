@@ -1,7 +1,11 @@
 import { ENV, isQstashReady } from '@/lib/env'
 import { getQStash } from '@/lib/queue/qstash'
 import { logError, logInfo } from '@/lib/logger'
-import type { FeedbackDispatchPayload, FeedbackType } from '@/lib/feedback/schema'
+import type {
+  FeedbackDispatchPayload,
+  FeedbackDispatchRequest,
+  FeedbackType,
+} from '@/lib/feedback/schema'
 import { buildPostHogFeedbackLinks } from '@/lib/feedback/posthog-links'
 import {
   enrichFeedbackPayload,
@@ -12,7 +16,7 @@ import {
 const FEEDBACK_QSTASH_RETRIES = 3
 const FEEDBACK_FETCH_TIMEOUT_MS = 8000
 
-type DeliveryChannel = 'slack' | 'resend'
+type DeliveryChannel = 'slack'
 
 type SlackBlock = Record<string, unknown>
 
@@ -28,13 +32,6 @@ export function getConfiguredFeedbackDestinations() {
   const destinations: DeliveryChannel[] = []
   if (ENV.FEEDBACK_SLACK_WEBHOOK_URL || isSlackBotThreadReady()) {
     destinations.push('slack')
-  }
-  if (
-    ENV.FEEDBACK_RESEND_API_KEY &&
-    ENV.FEEDBACK_RESEND_FROM_EMAIL &&
-    ENV.FEEDBACK_RESEND_TO_EMAIL
-  ) {
-    destinations.push('resend')
   }
   return destinations
 }
@@ -590,39 +587,6 @@ async function deliverToSlackViaBot(
   }
 }
 
-async function deliverToResend(
-  payload: FeedbackDispatchPayload,
-  enrichment: FeedbackEnrichment,
-) {
-  if (
-    !ENV.FEEDBACK_RESEND_API_KEY ||
-    !ENV.FEEDBACK_RESEND_FROM_EMAIL ||
-    !ENV.FEEDBACK_RESEND_TO_EMAIL
-  ) {
-    throw new Error('missing_FEEDBACK_RESEND_CONFIG')
-  }
-
-  const response = await fetchWithTimeout('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${ENV.FEEDBACK_RESEND_API_KEY}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: ENV.FEEDBACK_RESEND_FROM_EMAIL,
-      to: [ENV.FEEDBACK_RESEND_TO_EMAIL],
-      ...(payload.authUser.email ? { reply_to: payload.authUser.email } : {}),
-      subject: buildFeedbackSubject(payload),
-      text: buildFeedbackPlainText(payload, enrichment),
-    }),
-  })
-
-  if (!response.ok) {
-    const detail = truncate(await response.text(), 300)
-    throw new Error(`resend_http_${response.status}:${detail}`)
-  }
-}
-
 export async function deliverFounderFeedback(
   payload: FeedbackDispatchPayload,
   options: { deliveryMode?: FeedbackDeliveryMode } = {},
@@ -637,11 +601,7 @@ export async function deliverFounderFeedback(
   })
 
   const tasks = destinations.map(async (destination) => {
-    if (destination === 'slack') {
-      await deliverToSlack(payload, enrichment)
-      return destination
-    }
-    await deliverToResend(payload, enrichment)
+    await deliverToSlack(payload, enrichment)
     return destination
   })
 
@@ -682,7 +642,10 @@ export async function deliverFounderFeedback(
   return { delivered, failures, enrichment }
 }
 
-export async function queueFounderFeedback(payload: FeedbackDispatchPayload) {
+export async function queueFounderFeedback(
+  payload: FeedbackDispatchRequest,
+  options?: { userId?: string },
+) {
   if (!isQstashReady()) {
     throw new Error('feedback_qstash_not_ready')
   }
@@ -698,10 +661,10 @@ export async function queueFounderFeedback(payload: FeedbackDispatchPayload) {
   logInfo({
     reqId: payload.feedbackId,
     route: 'feedback/queue',
-    userKey: payload.authUser.id,
     phase: 'queued',
     messageId: message.messageId,
     dispatchTarget: '/api/feedback/dispatch',
+    ...(options?.userId ? { userKey: options.userId } : {}),
   })
 
   return { messageId: message.messageId }

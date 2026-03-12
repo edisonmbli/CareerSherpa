@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import { nanoid } from 'nanoid'
 import { stackServerApp } from '@/stack/server'
-import { feedbackSubmissionSchema, type FeedbackDispatchPayload } from '@/lib/feedback/schema'
-import { deliverFounderFeedback, getConfiguredFeedbackDestinations, queueFounderFeedback } from '@/lib/feedback/delivery'
-import { isQstashReady } from '@/lib/env'
+import { feedbackSubmissionSchema } from '@/lib/feedback/schema'
+import { submitFounderFeedback } from '@/lib/feedback/inbox-service'
 import { logError, logInfo } from '@/lib/logger'
 
 export async function POST(req: Request) {
@@ -28,58 +26,22 @@ export async function POST(req: Request) {
     )
   }
 
-  const payload: FeedbackDispatchPayload = {
-    ...parsed.data,
-    feedbackId: nanoid(12),
-    submittedAt: new Date().toISOString(),
-    authUser: {
-      id: user.id,
-      ...(parsed.data.includeAccountEmail && user.primaryEmail
-        ? { email: user.primaryEmail }
-        : {}),
-    },
-  }
-
-  const configured = getConfiguredFeedbackDestinations()
-  if (!configured.length) {
-    logError({
-      reqId: payload.feedbackId,
-      route: 'api/feedback',
-      userKey: user.id,
-      phase: 'not_configured',
-      error: 'feedback_delivery_not_configured',
-    })
-    return NextResponse.json(
-      { ok: false, error: 'feedback_delivery_not_configured' },
-      { status: 503 },
-    )
-  }
-
   try {
-    if (isQstashReady()) {
-      const queued = await queueFounderFeedback(payload)
-      return NextResponse.json({
-        ok: true,
-        queued: true,
-        feedbackId: payload.feedbackId,
-        messageId: queued.messageId,
-        destinations: configured,
-      })
-    }
-
-    const delivered = await deliverFounderFeedback(payload, {
-      deliveryMode: 'direct',
+    const result = await submitFounderFeedback(parsed.data, {
+      id: user.id,
+      email: user.primaryEmail ?? undefined,
     })
     return NextResponse.json({
       ok: true,
-      queued: false,
-      feedbackId: payload.feedbackId,
-      destinations: delivered.delivered,
+      queued: result.queued,
+      feedbackId: result.feedbackId,
+      ...(result.messageId ? { messageId: result.messageId } : {}),
+      destinations: result.destinations,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'feedback_delivery_failed'
     logError({
-      reqId: payload.feedbackId,
+      reqId: 'feedback-submit',
       route: 'api/feedback',
       userKey: user.id,
       phase: 'submit_failed',
@@ -91,11 +53,11 @@ export async function POST(req: Request) {
     )
   } finally {
     logInfo({
-      reqId: payload.feedbackId,
+      reqId: 'feedback-submit',
       route: 'api/feedback',
       userKey: user.id,
       phase: 'handled',
-      surface: payload.context.surface,
+      surface: parsed.data.context.surface,
     })
   }
 }

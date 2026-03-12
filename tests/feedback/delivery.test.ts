@@ -166,6 +166,6 @@ describe('feedback delivery helpers', () => {
     ENV.FEEDBACK_RESEND_FROM_EMAIL = 'bot@careershaper.com'
     ENV.FEEDBACK_RESEND_TO_EMAIL = 'founder@careershaper.com'
 
-    expect(getConfiguredFeedbackDestinations()).toEqual(['slack', 'resend'])
+    expect(getConfiguredFeedbackDestinations()).toEqual(['slack'])
   })
 })
