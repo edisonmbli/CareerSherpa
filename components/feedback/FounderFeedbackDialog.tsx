@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import posthog from 'posthog-js'
-import { MessageSquare, Send } from 'lucide-react'
+import { Check, Loader2, Send } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -17,9 +17,9 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { toast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 import type { FeedbackType } from '@/lib/feedback/schema'
+import { FeedbackFabButton } from '@/components/feedback/feedback-fab'
 
 type FeedbackLabels = {
   trigger: string
@@ -84,18 +84,21 @@ export function FounderFeedbackDialog({
   const [type, setType] = useState<FeedbackType>('bug')
   const [message, setMessage] = useState('')
   const [includeAccountEmail, setIncludeAccountEmail] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitState, setSubmitState] = useState<
+    'idle' | 'submitting' | 'success' | 'error'
+  >('idle')
+  const [inlineError, setInlineError] = useState<string | null>(null)
+  const resetTimerRef = useRef<number | null>(null)
 
   const typeLabels = labels.types[type]
-  const contextPreview = useMemo(
-    () => [
-      `${labels.contextLabels.surface}: ${context.surface}`,
-      `${labels.contextLabels.tab}: ${context.tab || '-'}`,
-      `${labels.contextLabels.status}: ${context.status || '-'}`,
-      `${labels.contextLabels.serviceId}: ${context.serviceId || '-'}`,
-    ],
-    [context.serviceId, context.status, context.surface, context.tab, labels.contextLabels.serviceId, labels.contextLabels.status, labels.contextLabels.surface, labels.contextLabels.tab],
-  )
+
+  const resetForm = () => {
+    setMessage('')
+    setType('bug')
+    setIncludeAccountEmail(true)
+    setInlineError(null)
+    setSubmitState('idle')
+  }
 
   useEffect(() => {
     if (!open) return
@@ -109,14 +112,24 @@ export function FounderFeedbackDialog({
     } catch {}
   }, [context.serviceId, context.status, context.surface, context.tab, open])
 
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        window.clearTimeout(resetTimerRef.current)
+      }
+    }
+  }, [])
+
   const handleSubmit = async () => {
     const trimmed = message.trim()
     if (trimmed.length < 3) {
-      toast.error(labels.errorTitle, { description: labels.errorDesc })
+      setInlineError(labels.errorDesc)
+      setSubmitState('error')
       return
     }
 
-    setIsSubmitting(true)
+    setInlineError(null)
+    setSubmitState('submitting')
     try {
       const payload = {
         type,
@@ -191,12 +204,12 @@ export function FounderFeedbackDialog({
         })
       } catch {}
 
-      toast.success(labels.successTitle, { description: labels.successDesc })
-      setOpen(false)
-      setMessage('')
-      setType('bug')
-      setIncludeAccountEmail(true)
-      onSubmitted?.()
+      setSubmitState('success')
+      resetTimerRef.current = window.setTimeout(() => {
+        setOpen(false)
+        resetForm()
+        onSubmitted?.()
+      }, 2200)
     } catch (error) {
       const messageKey =
         error instanceof Error && error.message === 'feedback_delivery_not_configured'
@@ -211,40 +224,44 @@ export function FounderFeedbackDialog({
           type,
         })
       } catch {}
-      toast.error(labels.errorTitle, { description: messageKey })
+      setInlineError(messageKey)
+      setSubmitState('error')
     } finally {
-      setIsSubmitting(false)
+    }
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && resetTimerRef.current) {
+      window.clearTimeout(resetTimerRef.current)
+      resetTimerRef.current = null
+    }
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      resetForm()
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button
-            type="button"
-            size="icon"
-            className={cn(
-              'h-11 w-11 rounded-full border border-amber-200 bg-amber-400/90 text-slate-950 shadow-lg hover:bg-amber-300',
-              className,
-            )}
-            aria-label={labels.tooltip}
-            title={labels.tooltip}
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
+          <FeedbackFabButton tooltip={labels.tooltip} className={className} />
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{labels.title}</DialogTitle>
-          <DialogDescription>{labels.description}</DialogDescription>
+      <DialogContent className="max-w-[620px] rounded-[28px] border border-slate-200/80 bg-white px-7 py-6 shadow-[0_32px_80px_rgba(15,23,42,0.18)] sm:px-8">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="text-[2rem] font-semibold tracking-tight text-slate-950">
+            {labels.title}
+          </DialogTitle>
+          <DialogDescription className="max-w-[460px] text-[15px] leading-7 text-slate-500">
+            {labels.description}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>{labels.typeLabel}</Label>
-            <div className="grid gap-2 sm:grid-cols-3">
+        <div className="space-y-5 pt-2">
+          <div className="space-y-3">
+            <Label className="text-[15px] font-semibold text-slate-950">{labels.typeLabel}</Label>
+            <div className="grid gap-3 sm:grid-cols-3">
               <FeedbackTypeCard
                 active={type === 'bug'}
                 title={labels.types.bug.title}
@@ -266,32 +283,28 @@ export function FounderFeedbackDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="founder-feedback-message">{labels.messageLabel}</Label>
+          <div className="space-y-3">
+            <Label
+              htmlFor="founder-feedback-message"
+              className="text-[15px] font-semibold text-slate-950"
+            >
+              {labels.messageLabel}
+            </Label>
             <Textarea
               id="founder-feedback-message"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               placeholder={typeLabels.placeholder}
-              className="min-h-[140px]"
+              className="min-h-[152px] rounded-2xl border-slate-200 bg-slate-50/70 px-5 py-4 text-[15px] leading-7 placeholder:text-slate-400 focus-visible:ring-slate-300"
               maxLength={2000}
             />
-            <p className="text-xs text-muted-foreground">{labels.messageHint}</p>
+            <p className="text-[13px] leading-6 text-slate-500">{labels.messageHint}</p>
           </div>
 
-          <div className="rounded-xl border bg-muted/30 p-3">
-            <div className="mb-2 text-sm font-medium">{labels.contextTitle}</div>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              {contextPreview.map((line) => (
-                <div key={line}>{line}</div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-start justify-between gap-3 rounded-xl border p-3">
+          <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/55 px-5 py-4">
             <div>
-              <div className="text-sm font-medium">{labels.includeEmail}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-[15px] font-semibold text-slate-950">{labels.includeEmail}</div>
+              <div className="mt-1 text-[13px] leading-6 text-slate-500">
                 {labels.includeEmailHint}
               </div>
             </div>
@@ -301,15 +314,46 @@ export function FounderFeedbackDialog({
               aria-label={labels.includeEmail}
             />
           </div>
+
+          {inlineError ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">
+              {inlineError}
+            </div>
+          ) : null}
         </div>
 
-        <DialogFooter className="mt-2">
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+        <DialogFooter className="mt-2 gap-2 border-t border-slate-100 pt-5">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => handleOpenChange(false)}
+            disabled={submitState === 'submitting'}
+            className="rounded-full px-5 text-[15px] text-slate-700 hover:bg-slate-100"
+          >
             {labels.cancel}
           </Button>
-          <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
-            <Send className="mr-2 h-4 w-4" />
-            {isSubmitting ? labels.submitting : labels.submit}
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitState === 'submitting' || submitState === 'success'}
+            className={cn(
+              'min-w-[152px] rounded-full px-5 text-[15px] shadow-sm',
+              submitState === 'success' &&
+                'bg-emerald-400 text-slate-950 hover:bg-emerald-400',
+            )}
+          >
+            {submitState === 'submitting' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : submitState === 'success' ? (
+              <Check className="mr-2 h-4 w-4" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            {submitState === 'submitting'
+              ? labels.submitting
+              : submitState === 'success'
+                ? labels.successTitle
+                : labels.submit}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -345,14 +389,14 @@ function FeedbackTypeCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-xl border px-3 py-3 text-left transition-colors',
+        'rounded-[22px] border px-5 py-4 text-left transition-colors',
         active
-          ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-950'
-          : 'border-border bg-background hover:bg-muted/50',
+          ? 'border-slate-900 bg-slate-900 text-white shadow-[0_14px_32px_rgba(15,23,42,0.18)] dark:border-white dark:bg-white dark:text-slate-950'
+          : 'border-slate-200 bg-slate-50/55 hover:bg-slate-100/80',
       )}
     >
-      <div className="text-sm font-medium">{title}</div>
-      <div className={cn('mt-1 text-xs', active ? 'text-white/80 dark:text-slate-700' : 'text-muted-foreground')}>
+      <div className="text-[15px] font-semibold leading-6">{title}</div>
+      <div className={cn('mt-1.5 text-[13px] leading-6', active ? 'text-white/78 dark:text-slate-700' : 'text-slate-500')}>
         {description}
       </div>
     </button>

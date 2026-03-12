@@ -74,20 +74,20 @@ const dict = {
   feedbackInbox: {
     trigger: '反馈',
     tooltip: '反馈给创始人',
-    title: '告诉我发生了什么',
+    title: '告诉我哪里不对',
     description:
-      '你专注描述问题、需求或困惑，系统会自动附带当前页面、模块、时间与上下文线索。',
+      '描述问题、需求或困惑即可，其它上下文会自动附带。',
     typeLabel: '反馈类型',
-    messageLabel: '详细说明',
+    messageLabel: '你的描述',
     messageHint:
-      '不用手动补 service ID、模块名、时间点，这些会自动附带到 founder inbox。',
+      '只需写下你看到的问题、想要的改进，系统会自动补上页面与上下文。',
     includeEmail: '允许我通过账户邮箱联系你',
     includeEmailHint: '打开后，系统会把你的账户邮箱一并带上，方便我追问细节。',
     contextTitle: '自动附带上下文',
-    submit: '提交反馈',
-    submitting: '提交中...',
+    submit: '发送反馈',
+    submitting: '发送中...',
     cancel: '取消',
-    successTitle: '已发送',
+    successTitle: '已收到',
     successDesc: '反馈已进入 founder inbox，我会结合回放和错误线索继续排查。',
     errorTitle: '提交失败',
     errorDesc: '反馈暂时没有发送成功，请稍后重试。',
@@ -107,7 +107,7 @@ const dict = {
       },
       confusion: {
         title: '这里困惑',
-        desc: '不清楚下一步或文案不明',
+        desc: '操作靠猜、文案不明',
         placeholder:
           '例如：我看不懂这里的评分含义，不确定接下来该先改简历还是先准备面试。',
       },

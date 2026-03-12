@@ -79,21 +79,21 @@ const dict = {
   feedbackInbox: {
     trigger: 'Feedback',
     tooltip: 'Send feedback to founder',
-    title: 'Tell me what happened',
+    title: 'What feels off?',
     description:
-      'Describe the issue, request, or confusion. The app will automatically attach page, module, time, and context clues.',
+      'Describe the issue, request, or confusion. Context is attached automatically.',
     typeLabel: 'Feedback type',
-    messageLabel: 'Details',
+    messageLabel: 'Your note',
     messageHint:
-      'You do not need to manually include service ID, module name, or timestamp. Those are attached automatically.',
+      'Just describe what you saw or what should change. The app adds the context.',
     includeEmail: 'Allow follow-up via my account email',
     includeEmailHint:
       'When enabled, your account email is attached so I can ask follow-up questions.',
     contextTitle: 'Context attached automatically',
-    submit: 'Send feedback',
+    submit: 'Send',
     submitting: 'Sending...',
     cancel: 'Cancel',
-    successTitle: 'Sent',
+    successTitle: 'Received',
     successDesc:
       'Your feedback is in the founder inbox. I will use replay and error clues to investigate.',
     errorTitle: 'Send failed',

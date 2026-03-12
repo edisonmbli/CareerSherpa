@@ -74,6 +74,9 @@ function getTriageHint(
   payload: FeedbackDispatchPayload,
   enrichment?: FeedbackEnrichment,
 ) {
+  if (payload.context.tab === 'create-service') {
+    return 'Open App -> create service form'
+  }
   if (payload.type === 'bug' && payload.context.sentryEventId) {
     return 'PostHog -> Sentry -> Open App'
   }
@@ -345,9 +348,21 @@ function buildSlackMainBlocks(
   enrichment: FeedbackEnrichment,
   options: { includeThreadFooter?: boolean } = {},
 ): SlackBlock[] {
+  const currentTabStatus = formatExtraValue(
+    payload.context.extras?.['currentTabStatus'],
+  )
   const status = payload.context.status || '-'
   const tab = payload.context.tab || '-'
-  const title = `${getFeedbackTypeEmoji(payload.type)} Founder Inbox · ${payload.context.surface}/${tab} · ${status}`
+  const titleSegments = [
+    `${getFeedbackTypeEmoji(payload.type)} Founder Inbox`,
+    `${payload.context.surface}/${tab}`,
+  ]
+  if (payload.context.status) {
+    titleSegments.push(payload.context.status)
+  } else if (currentTabStatus !== '-') {
+    titleSegments.push(currentTabStatus)
+  }
+  const title = titleSegments.join(' · ')
   const billingLabel = enrichment.billingMode
     ? `${enrichment.billingMode}${enrichment.billingStatus ? ` (${enrichment.billingStatus})` : ''}`
     : enrichment.taskTierHint || payload.context.tier || '-'
@@ -379,7 +394,7 @@ function buildSlackMainBlocks(
         ['Priority', getPriorityLabel(payload, enrichment)],
         ['Surface / Tab', `${payload.context.surface} / ${tab}`],
         ['Service Status', status],
-        ['Tab Status', formatExtraValue(payload.context.extras?.['currentTabStatus'])],
+        ['Tab Status', currentTabStatus],
         ['Billing', billingLabel],
         ['Model', modelLabel],
         ['Reply Email', payload.authUser.email || '-'],

@@ -50,7 +50,6 @@ import {
   PenLine,
   Loader2,
   Menu,
-  MessageSquare,
   Printer,
   Copy,
   Check,
@@ -59,7 +58,7 @@ import {
   ListOrdered,
 } from 'lucide-react'
 import { getTaskCost } from '@/lib/constants'
-import { cn, getMatchScore, getMatchThemeColor } from '@/lib/utils'
+import { cn, getMatchScore } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { createPortal } from 'react-dom'
 import { ThemeToggle } from '@/components/app/ThemeToggle'
@@ -82,6 +81,12 @@ import {
 
 import { ServiceNotification } from '@/components/common/ServiceNotification'
 import { FounderFeedbackDialog } from '@/components/feedback/FounderFeedbackDialog'
+import {
+  FeedbackFabButton,
+  feedbackFabDesktopSlotClassName,
+  feedbackFabMobileSlotClassName,
+  utilityFabButtonClassName,
+} from '@/components/feedback/feedback-fab'
 
 import { StepCustomize } from '@/components/workbench/StepCustomize'
 import { BatchProgressPanel } from '@/components/workbench/BatchProgressPanel'
@@ -1345,12 +1350,6 @@ export function ServiceDisplay({
     window.setTimeout(() => setCopiedInterview(false), 2000)
   }
 
-  const matchTheme = getMatchThemeColor(
-    getMatchScore(matchResult || matchParsed),
-  )
-  const interviewTheme = getMatchThemeColor(
-    getMatchScore(matchResult || matchParsed),
-  )
   const printMatchData = useMemo(() => {
     const source = matchResult || matchParsed
     if (!source) return null
@@ -1421,26 +1420,11 @@ export function ServiceDisplay({
     return interviewParsed
   }, [interviewStatus, interviewParsed])
 
-  const getActionThemeClasses = (theme: 'emerald' | 'amber' | 'rose') => {
-    switch (theme) {
-      case 'emerald':
-        return {
-          base: 'bg-emerald-500/45 text-white border-emerald-400/20',
-          hover: 'hover:bg-emerald-500/65',
-          ring: 'ring-emerald-200/60 dark:ring-emerald-900/30',
-        }
-      case 'amber':
-        return {
-          base: 'bg-amber-500/45 text-white border-amber-400/20',
-          hover: 'hover:bg-amber-500/65',
-          ring: 'ring-amber-200/60 dark:ring-amber-900/30',
-        }
-      default:
-        return {
-          base: 'bg-rose-500/45 text-white border-rose-400/20',
-          hover: 'hover:bg-rose-500/65',
-          ring: 'ring-rose-200/60 dark:ring-rose-900/30',
-        }
+  const getActionThemeClasses = () => {
+    return {
+      base: utilityFabButtonClassName,
+      hover: '',
+      ring: '',
     }
   }
 
@@ -1604,24 +1588,18 @@ export function ServiceDisplay({
     },
   }
   const renderFeedbackButton = (className: string) => (
-    <FounderFeedbackDialog
-      labels={feedbackLabels}
-      context={feedbackContext}
-      trigger={
-        <Button
-          type="button"
-          size="icon"
-          className={cn(
-            'rounded-full border border-amber-200 bg-amber-400/90 text-slate-950 shadow-lg hover:bg-amber-300',
-            className,
-          )}
-          aria-label={feedbackLabels.tooltip}
-          title={feedbackLabels.tooltip}
-        >
-          <MessageSquare className="h-4 w-4" />
-        </Button>
-      }
-    />
+    <div className="pointer-events-auto">
+      <FounderFeedbackDialog
+        labels={feedbackLabels}
+        context={feedbackContext}
+        trigger={
+          <FeedbackFabButton
+            tooltip={feedbackLabels.tooltip}
+            className={className}
+          />
+        }
+      />
+    </div>
   )
   const showMatchFeedbackInFabStack =
     tabValue === 'match' &&
@@ -1744,10 +1722,10 @@ export function ServiceDisplay({
                   matchResult ||
                   matchParsed) && (
                     <>
-                      <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col items-end gap-2 print:hidden">
+                      <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-[80] flex-col items-end gap-2 print:hidden pointer-events-auto">
                         <TooltipProvider>
                           {matchActions.map((action) => {
-                            const themeClasses = getActionThemeClasses(matchTheme)
+                            const themeClasses = getActionThemeClasses()
                             const Icon = action.icon
                             return (
                               <Tooltip key={action.id}>
@@ -1759,8 +1737,6 @@ export function ServiceDisplay({
                                     className={cn(
                                       'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
                                       themeClasses.base,
-                                      themeClasses.hover,
-                                      themeClasses.ring,
                                     )}
                                   >
                                     <Icon className="h-4 w-4" />
@@ -1772,15 +1748,14 @@ export function ServiceDisplay({
                               </Tooltip>
                             )
                           })}
-                          {renderFeedbackButton('h-10 w-10')}
                         </TooltipProvider>
+                        {renderFeedbackButton('h-10 w-10')}
                       </div>
-                      <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                      <div className="md:hidden fixed right-4 bottom-[85px] z-[80] flex flex-col items-center gap-2 print:hidden pointer-events-auto">
                         {matchFabOpen && (
                           <div className="flex flex-col items-center gap-2 w-10">
                             {matchActions.map((action) => {
-                              const themeClasses =
-                                getActionThemeClasses(matchTheme)
+                              const themeClasses = getActionThemeClasses()
                               const Icon = action.icon
                               return (
                                 <Button
@@ -1794,8 +1769,6 @@ export function ServiceDisplay({
                                   className={cn(
                                     'h-9 w-9 rounded-full border shadow-lg',
                                     themeClasses.base,
-                                    themeClasses.hover,
-                                    themeClasses.ring,
                                   )}
                                 >
                                   <Icon className="h-4 w-4" />
@@ -1810,8 +1783,7 @@ export function ServiceDisplay({
                           onClick={() => setMatchFabOpen((prev) => !prev)}
                           className={cn(
                             'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                            getActionThemeClasses(matchTheme).base,
-                            getActionThemeClasses(matchTheme).hover,
+                            getActionThemeClasses().base,
                           )}
                         >
                           <Menu className="h-5 w-5" />
@@ -2075,11 +2047,10 @@ export function ServiceDisplay({
               {shouldShowInterviewPlan ? (
                 <div className="w-full px-0 sm:px-3 md:px-4 pt-0 pb-6 print:px-0 print:py-2">
                   <div className="mx-auto w-full max-w-none sm:max-w-[1180px] relative">
-                    <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-40 flex-col gap-2 print:hidden">
+                    <div className="hidden md:flex fixed xl:left-[calc(50%+(var(--workbench-sidebar-width,0px)/2)+0.75rem+440px+4rem)] right-6 xl:right-auto bottom-8 z-[80] flex-col gap-2 print:hidden pointer-events-auto">
                       <TooltipProvider>
                         {interviewActions.map((action) => {
-                          const themeClasses =
-                            getActionThemeClasses(interviewTheme)
+                          const themeClasses = getActionThemeClasses()
                           const Icon = action.icon
                           const isToc = action.id === 'toc'
                           const button = (
@@ -2092,8 +2063,6 @@ export function ServiceDisplay({
                                   className={cn(
                                     'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
                                     themeClasses.base,
-                                    themeClasses.hover,
-                                    themeClasses.ring,
                                   )}
                                 >
                                   <Icon className="h-4 w-4" />
@@ -2112,7 +2081,6 @@ export function ServiceDisplay({
                             button
                           )
                         })}
-                        {renderFeedbackButton('h-10 w-10')}
 
                         {/* Desktop Global FAB Up/Down */}
                         <Tooltip>
@@ -2141,9 +2109,7 @@ export function ServiceDisplay({
                               }}
                               className={cn(
                                 'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
-                                getActionThemeClasses(interviewTheme).base,
-                                getActionThemeClasses(interviewTheme).hover,
-                                getActionThemeClasses(interviewTheme).ring,
+                                getActionThemeClasses().base,
                               )}
                               aria-label="Scroll to previous section"
                             >
@@ -2174,9 +2140,7 @@ export function ServiceDisplay({
                               }}
                               className={cn(
                                 'h-10 w-10 rounded-full border shadow-lg backdrop-blur-sm',
-                                getActionThemeClasses(interviewTheme).base,
-                                getActionThemeClasses(interviewTheme).hover,
-                                getActionThemeClasses(interviewTheme).ring,
+                                getActionThemeClasses().base,
                               )}
                               aria-label="Scroll to next section"
                             >
@@ -2186,13 +2150,13 @@ export function ServiceDisplay({
                           <TooltipContent side="left">下一节</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
+                      {renderFeedbackButton('h-10 w-10')}
                     </div>
-                    <div className="md:hidden fixed right-4 bottom-[85px] z-40 flex flex-col items-center gap-2 print:hidden">
+                    <div className="md:hidden fixed right-4 bottom-[85px] z-[80] flex flex-col items-center gap-2 print:hidden pointer-events-auto">
                       {interviewFabOpen && (
                         <div className="flex flex-col items-center gap-2 w-10">
                           {interviewActions.map((action) => {
-                            const themeClasses =
-                              getActionThemeClasses(interviewTheme)
+                            const themeClasses = getActionThemeClasses()
                             const Icon = action.icon
                             return (
                               <Button
@@ -2205,9 +2169,7 @@ export function ServiceDisplay({
                                 }}
                                 className={cn(
                                   'h-9 w-9 rounded-full border shadow-lg',
-                                  themeClasses.base,
-                                  themeClasses.hover,
-                                  themeClasses.ring,
+                                    themeClasses.base,
                                 )}
                               >
                                 <Icon className="h-4 w-4" />
@@ -2240,8 +2202,7 @@ export function ServiceDisplay({
                           }}
                           className={cn(
                             'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                            getActionThemeClasses(interviewTheme).base,
-                            getActionThemeClasses(interviewTheme).hover,
+                            getActionThemeClasses().base,
                           )}
                           aria-label="Scroll to previous section"
                         >
@@ -2267,8 +2228,7 @@ export function ServiceDisplay({
                           }}
                           className={cn(
                             'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                            getActionThemeClasses(interviewTheme).base,
-                            getActionThemeClasses(interviewTheme).hover,
+                            getActionThemeClasses().base,
                           )}
                           aria-label="Scroll to next section"
                         >
@@ -2280,8 +2240,7 @@ export function ServiceDisplay({
                         onClick={() => setInterviewFabOpen((prev) => !prev)}
                         className={cn(
                           'h-10 w-10 rounded-full shadow-lg border transition-all duration-300',
-                          getActionThemeClasses(interviewTheme).base,
-                          getActionThemeClasses(interviewTheme).hover,
+                          getActionThemeClasses().base,
                         )}
                       >
                         <Menu className="h-5 w-5" />
@@ -2471,10 +2430,10 @@ export function ServiceDisplay({
 
         {showStandaloneFeedbackFab && (
           <>
-            <div className="hidden md:block fixed right-6 bottom-8 z-40 print:hidden">
+            <div className={feedbackFabDesktopSlotClassName}>
               {renderFeedbackButton('h-11 w-11')}
             </div>
-            <div className="md:hidden fixed right-4 bottom-[85px] z-40 print:hidden">
+            <div className={feedbackFabMobileSlotClassName}>
               {renderFeedbackButton('h-10 w-10')}
             </div>
           </>
