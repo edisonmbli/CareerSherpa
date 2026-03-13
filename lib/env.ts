@@ -173,6 +173,33 @@ export const ENV = {
   NEXT_PUBLIC_POSTHOG_ENABLED:
     (process.env['NEXT_PUBLIC_POSTHOG_ENABLED'] ?? 'false').toLowerCase() ===
       'true',
+  NEXT_PUBLIC_SENTRY_DSN: process.env['NEXT_PUBLIC_SENTRY_DSN'] ?? '',
+  SENTRY_DSN: process.env['SENTRY_DSN'] ?? '',
+  SENTRY_AUTH_TOKEN: process.env['SENTRY_AUTH_TOKEN'] ?? '',
+  SENTRY_ORG: process.env['SENTRY_ORG'] ?? '',
+  SENTRY_PROJECT: process.env['SENTRY_PROJECT'] ?? '',
+  SENTRY_WORKER_PROJECT: process.env['SENTRY_WORKER_PROJECT'] ?? '',
+  SENTRY_ENVIRONMENT:
+    process.env['SENTRY_ENVIRONMENT'] ??
+    process.env['VERCEL_ENV'] ??
+    process.env['NODE_ENV'] ??
+    'development',
+  SENTRY_RELEASE:
+    process.env['SENTRY_RELEASE'] ??
+    process.env['VERCEL_GIT_COMMIT_SHA'] ??
+    process.env['NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA'] ??
+    '',
+  SENTRY_BASE_URL: process.env['SENTRY_BASE_URL'] ?? 'https://sentry.io',
+  SENTRY_ENABLED:
+    (process.env['SENTRY_ENABLED'] ?? '').toLowerCase() === 'true',
+  NEXT_PUBLIC_SENTRY_ENABLED:
+    (process.env['NEXT_PUBLIC_SENTRY_ENABLED'] ?? '').toLowerCase() === 'true',
+  SENTRY_DEBUG:
+    (process.env['SENTRY_DEBUG'] ?? '').toLowerCase() === 'true',
+  SENTRY_TRACES_SAMPLE_RATE:
+    process.env['SENTRY_TRACES_SAMPLE_RATE'] ?? '',
+  SENTRY_PROFILES_SAMPLE_RATE:
+    process.env['SENTRY_PROFILES_SAMPLE_RATE'] ?? '',
   FEEDBACK_SLACK_WEBHOOK_URL:
     process.env['FEEDBACK_SLACK_WEBHOOK_URL'] ?? '',
   FEEDBACK_SLACK_MENTION: process.env['FEEDBACK_SLACK_MENTION'] ?? '',
@@ -226,6 +253,44 @@ export function isStackAuthReady() {
     !!ENV.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY &&
     !!ENV.STACK_SECRET_SERVER_KEY
   )
+}
+
+function parseNumericEnv(value: string) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+export function getSentryEnvironment() {
+  return ENV.SENTRY_ENVIRONMENT || process.env['NODE_ENV'] || 'development'
+}
+
+export function getSentryRelease() {
+  return ENV.SENTRY_RELEASE || undefined
+}
+
+export function getSentryBaseUrl() {
+  return (ENV.SENTRY_BASE_URL || 'https://sentry.io').replace(/\/+$/, '')
+}
+
+export function isWebSentryEnabled() {
+  if (!ENV.NEXT_PUBLIC_SENTRY_DSN) return false
+  if (ENV.NEXT_PUBLIC_SENTRY_ENABLED) return true
+  if (ENV.SENTRY_ENABLED) return true
+  return process.env['NODE_ENV'] === 'production'
+}
+
+export function isWorkerSentryEnabled() {
+  if (!ENV.SENTRY_DSN) return false
+  if (ENV.SENTRY_ENABLED) return true
+  return process.env['NODE_ENV'] === 'production'
+}
+
+export function getSentryTracesSampleRate(defaultValue: number) {
+  return parseNumericEnv(ENV.SENTRY_TRACES_SAMPLE_RATE) ?? defaultValue
+}
+
+export function getSentryProfilesSampleRate(defaultValue: number) {
+  return parseNumericEnv(ENV.SENTRY_PROFILES_SAMPLE_RATE) ?? defaultValue
 }
 
 export function getQuotaConfig() {

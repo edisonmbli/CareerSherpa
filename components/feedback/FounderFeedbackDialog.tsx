@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import * as Sentry from '@sentry/nextjs'
 import posthog from 'posthog-js'
 import { Check, Loader2, Send } from 'lucide-react'
 import {
@@ -20,6 +19,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import type { FeedbackType } from '@/lib/feedback/schema'
 import { FeedbackFabButton } from '@/components/feedback/feedback-fab'
+import { getLastSentryEventId } from '@/lib/sentry/browser'
 
 type FeedbackLabels = {
   trigger: string
@@ -131,6 +131,7 @@ export function FounderFeedbackDialog({
     setInlineError(null)
     setSubmitState('submitting')
     try {
+      const sentryEventId = getLastSentryEventId()
       const payload = {
         type,
         message: trimmed,
@@ -151,7 +152,8 @@ export function FounderFeedbackDialog({
           currentUrl: typeof window !== 'undefined' ? window.location.href : undefined,
           pathname: typeof window !== 'undefined' ? window.location.pathname : undefined,
           title: typeof document !== 'undefined' ? document.title : undefined,
-          sentryEventId: Sentry.lastEventId() || undefined,
+          sentryEventId,
+          sentryRuntime: sentryEventId ? 'web' : undefined,
           posthogDistinctId:
             typeof posthog.get_distinct_id === 'function'
               ? posthog.get_distinct_id()

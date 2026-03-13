@@ -6,7 +6,7 @@
  */
 
 import sharp from 'sharp'
-import { logInfo, logError } from '@/lib/logger'
+import { logInfo, logError, logWarn } from '@/lib/logger'
 
 interface CompressOptions {
     maxWidth?: number
@@ -207,11 +207,12 @@ async function fetchImageAsDataUrl(url: string): Promise<string> {
         return `data:${contentType};base64,${base64}`
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
-        logError({
+        logWarn({
             reqId: 'image_fetch',
             route: 'image-fetch',
             userKey: 'system',
-            error: errorMsg,
+            errorCode: 'image_fetch_failed',
+            message: errorMsg,
             phase: 'fetch',
         })
         return url

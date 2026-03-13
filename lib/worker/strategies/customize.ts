@@ -14,7 +14,7 @@ import {
   markDebitSuccess,
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { ENV } from '@/lib/env'
 import { logDebugData } from '@/lib/llm/debug'
 import {
@@ -39,10 +39,10 @@ function logDebugFile(filename: string, content: string) {
       meta: { filename },
     })
   } catch (e) {
-    logError({
+    logWarn({
       reqId: 'system',
       route: 'worker/customize',
-      error: e instanceof Error ? e : String(e),
+      error: e instanceof Error ? e.message : String(e),
       phase: 'write_debug_file',
     })
   }
@@ -138,12 +138,12 @@ export const customizeStrategy: WorkerStrategy = {
         requestId,
       })
     } catch (e) {
-      logError({
+      logWarn({
         reqId: requestId,
         route: 'worker/customize',
         phase: 'publish_customize_pending_failed',
         serviceId,
-        error: e instanceof Error ? e : String(e),
+        error: e instanceof Error ? e.message : String(e),
       })
     }
   },
@@ -194,12 +194,12 @@ export const customizeStrategy: WorkerStrategy = {
           requestId,
         })
       } catch (e) {
-        logError({
+        logWarn({
           reqId: requestId,
           route: 'worker/customize',
           phase: 'publish_customize_failed',
           serviceId,
-          error: e instanceof Error ? e : String(e),
+          error: e instanceof Error ? e.message : String(e),
         })
       }
 
@@ -279,12 +279,12 @@ export const customizeStrategy: WorkerStrategy = {
           requestId,
         })
       } catch (e) {
-        logError({
+        logWarn({
           reqId: requestId,
           route: 'worker/customize',
           phase: 'publish_customize_completed_failed',
           serviceId,
-          error: e instanceof Error ? e : String(e),
+          error: e instanceof Error ? e.message : String(e),
         })
       }
 
@@ -316,7 +316,13 @@ export const customizeStrategy: WorkerStrategy = {
         payload: { success: true },
       })
     } catch (error) {
-      logError({
+      const isExpectedLlmFailure =
+        error instanceof z.ZodError ||
+        (error instanceof Error &&
+          error.message.startsWith('Failed to parse LLM response'))
+
+      const logFn = isExpectedLlmFailure ? logWarn : logError
+      logFn({
         reqId: requestId,
         route: 'worker/customize',
         phase: 'write_results_error',

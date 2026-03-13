@@ -6,6 +6,7 @@ vi.mock('@/lib/auth/wrapper', () => ({
 
 vi.mock('@/lib/dal/resumeShare', () => ({
   getResumeShareContextForUser: vi.fn(),
+  incrementResumeShareViewCountByShareKey: vi.fn(),
   upsertResumeShareByCustomizedId: vi.fn(),
 }))
 
@@ -15,6 +16,7 @@ vi.mock('@/lib/storage/avatar-server', () => ({
 
 vi.mock('@/lib/logger', () => ({
   logError: vi.fn(),
+  logWarn: vi.fn(),
 }))
 
 vi.mock('@/lib/rateLimiter', () => ({
@@ -166,5 +168,40 @@ describe('share.actions: trackShareEventAction', () => {
         }),
       }),
     )
+  })
+
+  it('downgrades avatar resolution failure to warning-only logging', async () => {
+    const { generateShareLinkAction } = await import('@/lib/actions/share.actions')
+    const { getResumeShareContextForUser } = await import('@/lib/dal/resumeShare')
+    const { resolveAvatarForShare } = await import('@/lib/storage/avatar-server')
+    const { logWarn, logError } = await import('@/lib/logger')
+
+    vi.mocked(getResumeShareContextForUser).mockResolvedValue({
+      customizedResumeId: 'custom_1',
+      share: null,
+    } as any)
+    vi.mocked(resolveAvatarForShare).mockResolvedValue({
+      ok: false,
+      error: 'avatar_upload_failed',
+    } as any)
+
+    const result = await (generateShareLinkAction as any)(
+      {
+        serviceId: 'svc_1',
+        durationDays: null,
+        avatarBase64: 'bad-avatar',
+      },
+      { userId: 'user_1' } as any,
+    )
+
+    expect(result).toEqual({ ok: false, error: 'avatar_upload_failed' })
+    expect(logWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: 'actions/share',
+        phase: 'upload_avatar_failed',
+        errorCode: 'upload_avatar_failed',
+      }),
+    )
+    expect(logError).not.toHaveBeenCalled()
   })
 })

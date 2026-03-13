@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { logInfo, logError } from '@/lib/logger'
+import { logInfo, logError, logWarn } from '@/lib/logger'
 import { getUserByStackId } from '@/lib/dal'
 import { ensureMigrations } from '@/lib/db-migrations'
 
@@ -70,14 +70,33 @@ function createApiContext(route: string, userKey: string): ApiContext {
  */
 function handleApiError(error: unknown, context: ApiContext): NextResponse {
   const duration = Date.now() - context.start
-  
-  logError({
+
+  const message = error instanceof Error ? error.message : String(error)
+  const isExpectedFailure =
+    message.includes('invalid_user_key') ||
+    message.includes('unauthorized') ||
+    message.includes('forbidden') ||
+    message.includes('not_found') ||
+    message.includes('validation') ||
+    message.includes('rate_limit')
+
+  const logPayload = {
     reqId: context.reqId,
     route: context.route,
     userKey: context.userKey,
-    error: error instanceof Error ? error.message : String(error),
+    phase: 'api_error',
     duration,
-  })
+    message,
+  }
+
+  if (isExpectedFailure) {
+    logWarn(logPayload)
+  } else {
+    logError({
+      ...logPayload,
+      error: error instanceof Error ? error : new Error(message),
+    })
+  }
 
   if (error instanceof Error) {
     // 根据错误类型返回适当的状态码
@@ -146,12 +165,12 @@ export function withApiAuth<T>(
       if (!user) {
         // 如果用户不在本地数据库中，这可能是新用户或同步延迟
         // 我们使用userKey作为临时ID，Stack Auth会处理同步
-        logError({
+        logInfo({
           reqId: context.reqId,
           route: context.route,
           userKey: context.userKey,
-          phase: 'user_sync',
-          error: 'User not found in local database, using Stack Auth ID'
+          phase: 'user_sync_pending',
+          message: 'User not found in local database, using Stack Auth ID',
         })
       }
 

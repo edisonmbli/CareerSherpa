@@ -5,7 +5,7 @@
 
 import { createHash } from 'crypto'
 import { z } from 'zod'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 
 // 缓存数据结构验证Schema
 // 定义可缓存数据的Zod schema
@@ -195,10 +195,11 @@ export function validateCacheData(
     const isValid = errors.length === 0
 
     if (!isValid) {
-      logError({
+      logWarn({
         reqId: 'cache-validation',
         route: 'cache/validation',
-        error: 'Cache validation failed',
+        errorCode: 'cache_validation_failed',
+        message: 'Cache validation failed',
         errors: errors.join(', '),
         metadata: validatedData.metadata
       })
@@ -243,10 +244,11 @@ export function safeReadCache(
     return validation.data
   }
 
-  logError({
+  logWarn({
     reqId: 'cache-read-validation',
     route: 'cache/safe-read',
-    error: 'Cache read failed validation',
+    errorCode: 'cache_read_validation_failed',
+    message: 'Cache read failed validation',
     validationErrors: validation.errors.join(', ')
   })
   return null
@@ -351,10 +353,11 @@ export function detectCachePoisoning(
   const isPoisoned = reasons.length > 0
 
   if (isPoisoned) {
-    logError({
+    logWarn({
       reqId: 'cache-poisoning-detection',
       route: 'cache/poisoning-detection',
-      error: 'Cache poisoning detected',
+      errorCode: 'cache_poisoning_detected',
+      message: 'Cache poisoning detected',
       cacheKey, 
       reasons: reasons.join(', '),
       timestamp: Date.now()

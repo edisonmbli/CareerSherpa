@@ -8,17 +8,24 @@ import { Receiver } from '@upstash/qstash'
 import { handleStream, handleBatch } from '@/lib/worker/handlers'
 import type { WorkerBody } from '@/lib/worker/types'
 import { logError, logInfo } from '@/lib/logger'
+import { captureHandledError, setContext, setTag } from '@/lib/sentry/universal'
+import { getWorkerSentryOptions } from '@/lib/sentry/config'
+
+process.env['WORKER_RUNTIME'] = 'true'
 
 const initSentry = async () => {
-  const profilingIntegration = await import('@sentry/profiling-node')
-    .then((mod) => mod.nodeProfilingIntegration())
-    .catch(() => null)
+  const options = getWorkerSentryOptions()
+  const profilingIntegration =
+    options.profilesSampleRate && options.profilesSampleRate > 0
+      ? await import('@sentry/profiling-node')
+          .then((mod) => mod.nodeProfilingIntegration())
+          .catch(() => null)
+      : null
 
   Sentry.init({
-    dsn: process.env['SENTRY_DSN'] || process.env['NEXT_PUBLIC_SENTRY_DSN'],
+    ...options,
     integrations: profilingIntegration ? [profilingIntegration] : [],
-    tracesSampleRate: 1.0,
-    profilesSampleRate: 1.0,
+    sendDefaultPii: false,
   })
 }
 
@@ -110,6 +117,43 @@ const verifyQStash = async (c: any, next: any) => {
 // Health Check
 app.get('/health', (c) => c.json({ status: 'ok', service: 'worker-hono' }))
 
+app.get('/debug/sentry', async (c) => {
+  if (config.NODE_ENV === 'production') {
+    return c.text('Not Found', 404)
+  }
+
+  await setTag('runtime', 'worker')
+  await setContext('worker_debug', {
+    route: '/debug/sentry',
+    nodeEnv: config.NODE_ENV,
+  })
+
+  const eventId = await captureHandledError(
+    new Error('career_shaper_worker_debug_error'),
+    {
+      tag: ['runtime', 'worker'],
+      section: [
+        'worker_debug',
+        {
+          route: '/debug/sentry',
+          phase: 'manual_test',
+        },
+      ],
+      extra: {
+        route: '/debug/sentry',
+        source: 'worker_debug_route',
+      },
+    },
+  )
+
+  return c.json({
+    ok: true,
+    eventId: eventId || null,
+    environment: config.SENTRY_ENVIRONMENT || config.NODE_ENV,
+    release: config.SENTRY_RELEASE || null,
+  })
+})
+
 // Routes
 app.post('/api/execute/stream', verifyQStash, async (c) => {
   // Create a Fetch API Request object compatible with handlers
@@ -159,6 +203,9 @@ const startServer = async () => {
     route: 'worker/start',
     message: `Worker service running on port ${port}`,
     port,
+    sentryEnabled: getWorkerSentryOptions().enabled,
+    sentryEnvironment: getWorkerSentryOptions().environment,
+    sentryRelease: getWorkerSentryOptions().release,
   })
   serve({
     fetch: app.fetch,

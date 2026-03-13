@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import fs from 'fs'
 
+vi.mock('@/lib/logger', () => ({
+  logDebug: vi.fn(),
+  logError: vi.fn(),
+  logWarn: vi.fn(),
+}))
+
 // Mocks
 const structuredInvoke = vi.fn()
 const streamingStream = vi.fn()
@@ -110,7 +116,6 @@ import {
   runStreamingLlmTask,
   runLlmTask,
 } from '@/lib/llm/service'
-import { routeTask } from '@/lib/llm/task-router'
 
 describe('llm/service: structured + streaming', () => {
   beforeEach(() => {
@@ -277,6 +282,68 @@ describe('llm/service: structured + streaming', () => {
     expect(payload.isStream).toBe(true)
     expect(payload.isSuccess).toBe(true)
   })
+
+  it('downgrades expected streaming provider failures to warnings', async () => {
+    const { logWarn, logError } = await import('@/lib/logger')
+
+    currentModel = {
+      stream: streamingStream.mockRejectedValue(
+        new Error('Rate limit exceeded by upstream provider'),
+      ),
+    }
+
+    const res = await runStreamingLlmTask(
+      'deepseek-chat',
+      'job_match',
+      'zh',
+      {
+        resume_summary_json: '{}',
+        detailed_resume_summary_json: '{}',
+        job_summary_json: '{}',
+        rag_context: '...',
+      },
+      { userId: 'u_warn', serviceId: 's_warn' },
+    )
+
+    expect(res.ok).toBe(false)
+    expect(logWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: 'llm/stream',
+        phase: 'stream_error',
+      }),
+    )
+    expect(logError).not.toHaveBeenCalled()
+  })
+
+  it('keeps unexpected streaming failures as sentry errors', async () => {
+    const { logWarn, logError } = await import('@/lib/logger')
+
+    currentModel = {
+      stream: streamingStream.mockRejectedValue(new Error('socket crashed')),
+    }
+
+    const res = await runStreamingLlmTask(
+      'deepseek-chat',
+      'job_match',
+      'zh',
+      {
+        resume_summary_json: '{}',
+        detailed_resume_summary_json: '{}',
+        job_summary_json: '{}',
+        rag_context: '...',
+      },
+      { userId: 'u_err', serviceId: 's_err' },
+    )
+
+    expect(res.ok).toBe(false)
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: 'llm/stream',
+        phase: 'stream_error',
+      }),
+    )
+    expect(logWarn).not.toHaveBeenCalled()
+  })
 })
 
 describe('llm/service: runLlmTask integration with router', () => {
@@ -312,7 +379,7 @@ describe('llm/service: runLlmTask integration with router', () => {
       'job_vision_summary',
       'zh',
       { image: imgPath },
-      { tier: 'paid', hasImage: true },
+      { tier: 'free', hasImage: true },
     )
     expect(vision.ok).toBe(true)
     // structured path used invoke under the hood; our stub returns JSON, so raw is undefined

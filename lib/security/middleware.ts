@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SECURITY_CONFIG } from './config'
 import { createSecurityAuditLog } from './validation'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 
 // Edge Runtime compatible UUID generation
 function generateUUID(): string {
@@ -144,12 +144,13 @@ export function validateUserAuth(context: SecurityContext): { authorized: boolea
         { route, pattern: pattern.toString() }
       )
 
-      logError({
+      logWarn({
         reqId,
         route,
         userKey,
         phase: 'auth_validation',
-        error: 'Suspicious user key detected',
+        errorCode: 'suspicious_user_key',
+        message: 'Suspicious user key detected',
         auditLog
       })
 
@@ -192,7 +193,7 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
         logPayload.error = headerValidation.error
       }
 
-      logError(logPayload)
+      logWarn(logPayload)
 
       return NextResponse.json(
         { error: 'Invalid request headers', code: 'INVALID_HEADERS' },
@@ -222,7 +223,7 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
         authLogPayload.error = authResult.error
       }
 
-      logError(authLogPayload)
+      logWarn(authLogPayload)
 
       return NextResponse.json(
         { error: authResult.error, code: 'UNAUTHORIZED' },
@@ -253,7 +254,8 @@ export async function securityMiddleware(req: NextRequest): Promise<NextResponse
       route: context.route,
       userKey: context.userKey,
       phase: 'security_middleware',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error : new Error('security_middleware_error'),
+      message: error instanceof Error ? error.message : 'Unknown error',
       auditLog
     })
 

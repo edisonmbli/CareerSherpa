@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { logError } from '@/lib/logger'
+import { logError, logWarn } from '@/lib/logger'
 
 export interface ApiContext {
   reqId: string
@@ -30,6 +30,18 @@ export const API_ERRORS = {
   INTERNAL_ERROR: { code: 'internal_error', message: 'Internal server error', statusCode: 500 },
 } as const
 
+function resolveApiError(error: unknown): ApiError {
+  if (!(error instanceof Error)) {
+    return API_ERRORS.INTERNAL_ERROR
+  }
+
+  const errorKey = Object.keys(API_ERRORS).find((key) =>
+    error.message.includes(API_ERRORS[key as keyof typeof API_ERRORS].code),
+  ) as keyof typeof API_ERRORS | undefined
+
+  return errorKey ? API_ERRORS[errorKey] : API_ERRORS.INTERNAL_ERROR
+}
+
 /**
  * 创建API上下文
  */
@@ -55,28 +67,28 @@ export function handleApiError(error: unknown, context: ApiContext): NextRespons
   const { reqId, route, userKey, startTime } = context
   const durationMs = Date.now() - startTime
 
-  let apiError: ApiError
+  const apiError = resolveApiError(error)
+  const isExpectedFailure = apiError.statusCode < 500
 
-  if (error instanceof Error) {
-    // 根据错误消息映射到预定义的API错误
-    const errorKey = Object.keys(API_ERRORS).find(key => 
-      error.message.includes(API_ERRORS[key as keyof typeof API_ERRORS].code)
-    ) as keyof typeof API_ERRORS | undefined
-
-    apiError = errorKey ? API_ERRORS[errorKey] : API_ERRORS.INTERNAL_ERROR
-  } else {
-    apiError = API_ERRORS.INTERNAL_ERROR
-  }
-
-  // 记录错误日志
-  logError({
+  const logPayload = {
     reqId,
     route,
     userKey,
+    phase: 'api_error',
     durationMs,
-    error: apiError.code,
+    statusCode: apiError.statusCode,
+    errorCode: apiError.code,
     message: error instanceof Error ? error.message : 'Unknown error',
-  })
+  }
+
+  if (isExpectedFailure) {
+    logWarn(logPayload)
+  } else {
+    logError({
+      ...logPayload,
+      error: error instanceof Error ? error : new Error(apiError.code),
+    })
+  }
 
   return NextResponse.json(
     { error: apiError.code, message: apiError.message },

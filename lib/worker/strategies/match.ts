@@ -11,7 +11,7 @@ import {
   recordRefund,
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
-import { logError } from '@/lib/logger'
+import { logError, logWarn } from '@/lib/logger'
 import { FailureCode, AnalyticsCategory } from '@prisma/client'
 import {
   trackEvent,
@@ -394,7 +394,7 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
 
     if (!parseResult.ok) {
       const failure = parseResult as ParseFailure
-      logError({
+      logWarn({
         reqId: requestId,
         route: 'worker/match',
         error: failure.reason,
@@ -438,7 +438,7 @@ export class MatchStrategy implements WorkerStrategy<JobMatchVars> {
     const logicFailure = detectLogicFailure(matchJson)
 
     if (logicFailure) {
-      logError({
+      logWarn({
         reqId: requestId,
         route: 'worker/match',
         error: logicFailure.reason,

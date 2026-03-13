@@ -223,6 +223,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - handler (Stack Auth handler)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|handler|uploads).*)',
+    '/((?!api|monitoring|_next/static|_next/image|favicon.ico|handler|uploads).*)',
   ],
 };

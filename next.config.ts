@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
 
 const sentryOrg = process.env['SENTRY_ORG']
 const sentryProject = process.env['SENTRY_PROJECT']
+const sentryAuthToken = process.env['SENTRY_AUTH_TOKEN']
+const sentryRelease =
+  process.env['SENTRY_RELEASE'] ||
+  process.env['VERCEL_GIT_COMMIT_SHA'] ||
+  process.env['NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA']
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:
@@ -30,6 +35,8 @@ export default withSentryConfig(nextConfig, {
   ...(sentryOrg && sentryProject
     ? { org: sentryOrg, project: sentryProject }
     : {}),
+  ...(sentryAuthToken ? { authToken: sentryAuthToken } : {}),
+  ...(sentryRelease ? { release: { name: sentryRelease } } : {}),
 
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/

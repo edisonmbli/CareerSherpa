@@ -5,7 +5,7 @@ import {
   updateServiceExecutionStatus,
 } from '@/lib/dal/services'
 import { pushTask } from '@/lib/queue/producer'
-import { logError } from '@/lib/logger'
+import { logError, logWarn } from '@/lib/logger'
 import { markTimeline } from '@/lib/observability/timeline'
 import { ExecutionStatus } from '@prisma/client'
 import { getChannel, publishEvent } from '@/lib/worker/common'
@@ -76,10 +76,11 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
           riskContext += `- [${r.severity}] ${r.risk_point}: ${r.reasoning}\n`
         })
       } catch (e) {
-        logError({
+        logWarn({
           reqId: ctx.requestId,
           route: 'worker/pre_match',
-          error: String(e),
+          errorCode: 'format_risk_context_failed',
+          message: e instanceof Error ? e.message : String(e),
           phase: 'format_risk_context',
           serviceId,
         })
@@ -88,10 +89,15 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
       // Logic for failed audit?
       // Currently worker framework might stop here if execResult.ok is false.
       // But if we reach here, we should try to proceed to Match.
-      logError({
+      const auditErrorMessage =
+        typeof execResult.error === 'string' && execResult.error
+          ? execResult.error
+          : 'pre_match_audit_failed'
+      logWarn({
         reqId: ctx.requestId,
         route: 'worker/pre_match',
-        error: execResult.error,
+        errorCode: 'audit_failed',
+        message: auditErrorMessage,
         phase: 'audit_failed',
         serviceId,
       })
@@ -119,10 +125,11 @@ export class PreMatchStrategy implements WorkerStrategy<PreMatchAuditVars> {
           traceId,
         })
       } catch (e) {
-        logError({
+        logWarn({
           reqId: ctx.requestId,
           route: 'worker/pre_match',
-          error: String(e),
+          errorCode: 'publish_prematch_result_failed',
+          message: e instanceof Error ? e.message : String(e),
           phase: 'publish_prematch_result',
           serviceId,
         })

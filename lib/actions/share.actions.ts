@@ -16,7 +16,7 @@ import {
 import { checkRateLimit } from '@/lib/rateLimiter'
 import { extractReferrerDomain } from '@/lib/analytics/privacy'
 import { resolveAvatarForShare } from '@/lib/storage/avatar-server'
-import { logError } from '@/lib/logger'
+import { logWarn } from '@/lib/logger'
 import { z } from 'zod'
 
 export type ShareLinkResult =
@@ -231,11 +231,13 @@ export const generateShareLinkAction = withServerActionAuthWrite<
       serviceId,
     )
     if (!resolvedAvatar.ok) {
-      logError({
+      logWarn({
         reqId: serviceId,
         route: 'actions/share',
         phase: 'upload_avatar_failed',
-        error: resolvedAvatar.error,
+        errorCode: 'upload_avatar_failed',
+        message: resolvedAvatar.error,
+        serviceId,
       })
       return { ok: false, error: resolvedAvatar.error }
     }

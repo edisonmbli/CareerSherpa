@@ -8,6 +8,11 @@ import type {
 } from '@/lib/feedback/schema'
 import { buildPostHogFeedbackLinks } from '@/lib/feedback/posthog-links'
 import {
+  buildSentryFeedbackFallbackLinks,
+  buildSentryFeedbackLinks,
+  type SentryFeedbackLinks,
+} from '@/lib/sentry/links'
+import {
   enrichFeedbackPayload,
   type FeedbackDeliveryMode,
   type FeedbackEnrichment,
@@ -21,6 +26,17 @@ type DeliveryChannel = 'slack'
 type SlackBlock = Record<string, unknown>
 
 type SlackDeliveryMode = 'webhook_single' | 'bot_thread' | 'bot_main_only'
+
+function getDefaultSentryLinks(
+  payload: FeedbackDispatchPayload,
+): SentryFeedbackLinks | null {
+  return buildSentryFeedbackFallbackLinks({
+    ...(payload.context.sentryEventId
+      ? { eventId: payload.context.sentryEventId }
+      : {}),
+    runtime: payload.context.sentryRuntime || 'web',
+  })
+}
 
 function isSlackBotThreadReady() {
   return Boolean(
@@ -125,6 +141,7 @@ function addIfPresent(lines: string[], label: string, value: unknown) {
 function buildContextLines(
   payload: FeedbackDispatchPayload,
   enrichment?: FeedbackEnrichment,
+  sentryLinks?: SentryFeedbackLinks | null,
 ) {
   const posthogLinks = buildPostHogFeedbackLinks(payload.context)
   const lines = [
@@ -184,6 +201,8 @@ function buildContextLines(
   ]
 
   addIfPresent(lines, 'PostHog Person URL', posthogLinks.personUrl)
+  addIfPresent(lines, 'Sentry Event URL', sentryLinks?.eventUrl)
+  addIfPresent(lines, 'Sentry Search URL', sentryLinks?.searchUrl)
 
   addIfPresent(lines, 'Legacy Tier', payload.context.tier)
   addIfPresent(lines, 'Legacy Queue Type', payload.context.queueType)
@@ -200,8 +219,9 @@ function buildContextLines(
 export function buildFeedbackPlainText(
   payload: FeedbackDispatchPayload,
   enrichment?: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null = getDefaultSentryLinks(payload),
 ) {
-  const lines = buildContextLines(payload, enrichment)
+  const lines = buildContextLines(payload, enrichment, sentryLinks)
   return [
     `${getFeedbackTypeEmoji(payload.type)} ${buildFeedbackSubject(payload)}`,
     '',
@@ -252,6 +272,7 @@ function buildFieldSections(
 function buildSlackDetailBlocks(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null = getDefaultSentryLinks(payload),
 ): SlackBlock[] {
   const posthogLinks = buildPostHogFeedbackLinks(payload.context)
   const identifiers: Array<[string, string | undefined]> = [
@@ -266,6 +287,7 @@ function buildSlackDetailBlocks(
     ['PostHog ID', payload.context.posthogDistinctId],
     ['PostHog Session', payload.context.posthogSessionId],
     ['Sentry Event', payload.context.sentryEventId],
+    ['Sentry Runtime', payload.context.sentryRuntime],
   ]
 
   const debugSignals: Array<[string, string | undefined]> = [
@@ -280,6 +302,7 @@ function buildSlackDetailBlocks(
     ['Dispatch Target', '/api/feedback/dispatch'],
     ['PostHog App', posthogLinks.appBaseUrl],
     ['PostHog Project', posthogLinks.projectId],
+    ['Sentry Project', sentryLinks?.project],
     ['Legacy Tier', payload.context.tier || '-'],
     ['Legacy Queue Type', payload.context.queueType || '-'],
     [
@@ -346,6 +369,7 @@ function buildSlackDetailBlocks(
 function buildSlackMainBlocks(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null = getDefaultSentryLinks(payload),
   options: { includeThreadFooter?: boolean } = {},
 ): SlackBlock[] {
   const currentTabStatus = formatExtraValue(
@@ -406,6 +430,14 @@ function buildSlackMainBlocks(
       fields: buildMrkdwnFields([
         ['Open App', openAppUrl ? `<${openAppUrl}|Open current page>` : '-'],
         [
+          'Open Sentry',
+          payload.type === 'bug' && sentryLinks?.eventUrl
+            ? `<${sentryLinks.eventUrl}|Open event>`
+            : payload.type === 'bug' && sentryLinks?.searchUrl
+              ? `<${sentryLinks.searchUrl}|Find event>`
+              : undefined,
+        ],
+        [
           'PostHog Person',
           posthogLinks.personUrl
             ? `<${posthogLinks.personUrl}|Open person>`
@@ -442,6 +474,7 @@ function buildSlackMainBlocks(
 export function buildSlackPayload(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null = getDefaultSentryLinks(payload),
 ) {
   const textPrefix = ENV.FEEDBACK_SLACK_MENTION
     ? `${ENV.FEEDBACK_SLACK_MENTION} ${buildFeedbackSubject(payload)}`
@@ -449,7 +482,7 @@ export function buildSlackPayload(
 
   return {
     text: truncate(textPrefix, 200),
-    blocks: buildSlackMainBlocks(payload, enrichment, {
+    blocks: buildSlackMainBlocks(payload, enrichment, sentryLinks, {
       includeThreadFooter: true,
     }),
   }
@@ -458,16 +491,18 @@ export function buildSlackPayload(
 export function buildSlackThreadPayload(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null = getDefaultSentryLinks(payload),
 ) {
   return {
     text: truncate(`Details · ${buildFeedbackSubject(payload)}`, 200),
-    blocks: buildSlackDetailBlocks(payload, enrichment),
+    blocks: buildSlackDetailBlocks(payload, enrichment, sentryLinks),
   }
 }
 
 export function buildSlackSingleMessagePayload(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null = getDefaultSentryLinks(payload),
 ) {
   const textPrefix = ENV.FEEDBACK_SLACK_MENTION
     ? `${ENV.FEEDBACK_SLACK_MENTION} ${buildFeedbackSubject(payload)}`
@@ -476,11 +511,11 @@ export function buildSlackSingleMessagePayload(
   return {
     text: truncate(textPrefix, 200),
     blocks: [
-      ...buildSlackMainBlocks(payload, enrichment, {
+      ...buildSlackMainBlocks(payload, enrichment, sentryLinks, {
         includeThreadFooter: false,
       }),
       { type: 'divider' as const },
-      ...buildSlackDetailBlocks(payload, enrichment),
+      ...buildSlackDetailBlocks(payload, enrichment, sentryLinks),
     ],
   }
 }
@@ -498,10 +533,11 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = FEED
 async function deliverToSlack(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null,
 ) {
   if (isSlackBotThreadReady()) {
     try {
-      await deliverToSlackViaBot(payload, enrichment)
+      await deliverToSlackViaBot(payload, enrichment, sentryLinks)
       return
     } catch (error) {
       if (!ENV.FEEDBACK_SLACK_WEBHOOK_URL) {
@@ -514,17 +550,20 @@ async function deliverToSlack(
     throw new Error('missing_FEEDBACK_SLACK_CONFIG')
   }
 
-  await deliverToSlackViaWebhook(payload, enrichment)
+  await deliverToSlackViaWebhook(payload, enrichment, sentryLinks)
 }
 
 async function deliverToSlackViaWebhook(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null,
 ) {
   const response = await fetchWithTimeout(ENV.FEEDBACK_SLACK_WEBHOOK_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(buildSlackSingleMessagePayload(payload, enrichment)),
+    body: JSON.stringify(
+      buildSlackSingleMessagePayload(payload, enrichment, sentryLinks),
+    ),
   })
 
   if (!response.ok) {
@@ -562,12 +601,13 @@ async function postToSlackApi(body: Record<string, unknown>) {
 async function deliverToSlackViaBot(
   payload: FeedbackDispatchPayload,
   enrichment: FeedbackEnrichment,
+  sentryLinks: SentryFeedbackLinks | null,
 ): Promise<SlackDeliveryMode> {
   if (!ENV.FEEDBACK_SLACK_CHANNEL_ID) {
     throw new Error('missing_FEEDBACK_SLACK_CHANNEL_ID')
   }
 
-  const main = buildSlackPayload(payload, enrichment)
+  const main = buildSlackPayload(payload, enrichment, sentryLinks)
   const mainResult = await postToSlackApi({
     channel: ENV.FEEDBACK_SLACK_CHANNEL_ID,
     text: main.text,
@@ -581,7 +621,7 @@ async function deliverToSlackViaBot(
     throw new Error('slack_missing_thread_ts')
   }
 
-  const detail = buildSlackThreadPayload(payload, enrichment)
+  const detail = buildSlackThreadPayload(payload, enrichment, sentryLinks)
   try {
     await postToSlackApi({
       channel: ENV.FEEDBACK_SLACK_CHANNEL_ID,
@@ -614,9 +654,18 @@ export async function deliverFounderFeedback(
   const enrichment = await enrichFeedbackPayload(payload, {
     deliveryMode: options.deliveryMode || 'direct',
   })
+  const sentryLinks =
+    payload.type === 'bug' && payload.context.sentryEventId
+      ? await buildSentryFeedbackLinks({
+          ...(payload.context.sentryEventId
+            ? { eventId: payload.context.sentryEventId }
+            : {}),
+          runtime: payload.context.sentryRuntime || 'web',
+        })
+      : getDefaultSentryLinks(payload)
 
   const tasks = destinations.map(async (destination) => {
-    await deliverToSlack(payload, enrichment)
+    await deliverToSlack(payload, enrichment, sentryLinks)
     return destination
   })
 

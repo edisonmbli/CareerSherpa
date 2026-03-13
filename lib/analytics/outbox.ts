@@ -5,7 +5,7 @@ import {
   type PendingAnalyticsOutboxItem,
 } from '@/lib/dal/analyticsEvent'
 import { ENV } from '@/lib/env'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 
 type JsonRecord = Record<string, unknown>
 
@@ -261,14 +261,15 @@ export async function flushAnalyticsOutboxToPostHog(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     await markAnalyticsOutboxRetry(validIds, errorMessage, retryAfterSec)
-    logError({
+    logWarn({
       reqId: 'analytics-outbox',
       route: 'analytics/outbox',
       phase: 'flush_failed',
       attempted: pending.length,
       exported: 0,
       failed: validIds.length + invalidIds.length,
-      error: errorMessage,
+      errorCode: 'analytics_outbox_flush_failed',
+      message: errorMessage,
     })
     return {
       success: false,

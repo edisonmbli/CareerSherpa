@@ -27,7 +27,7 @@ import {
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
-import { logInfo, logError } from '@/lib/logger'
+import { logInfo, logError, logWarn } from '@/lib/logger'
 import {
   trackEvent,
   AnalyticsCategory,
@@ -299,10 +299,10 @@ export class SummaryStrategy implements WorkerStrategy<any> {
             traceId,
           })
         } catch (err) {
-          logError({
+          logWarn({
             reqId: requestId,
             route: 'worker/summary',
-            error: String(err),
+            error: err instanceof Error ? err.message : String(err),
             phase: 'publish_summary_success',
             serviceId,
           })
@@ -349,10 +349,10 @@ export class SummaryStrategy implements WorkerStrategy<any> {
           traceId,
         })
       } catch (err) {
-        logError({
+        logWarn({
           reqId: requestId,
           route: 'worker/summary',
-          error: String(err),
+          error: err instanceof Error ? err.message : String(err),
           phase: 'publish_summary_failed',
           serviceId,
         })

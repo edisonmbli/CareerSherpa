@@ -16,7 +16,7 @@ import {
   markDebitFailed,
 } from '@/lib/dal/coinLedger'
 import { AsyncTaskStatus, ExecutionStatus } from '@prisma/client'
-import { logError } from '@/lib/logger'
+import { logError, logWarn } from '@/lib/logger'
 import { toDataUrlFromImageSource } from '@/lib/utils/image-compress'
 import { ENV } from '@/lib/env'
 
@@ -81,10 +81,10 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
         }),
       )
       const cleanupPromise = clearJobImageData(serviceId).catch((err) =>
-        logError({
+        logWarn({
           reqId: requestId,
           route: 'worker/vision_summary',
-          error: String(err),
+          error: err instanceof Error ? err.message : String(err),
           phase: 'cleanup_job_image',
           serviceId,
         }),
@@ -130,10 +130,10 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
             traceId,
           })
         } catch (err) {
-          logError({
+          logWarn({
             reqId: requestId,
             route: 'worker/vision_summary',
-            error: String(err),
+            error: err instanceof Error ? err.message : String(err),
             phase: 'publish_summary_success',
             serviceId,
           })
@@ -196,10 +196,10 @@ export class JobVisionSummaryStrategy implements WorkerStrategy<any> {
           })
         }
       } catch (err) {
-        logError({
+        logWarn({
           reqId: requestId,
           route: 'worker/vision_summary',
-          error: String(err),
+          error: err instanceof Error ? err.message : String(err),
           phase: 'publish_summary_failed',
           serviceId,
         })

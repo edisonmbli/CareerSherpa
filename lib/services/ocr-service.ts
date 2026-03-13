@@ -6,7 +6,7 @@
  */
 
 import { runLlmTask } from '@/lib/llm/service'
-import { logInfo, logError } from '../logger'
+import { logInfo, logError, logWarn } from '../logger'
 
 /**
  * OCR extraction result interface
@@ -59,11 +59,13 @@ export class OCRService {
       }, { tier: 'free', hasImage: true, temperature: 0.1, maxTokens: 8000 })
 
       if (!result.ok || !result.data) {
-        logError({
+        logWarn({
           reqId: `ocr_${serviceId}`,
           route: 'ocr/extract',
           userKey: userId,
-          error: result.error || 'OCR extraction failed',
+          errorCode: 'ocr_extraction_failed',
+          message: result.error || 'OCR extraction failed',
+          sourceType,
           durationMs: Date.now() - startTime
         })
 
@@ -119,7 +121,8 @@ export class OCRService {
         reqId: `ocr_${serviceId}`,
         route: 'ocr/extract',
         userKey: userId,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error : new Error(String(error)),
+        message: error instanceof Error ? error.message : String(error),
         durationMs: Date.now() - startTime
       })
 
@@ -173,12 +176,13 @@ export class OCRService {
         notes: parsed.notes
       }
     } catch (error) {
-      logError({
+      logWarn({
         reqId: 'parseOCRResponse',
         route: 'ocr-service',
         userKey: 'system',
         phase: 'parse_error',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        errorCode: 'ocr_parse_error',
+        message: error instanceof Error ? error.message : 'Unknown error'
       })
       return null
     }

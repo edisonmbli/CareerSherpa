@@ -19,7 +19,7 @@ import {
 } from '@/lib/llm/task-router'
 import { buildQueueCounterKey, queueMaxSizeFor } from '@/lib/config/concurrency'
 import { bumpPending } from '@/lib/redis/counter'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getChannel, publishEvent } from '@/lib/worker/common'
 import {
   QSTASH_RETRY_BACKOFF_BASE_MS,
@@ -127,11 +127,12 @@ export async function pushTask<T extends TaskTemplateId>(
       traceId: effectiveTraceId,
       lastUpdatedAt: new Date().toISOString(),
     }).catch((e) =>
-      logError({
+      logWarn({
         reqId: params.taskId,
         route: 'queue/producer',
         phase: 'publish_queued_event_failed',
-        error: e instanceof Error ? e : String(e),
+        errorCode: 'publish_queued_event_failed',
+        message: e instanceof Error ? e.message : String(e),
         serviceId: params.serviceId,
       }),
     )
@@ -460,11 +461,12 @@ export async function pushTask<T extends TaskTemplateId>(
       traceId: effectiveTraceId,
       lastUpdatedAt: new Date().toISOString(),
     }).catch((err) => {
-      logError({
+      logWarn({
         reqId: params.taskId,
         route: 'queue/producer',
         phase: 'emit_queued_event_failed',
-        error: err instanceof Error ? err : String(err),
+        errorCode: 'emit_queued_event_failed',
+        message: err instanceof Error ? err.message : String(err),
         serviceId: params.serviceId,
       })
     })

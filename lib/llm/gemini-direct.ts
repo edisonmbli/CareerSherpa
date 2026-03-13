@@ -12,7 +12,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai'
-import { logDebug, logError } from '@/lib/logger'
+import { logDebug, logError, logWarn } from '@/lib/logger'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import type { ZodSchema } from 'zod'
 
@@ -48,6 +48,27 @@ export interface GeminiDirectResult {
     totalTokens?: number
   }
   error?: string
+}
+
+function isExpectedGeminiFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  const normalized = message.toLowerCase()
+  if (!normalized) return false
+
+  return (
+    normalized.includes('timeout') ||
+    normalized.includes('timed out') ||
+    normalized.includes('rate limit') ||
+    normalized.includes('too many requests') ||
+    normalized.includes('quota') ||
+    normalized.includes('busy') ||
+    normalized.includes('overloaded') ||
+    normalized.includes('unavailable') ||
+    normalized.includes('parse') ||
+    normalized.includes('json') ||
+    normalized.includes('candidate was blocked') ||
+    normalized.includes('finish reason')
+  )
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
@@ -158,7 +179,7 @@ export async function runGeminiStructured<T>(
       const jsonData = JSON.parse(rawText)
       parsed = schema.parse(jsonData)
     } catch (parseError: any) {
-      logError({
+      logWarn({
         reqId: 'llm',
         route: 'llm/gemini-direct',
         phase: 'structured_parse_error',
@@ -180,11 +201,12 @@ export async function runGeminiStructured<T>(
       ...(usage && { usage }),
     }
   } catch (error: any) {
-    logError({
+    const logFn = isExpectedGeminiFailure(error) ? logWarn : logError
+    logFn({
       reqId: 'llm',
       route: 'llm/gemini-direct',
       phase: 'structured_api_error',
-      error: error.message || error,
+      error: error instanceof Error ? error : String(error),
     })
     return {
       ok: false,
@@ -318,7 +340,7 @@ export async function runGeminiVision<T>(
       const jsonData = JSON.parse(rawText)
       parsed = schema.parse(jsonData)
     } catch (parseError: any) {
-      logError({
+      logWarn({
         reqId: 'llm',
         route: 'llm/gemini-direct',
         phase: 'vision_parse_error',
@@ -340,11 +362,12 @@ export async function runGeminiVision<T>(
       ...(usage && { usage }),
     }
   } catch (error: any) {
-    logError({
+    const logFn = isExpectedGeminiFailure(error) ? logWarn : logError
+    logFn({
       reqId: 'llm',
       route: 'llm/gemini-direct',
       phase: 'vision_api_error',
-      error: error.message || error,
+      error: error instanceof Error ? error : String(error),
     })
     return {
       ok: false,
@@ -507,7 +530,7 @@ export async function runGeminiStreaming<T>(
       }
       await withTimeout(consumeStream(), config.timeoutMs)
     } catch (streamErr) {
-      logError({
+      logWarn({
         reqId: 'llm',
         route: 'llm/gemini-direct',
         phase: 'stream_iteration_error',
@@ -537,7 +560,7 @@ export async function runGeminiStreaming<T>(
         const parsed = schema.parse(jsonData)
         return { ok: true, data: parsed, raw: fullText }
       } catch (parseError: any) {
-        logError({
+        logWarn({
           reqId: 'llm',
           route: 'llm/gemini-direct',
           phase: 'stream_parse_error',
@@ -554,11 +577,12 @@ export async function runGeminiStreaming<T>(
     // No schema, return raw text
     return { ok: true, data: fullText, raw: fullText }
   } catch (error: any) {
-    logError({
+    const logFn = isExpectedGeminiFailure(error) ? logWarn : logError
+    logFn({
       reqId: 'llm',
       route: 'llm/gemini-direct',
       phase: 'stream_api_error',
-      error: error.message || error,
+      error: error instanceof Error ? error : String(error),
     })
     return { ok: false, error: error.message || 'Unknown Gemini API error' }
   }

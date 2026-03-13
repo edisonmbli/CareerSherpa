@@ -18,7 +18,7 @@ import { acquireLock } from '@/lib/redis/lock'
 import { recordRefund, markDebitFailed } from '@/lib/dal/coinLedger'
 import { ExecutionStatus, AsyncTaskStatus, FailureCode } from '@prisma/client'
 import { ENV } from '@/lib/env'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 // Phase 1.5: Baidu OCR for Paid tier
 import { extractTextFromBaidu, isBaiduOcrReady } from '@/lib/services/baidu-ocr'
 import { compressIfNeeded } from '@/lib/utils/image-compress'
@@ -72,19 +72,21 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
             wordsCount: ocrResult.wordsCount,
           })
         } else {
-          logError({
+          logWarn({
             reqId: taskId,
             route: 'worker/ocr',
-            error: ocrResult.error || 'Unknown Baidu OCR error',
+            errorCode: 'baidu_ocr_failed',
+            message: ocrResult.error || 'Unknown Baidu OCR error',
             phase: 'baidu_ocr_failed',
             serviceId,
           })
         }
       } catch (e) {
-        logError({
+        logWarn({
           reqId: taskId,
           route: 'worker/ocr',
-          error: String(e),
+          errorCode: 'baidu_ocr_exception',
+          message: e instanceof Error ? e.message : String(e),
           phase: 'baidu_ocr_exception',
           serviceId,
         })
@@ -111,10 +113,11 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
         traceId,
       })
     } catch (err) {
-      logError({
+      logWarn({
         reqId: requestId,
         route: 'worker/ocr',
-        error: String(err),
+        errorCode: 'on_start_publish_failed',
+        message: err instanceof Error ? err.message : String(err),
         phase: 'onStart_publish',
         serviceId,
       })
@@ -219,10 +222,11 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           markTimeline(serviceId, 'worker_batch_write_ocr_db_end', { taskId }),
         )
         .catch((err) =>
-          logError({
+          logWarn({
             reqId: requestId,
             route: 'worker/ocr',
-            error: String(err),
+            errorCode: 'write_ocr_db_failed',
+            message: err instanceof Error ? err.message : String(err),
             phase: 'write_ocr_db',
             serviceId,
           }),
@@ -260,10 +264,11 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
           traceId,
         }),
       ]).catch((err) =>
-        logError({
+        logWarn({
           reqId: requestId,
           route: 'worker/ocr',
-          error: String(err),
+          errorCode: 'publish_ocr_result_failed',
+          message: err instanceof Error ? err.message : String(err),
           phase: 'publish_ocr_result',
           serviceId,
         }),
@@ -375,10 +380,11 @@ export class OcrExtractStrategy implements WorkerStrategy<OcrExtractVars> {
             traceId,
           })
         } catch (err) {
-          logError({
+          logWarn({
             reqId: requestId,
             route: 'worker/ocr',
-            error: String(err),
+            errorCode: 'publish_summary_pending_failed',
+            message: err instanceof Error ? err.message : String(err),
             phase: 'publish_summary_pending',
             serviceId,
           })

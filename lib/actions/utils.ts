@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 
 export interface ActionContext {
   reqId: string
@@ -33,6 +33,50 @@ export const ACTION_ERRORS = {
   SERVICE_NOT_FOUND: { code: 'service_not_found', message: 'Service not found' },
 } as const
 
+function resolveActionError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return {
+      errorCode: ACTION_ERRORS.INTERNAL_ERROR.code,
+      errorMessage: ACTION_ERRORS.INTERNAL_ERROR.message,
+      isExpectedFailure: false,
+    }
+  }
+
+  const errorKey = Object.keys(ACTION_ERRORS).find((key) =>
+    error.message.includes(ACTION_ERRORS[key as keyof typeof ACTION_ERRORS].code),
+  ) as keyof typeof ACTION_ERRORS | undefined
+
+  if (errorKey) {
+    const expectedCodes = new Set<string>([
+      ACTION_ERRORS.MISSING_FIELDS.code,
+      ACTION_ERRORS.INVALID_REQUEST.code,
+      ACTION_ERRORS.UNAUTHORIZED.code,
+      ACTION_ERRORS.FORBIDDEN.code,
+      ACTION_ERRORS.NOT_FOUND.code,
+      ACTION_ERRORS.RATE_LIMITED.code,
+      ACTION_ERRORS.QUOTA_EXCEEDED.code,
+      ACTION_ERRORS.LANGUAGE_INCONSISTENT.code,
+      ACTION_ERRORS.INVALID_RESUME_OR_JOB.code,
+      ACTION_ERRORS.TOO_MANY_PENDING.code,
+      ACTION_ERRORS.FILE_TOO_LARGE.code,
+      ACTION_ERRORS.UNSUPPORTED_FILE_TYPE.code,
+      ACTION_ERRORS.SERVICE_NOT_FOUND.code,
+    ])
+
+    return {
+      errorCode: ACTION_ERRORS[errorKey].code,
+      errorMessage: ACTION_ERRORS[errorKey].message,
+      isExpectedFailure: expectedCodes.has(ACTION_ERRORS[errorKey].code),
+    }
+  }
+
+  return {
+    errorCode: ACTION_ERRORS.INTERNAL_ERROR.code,
+    errorMessage: error.message || ACTION_ERRORS.INTERNAL_ERROR.message,
+    isExpectedFailure: false,
+  }
+}
+
 /**
  * 创建Action上下文
  */
@@ -52,36 +96,26 @@ export function handleActionError<T = any>(error: unknown, context: ActionContex
   const { reqId, action, userKey, startTime } = context
   const durationMs = Date.now() - startTime
 
-  let errorCode: string
-  let errorMessage: string
+  const { errorCode, errorMessage, isExpectedFailure } = resolveActionError(error)
 
-  if (error instanceof Error) {
-    // 根据错误消息映射到预定义的Action错误
-    const errorKey = Object.keys(ACTION_ERRORS).find(key => 
-      error.message.includes(ACTION_ERRORS[key as keyof typeof ACTION_ERRORS].code)
-    ) as keyof typeof ACTION_ERRORS | undefined
-
-    if (errorKey) {
-      errorCode = ACTION_ERRORS[errorKey].code
-      errorMessage = ACTION_ERRORS[errorKey].message
-    } else {
-      errorCode = ACTION_ERRORS.INTERNAL_ERROR.code
-      errorMessage = error.message || ACTION_ERRORS.INTERNAL_ERROR.message
-    }
-  } else {
-    errorCode = ACTION_ERRORS.INTERNAL_ERROR.code
-    errorMessage = ACTION_ERRORS.INTERNAL_ERROR.message
-  }
-
-  // 记录错误日志
-  logError({
+  const logPayload = {
     reqId,
     route: action,
     userKey,
+    phase: 'action_error',
     durationMs,
-    error: errorCode,
+    errorCode,
     message: error instanceof Error ? error.message : 'Unknown error',
-  })
+  }
+
+  if (isExpectedFailure) {
+    logWarn(logPayload)
+  } else {
+    logError({
+      ...logPayload,
+      error: error instanceof Error ? error : new Error(errorCode),
+    })
+  }
 
   return {
     success: false,
@@ -207,12 +241,13 @@ export function validateUserAccess(
   actionName: string
 ): boolean {
   if (authenticatedUserId !== resourceUserId) {
-    logError({
+    logWarn({
       reqId: 'server-action',
       route: actionName,
       userKey: authenticatedUserId,
       phase: 'authorization',
-      error: `Unauthorized access to user ${resourceUserId}`
+      errorCode: ACTION_ERRORS.FORBIDDEN.code,
+      message: `Unauthorized access to user ${resourceUserId}`,
     })
     return false
   }

@@ -6,7 +6,7 @@
  */
 
 import { getRedis } from '@/lib/redis/client'
-import { logInfo, logError } from '@/lib/logger'
+import { logInfo, logError, logWarn } from '@/lib/logger'
 import { isProdRedisReady } from '@/lib/env'
 
 // Baidu OCR API endpoints
@@ -123,11 +123,12 @@ async function getAccessToken(): Promise<string> {
 
             return token
         } catch (error) {
-            logError({
+            logWarn({
                 reqId: 'baidu_ocr_token',
                 route: 'baidu-ocr',
                 userKey: 'system',
-                error: String(error),
+                errorCode: 'baidu_ocr_token_cache_failed',
+                message: error instanceof Error ? error.message : String(error),
                 phase: 'redis_cache',
             })
             // Fall through to memory fallback
@@ -193,11 +194,12 @@ export async function extractTextFromBaidu(imageBase64: string): Promise<BaiduOc
         // Handle Baidu API errors
         if (result.error_code) {
             const errorMsg = `Baidu OCR error ${result.error_code}: ${result.error_msg}`
-            logError({
+            logWarn({
                 reqId: `baidu_ocr_${startTime}`,
                 route: 'baidu-ocr',
                 userKey: 'system',
-                error: errorMsg,
+                errorCode: 'baidu_ocr_api_error',
+                message: errorMsg,
                 phase: 'ocr_call',
                 durationMs: Date.now() - startTime,
             })
@@ -235,7 +237,8 @@ export async function extractTextFromBaidu(imageBase64: string): Promise<BaiduOc
             reqId: `baidu_ocr_${startTime}`,
             route: 'baidu-ocr',
             userKey: 'system',
-            error: errorMsg,
+            error: error instanceof Error ? error : new Error(errorMsg),
+            message: errorMsg,
             phase: 'ocr_exception',
             durationMs: Date.now() - startTime,
         })

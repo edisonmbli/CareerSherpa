@@ -19,6 +19,13 @@ const envSchema = z.object({
   LOG_INFO: z.enum(['true', 'false']).optional(),
   LOG_DEBUG: z.enum(['true', 'false']).optional(),
   SSE_DEBUG: z.enum(['true', 'false']).optional(),
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  SENTRY_RELEASE: z.string().optional(),
+  SENTRY_ENABLED: z.enum(['true', 'false']).optional(),
+  SENTRY_DEBUG: z.enum(['true', 'false']).optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.string().optional(),
+  SENTRY_PROFILES_SAMPLE_RATE: z.string().optional(),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)

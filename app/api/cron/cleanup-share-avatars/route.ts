@@ -4,7 +4,7 @@ import {
   getExpiredResumeSharesWithAvatar,
 } from '@/lib/dal/resumeShare'
 import { verifyCronAuthorization } from '@/lib/cron/auth'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { deleteShareAvatar } from '@/lib/storage/avatar-server'
 
 export const dynamic = 'force-dynamic'
@@ -41,11 +41,15 @@ export async function GET(req: NextRequest) {
         successIds.push(result.value.id)
       } else if (result.status === 'rejected') {
         failed += 1
-        logError({
+        logWarn({
           reqId: 'cron-cleanup-share-avatars',
           route: 'api/cron/cleanup-share-avatars',
           phase: 'delete_failed',
-          error: result.reason instanceof Error ? result.reason : String(result.reason),
+          errorCode: 'share_avatar_delete_failed',
+          message:
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason),
         })
       }
     }

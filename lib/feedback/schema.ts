@@ -29,6 +29,7 @@ export const feedbackContextSchema = z.object({
   pathname: z.string().trim().max(400).optional(),
   title: z.string().trim().max(240).optional(),
   sentryEventId: z.string().trim().max(128).optional(),
+  sentryRuntime: z.enum(['web', 'worker']).optional(),
   posthogDistinctId: z.string().trim().max(128).optional(),
   posthogSessionId: z.string().trim().max(128).optional(),
   posthogReplayUrl: z.string().url().max(1600).optional(),

@@ -10,6 +10,7 @@ import {
 } from '@/lib/feedback/delivery'
 import type { FeedbackEnrichment } from '@/lib/feedback/enrichment'
 import { buildPostHogFeedbackLinks } from '@/lib/feedback/posthog-links'
+import { buildSentryFeedbackFallbackLinks } from '@/lib/sentry/links'
 import type { FeedbackDispatchPayload } from '@/lib/feedback/schema'
 
 const basePayload: FeedbackDispatchPayload = {
@@ -80,6 +81,10 @@ const originalEnv = {
   posthogAppBaseUrl: ENV.POSTHOG_APP_BASE_URL,
   posthogProjectId: ENV.POSTHOG_PROJECT_ID,
   posthogPersonUrlTemplate: ENV.POSTHOG_PERSON_URL_TEMPLATE,
+  sentryOrg: ENV.SENTRY_ORG,
+  sentryProject: ENV.SENTRY_PROJECT,
+  sentryWorkerProject: ENV.SENTRY_WORKER_PROJECT,
+  sentryBaseUrl: ENV.SENTRY_BASE_URL,
 }
 
 afterEach(() => {
@@ -90,6 +95,10 @@ afterEach(() => {
   ENV.POSTHOG_APP_BASE_URL = originalEnv.posthogAppBaseUrl
   ENV.POSTHOG_PROJECT_ID = originalEnv.posthogProjectId
   ENV.POSTHOG_PERSON_URL_TEMPLATE = originalEnv.posthogPersonUrlTemplate
+  ENV.SENTRY_ORG = originalEnv.sentryOrg
+  ENV.SENTRY_PROJECT = originalEnv.sentryProject
+  ENV.SENTRY_WORKER_PROJECT = originalEnv.sentryWorkerProject
+  ENV.SENTRY_BASE_URL = originalEnv.sentryBaseUrl
 })
 
 describe('feedback delivery helpers', () => {
@@ -101,6 +110,8 @@ describe('feedback delivery helpers', () => {
   it('renders auto-attached context into plain text', () => {
     ENV.POSTHOG_APP_BASE_URL = 'https://us.posthog.com'
     ENV.POSTHOG_PROJECT_ID = '42'
+    ENV.SENTRY_ORG = 'career-sherpa'
+    ENV.SENTRY_PROJECT = 'career-shaper-web'
     const text = buildFeedbackPlainText(basePayload, enrichment)
     expect(text).toContain('Step 2 keeps loading')
     expect(text).toContain('Surface: workbench')
@@ -108,6 +119,7 @@ describe('feedback delivery helpers', () => {
     expect(text).toContain('PostHog Distinct ID: ph_123')
     expect(text).toContain('PostHog Session ID: sess_123')
     expect(text).toContain('PostHog Person URL: https://us.posthog.com/project/42/person/ph_123')
+    expect(text).toContain('Sentry Search URL: https://sentry.io/organizations/career-sherpa/issues/?project=career-shaper-web&query=sentry_123')
     expect(text).toContain('Tab Status: CUSTOMIZE_PENDING')
     expect(text).toContain('Billing Mode: paid')
     expect(text).toContain('Model: deepseek/deepseek-reasoner')
@@ -116,12 +128,15 @@ describe('feedback delivery helpers', () => {
   it('builds block-kit payload with triage-first sections', () => {
     ENV.POSTHOG_APP_BASE_URL = 'https://us.posthog.com'
     ENV.POSTHOG_PROJECT_ID = '42'
+    ENV.SENTRY_ORG = 'career-sherpa'
+    ENV.SENTRY_PROJECT = 'career-shaper-web'
     const slackPayload = buildSlackPayload(basePayload, enrichment)
     expect(slackPayload.text).toContain('Founder Inbox')
     expect(Array.isArray(slackPayload.blocks)).toBe(true)
     expect(JSON.stringify(slackPayload.blocks)).toContain('Open current page')
     expect(JSON.stringify(slackPayload.blocks)).toContain('Open person')
     expect(JSON.stringify(slackPayload.blocks)).toContain('Open replay')
+    expect(JSON.stringify(slackPayload.blocks)).toContain('Find event')
     expect(JSON.stringify(slackPayload.blocks)).toContain('deepseek-reasoner')
     expect(JSON.stringify(slackPayload.blocks)).not.toContain('Debug / Signals')
     expect(JSON.stringify(slackPayload.blocks)).toContain('Details are in thread')
@@ -162,10 +177,20 @@ describe('feedback delivery helpers', () => {
 
   it('detects configured destinations from env flags', () => {
     ENV.FEEDBACK_SLACK_WEBHOOK_URL = 'https://hooks.slack.com/test'
-    ENV.FEEDBACK_RESEND_API_KEY = 're_test'
-    ENV.FEEDBACK_RESEND_FROM_EMAIL = 'bot@careershaper.com'
-    ENV.FEEDBACK_RESEND_TO_EMAIL = 'founder@careershaper.com'
 
     expect(getConfiguredFeedbackDestinations()).toEqual(['slack'])
+  })
+
+  it('builds a fallback Sentry search link for bug feedback', () => {
+    ENV.SENTRY_ORG = 'career-sherpa'
+    ENV.SENTRY_PROJECT = 'career-shaper-web'
+    const links = buildSentryFeedbackFallbackLinks({
+      eventId: 'evt_123',
+      runtime: 'web',
+    })
+
+    expect(links?.searchUrl).toBe(
+      'https://sentry.io/organizations/career-sherpa/issues/?project=career-shaper-web&query=evt_123',
+    )
   })
 })

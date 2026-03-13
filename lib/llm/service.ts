@@ -283,7 +283,7 @@ export async function runEmbeddingBatch(
 }
 
 import { logDebugData } from '@/lib/llm/debug'
-import { logDebug, logError } from '@/lib/logger'
+import { logDebug, logError, logWarn } from '@/lib/logger'
 
 export async function runStructuredLlmTask<T extends TaskTemplateId>(
   modelId: ModelId,
@@ -844,11 +844,12 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
-    logError({
+    const logFn = shouldWarnForLlmFailure(error) ? logWarn : logError
+    logFn({
       reqId: context.serviceId || 'llm',
       route: 'llm/structured',
       phase: 'structured_error',
-      error: mapErrorToMessage(error),
+      error: error instanceof Error ? error : mapErrorToMessage(error),
       meta: { templateId, modelId },
     })
     return {
@@ -878,6 +879,23 @@ function mapErrorToCode(error: any): FailureCode | undefined {
     return FailureCode.JSON_PARSE_FAILED
   }
   return undefined
+}
+
+function shouldWarnForLlmFailure(error: unknown): boolean {
+  if (mapErrorToCode(error)) return true
+  const message = mapErrorToMessage(error).toLowerCase()
+  return (
+    message.includes('rate limit') ||
+    message.includes('too many requests') ||
+    message.includes('quota') ||
+    message.includes('busy') ||
+    message.includes('overloaded') ||
+    message.includes('unavailable') ||
+    message.includes('content filter') ||
+    message.includes('safety') ||
+    message.includes('invalid response') ||
+    message.includes('candidate was blocked')
+  )
 }
 
 export async function runStreamingLlmTask<T extends TaskTemplateId>(
@@ -1115,11 +1133,12 @@ export async function runStreamingLlmTask<T extends TaskTemplateId>(
       ...(context.userId ? { userId: context.userId } : {}),
       ...(context.serviceId ? { serviceId: context.serviceId } : {}),
     })
-    logError({
+    const logFn = shouldWarnForLlmFailure(error) ? logWarn : logError
+    logFn({
       reqId: context.serviceId || 'llm',
       route: 'llm/stream',
       phase: 'stream_error',
-      error: errorMessage,
+      error: error instanceof Error ? error : errorMessage,
       meta: {
         templateId,
         modelId,

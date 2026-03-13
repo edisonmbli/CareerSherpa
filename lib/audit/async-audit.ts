@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '../prisma'
-import { logInfo, logError } from '../logger'
+import { logInfo, logWarn } from '../logger'
 import { isProdRedisReady } from '../env'
 import type { Prisma } from '@prisma/client'
 
@@ -57,10 +57,11 @@ class AuditLogQueue {
    */
   enqueue(entry: AuditLogEntry): boolean {
     if (this.queue.length >= this.maxQueueSize) {
-      logError({
+      logWarn({
         reqId: entry.reqId || 'audit-queue',
         route: 'audit-queue',
-        error: 'audit_queue_full',
+        errorCode: 'audit_queue_full',
+        message: 'Audit queue is full',
         queueSize: this.queue.length
       })
       return false
@@ -118,10 +119,11 @@ class AuditLogQueue {
       const errorMessage = error instanceof Error ? error.message : 'unknown_error'
       errors.push(errorMessage)
 
-      logError({
+      logWarn({
         reqId: `audit-flush-${Date.now()}`,
         route: 'audit-flush',
-        error: errorMessage,
+        errorCode: 'audit_flush_failed',
+        message: errorMessage,
         batchSize: batch.length
       })
     } finally {
