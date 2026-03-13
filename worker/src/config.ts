@@ -1,9 +1,27 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import fs from 'node:fs'
 import dotenv from 'dotenv'
 import { z } from 'zod'
 
-dotenv.config({ path: '../.env.local' })
-dotenv.config({ path: '.env.local' })
-dotenv.config()
+const currentFile = fileURLToPath(import.meta.url)
+const workerSrcDir = path.dirname(currentFile)
+const workerDir = path.resolve(workerSrcDir, '..')
+const repoRoot = path.resolve(workerDir, '..')
+
+// Load worker-specific env first, then fall back to repo-level shared env.
+// This keeps worker runtime config deterministic regardless of current cwd.
+const envCandidates = [
+  path.join(workerDir, '.env.local'),
+  path.join(workerDir, '.env'),
+  path.join(repoRoot, '.env.local'),
+  path.join(repoRoot, '.env'),
+]
+
+for (const envPath of envCandidates) {
+  if (!fs.existsSync(envPath)) continue
+  dotenv.config({ path: envPath })
+}
 
 const envSchema = z.object({
   NODE_ENV: z
@@ -20,6 +38,10 @@ const envSchema = z.object({
   LOG_DEBUG: z.enum(['true', 'false']).optional(),
   SSE_DEBUG: z.enum(['true', 'false']).optional(),
   SENTRY_DSN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_WORKER_PROJECT: z.string().optional(),
+  SENTRY_BASE_URL: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().optional(),
   SENTRY_RELEASE: z.string().optional(),
   SENTRY_ENABLED: z.enum(['true', 'false']).optional(),
