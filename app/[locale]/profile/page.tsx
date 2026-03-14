@@ -89,8 +89,10 @@ export default async function ProfilePage({
   const fStatus = (sp?.status || '') as any
   const fTemplate = (sp?.tpl || '') as string
   const fService = (sp?.svc || '') as string
-  const fAfter = sp?.after ? new Date(String(sp.after)) : undefined
-  const fBefore = sp?.before ? new Date(String(sp.before)) : undefined
+  const fAfterRaw = sp?.after ? String(sp.after) : ''
+  const fBeforeRaw = sp?.before ? String(sp.before) : ''
+  const fAfter = parseDateFilterBoundary(fAfterRaw, 'start')
+  const fBefore = parseDateFilterBoundary(fBeforeRaw, 'end')
   const user = await stackServerApp.getUser()
   const latestResume = user ? await getLatestResume(user.id) : null
   const latestDetailed = user ? await getLatestDetailedResume(user.id) : null
@@ -378,7 +380,7 @@ export default async function ProfilePage({
                             page - 1,
                           )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
                             }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
-                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
+                            }${fAfterRaw ? `&after=${encodeURIComponent(fAfterRaw)}` : ''}${fBeforeRaw ? `&before=${encodeURIComponent(fBeforeRaw)}` : ''
                             }`}
                           className={`px-2 py-0.5 rounded border text-xs ${page <= 1 ? 'opacity-40 pointer-events-none' : ''
                             }`}
@@ -396,7 +398,7 @@ export default async function ProfilePage({
                             page + 1,
                           )}${fType ? `&type=${fType}` : ''}${fStatus ? `&status=${fStatus}` : ''
                             }${fTemplate ? `&tpl=${fTemplate}` : ''}${fService ? `&svc=${fService}` : ''
-                            }${fAfter ? `&after=${fAfter.toISOString()}` : ''}${fBefore ? `&before=${fBefore.toISOString()}` : ''
+                            }${fAfterRaw ? `&after=${encodeURIComponent(fAfterRaw)}` : ''}${fBeforeRaw ? `&before=${encodeURIComponent(fBeforeRaw)}` : ''
                             }`}
                           className={`px-2 py-0.5 rounded border text-xs ${page >= pageCount
                             ? 'opacity-40 pointer-events-none'
@@ -451,4 +453,25 @@ export default async function ProfilePage({
       </div>
     </PostHogProvider>
   )
+}
+
+function parseDateFilterBoundary(
+  raw: string,
+  boundary: 'start' | 'end',
+): Date | undefined {
+  if (!raw) return undefined
+
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
+  if (dateOnly) {
+    const [, y, m, d] = dateOnly
+    const year = Number(y)
+    const month = Number(m) - 1
+    const day = Number(d)
+    return boundary === 'start'
+      ? new Date(year, month, day, 0, 0, 0, 0)
+      : new Date(year, month, day, 23, 59, 59, 999)
+  }
+
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed
 }

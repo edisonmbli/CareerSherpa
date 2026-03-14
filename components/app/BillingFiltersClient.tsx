@@ -48,9 +48,8 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
     const params = new URLSearchParams(sp.toString())
     const end = new Date()
     const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-    const fmt = (d: Date) => d.toISOString().slice(0, 10)
-    params.set('after', fmt(start))
-    params.set('before', fmt(end))
+    params.set('after', formatDateParam(start))
+    params.set('before', formatDateParam(end))
     params.set('tab', 'billing')
     params.set('page', '1')
     router.push(`${pathname}?${params.toString()}`)
@@ -265,4 +264,11 @@ export function BillingFiltersClient({ locale, dict, mode = 'panel' }: { locale:
       )}
     </div>
   )
+}
+
+function formatDateParam(d: Date) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

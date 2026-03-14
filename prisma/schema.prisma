@@ -36,8 +36,8 @@ model Quota {
   id        String     @id @default(cuid())
   userId    String     @unique @map("user_id")
   balance   Int        @default(0)
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade, map: "quota_user_id_fkey")
 
   @@map("quotas")
@@ -86,7 +86,7 @@ model PaymentWaitlist {
   id        String     @id @default(cuid())
   userId    String     @unique @map("user_id")
   email     String
-  createdAt DateTime   @default(now()) @map("created_at")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   user      users_sync @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payment_waitlist")
@@ -100,8 +100,8 @@ model Resume {
   resumeSummaryJson Json?           @map("resume_summary_json")
   parsedProfileJson Json?           @map("parsed_profile_json")
   status            AsyncTaskStatus @default(PENDING)
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user              users_sync      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "resume_user_id_fkey")
   services          Service[]
 
@@ -116,8 +116,8 @@ model DetailedResume {
   detailedSummaryJson Json?           @map("detailed_summary_json")
   parsedKeyInfoJson   Json?           @map("parsed_key_info_json")
   status              AsyncTaskStatus @default(PENDING)
-  createdAt           DateTime        @default(now()) @map("created_at")
-  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user                users_sync      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "detailed_resume_user_id_fkey")
   services            Service[]
 
@@ -131,8 +131,8 @@ model Service {
   resumeId           String            @map("resume_id")
   detailedResumeId   String?           @map("detailed_resume_id")
   currentStep        ServiceStep       @default(MATCH) @map("current_step")
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at")
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   currentStatus      ExecutionStatus   @default(IDLE) @map("current_status")
   executionSessionId String?           @map("execution_session_id")
   failureCode        FailureCode?      @map("failure_code")
@@ -159,8 +159,8 @@ model Job {
   originalImage  String?         @map("original_image")
   jobSummaryJson Json?           @map("job_summary_json")
   status         AsyncTaskStatus @default(PENDING)
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   imageUrl       String?         @map("image_url")
   service        Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
@@ -173,8 +173,8 @@ model Match {
   serviceId        String          @unique @map("service_id")
   matchSummaryJson Json?           @map("match_summary_json")
   status           AsyncTaskStatus @default(PENDING)
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("matches")
@@ -185,8 +185,8 @@ model CustomizedResume {
   id                   String          @id @default(cuid())
   serviceId            String          @unique @map("service_id")
   status               AsyncTaskStatus @default(PENDING)
-  createdAt            DateTime        @default(now()) @map("created_at")
-  updatedAt            DateTime        @default(now()) @updatedAt @map("updated_at")
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   degradeReason        String?         @map("degrade_reason")
   markdown_text        String?
   ops_json             Json?
@@ -209,8 +209,8 @@ model ResumeShare {
   avatarUrl          String?          @map("avatar_url")
   expireAt           DateTime?        @map("expire_at")
   viewCount          Int              @default(0) @map("view_count")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   customizedResume   CustomizedResume @relation(fields: [customizedResumeId], references: [id], onDelete: Cascade)
 
   @@map("resume_shares")
@@ -222,8 +222,8 @@ model Interview {
   serviceId         String          @unique @map("service_id")
   interviewTipsJson Json?           @map("interview_tips_json")
   status            AsyncTaskStatus @default(PENDING)
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   service           Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("interviews")
@@ -238,8 +238,8 @@ model KnowledgeEntry {
   source    String?
   category  String?
   isPublic  Boolean                @default(true) @map("is_public")
-  createdAt DateTime               @default(now()) @map("created_at")
-  updatedAt DateTime               @updatedAt @map("updated_at")
+  createdAt DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
   title     String?
 
   @@index([lang, category, isPublic])
@@ -264,8 +264,8 @@ model AnalyticsEvent {
   errorCode      String?            @map("error_code")
   idempotencyKey String?            @map("idempotency_key")
   duration       Int?
-  occurredAt     DateTime           @default(now()) @map("occurred_at")
-  createdAt      DateTime           @default(now()) @map("created_at")
+  occurredAt     DateTime           @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   user           users_sync?        @relation(fields: [userId], references: [id])
   outbox         AnalyticsOutbox?
 
@@ -288,10 +288,10 @@ model AnalyticsOutbox {
   payload    Json
   retryCount Int            @default(0) @map("retry_count")
   lastError  String?        @map("last_error")
-  nextRetryAt DateTime?     @map("next_retry_at")
-  exportedAt DateTime?      @map("exported_at")
-  createdAt  DateTime       @default(now()) @map("created_at")
-  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at")
+  nextRetryAt DateTime?     @map("next_retry_at") @db.Timestamptz(6)
+  exportedAt DateTime?      @map("exported_at") @db.Timestamptz(6)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   event      AnalyticsEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([exportedAt, nextRetryAt, createdAt(sort: Asc)])
@@ -339,7 +339,7 @@ model CoinTransaction {
   idemKey      String?           @unique @map("idem_key")
   relatedId    String?           @map("related_id")
   metadata     Json?
-  createdAt    DateTime          @default(now()) @map("created_at")
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   related      CoinTransaction?  @relation("RelatedLedger", fields: [relatedId], references: [id])
   refunds      CoinTransaction[] @relation("RelatedLedger")
   service      Service?          @relation(fields: [serviceId], references: [id])
@@ -375,10 +375,10 @@ model FeedbackInbox {
   status           FeedbackInboxStatus @default(PENDING)
   deliveryAttempts Int                 @default(0) @map("delivery_attempts")
   lastDeliveryError String?            @map("last_delivery_error")
-  lastDeliveredAt  DateTime?           @map("last_delivered_at")
-  nextRetryAt      DateTime?           @map("next_retry_at")
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at")
+  lastDeliveredAt  DateTime?           @map("last_delivered_at") @db.Timestamptz(6)
+  nextRetryAt      DateTime?           @map("next_retry_at") @db.Timestamptz(6)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user             users_sync          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status, nextRetryAt, createdAt(sort: Asc)])
