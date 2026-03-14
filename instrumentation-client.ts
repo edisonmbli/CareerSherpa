@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { persistRecentSentryBrowserEvent } from "@/lib/sentry/browser";
 
 Sentry.init({
   dsn: "https://8b13880a0e6bf75a1f3c9db92ea958f0@o4511037009887232.ingest.us.sentry.io/4511037053534208",
@@ -26,6 +27,14 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
+  beforeSend(event) {
+    if (event.event_id) {
+      persistRecentSentryBrowserEvent(event.event_id, {
+        pathname: typeof window !== "undefined" ? window.location.pathname : undefined,
+      });
+    }
+    return event;
+  },
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
