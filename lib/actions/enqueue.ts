@@ -22,6 +22,8 @@ export async function ensureEnqueued<T extends TaskTemplateId>(args: {
   locale: Locale
   templateId: T
   variables: VariablesFor<T>
+  routingSource?: 'explicit' | 'fresh_db'
+  hasQuota?: boolean
 }): Promise<EnsureEnqueuedResult> {
   const res = await pushTask(args)
   if (res.replay) {

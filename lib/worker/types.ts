@@ -16,6 +16,7 @@ const paidTier = z.enum(['paid', 'free']).optional()
 
 export const resumeSummaryVars = z.object({
   resumeId: z.string().min(1),
+  resume_text: z.string().optional(),
   wasPaid: z.boolean(),
   cost: z.number(),
   debitId: z.string().optional(),
@@ -25,6 +26,7 @@ export const resumeSummaryVars = z.object({
 
 export const detailedResumeSummaryVars = z.object({
   detailedResumeId: z.string().min(1),
+  detailed_resume_text: z.string().optional(),
   wasPaid: z.boolean(),
   cost: z.number(),
   debitId: z.string().optional(),

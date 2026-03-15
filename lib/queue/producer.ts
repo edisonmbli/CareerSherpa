@@ -22,10 +22,6 @@ import { bumpPending } from '@/lib/redis/counter'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getChannel, publishEvent } from '@/lib/worker/common'
 import {
-  QSTASH_RETRY_BACKOFF_BASE_MS,
-  QSTASH_WORKER_RETRIES,
-} from '@/lib/constants'
-import {
   AnalyticsCategory,
   AnalyticsOutcome,
   AnalyticsQueueKind,
@@ -43,6 +39,8 @@ export interface PushTaskParams<T extends TaskTemplateId> {
   locale: Locale
   templateId: T
   variables: VariablesFor<T>
+  routingSource?: 'explicit' | 'fresh_db'
+  hasQuota?: boolean
   /** Optional delay before task dispatch (in seconds). Useful to avoid lock contention. */
   delaySec?: number
 }
@@ -65,16 +63,24 @@ export async function pushTask<T extends TaskTemplateId>(
   error?: string
 }> {
   const client = getQStash()
-  const quotaInfo = await checkQuotaForService(params.userId)
   const tierOverride = params.variables.tierOverride
+  const routingSource = params.routingSource ?? 'fresh_db'
+  const quotaInfo =
+    routingSource === 'fresh_db'
+      ? await checkQuotaForService(params.userId)
+      : null
   const hasQuota =
     tierOverride === 'paid'
       ? true
       : tierOverride === 'free'
         ? false
-        : typeof (params.variables as any)?.wasPaid === 'boolean'
+        : typeof params.hasQuota === 'boolean'
+          ? params.hasQuota
+          : typeof (params.variables as any)?.wasPaid === 'boolean'
           ? Boolean((params.variables as any)?.wasPaid)
-          : !quotaInfo.shouldUseFreeQueue
+          : quotaInfo
+            ? !quotaInfo.shouldUseFreeQueue
+            : false
   const decision =
     params.templateId === 'job_summary' &&
     'image' in params.variables &&
@@ -139,10 +145,6 @@ export async function pushTask<T extends TaskTemplateId>(
   } catch (e) {
     // Ignore error
   }
-
-  // Check quota to decide trial/bound rate limits (for queue routing only)
-  // Note: Rate limiting is now done at the server action level (user-centric)
-  const { shouldUseFreeQueue } = quotaInfo
 
   // Map template to idempotency step when applicable
   const TEMPLATE_TO_STEP: Partial<Record<TaskTemplateId, IdempotencyStep>> = {
@@ -286,6 +288,14 @@ export async function pushTask<T extends TaskTemplateId>(
 
   let res: any
   try {
+    await markTimeline(params.serviceId, 'enqueue_start', {
+      taskId: params.taskId,
+      templateId: params.templateId,
+      kind: params.kind,
+      queueId: String(decision.queueId || ''),
+      routingSource,
+      hasQuota,
+    })
     logInfo({
       reqId: params.taskId,
       route: 'pushTask',
@@ -309,12 +319,11 @@ export async function pushTask<T extends TaskTemplateId>(
           variables: params.variables,
           enqueuedAt: Date.now(),
           retryCount: 0,
-          qstashRetries: QSTASH_WORKER_RETRIES,
+          qstashRetries: ENV.QSTASH_WORKER_RETRIES,
         },
-        // M10 Optimization: Re-enable retries with exponential backoff
-        retries: QSTASH_WORKER_RETRIES,
+        retries: ENV.QSTASH_WORKER_RETRIES,
         backoff: (retryCount: number) =>
-          Math.exp(retryCount) * QSTASH_RETRY_BACKOFF_BASE_MS,
+          Math.exp(retryCount) * ENV.QSTASH_RETRY_BACKOFF_BASE_MS,
         // Delay dispatch to allow previous worker to release lock
         ...(params.delaySec && params.delaySec > 0
           ? { delay: params.delaySec }
@@ -476,6 +485,13 @@ export async function pushTask<T extends TaskTemplateId>(
 
   await markTimeline(params.serviceId, 'producer_enqueued', {
     taskId: params.taskId,
+    queueId: String(decision.queueId || ''),
+    messageId: res.messageId,
+  })
+  await markTimeline(params.serviceId, 'enqueue_done', {
+    taskId: params.taskId,
+    templateId: params.templateId,
+    kind: params.kind,
     queueId: String(decision.queueId || ''),
     messageId: res.messageId,
   })

@@ -4,6 +4,8 @@ import {
   getTtlSec,
   getChannel,
   publishEvent,
+  queueEventPublish,
+  flushPendingChannelEvents,
   exitModelConcurrency,
   exitUserConcurrency,
 } from '@/lib/worker/common'
@@ -324,6 +326,104 @@ async function handleGuardFailure(params: {
   )
 }
 
+async function handlePrepareVarsFailure(params: {
+  error: unknown
+  strategy: any
+  variables: Record<string, unknown>
+  ctxBase: Record<string, unknown>
+  userId: string
+  serviceId: string
+  taskId: string
+  templateId: string
+  channel: string
+  requestId: string
+  traceId: string
+  runtime: AnalyticsRuntime
+  kind: 'stream' | 'batch'
+  startedAt: number
+}) {
+  const {
+    error,
+    strategy,
+    variables,
+    ctxBase,
+    userId,
+    serviceId,
+    taskId,
+    templateId,
+    channel,
+    requestId,
+    traceId,
+    runtime,
+    kind,
+    startedAt,
+  } = params
+  const errorMessage = error instanceof Error ? error.message : String(error)
+
+  logError({
+    reqId: requestId,
+    route: `worker/${kind}`,
+    phase: 'prepare_vars_failed',
+    serviceId,
+    error,
+  })
+
+  try {
+    await publishEvent(channel, {
+      type: 'error',
+      taskId,
+      code: 'prepare_vars_failed',
+      error: errorMessage,
+      stage: 'prepare_vars',
+      requestId,
+      traceId,
+    })
+  } catch {
+    // best effort
+  }
+
+  try {
+    await strategy.writeResults(
+      { ok: false, error: errorMessage, raw: '' },
+      variables,
+      ctxBase as any,
+    )
+  } catch (writeError) {
+    logError({
+      reqId: requestId,
+      route: `worker/${kind}`,
+      phase: 'prepare_vars_failed_write_results',
+      serviceId,
+      error: writeError,
+    })
+  }
+
+  trackEvent('WORKER_JOB_FINISHED', {
+    userId,
+    serviceId,
+    taskId,
+    traceId,
+    category: AnalyticsCategory.SYSTEM,
+    source: AnalyticsSource.WORKER,
+    runtime,
+    queueKind:
+      kind === 'stream' ? AnalyticsQueueKind.STREAM : AnalyticsQueueKind.BATCH,
+    outcome: AnalyticsOutcome.FAILED,
+    errorCode: 'PREPARE_VARS_FAILED',
+    duration: Date.now() - startedAt,
+    payload: {
+      templateId,
+      success: false,
+      error: errorMessage,
+    },
+  })
+
+  return Response.json(
+    { ok: false, reason: 'prepare_vars_failed', error: errorMessage },
+    { status: 500 },
+  )
+}
+
 // Token handler for SSE
 export async function onToken(
   channel: string,
@@ -332,7 +432,7 @@ export async function onToken(
   requestId: string,
   traceId: string,
 ) {
-  await publishEvent(channel, {
+  void queueEventPublish(channel, {
     type: 'token',
     taskId,
     text,
@@ -446,6 +546,18 @@ export async function handleStream(
       const startTime = Date.now()
       const runtime = getWorkerRuntime(req)
       const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
+      await markTimeline(serviceId, 'worker_request_received', {
+        taskId,
+        templateId,
+        kind: 'stream',
+        meta: {
+          queueWaitTime,
+          requestId,
+          traceId,
+          retryCount: retryMeta.retryCount,
+          maxRetries: retryMeta.maxRetries,
+        },
+      })
       trackEvent('WORKER_JOB_STARTED', {
         userId,
         serviceId,
@@ -481,9 +593,35 @@ export async function handleStream(
         startedAtMs: startTime,
         shouldRefund: retryMeta.shouldRefund,
       }
+      const channel = getChannel(userId, serviceId, taskId)
 
       // 1. Prepare Vars
-      const preparedVars = await strategy.prepareVars(variables, ctxBase)
+      let preparedVars: Record<string, unknown>
+      try {
+        preparedVars = await strategy.prepareVars(variables, ctxBase)
+      } catch (error) {
+        return await handlePrepareVarsFailure({
+          error,
+          strategy,
+          variables: variables as Record<string, unknown>,
+          ctxBase,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          runtime,
+          kind: 'stream',
+          startedAt: startTime,
+        })
+      }
+      await markTimeline(serviceId, 'prepare_vars_done', {
+        taskId,
+        templateId,
+        kind: 'stream',
+      })
 
       const billing = extractBillingVars(variables as Record<string, unknown>)
       const { tierOverride, wasPaid } = billing
@@ -500,7 +638,6 @@ export async function handleStream(
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
       const maxSize = queueMaxSizeFor(String(decision.queueId))
-      const channel = getChannel(userId, serviceId, taskId)
       let userGuarded = false
       let modelGuarded = false
       const releaseGuardsOnFailure = async () => {
@@ -527,6 +664,11 @@ export async function handleStream(
         traceId,
         'stream',
       )
+      await markTimeline(serviceId, 'worker_start', {
+        taskId,
+        templateId,
+        kind: 'stream',
+      })
       await markTimeline(serviceId, 'worker_stream_start', {
         taskId,
         modelId: decision.modelId,
@@ -677,6 +819,11 @@ export async function handleStream(
         })
       }
 
+      await markTimeline(serviceId, 'guards_done', {
+        taskId,
+        templateId,
+        kind: 'stream',
+      })
       await markTimeline(serviceId, 'worker_stream_guards_done', { taskId })
 
       // Phase 4 Fix: Publish status event to trigger frontend progress simulation
@@ -711,10 +858,15 @@ export async function handleStream(
       type StreamPhase = 'LLM_EXECUTE' | 'WRITE_RESULTS' | 'CLEANUP'
       let phase: StreamPhase = 'LLM_EXECUTE'
       let execResult: Awaited<ReturnType<typeof executeStreaming>> | null = null
+      let firstTokenLogged = false
 
       try {
         // Phase 1: LLM Execution
         phase = 'LLM_EXECUTE'
+        await markTimeline(serviceId, 'llm_start', {
+          taskId,
+          templateId,
+        })
         await markTimeline(serviceId, 'worker_stream_llm_start', { taskId })
 
         // Use centralized config for temperature
@@ -733,8 +885,24 @@ export async function handleStream(
           preparedVars,
           { userId, serviceId },
           options,
-          (text) => onToken(channel, taskId, text, requestId, traceId),
+          async (text) => {
+            if (!firstTokenLogged) {
+              firstTokenLogged = true
+              void markTimeline(serviceId, 'first_token', {
+                taskId,
+                templateId,
+                elapsedMs: Date.now() - startTime,
+              })
+            }
+            await onToken(channel, taskId, text, requestId, traceId)
+          },
         )
+        await flushPendingChannelEvents(channel)
+        await markTimeline(serviceId, 'llm_done', {
+          taskId,
+          templateId,
+          latencyMs: execResult.latencyMs,
+        })
         await markTimeline(serviceId, 'worker_stream_done', {
           taskId,
           latencyMs: execResult.latencyMs,
@@ -763,6 +931,10 @@ export async function handleStream(
           taskId,
         })
         await strategy.writeResults(execResult.result, preparedVars, ctxBase)
+        await markTimeline(serviceId, 'persist_done', {
+          taskId,
+          templateId,
+        })
         logDebug({
           reqId: requestId,
           route: 'worker/stream',
@@ -807,6 +979,7 @@ export async function handleStream(
           completedStatus: completedStatus || 'NONE',
         })
         if (completedStatus && wasSuccessful) {
+          await flushPendingChannelEvents(channel)
           await publishEvent(channel, {
             type: 'status',
             taskId,
@@ -816,6 +989,11 @@ export async function handleStream(
             stage: 'completed',
             requestId,
             traceId,
+          })
+          await markTimeline(serviceId, 'final_status_sent', {
+            taskId,
+            templateId,
+            status: completedStatus,
           })
         } else if (!wasSuccessful) {
           logDebug({
@@ -828,6 +1006,7 @@ export async function handleStream(
           })
         }
 
+        await flushPendingChannelEvents(channel)
         await emitStreamIdle(
           channel,
           taskId,
@@ -882,6 +1061,7 @@ export async function handleStream(
         return Response.json({ ok: execResult.result.ok })
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error)
+        await flushPendingChannelEvents(channel)
         if (isProviderNotConfiguredError(errMsg)) {
           const provider = deriveProviderFromModelId(decision.modelId)
           trackEvent('WORKER_PROVIDER_NOT_CONFIGURED', {
@@ -1057,6 +1237,18 @@ export async function handleBatch(
       const startTime = Date.now()
       const runtime = getWorkerRuntime(req)
       const queueWaitTime = enqueuedAt ? startTime - enqueuedAt : 0
+      await markTimeline(serviceId, 'worker_request_received', {
+        taskId,
+        templateId,
+        kind: 'batch',
+        meta: {
+          queueWaitTime,
+          requestId,
+          traceId,
+          retryCount: retryMeta.retryCount,
+          maxRetries: retryMeta.maxRetries,
+        },
+      })
       trackEvent('WORKER_JOB_STARTED', {
         userId,
         serviceId,
@@ -1092,9 +1284,35 @@ export async function handleBatch(
         startedAtMs: startTime,
         shouldRefund: retryMeta.shouldRefund,
       }
+      const channel = getChannel(userId, serviceId, taskId)
 
       // 1. Prepare Vars
-      const preparedVars = await strategy.prepareVars(variables, ctxBase)
+      let preparedVars: Record<string, unknown>
+      try {
+        preparedVars = await strategy.prepareVars(variables, ctxBase)
+      } catch (error) {
+        return await handlePrepareVarsFailure({
+          error,
+          strategy,
+          variables: variables as Record<string, unknown>,
+          ctxBase,
+          userId,
+          serviceId,
+          taskId,
+          templateId,
+          channel,
+          requestId,
+          traceId,
+          runtime,
+          kind: 'batch',
+          startedAt: startTime,
+        })
+      }
+      await markTimeline(serviceId, 'prepare_vars_done', {
+        taskId,
+        templateId,
+        kind: 'batch',
+      })
 
       const billing = extractBillingVars(variables as Record<string, unknown>)
       const { tierOverride, wasPaid } = billing
@@ -1111,7 +1329,6 @@ export async function handleBatch(
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
       const maxSize = queueMaxSizeFor(String(decision.queueId))
-      const channel = getChannel(userId, serviceId, taskId)
       let userGuarded = false
       let modelGuarded = false
       const releaseGuardsOnFailure = async () => {
@@ -1141,6 +1358,11 @@ export async function handleBatch(
       const baiduOcrUsed =
         templateId === 'ocr_extract' &&
         !!(preparedVars as any)['_baidu_ocr_used']
+      await markTimeline(serviceId, 'worker_start', {
+        taskId,
+        templateId,
+        kind: 'batch',
+      })
       await markTimeline(serviceId, 'worker_batch_start', {
         taskId,
         modelId: baiduOcrUsed ? 'baidu_ocr' : decision.modelId,
@@ -1292,6 +1514,11 @@ export async function handleBatch(
         })
       }
 
+      await markTimeline(serviceId, 'guards_done', {
+        taskId,
+        templateId,
+        kind: 'batch',
+      })
       await markTimeline(serviceId, 'worker_batch_guards_done', { taskId })
 
       // 3. Strategy onStart
@@ -1306,6 +1533,10 @@ export async function handleBatch(
       try {
         // Phase 1: Execute
         phase = 'LLM_EXECUTE'
+        await markTimeline(serviceId, 'llm_start', {
+          taskId,
+          templateId,
+        })
         await markTimeline(serviceId, 'worker_batch_llm_start', { taskId })
 
         // Phase 1.5: Skip LLM if Baidu OCR was already used (Paid tier OCR bypass)
@@ -1317,6 +1548,8 @@ export async function handleBatch(
         let execResult: {
           result: import('./strategies/interface').ExecutionResult
           latencyMs: number
+          inputTokens?: number
+          outputTokens?: number
         }
 
         if (baiduOcrUsed && baiduOcrText && templateId === 'ocr_extract') {
@@ -1331,6 +1564,8 @@ export async function handleBatch(
               raw: baiduOcrText,
             },
             latencyMs: 0,
+            inputTokens: 0,
+            outputTokens: 0,
           }
         } else {
           // Normal LLM execution
@@ -1352,6 +1587,18 @@ export async function handleBatch(
           )
         }
 
+        await markTimeline(serviceId, 'llm_done', {
+          taskId,
+          templateId,
+          latencyMs: execResult.latencyMs,
+          modelId: decision.modelId,
+          ...(typeof execResult.inputTokens === 'number'
+            ? { inputTokens: execResult.inputTokens }
+            : {}),
+          ...(typeof execResult.outputTokens === 'number'
+            ? { outputTokens: execResult.outputTokens }
+            : {}),
+        })
         await markTimeline(serviceId, 'worker_batch_done', {
           taskId,
           latencyMs: execResult.latencyMs,
@@ -1381,6 +1628,14 @@ export async function handleBatch(
           preparedVars,
           ctxBase,
         )
+        await markTimeline(serviceId, 'persist_done', {
+          taskId,
+          templateId,
+        })
+        await markTimeline(serviceId, 'final_status_sent', {
+          taskId,
+          templateId,
+        })
         logDebug({
           reqId: requestId,
           route: 'worker/batch',

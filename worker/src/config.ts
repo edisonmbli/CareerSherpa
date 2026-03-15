@@ -7,20 +7,17 @@ import { z } from 'zod'
 const currentFile = fileURLToPath(import.meta.url)
 const workerSrcDir = path.dirname(currentFile)
 const workerDir = path.resolve(workerSrcDir, '..')
-const repoRoot = path.resolve(workerDir, '..')
 
-// Load worker-specific env first, then fall back to repo-level shared env.
-// This keeps worker runtime config deterministic regardless of current cwd.
+// Worker runtime should follow production semantics:
+// load worker-scoped env first and fail fast when critical keys are missing.
 const envCandidates = [
   path.join(workerDir, '.env.local'),
   path.join(workerDir, '.env'),
-  path.join(repoRoot, '.env.local'),
-  path.join(repoRoot, '.env'),
 ]
 
 for (const envPath of envCandidates) {
   if (!fs.existsSync(envPath)) continue
-  dotenv.config({ path: envPath })
+  dotenv.config({ path: envPath, override: false })
 }
 
 const envSchema = z.object({
@@ -28,6 +25,7 @@ const envSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
   PORT: z.string().default('8081'),
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
   QSTASH_SKIP_VERIFY: z.enum(['true', 'false']).optional(),
@@ -50,7 +48,28 @@ const envSchema = z.object({
   SENTRY_PROFILES_SAMPLE_RATE: z.string().optional(),
 })
 
-const parsedEnv = envSchema.safeParse(process.env)
+const parsedEnv = envSchema.superRefine((env, ctx) => {
+  const skipVerify =
+    env.NODE_ENV === 'development' && env.QSTASH_SKIP_VERIFY === 'true'
+
+  if (!skipVerify && !env.QSTASH_CURRENT_SIGNING_KEY) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['QSTASH_CURRENT_SIGNING_KEY'],
+      message:
+        'QSTASH_CURRENT_SIGNING_KEY is required unless QSTASH_SKIP_VERIFY=true in development',
+    })
+  }
+
+  if (!skipVerify && !env.QSTASH_NEXT_SIGNING_KEY) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['QSTASH_NEXT_SIGNING_KEY'],
+      message:
+        'QSTASH_NEXT_SIGNING_KEY is required unless QSTASH_SKIP_VERIFY=true in development',
+    })
+  }
+}).safeParse(process.env)
 
 if (!parsedEnv.success) {
   const formatted = parsedEnv.error.format()

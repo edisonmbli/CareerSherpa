@@ -1,21 +1,26 @@
-import { promises as fsp } from 'fs'
-import path from 'path'
 import { ENV } from '@/lib/env'
+import { appendTaskDebugEvent, summarizeDebugPayload } from './task-debug'
 
 export async function markTimeline(
   serviceId: string,
   phase: string,
   meta?: Record<string, any>
 ) {
-  if (process.env.NODE_ENV === 'production') return
   if (!ENV.LOG_DEBUG) return
-
-  const dir = path.join(process.cwd(), 'tmp', 'perf-timeline')
-  const file = path.join(dir, `${serviceId}.md`)
-  const ts = new Date().toISOString()
-  const line = `${ts} phase=${phase} ${JSON.stringify(meta || {})}`
   try {
-    await fsp.mkdir(dir, { recursive: true })
-    await fsp.appendFile(file, line + '\n')
+    const event: Parameters<typeof appendTaskDebugEvent>[0] = {
+      scope: 'timeline',
+      serviceId,
+      phase,
+      stage: 'timeline',
+    }
+    if (meta?.['taskId']) event.taskId = String(meta['taskId'])
+    if (meta?.['templateId']) event.templateId = String(meta['templateId'])
+    if (meta) {
+      event.meta = summarizeDebugPayload(meta) as Record<string, unknown>
+    }
+    await appendTaskDebugEvent({
+      ...event,
+    })
   } catch {}
 }

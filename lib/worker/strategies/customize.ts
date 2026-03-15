@@ -1,6 +1,6 @@
 import { WorkerStrategy, StrategyContext, ExecutionResult } from './interface'
 import {
-  getServiceWithContext,
+  getCustomizeTaskContext,
   setCustomizedResumeResult,
   updateServiceExecutionStatus,
 } from '@/lib/dal/services'
@@ -55,7 +55,7 @@ export const customizeStrategy: WorkerStrategy = {
     const { serviceId, locale } = ctx
 
     // 1. Get Service Context
-    const service = await getServiceWithContext(serviceId)
+    const service = await getCustomizeTaskContext(serviceId)
     if (!service?.resume || !service?.job) {
       throw new Error('Service context missing (Resume or Job)')
     }

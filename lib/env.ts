@@ -12,6 +12,13 @@ export const ENV = {
   QSTASH_TOKEN: process.env['QSTASH_TOKEN'] ?? '',
   QSTASH_CURRENT_SIGNING_KEY: process.env['QSTASH_CURRENT_SIGNING_KEY'] ?? '',
   QSTASH_NEXT_SIGNING_KEY: process.env['QSTASH_NEXT_SIGNING_KEY'] ?? '',
+  QSTASH_WORKER_RETRIES: Number(
+    process.env['QSTASH_WORKER_RETRIES'] ??
+      (process.env['NODE_ENV'] === 'production' ? '3' : '0'),
+  ),
+  QSTASH_RETRY_BACKOFF_BASE_MS: Number(
+    process.env['QSTASH_RETRY_BACKOFF_BASE_MS'] ?? '1000',
+  ),
   NEXT_PUBLIC_APP_BASE_URL: process.env['NEXT_PUBLIC_APP_BASE_URL'] ?? '',
   // Worker Base URL (for independent Hono worker)
   // If set, producer will dispatch tasks to this URL (e.g., http://localhost:8081 or https://worker.domain.com)
@@ -94,6 +101,9 @@ export const ENV = {
   LOG_DEBUG:
     (process.env['LOG_DEBUG'] ?? '0').toLowerCase() === '1' ||
     (process.env['LOG_DEBUG'] ?? '').toLowerCase() === 'true',
+  SSE_DEBUG:
+    (process.env['SSE_DEBUG'] ?? '0').toLowerCase() === '1' ||
+    (process.env['SSE_DEBUG'] ?? '').toLowerCase() === 'true',
   LLM_STRICT_MODE:
     (process.env['LLM_STRICT_MODE'] ?? '1').toLowerCase() === '1' ||
     (process.env['LLM_STRICT_MODE'] ?? '').toLowerCase() === 'true',
@@ -299,6 +309,22 @@ export function getQuotaConfig() {
     resetIntervalHours: ENV.QUOTA_RESET_INTERVAL_HOURS,
     anomalyThreshold: ENV.QUOTA_ANOMALY_THRESHOLD,
   }
+}
+
+export function isVercelRuntime() {
+  return (
+    process.env['VERCEL'] === '1' ||
+    process.env['VERCEL'] === 'true' ||
+    Boolean(process.env['VERCEL_ENV'])
+  )
+}
+
+export function isProductionRuntime() {
+  return process.env['NODE_ENV'] === 'production'
+}
+
+export function shouldWriteLocalTaskDebugFiles() {
+  return ENV.LOG_DEBUG && !isProductionRuntime() && !isVercelRuntime()
 }
 
 export function getConcurrencyConfig() {

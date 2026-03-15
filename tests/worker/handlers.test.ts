@@ -7,6 +7,8 @@ vi.mock('@/lib/worker/common', () => ({
   getTtlSec: vi.fn(),
   getChannel: vi.fn(),
   publishEvent: vi.fn().mockResolvedValue(undefined),
+  queueEventPublish: vi.fn().mockResolvedValue(undefined),
+  flushPendingChannelEvents: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/lib/dal/services', () => ({
@@ -27,7 +29,7 @@ vi.mock('@/lib/prisma', () => ({ prisma: {} }))
 vi.mock('@/lib/env', () => ({ ENV: { WORKER_TIMEOUT_MS: 1000, QUEUE_MAX_SIZE: 10, LLM_DEBUG: false } }))
 
 import { onToken, streamWriteResults, streamHandleTransactions } from '@/lib/worker/handlers'
-import { publishEvent } from '@/lib/worker/common'
+import { queueEventPublish } from '@/lib/worker/common'
 import { setMatchSummaryJson, setInterviewTipsJson } from '@/lib/dal/services'
 import { recordRefund, markDebitSuccess } from '@/lib/dal/coinLedger'
 
@@ -38,8 +40,8 @@ describe('worker/handlers: onToken', () => {
 
   it('publishes token event with correct payload', async () => {
     await onToken('cs:events:u:s:t', 't1', 'hello', 'req1', 'trace1')
-    expect(publishEvent).toHaveBeenCalledTimes(1)
-    const args = (publishEvent as any).mock.calls[0]
+    expect(queueEventPublish).toHaveBeenCalledTimes(1)
+    const args = (queueEventPublish as any).mock.calls[0]
     expect(args[0]).toBe('cs:events:u:s:t')
     expect(args[1]).toMatchObject({
       type: 'token',

@@ -2,12 +2,11 @@ import { ENV, getConcurrencyConfig, getPerformanceConfig } from '@/lib/env'
 import { queueMaxSizeFor, buildUserActiveKey } from '@/lib/config/concurrency'
 import { acquireLock, releaseLock } from '@/lib/redis/lock'
 import { bumpPending, decPending } from '@/lib/redis/counter'
-import { buildEventChannel, buildEventStreamKey } from '@/lib/pubsub/channels'
+import { buildEventChannel } from '@/lib/pubsub/channels'
 import { getRedis } from '@/lib/redis/client'
 import { auditUserAction } from '@/lib/audit/async-audit'
 import { i18n, type Locale } from '@/i18n-config'
 import { checkQuotaForService } from '@/lib/quota/atomic-operations'
-import { getProvider } from '@/lib/llm/utils'
 import {
   buildModelActiveKey,
   getMaxWorkersForModel,
@@ -15,10 +14,10 @@ import {
 import type { ModelId as ModelIdType } from '@/lib/llm/providers'
 import { getQStash } from '@/lib/queue/qstash'
 import { workerBodySchema, type WorkerBody } from '@/lib/worker/types'
-import { logDebugData } from '@/lib/llm/debug'
 import { logError, logDebug } from '@/lib/logger'
+import { appendTaskDebugEvent, summarizeDebugPayload } from '@/lib/observability/task-debug'
 
-const SSE_DEBUG = ENV.LOG_DEBUG || process.env['SSE_DEBUG'] === 'true'
+const SSE_DEBUG = ENV.LOG_DEBUG && ENV.SSE_DEBUG
 
 async function appendSsePublishDebug(
   channel: string,
@@ -27,11 +26,19 @@ async function appendSsePublishDebug(
   if (!SSE_DEBUG) return
   const parts = channel.split(':')
   const taskId = String(payload['taskId'] || parts?.[4] || 'unknown')
-  logDebugData(`sse_publish_${taskId}`, {
-    meta: {
+  await appendTaskDebugEvent({
+    scope: 'sse',
+    phase: String(payload['event'] || payload['type'] || 'sse_publish'),
+    stage: 'sse',
+    ...(parts?.[3] ? { serviceId: String(parts[3]) } : {}),
+    ...(taskId ? { taskId } : {}),
+    ...(payload['requestId'] ? { requestId: String(payload['requestId']) } : {}),
+    ...(payload['traceId'] ? { traceId: String(payload['traceId']) } : {}),
+    meta: summarizeDebugPayload({
+      channel,
       timestamp: new Date().toISOString(),
       ...payload,
-    },
+    }) as Record<string, unknown>,
   })
 }
 
@@ -64,19 +71,37 @@ function getEventText(event: Record<string, unknown>): string {
   return String((event as StreamEvent).text ?? '')
 }
 
+type TokenBatcher = {
+  tokens: string[]
+  timer?: ReturnType<typeof setTimeout>
+  startedAt: number
+  requestId?: string
+  traceId?: string
+  taskId?: string
+  stage?: string
+}
+
 // --- Token batcher global singleton type ---
 declare global {
-  var __cs_token_batchers__:
-    | Map<
-        string,
-        {
-          tokens: string[]
-          timer?: ReturnType<typeof setTimeout>
-          startedAt: number
-        }
-      >
-    | undefined
+  var __cs_token_batchers__: Map<string, TokenBatcher> | undefined
   var __cs_redis_debugged_channels__: Set<string> | undefined
+  var __cs_event_publish_tails__: Map<string, Promise<void>> | undefined
+}
+
+function getTokenBatchers() {
+  const batchers = globalThis.__cs_token_batchers__ ?? new Map<string, TokenBatcher>()
+  if (!globalThis.__cs_token_batchers__) {
+    globalThis.__cs_token_batchers__ = batchers
+  }
+  return batchers
+}
+
+function getEventPublishTails() {
+  const tails = globalThis.__cs_event_publish_tails__ ?? new Map<string, Promise<void>>()
+  if (!globalThis.__cs_event_publish_tails__) {
+    globalThis.__cs_event_publish_tails__ = tails
+  }
+  return tails
 }
 
 function getRedisDebugInfo() {
@@ -138,6 +163,10 @@ async function writeRedisDebugOnce(channel: string) {
 
 function isIoredisClient(redis: any) {
   return Boolean(redis && typeof redis.pipeline === 'function')
+}
+
+function getEventStreamKey(channel: string) {
+  return `${channel}:stream`
 }
 
 async function xaddEvent(redis: any, streamKey: string, payload: string) {
@@ -363,6 +392,79 @@ export async function exitUserConcurrency(userId: string, kind: WorkerKind) {
   await decPending(key)
 }
 
+async function flushTokenBatch(channel: string, redis = getRedis()) {
+  const tokenBatchers = getTokenBatchers()
+  const buf = tokenBatchers.get(channel)
+  if (!buf || buf.tokens.length === 0) return
+
+  const mergedText = buf.tokens.join('')
+  const parts = channel.split(':')
+  const taskId = buf.taskId || parts[parts.length - 1] || ''
+  const payloadObj = {
+    type: 'token_batch',
+    stage: buf.stage || 'stream',
+    text: mergedText,
+    count: buf.tokens.length,
+    startedAt: buf.startedAt,
+    endedAt: Date.now(),
+    taskId,
+    ...(buf.requestId ? { requestId: buf.requestId } : {}),
+    ...(buf.traceId ? { traceId: buf.traceId } : {}),
+  }
+  const payloadStr = JSON.stringify(payloadObj)
+
+  try {
+    await appendSsePublishDebug(channel, {
+      event: 'token_batch',
+      channel,
+      streamKey: getEventStreamKey(channel),
+      taskId,
+      count: buf.tokens.length,
+      len: mergedText.length,
+    })
+  } catch {}
+
+  try {
+    await redis.publish(channel, payloadStr)
+  } catch (err) {
+    try {
+      await appendSsePublishDebug(channel, {
+        event: 'token_batch_publish_error',
+        channel,
+        streamKey: getEventStreamKey(channel),
+        taskId,
+        error: String(err),
+      })
+    } catch {}
+  }
+
+  try {
+    const streamKey = getEventStreamKey(channel)
+    await xaddEvent(redis, streamKey, payloadStr)
+    await appendSsePublishDebug(channel, {
+      event: 'token_batch_stream',
+      channel,
+      streamKey,
+      taskId,
+      count: buf.tokens.length,
+      len: mergedText.length,
+    })
+  } catch (err) {
+    try {
+      await appendSsePublishDebug(channel, {
+        event: 'token_batch_stream_error',
+        channel,
+        streamKey: getEventStreamKey(channel),
+        taskId,
+        error: String(err),
+      })
+    } catch {}
+  }
+
+  if (buf.timer) clearTimeout(buf.timer)
+  tokenBatchers.delete(channel)
+}
+
 export async function publishEvent(
   channel: string,
   event: Record<string, any>,
@@ -376,91 +478,7 @@ export async function publishEvent(
     return
   }
 
-  // --- 合并窗口 + 长度阈值：仅针对 token 事件进行合并 ---
-  type Batcher = {
-    tokens: string[]
-    timer?: ReturnType<typeof setTimeout>
-    startedAt: number
-    requestId?: string
-    traceId?: string
-    taskId?: string
-    stage?: string
-  }
-  const batchers = globalThis.__cs_token_batchers__
-  const tokenBatchers: Map<string, Batcher> =
-    batchers ?? new Map<string, Batcher>()
-  if (!globalThis.__cs_token_batchers__) {
-    globalThis.__cs_token_batchers__ = tokenBatchers
-  }
-
-  const flush = async (ch: string) => {
-    const buf = tokenBatchers.get(ch)
-    if (!buf || buf.tokens.length === 0) return
-    const mergedText = buf.tokens.join('')
-    const parts = ch.split(':')
-    const taskId = buf.taskId || parts[parts.length - 1] || ''
-    const payloadObj = {
-      type: 'token_batch',
-      stage: buf.stage || 'stream',
-      text: mergedText,
-      count: buf.tokens.length,
-      startedAt: buf.startedAt,
-      endedAt: Date.now(),
-      taskId,
-      ...(buf.requestId ? { requestId: buf.requestId } : {}),
-      ...(buf.traceId ? { traceId: buf.traceId } : {}),
-    }
-    const payloadStr = JSON.stringify(payloadObj)
-    try {
-      await appendSsePublishDebug(ch, {
-        event: 'token_batch',
-        channel: ch,
-        streamKey: `${ch}:stream`,
-        taskId,
-        count: buf.tokens.length,
-        len: mergedText.length,
-      })
-    } catch {}
-    try {
-      await redis.publish(ch, payloadStr)
-    } catch (err) {
-      try {
-        await appendSsePublishDebug(ch, {
-          event: 'token_batch_publish_error',
-          channel: ch,
-          streamKey: `${ch}:stream`,
-          taskId,
-          error: String(err),
-        })
-      } catch {}
-    }
-    try {
-      const streamKey = `${ch}:stream`
-      await xaddEvent(redis, streamKey, payloadStr)
-      try {
-        await appendSsePublishDebug(ch, {
-          event: 'token_batch_stream',
-          channel: ch,
-          streamKey,
-          taskId,
-          count: buf.tokens.length,
-          len: mergedText.length,
-        })
-      } catch {}
-    } catch (err) {
-      try {
-        await appendSsePublishDebug(ch, {
-          event: 'token_batch_stream_error',
-          channel: ch,
-          streamKey: `${ch}:stream`,
-          taskId,
-          error: String(err),
-        })
-      } catch {}
-    }
-    if (buf.timer) clearTimeout(buf.timer)
-    tokenBatchers.delete(ch)
-  }
+  const tokenBatchers = getTokenBatchers()
 
   const isTokenEvent = getEventType(event) === 'token'
   if (isTokenEvent) {
@@ -478,7 +496,9 @@ export async function publishEvent(
       tokenBatchers.set(channel, buf)
       // 定时器：时间窗口先到即 flush（互补策略）
       buf.timer = setTimeout(
-        () => flush(channel),
+        () => {
+          void flushTokenBatch(channel).catch(() => {})
+        },
         Math.max(ENV.STREAM_FLUSH_INTERVAL_MS || 20, 20),
       )
     } else {
@@ -491,21 +511,22 @@ export async function publishEvent(
     buf.tokens.push(text)
     // 长度阈值先到即立即 flush（互补策略）
     if (buf.tokens.length >= Math.max(1, ENV.STREAM_FLUSH_SIZE || 5)) {
-      await flush(channel)
+      await flushTokenBatch(channel, redis)
     }
     // token 事件在合并后统一写入，因此此处直接返回
     return
   }
 
   // 对非 token 事件：写入前先冲洗 token 合并缓存，保证顺序
-  await flush(channel)
+  await flushTokenBatch(channel, redis)
 
   const payload = JSON.stringify(event)
   try {
+    const streamKey = getEventStreamKey(channel)
     await appendSsePublishDebug(channel, {
       event: 'publish',
       channel,
-      streamKey: `${channel}:stream`,
+      streamKey,
       type: getEventType(event),
       taskId: (event as any)?.taskId || '',
       status: (event as any)?.status,
@@ -520,7 +541,7 @@ export async function publishEvent(
       await appendSsePublishDebug(channel, {
         event: 'publish_error',
         channel,
-        streamKey: `${channel}:stream`,
+        streamKey: getEventStreamKey(channel),
         type: getEventType(event),
         taskId: (event as any)?.taskId || '',
         status: (event as any)?.status,
@@ -557,7 +578,7 @@ export async function publishEvent(
 
   // 同步写入 Redis Streams 作为 SSE 的后备缓冲；终止事件时追加 TTL/修剪
   try {
-    const streamKey = `${channel}:stream`
+    const streamKey = getEventStreamKey(channel)
     const t = getEventType(event)
     const isTerminal = t === 'done' || t === 'error'
     await xaddEvent(redis, streamKey, payload)
@@ -601,7 +622,7 @@ export async function publishEvent(
       await appendSsePublishDebug(channel, {
         event: 'stream_error',
         channel,
-        streamKey: `${channel}:stream`,
+        streamKey: getEventStreamKey(channel),
         type: getEventType(event),
         taskId: (event as any)?.taskId || '',
         status: (event as any)?.status,
@@ -610,4 +631,37 @@ export async function publishEvent(
       })
     } catch {}
   }
+}
+
+export function queueEventPublish(
+  channel: string,
+  event: Record<string, any>,
+) {
+  const tails = getEventPublishTails()
+  const previous = tails.get(channel) ?? Promise.resolve()
+  const next = previous
+    .catch(() => {})
+    .then(() => publishEvent(channel, event))
+    .catch((error) => {
+      logError({
+        reqId: String(event['requestId'] || event['taskId'] || 'worker'),
+        route: 'worker/common',
+        phase: 'queue_event_publish_failed',
+        error,
+      })
+    })
+  tails.set(channel, next)
+  return next
+}
+
+export async function flushPendingChannelEvents(channel: string) {
+  const tails = getEventPublishTails()
+  const pending = tails.get(channel)
+  if (pending) {
+    await pending.catch(() => {})
+    if (tails.get(channel) === pending) {
+      tails.delete(channel)
+    }
+  }
+  await flushTokenBatch(channel)
 }

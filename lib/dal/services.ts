@@ -236,6 +236,35 @@ export async function getServiceWithContext(serviceId: string) {
   })
 }
 
+export async function getCustomizeTaskContext(serviceId: string) {
+  return prisma.service.findUnique({
+    where: { id: serviceId },
+    select: {
+      id: true,
+      resume: {
+        select: {
+          resumeSummaryJson: true,
+        },
+      },
+      detailedResume: {
+        select: {
+          detailedSummaryJson: true,
+        },
+      },
+      job: {
+        select: {
+          jobSummaryJson: true,
+        },
+      },
+      match: {
+        select: {
+          matchSummaryJson: true,
+        },
+      },
+    },
+  })
+}
+
 export async function updateJobStatus(
   serviceId: string,
   status: AsyncTaskStatus,

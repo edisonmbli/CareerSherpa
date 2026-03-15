@@ -75,7 +75,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       }
     } else if (this.templateId === 'resume_summary') {
       const resumeId = String(vars.resumeId || '')
-      if (resumeId) {
+      if (resumeId && !vars.resume_text) {
         if (serviceId)
           await markTimeline(
             serviceId,
@@ -92,7 +92,7 @@ export class SummaryStrategy implements WorkerStrategy<any> {
       }
     } else if (this.templateId === 'detailed_resume_summary') {
       const detailedId = String(vars.detailedResumeId || '')
-      if (detailedId) {
+      if (detailedId && !vars.detailed_resume_text) {
         if (serviceId)
           await markTimeline(
             serviceId,

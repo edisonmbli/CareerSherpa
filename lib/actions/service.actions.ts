@@ -18,6 +18,7 @@ import {
   ensureCustomizedResumeRecord,
   ensureInterviewRecord,
   setCustomizedResumeResult,
+  getCustomizeTaskContext,
   getServiceWithContext,
   updateMatchStatus,
   updateCustomizedResumeEditedData,
@@ -149,6 +150,11 @@ export const createServiceAction = withServerActionAuthWrite(
         ? crypto.randomUUID()
         : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const workflowTraceId = buildTaskId('match', svc.id, executionSessionId)
+    await markTimeline(svc.id, 'action_start', {
+      taskId: workflowTraceId,
+      templateId: 'job_match',
+      kind: 'batch',
+    })
     // 6. 为服务创建工作（Job）记录，包含岗位文本或图片
     const job = await createJobForService(svc.id, params.jobText)
     await markTimeline(svc.id, 'create_service_job_created')
@@ -414,7 +420,7 @@ export const customizeResumeAction = withServerActionAuthWrite<
     await getOrCreateQuota(userId)
     const cost = getTaskCost('resume_customize')
 
-    const service = await getServiceWithContext(params.serviceId)
+    const service = await getCustomizeTaskContext(params.serviceId)
     if (!service?.resume || !service?.job) {
       return { ok: false, error: 'service_context_missing' }
     }
@@ -437,6 +443,11 @@ export const customizeResumeAction = withServerActionAuthWrite<
       params.serviceId,
       executionSessionId,
     )
+    await markTimeline(params.serviceId, 'action_start', {
+      taskId: customizeTaskId,
+      templateId: 'resume_customize',
+      kind: 'batch',
+    })
     await updateServiceExecutionStatus(
       params.serviceId,
       ExecutionStatus.CUSTOMIZE_PENDING,
@@ -564,6 +575,11 @@ export const generateInterviewTipsAction = withServerActionAuthWrite<
       params.serviceId,
       executionSessionId,
     )
+    await markTimeline(params.serviceId, 'action_start', {
+      taskId: interviewTaskId,
+      templateId: 'interview_prep',
+      kind: 'stream',
+    })
 
     {
       const enq = await ensureEnqueued({
@@ -686,6 +702,11 @@ export const retryMatchAction = withServerActionAuthWrite<
       params.serviceId,
       executionSessionId,
     )
+    await markTimeline(params.serviceId, 'action_start', {
+      taskId: workflowTraceId,
+      templateId: 'job_match',
+      kind: 'batch',
+    })
     if (!svc.job.jobSummaryJson) {
       const debit = await recordDebit({
         userId,

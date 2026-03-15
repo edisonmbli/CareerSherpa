@@ -33,6 +33,7 @@ import {
 } from '@/lib/types/resume-schema'
 import { revalidatePath } from 'next/cache'
 import { logError } from '@/lib/logger'
+import { markTimeline } from '@/lib/observability/timeline'
 
 export type UploadResumeActionResult =
   | { ok: true; taskId: string; isFree: boolean; taskType: 'resume' }
@@ -55,26 +56,83 @@ export const uploadResumeAction = withServerActionAuthWrite<
       return { ok: false, error: 'text_too_long' }
     }
 
+    const actionStartedAt = Date.now()
+
     // 1. Check quota to determine tier
     const quotaInfo = await checkQuotaForService(userId)
     const isPaidTier = !quotaInfo.shouldUseFreeQueue
+    await markTimeline(userId, 'resume_action_quota_checked', {
+      kind: 'batch',
+      templateId: 'resume_summary',
+      meta: {
+        elapsedMs: Date.now() - actionStartedAt,
+        isPaidTier,
+        remainingCredits: quotaInfo.remainingCredits,
+      },
+    })
 
     // 2. User operation rate limit check (early interception)
     const rateCheck = await checkOperationRateLimit(userId, isPaidTier ? 'paid' : 'free')
     if (!rateCheck.ok) {
       return { ok: false, error: rateCheck.error! }
     }
+    await markTimeline(userId, 'resume_action_rate_limit_checked', {
+      kind: 'batch',
+      templateId: 'resume_summary',
+      meta: {
+        elapsedMs: Date.now() - actionStartedAt,
+      },
+    })
 
     await getOrCreateQuota(userId)
+    await markTimeline(userId, 'resume_action_quota_ready', {
+      kind: 'batch',
+      templateId: 'resume_summary',
+      meta: {
+        elapsedMs: Date.now() - actionStartedAt,
+      },
+    })
     const cost = 1
     const rec = await upsertResume(userId, params.originalText)
+    await markTimeline(rec.id, 'resume_action_upsert_done', {
+      taskId: rec.id,
+      templateId: 'resume_summary',
+      kind: 'batch',
+      meta: {
+        elapsedMs: Date.now() - actionStartedAt,
+        inputLength: len,
+      },
+    })
+    await markTimeline(rec.id, 'action_start', {
+      taskId: rec.id,
+      templateId: 'resume_summary',
+      kind: 'batch',
+    })
     const debit = await recordDebit({
       userId,
       amount: cost,
+      taskId: rec.id,
       templateId: 'resume_summary',
     })
     const hasQuota = debit.ok
+    await markTimeline(rec.id, 'resume_action_debit_done', {
+      taskId: rec.id,
+      templateId: 'resume_summary',
+      kind: 'batch',
+      meta: {
+        elapsedMs: Date.now() - actionStartedAt,
+        hasQuota,
+      },
+    })
     {
+      await markTimeline(rec.id, 'resume_action_enqueue_requested', {
+        taskId: rec.id,
+        templateId: 'resume_summary',
+        kind: 'batch',
+        meta: {
+          elapsedMs: Date.now() - actionStartedAt,
+        },
+      })
       const enq = await ensureEnqueued({
         kind: 'batch',
         serviceId: rec.id,
@@ -84,9 +142,21 @@ export const uploadResumeAction = withServerActionAuthWrite<
         templateId: 'resume_summary',
         variables: {
           resumeId: rec.id,
+          resume_text: params.originalText,
           wasPaid: hasQuota,
           cost,
           ...(hasQuota ? { debitId: debit.id } : {}),
+        },
+        routingSource: 'explicit',
+        hasQuota,
+      })
+      await markTimeline(rec.id, enq.ok ? 'resume_action_enqueue_accepted' : 'resume_action_enqueue_rejected', {
+        taskId: rec.id,
+        templateId: 'resume_summary',
+        kind: 'batch',
+        meta: {
+          elapsedMs: Date.now() - actionStartedAt,
+          ...(enq.ok ? {} : { error: enq.error }),
         },
       })
       if (!enq.ok)
@@ -138,9 +208,15 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
     await getOrCreateQuota(userId)
     const cost = 1
     const rec = await upsertDetailedResume(userId, params.originalText)
+    await markTimeline(rec.id, 'action_start', {
+      taskId: rec.id,
+      templateId: 'detailed_resume_summary',
+      kind: 'batch',
+    })
     const debit = await recordDebit({
       userId,
       amount: cost,
+      taskId: rec.id,
       templateId: 'detailed_resume_summary',
     })
     const hasQuota = debit.ok
@@ -158,6 +234,8 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
           cost,
           ...(hasQuota ? { debitId: debit.id } : {}),
         },
+        routingSource: 'explicit',
+        hasQuota,
       })
       if (!enq.ok)
         return {

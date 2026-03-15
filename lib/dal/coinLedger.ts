@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { withPrismaGuard } from '@/lib/guard/prismaGuard'
 import { Prisma, CoinTxnType, CoinTxnStatus } from '@prisma/client'
+import { markTimeline } from '@/lib/observability/timeline'
 
 export interface RecordDebitParams {
   userId: string
@@ -22,19 +23,45 @@ export async function recordDebit(
 > {
   const { userId, amount, serviceId, taskId, templateId, messageId, idemKey, metadata } = params
   if (amount <= 0) return { ok: true, id: '', balanceAfter: 0 }
+  const timelineId = serviceId || taskId
+  const timelineMeta = {
+    ...(taskId ? { taskId } : {}),
+    ...(templateId ? { templateId } : {}),
+    ...(serviceId ? { serviceId } : {}),
+  }
+  const timeline = async (phase: string, extra?: Record<string, unknown>) => {
+    if (!timelineId) return
+    await markTimeline(timelineId, phase, {
+      ...timelineMeta,
+      ...(extra ?? {}),
+    })
+  }
+
+  await timeline('debit_record_start', { amount })
   if (idemKey) {
+    await timeline('debit_record_idem_lookup_start')
     const existing = await prisma.coinTransaction.findUnique({ where: { idemKey } })
+    await timeline('debit_record_idem_lookup_end', { found: Boolean(existing) })
     if (existing) {
+      await timeline('debit_record_done', { existed: true })
       return { ok: true, id: existing.id, balanceAfter: existing.balanceAfter, existed: true }
     }
   }
   if (tx !== prisma) {
+    await timeline('debit_record_quota_update_start', { mode: 'transaction' })
     const res = await tx.quota.updateMany({
       where: { userId, balance: { gte: amount } },
       data: { balance: { decrement: amount } },
     })
+    await timeline('debit_record_quota_update_end', {
+      mode: 'transaction',
+      updated: res.count,
+    })
     if (res.count === 0) return { ok: false, error: 'InsufficientQuota' }
+    await timeline('debit_record_balance_lookup_start', { mode: 'transaction' })
     const q = await tx.quota.findUnique({ where: { userId } })
+    await timeline('debit_record_balance_lookup_end', { mode: 'transaction' })
+    await timeline('debit_record_ledger_create_start', { mode: 'transaction' })
     const created = await tx.coinTransaction.create({
       data: {
         userId,
@@ -50,16 +77,28 @@ export async function recordDebit(
         ...(metadata ? { metadata } : {}),
       },
     })
+    await timeline('debit_record_ledger_create_end', { mode: 'transaction' })
+    await timeline('debit_record_done', { ok: true })
     return { ok: true, id: created.id, balanceAfter: q?.balance ?? 0 }
   }
+  await timeline('debit_record_guard_enter')
   const created = await withPrismaGuard(async (client) => {
+    await timeline('debit_record_tx_start')
     return await client.$transaction(async (trx) => {
+      await timeline('debit_record_quota_update_start', { mode: 'guarded' })
       const res = await trx.quota.updateMany({
         where: { userId, balance: { gte: amount } },
         data: { balance: { decrement: amount } },
       })
+      await timeline('debit_record_quota_update_end', {
+        mode: 'guarded',
+        updated: res.count,
+      })
       if (res.count === 0) return null
+      await timeline('debit_record_balance_lookup_start', { mode: 'guarded' })
       const q = await trx.quota.findUnique({ where: { userId } })
+      await timeline('debit_record_balance_lookup_end', { mode: 'guarded' })
+      await timeline('debit_record_ledger_create_start', { mode: 'guarded' })
       const ct = await trx.coinTransaction.create({
         data: {
           userId,
@@ -75,10 +114,13 @@ export async function recordDebit(
           ...(metadata ? { metadata } : {}),
         },
       })
+      await timeline('debit_record_ledger_create_end', { mode: 'guarded' })
       return { id: ct.id, balanceAfter: q?.balance ?? 0 }
     })
   }, { attempts: 3, prewarm: true })
+  await timeline('debit_record_guard_exit', { ok: Boolean(created) })
   if (!created) return { ok: false, error: 'InsufficientQuota' }
+  await timeline('debit_record_done', { ok: true })
   return { ok: true, id: created.id, balanceAfter: created.balanceAfter }
 }
 
