@@ -2,7 +2,20 @@ export type TaskConfig = {
   maxTokens: number
   temperature?: number
   timeoutMs?: number // Add timeout configuration
+  profile?: string
 }
+
+const TASK_INPUT_CHAR_LIMIT: Record<string, number> = {
+  resume_summary: 5000,
+  detailed_resume_summary: 16000,
+  job_summary: 8000,
+}
+
+export const DETAILED_RESUME_SHORT_INPUT_THRESHOLD = 10000
+export const DETAILED_RESUME_SHORT_MAX_TOKENS = 8000
+export const DETAILED_RESUME_LONG_MAX_TOKENS = 14000
+export const DETAILED_RESUME_SHORT_TIMEOUT_MS = 180000
+export const DETAILED_RESUME_LONG_TIMEOUT_MS = 420000
 
 // Centralized configuration for all LLM tasks
 // Temperature: 0.3 for extraction (default), 1.0 for analysis/creation
@@ -14,9 +27,9 @@ export const TASK_CONFIG: Record<string, TaskConfig> = {
   interview_prep: { maxTokens: 8000, temperature: 1.0, timeoutMs: 180000 },
   ocr_extract: { maxTokens: 4000, temperature: 0.1, timeoutMs: 180000 },
   detailed_resume_summary: {
-    maxTokens: 15000,
+    maxTokens: DETAILED_RESUME_LONG_MAX_TOKENS,
     temperature: 0.3,
-    timeoutMs: 180000,
+    timeoutMs: DETAILED_RESUME_LONG_TIMEOUT_MS,
   },
   pre_match_audit: {
     maxTokens: 4000,
@@ -35,6 +48,26 @@ export function getTaskConfig(taskId: string): TaskConfig {
   )
 }
 
+export function getDetailedResumeTaskConfig(
+  inputLength = 0,
+): TaskConfig & { profile: 'compact' | 'deep' } {
+  if (inputLength > DETAILED_RESUME_SHORT_INPUT_THRESHOLD) {
+    return {
+      maxTokens: DETAILED_RESUME_LONG_MAX_TOKENS,
+      temperature: 0.3,
+      timeoutMs: DETAILED_RESUME_LONG_TIMEOUT_MS,
+      profile: 'deep',
+    }
+  }
+
+  return {
+    maxTokens: DETAILED_RESUME_SHORT_MAX_TOKENS,
+    temperature: 0.3,
+    timeoutMs: DETAILED_RESUME_SHORT_TIMEOUT_MS,
+    profile: 'compact',
+  }
+}
+
 // Deprecated alias for backward compatibility (transition)
 export function getTaskLimits(taskId: string): { maxTokens: number } {
   return getTaskConfig(taskId)
@@ -49,4 +82,8 @@ export function estimateEtaMinutes(taskId: string, isFree: boolean): number {
     return isFree ? 4 : 3
   }
   return isFree ? 3 : 2
+}
+
+export function getTaskInputCharLimit(taskId: string): number {
+  return TASK_INPUT_CHAR_LIMIT[taskId] ?? getTaskConfig(taskId).maxTokens
 }

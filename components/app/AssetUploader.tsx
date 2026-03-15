@@ -12,7 +12,6 @@ import { estimateEtaMinutes } from '@/lib/llm/config'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Upload, FileCheck, FileText } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
 import { useTaskPolling } from '@/lib/hooks/useTaskPolling'
 import { uploadAssetFormDataAction } from '@/lib/actions/asset.actions'
 import {
@@ -30,8 +29,8 @@ import { AssetPreview } from './AssetPreview'
 import { useServiceGuard } from '@/lib/hooks/use-service-guard'
 import { getServiceErrorMessage } from '@/lib/utils/service-error-handler'
 import { uiLog } from '@/lib/ui/sse-debug-logger'
-import { ServiceNotification } from '@/components/common/ServiceNotification'
 import { getTaskCost } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 
 type UploaderStatus = 'IDLE' | 'UPLOADING' | 'PENDING' | 'COMPLETED' | 'FAILED'
 
@@ -195,11 +194,16 @@ export const AssetUploader = forwardRef<
     setNotification({ type: 'error', title, description })
   }
 
+  const clearErrorState = useCallback(() => {
+    setNotification(null)
+    setPollError(null)
+  }, [])
+
   // --- Service Guard Integration ---
   const executeUpload = (formData: FormData) => {
     setFileName((formData.get('assetFile') as File).name)
     setStatus('UPLOADING')
-    setNotification(null) // Clear previous errors
+    clearErrorState()
 
     startTransition(async () => {
       try {
@@ -225,12 +229,10 @@ export const AssetUploader = forwardRef<
             statusText: statusTextDict,
             notification: notificationDict,
           })
-          setPollError(err.description)
           showError(err.title, err.description)
         }
       } catch (e) {
         setStatus('FAILED')
-        setPollError(dict.toast.queueError)
         showError(dict.toast.queueError, '')
       }
     })
@@ -418,7 +420,11 @@ export const AssetUploader = forwardRef<
           : dict.toast.pollFailedRefund || dict.toast.pollFailed
       }
 
-      setPollError(displayError)
+      setNotification({
+        type: 'error',
+        title: dict.status.failed,
+        description: displayError,
+      })
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('resume:summary', {
@@ -455,7 +461,7 @@ export const AssetUploader = forwardRef<
     setTaskId(null)
     setSummaryJson(null)
     setProgressValue(0)
-    setNotification(null)
+    clearErrorState()
     setIsFinishing(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -492,7 +498,7 @@ export const AssetUploader = forwardRef<
     if (status === 'FAILED') {
       setStatus('IDLE')
       setTaskId(null)
-      setNotification(null)
+      clearErrorState()
     }
   }
 
@@ -560,6 +566,7 @@ export const AssetUploader = forwardRef<
       taskTemplateId === 'resume_summary'
         ? dict.dropzoneHintResume || dict.placeholderHintResume
         : dict.dropzoneHintDetailed || dict.placeholderHintDetailed
+    const hasInlineError = notification?.type === 'error'
 
     if (s === 'COMPLETED') {
       const completedTone = neutralComplete
@@ -863,22 +870,44 @@ export const AssetUploader = forwardRef<
     }
 
     return (
-      <div className="h-full w-full flex-1 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-6 py-8 transition-colors hover:border-slate-400 dark:hover:border-white/20 hover:bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center text-center group">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 dark:bg-white/[0.06] dark:ring-white/10 mx-auto transition-transform group-hover:scale-110">
-            <Upload className="h-6 w-6 text-slate-600 dark:text-slate-300" />
-          </div>
-          <div className="font-medium text-slate-900 dark:text-white">
-            {dropzoneTitle}
-          </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-            {dropzoneHint}
-          </div>
-          {s === 'FAILED' && pollError && (
-            <div className="text-xs text-destructive font-medium mt-2">
-              {pollError}
+      <div
+        className={cn(
+          'h-full w-full flex-1 rounded-xl border-2 border-dashed bg-slate-50/50 dark:bg-white/[0.03] px-6 py-8 transition-colors hover:bg-slate-50 flex items-center justify-center',
+          hasInlineError
+            ? 'border-rose-200/70 dark:border-rose-500/25'
+            : 'border-slate-200 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/20',
+        )}
+      >
+        <div className="flex h-full w-full flex-col items-center text-center group">
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 dark:bg-white/[0.06] dark:ring-white/10 mx-auto transition-transform group-hover:scale-110">
+              <Upload className="h-6 w-6 text-slate-600 dark:text-slate-300" />
             </div>
-          )}
+            <div className="font-medium text-slate-900 dark:text-white">
+              {dropzoneTitle}
+            </div>
+            <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              {dropzoneHint}
+            </div>
+          </div>
+          <div
+            aria-live="polite"
+            className={cn(
+              'mt-6 min-h-10 text-center text-sm leading-5',
+              hasInlineError
+                ? 'text-rose-500/90 dark:text-rose-300/85'
+                : 'text-transparent',
+            )}
+          >
+            {hasInlineError ? (
+              <>
+                {notification?.title ? (
+                  <span className="mr-1.5 font-medium">{notification.title}</span>
+                ) : null}
+                <span>{notification?.description}</span>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
     )
@@ -915,15 +944,6 @@ export const AssetUploader = forwardRef<
       <div
         className={`h-full flex flex-col ${dimmed ? 'opacity-60' : ''}${className ? ` ${className}` : ''}`}
       >
-        {notification && (
-          <ServiceNotification
-            type={notification.type}
-            title={notification.title}
-            description={notification.description}
-            onClose={() => setNotification(null)}
-            autoDismiss={3000}
-          />
-        )}
         <div
           className="relative flex-1 flex"
           onDragOver={(e) => {

@@ -120,6 +120,15 @@ export function DetailedResumePanelClient({
   const carouselRef = useRef<HTMLDivElement | null>(null)
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [clientUploaderStatus, setClientUploaderStatus] = useState(
+    latestStatus || 'IDLE',
+  )
+  const [clientUploaderFileName, setClientUploaderFileName] = useState(
+    latestFileName ?? null,
+  )
+  const [clientDetailedSummaryJson, setClientDetailedSummaryJson] = useState(
+    detailedSummaryJson || null,
+  )
   const [mode, setMode] = useState<'uploader' | 'dashboard'>(
     parsedKeyInfoJson ? 'dashboard' : 'uploader',
   )
@@ -131,6 +140,18 @@ export function DetailedResumePanelClient({
   useEffect(() => {
     setLocalDimmed(dimmed)
   }, [dimmed])
+
+  useEffect(() => {
+    setClientUploaderStatus(latestStatus || 'IDLE')
+  }, [latestStatus])
+
+  useEffect(() => {
+    setClientUploaderFileName(latestFileName ?? null)
+  }, [latestFileName])
+
+  useEffect(() => {
+    setClientDetailedSummaryJson(detailedSummaryJson || null)
+  }, [detailedSummaryJson])
 
   useEffect(() => {
     const handleResumeSummary = (e: Event) => {
@@ -161,6 +182,10 @@ export function DetailedResumePanelClient({
   }, [])
 
   const handleSummaryJson = useCallback((data: any) => {
+    if (!data) return
+    setClientUploaderStatus('COMPLETED')
+    setClientDetailedSummaryJson(data?.detailedSummaryJson ?? data)
+    setClientUploaderFileName((prev) => prev ?? latestFileName ?? null)
     const parsed =
       data?.parsedKeyInfoJson ||
       data?.parsed_detailed_resume_json ||
@@ -170,7 +195,7 @@ export function DetailedResumePanelClient({
       setKeyInfo(parsed)
       handleModeSwitch('dashboard')
     }
-  }, [handleModeSwitch])
+  }, [handleModeSwitch, latestFileName])
 
   const projectCount = useCountUp(Number(keyInfo?.project_metrics?.count || 0))
   const impactCount = useCountUp(
@@ -432,9 +457,9 @@ export function DetailedResumePanelClient({
               className="flex-1"
               locale={locale}
               taskTemplateId="detailed_resume_summary"
-              initialStatus={latestStatus || 'IDLE'}
-              initialFileName={latestFileName ?? null}
-              initialSummaryJson={detailedSummaryJson || null}
+              initialStatus={clientUploaderStatus as any}
+              initialFileName={clientUploaderFileName}
+              initialSummaryJson={clientDetailedSummaryJson}
               dict={uploaderDict}
               labels={{
                 ...previewLabels,
@@ -471,9 +496,9 @@ export function DetailedResumePanelClient({
               className="flex-1"
               locale={locale}
               taskTemplateId="detailed_resume_summary"
-              initialStatus={latestStatus || 'IDLE'}
-              initialFileName={latestFileName ?? null}
-              initialSummaryJson={detailedSummaryJson || null}
+              initialStatus={clientUploaderStatus as any}
+              initialFileName={clientUploaderFileName}
+              initialSummaryJson={clientDetailedSummaryJson}
               dict={uploaderDict}
               labels={{
                 ...previewLabels,

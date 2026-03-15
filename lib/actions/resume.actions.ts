@@ -32,8 +32,10 @@ import {
   sectionConfigSchema,
 } from '@/lib/types/resume-schema'
 import { revalidatePath } from 'next/cache'
-import { logError } from '@/lib/logger'
+import { logError, logWarn } from '@/lib/logger'
 import { markTimeline } from '@/lib/observability/timeline'
+import { getTaskInputCharLimit } from '@/lib/llm/config'
+import { getDetailedResumeRoutingPlan } from '@/lib/llm/task-router'
 
 export type UploadResumeActionResult =
   | { ok: true; taskId: string; isFree: boolean; taskType: 'resume' }
@@ -51,8 +53,15 @@ export const uploadResumeAction = withServerActionAuthWrite<
   async (params: { locale: Locale; originalText: string }, ctx) => {
     const userId = ctx.userId
     const len = (params.originalText || '').length
-    const limit = getTaskLimits('resume_summary').maxTokens
+    const limit = getTaskInputCharLimit('resume_summary')
     if (len > limit) {
+      logWarn({
+        reqId: userId,
+        route: 'actions/resume',
+        phase: 'resume_text_too_long',
+        templateId: 'resume_summary',
+        meta: { length: len, limit },
+      })
       return { ok: false, error: 'text_too_long' }
     }
 
@@ -190,8 +199,15 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
   async (params: { locale: Locale; originalText: string }, ctx) => {
     const userId = ctx.userId
     const len = (params.originalText || '').length
-    const limit = getTaskLimits('detailed_resume_summary').maxTokens
+    const limit = getTaskInputCharLimit('detailed_resume_summary')
     if (len > limit) {
+      logWarn({
+        reqId: userId,
+        route: 'actions/resume',
+        phase: 'detailed_resume_text_too_long',
+        templateId: 'detailed_resume_summary',
+        meta: { length: len, limit },
+      })
       return { ok: false, error: 'text_too_long' }
     }
 
@@ -220,6 +236,17 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
       templateId: 'detailed_resume_summary',
     })
     const hasQuota = debit.ok
+    const routingPlan = getDetailedResumeRoutingPlan(hasQuota, len)
+    await markTimeline(rec.id, 'detailed_resume_action_profile_selected', {
+      taskId: rec.id,
+      templateId: 'detailed_resume_summary',
+      kind: 'batch',
+      modelId: routingPlan.modelId,
+      queueId: String(routingPlan.queueId),
+      profile: routingPlan.profile,
+      inputLength: len,
+      isPaid: hasQuota,
+    })
     {
       const enq = await ensureEnqueued({
         kind: 'batch',
@@ -230,6 +257,7 @@ export const uploadDetailedResumeAction = withServerActionAuthWrite<
         templateId: 'detailed_resume_summary',
         variables: {
           detailedResumeId: rec.id,
+          detailed_resume_text: params.originalText,
           wasPaid: hasQuota,
           cost,
           ...(hasQuota ? { debitId: debit.id } : {}),

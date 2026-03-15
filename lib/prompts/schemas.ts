@@ -936,4 +936,5 @@ export const DETAILED_RESUME_SCHEMA: JsonSchema = {
       required: ['project_metrics', 'quantified_impact', 'ai_readiness'],
     },
   },
+  required: ['parsed_detailed_resume_json'],
 }

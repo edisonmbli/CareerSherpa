@@ -97,23 +97,34 @@ Raw Resume Text:
     userPrompt: `Please **extract rather than paraphrase** and **output the complete structured result according to the JSON Schema**.
 
 **Complete Extraction Rules (IMPORTANT):**
-1. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, experiences, capabilities, rawSections, etc.
-2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
-3. Copy bullet points verbatim - do not merge or rewrite; preserve all numbers/percentages/time ranges
+1. This is a **detailed-history structured extraction** task, not a rewriting or storytelling task. If the user provided a detail and it fits the schema, preserve it as completely as possible.
+2. Do NOT invent projects, responsibilities, achievements, skills, numbers, timelines, or inferred claims that are not directly supported by the source text.
+3. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, experiences, capabilities, rawSections, etc.
+4. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields.
+5. Preserve explicit numbers, percentages, money amounts, dates, durations, named systems, product names, team names, and domain terminology whenever present.
+6. Minimal normalization is allowed (field splitting, cleanup, formatting), but do not merge multiple facts into one vague summary, do not expand into longer prose, and do not repeat the same detail in multiple phrasings.
+7. When a passage contains many details, prefer structured decomposition over summarizing away useful specifics.
 
 **Recognition & Mapping Rules:**
 1) Company Block: When you see four elements (Company/Product/Duration/Keywords), create an experiences[] item and fill company, product_or_team, role, duration, keywords[].
 2) Project Highlights: Merge task/actions/results into highlights[] string array, each string is a self-contained bullet point; record quantified metrics in metrics[] string array (e.g., "7-day retention +3.2%").
 3) Capability Sections: detect sections like "Learning Capability", "Recommendation System", "Creator Growth", etc.; store them in capabilities[] string array, each string is one capability bullet point.
 4) Fallback: if a section cannot be classified, store it in rawSections[] with its original title and bullet points.
-5) You must also output parsed_detailed_resume_json for the data dashboard. You may think step-by-step internally, but output JSON only.
+5) You must also output parsed_detailed_resume_json for the data dashboard. That field must also stay evidence-based; do not exaggerate just to make the profile look stronger. You may think step-by-step internally, but output JSON only.
+
+**Token Budget & Compression Rules:**
+1. Your goal is to return a complete JSON object within the maxTokens budget; prefer shorter phrasing over getting cut off mid-output.
+2. Keep summary to 2-3 sentences; each item in highlights / task / actions / results / capabilities should contain one minimal complete fact, without filler prose.
+3. Do not repeat the same fact across summary, highlights, rawSections, and capabilities; keep it once in the most appropriate field.
+4. For metrics, keep the most decision-useful quantified results first; if one project contains many numbers, retain the top 1-3 most representative metrics.
+5. rawSections should contain only residual but valuable content that cannot be classified elsewhere; do not dump already-structured sections into rawSections again.
 
 **Data Density Extraction Instruction (parsed_detailed_resume_json):**
 You are a hyper-sensitive AI signal extractor. Your task is to scan the detailed resume and quantify its data density.
 1. Project inventory: count deep projects/workstreams and summarize the highest-value trait.
 2. Metric radar: scan all numbers, percentages, money, time reductions; count them and pick the most impactful example.
 3. AI readiness: evaluate how strong this resume is for AI customization and assign a geeky rating (e.g., Lv.MAX).
-Output requirements: strictly follow the JSON schema; tone is futuristic, gamified, highly quantitative; JSON only.
+Output requirements: strictly follow the JSON schema; tone is futuristic, gamified, highly quantitative; every conclusion must be grounded in source evidence; JSON only.
 
 Minimal Examples (for company/project recognition and field mapping):
 — Company Block —

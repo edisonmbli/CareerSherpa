@@ -2,6 +2,7 @@
 import type { TaskTemplateId } from '@/lib/prompts/types'
 import { ModelId as MODEL } from '@/lib/llm/providers'
 import type { ModelId as ModelIdType } from '@/lib/llm/providers'
+import { DETAILED_RESUME_SHORT_INPUT_THRESHOLD } from '@/lib/llm/config'
 
 // 规范: M10 队列优化 - 基于 "时长/复杂度" (Heavy/Light) + "付费等级" 的分流策略
 // 目的: 最大化 QStash Free Tier (10 slots) 利用率，同时保护 Fast 任务不被 Slow 任务阻塞
@@ -36,6 +37,11 @@ interface TaskRouting {
   queueId: QueueId
   isStream: boolean // 标记此任务是否应流式
   promptId?: TaskTemplateId // Optional: use different prompt for this route
+}
+
+export interface DetailedResumeRoutingPlan extends TaskRouting {
+  profile: 'compact' | 'deep'
+  inputLength: number
 }
 
 const ROUTING_TABLE: Partial<
@@ -171,7 +177,12 @@ const ROUTING_TABLE: Partial<
 export const getTaskRouting = (
   templateId: TaskTemplateId,
   hasQuota: boolean,
+  inputLength = 0,
 ) => {
+  if (templateId === 'detailed_resume_summary') {
+    return getDetailedResumeRoutingPlan(hasQuota, inputLength)
+  }
+
   const route = ROUTING_TABLE[templateId]
   if (!route) throw new Error(`Routing for task ${templateId} not found.`)
 
@@ -183,6 +194,58 @@ export const getTaskRouting = (
   }
 
   return selected
+}
+
+export function getDetailedResumeRoutingPlan(
+  hasQuota: boolean,
+  inputLength = 0,
+): DetailedResumeRoutingPlan {
+  const normalizedLength = Math.max(0, inputLength)
+  const useCompactProfile = normalizedLength <= DETAILED_RESUME_SHORT_INPUT_THRESHOLD
+
+  if (hasQuota) {
+    if (useCompactProfile) {
+      return {
+        modelId: MODEL.DEEPSEEK_CHAT,
+        queueId: QueueId.PAID_LIGHT,
+        isStream: false,
+        profile: 'compact',
+        inputLength: normalizedLength,
+      }
+    }
+
+    return {
+      modelId: MODEL.DEEPSEEK_REASONER,
+      queueId: getPaidHeavyQueue(),
+      isStream: false,
+      profile: 'deep',
+      inputLength: normalizedLength,
+    }
+  }
+
+  return {
+    modelId: MODEL.GEMINI_3_FLASH_PREVIEW,
+    queueId: useCompactProfile ? QueueId.FREE_LIGHT : QueueId.FREE_HEAVY,
+    isStream: false,
+    profile: useCompactProfile ? 'compact' : 'deep',
+    inputLength: normalizedLength,
+  }
+}
+
+export function getRoutingInputLength(
+  templateId: TaskTemplateId,
+  variables: Record<string, unknown>,
+): number {
+  if (templateId === 'detailed_resume_summary') {
+    return String(variables['detailed_resume_text'] || '').length
+  }
+  if (templateId === 'resume_summary') {
+    return String(variables['resume_text'] || '').length
+  }
+  if (templateId === 'job_summary') {
+    return String(variables['job_text'] || '').length
+  }
+  return 0
 }
 
 // M9 特殊任务：JD 截图 (Light)

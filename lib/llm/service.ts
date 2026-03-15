@@ -19,6 +19,7 @@ import {
   detailedResumeDeepSchema,
   type TaskOutput,
 } from '@/lib/llm/zod-schemas'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import { validateJson } from '@/lib/llm/json-validator'
 import { createLlmUsageLogDetailed } from '@/lib/dal/llmUsageLog'
 import { getProvider, getCost } from '@/lib/llm/utils'
@@ -297,8 +298,17 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
   try {
     const template = getTemplate(locale, templateId)
     const limits = getTaskLimits(String(templateId))
+    let schema = getTaskSchema(templateId)
+
+    if (
+      String(templateId) === 'detailed_resume_summary' &&
+      options.tier === 'paid'
+    ) {
+      schema = detailedResumeDeepSchema
+    }
+
     const schemaJson = JSON.stringify(
-      (template as any).outputSchema ?? {},
+      schema ? zodToJsonSchema(schema) : (template as any).outputSchema ?? {},
       null,
       2,
     )
@@ -354,18 +364,6 @@ export async function runStructuredLlmTask<T extends TaskTemplateId>(
     // Generic Hybrid Result Strategy
     // Supports both 'withStructuredOutput' (future standard) and 'message' (legacy/other providers)
     // Capability and schema checks are now in @/lib/llm/capability.ts
-    let schema = getTaskSchema(templateId)
-
-    // [New] Dynamic Schema Selection
-    // For detailed resume summary on Paid tier (DeepSeek/High-end Gemini), usage of Deep Schema is allowed
-    // This addresses the recursion limit on Free Tier Gemini models while enabling rich nesting for Paid models
-    if (
-      String(templateId) === 'detailed_resume_summary' &&
-      options.tier === 'paid'
-    ) {
-      schema = detailedResumeDeepSchema
-    }
-
     // PHASE 1A: Gemini Direct Vision Path (for OCR/vision tasks)
     if (shouldUseGeminiDirect(modelId) && schema && hasVisionImage) {
       logDebug({

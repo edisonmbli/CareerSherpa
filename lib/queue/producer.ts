@@ -16,6 +16,7 @@ import {
   getTaskRouting,
   getJobVisionTaskRouting,
   isServiceScoped,
+  getRoutingInputLength,
 } from '@/lib/llm/task-router'
 import { buildQueueCounterKey, queueMaxSizeFor } from '@/lib/config/concurrency'
 import { bumpPending } from '@/lib/redis/counter'
@@ -86,7 +87,14 @@ export async function pushTask<T extends TaskTemplateId>(
     'image' in params.variables &&
     !!params.variables.image
       ? getJobVisionTaskRouting(hasQuota)
-      : getTaskRouting(params.templateId, hasQuota)
+      : getTaskRouting(
+          params.templateId,
+          hasQuota,
+          getRoutingInputLength(
+            params.templateId,
+            params.variables as Record<string, unknown>,
+          ),
+        )
   const effectiveTraceId = params.traceId || params.taskId
   // Phase 4: Respect the kind parameter from action layer
   // Previously had a hardcoded override forcing vision→batch, now removed to enable streaming
@@ -312,6 +320,7 @@ export async function pushTask<T extends TaskTemplateId>(
         body: {
           taskId: params.taskId,
           traceId: effectiveTraceId,
+          queueId: String(decision.queueId),
           userId: params.userId,
           serviceId: params.serviceId,
           locale: params.locale,

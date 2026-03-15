@@ -4,6 +4,7 @@ import { i18n, type Locale } from '@/i18n-config'
 const common = {
   taskId: z.string().min(1),
   traceId: z.string().min(1).optional(),
+  queueId: z.string().min(1).optional(),
   userId: z.string().min(1),
   serviceId: z.string().min(1),
   locale: z.enum(i18n.locales as readonly [Locale, ...Locale[]]),

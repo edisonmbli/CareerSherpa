@@ -83,6 +83,15 @@ export function ResumePanelClient({
 }: ResumePanelClientProps) {
   const uploaderRef = useRef<AssetUploaderHandle | null>(null)
   const [resumeCompleted, setResumeCompleted] = useState(hasGeneral)
+  const [clientUploaderStatus, setClientUploaderStatus] = useState(
+    latestResumeStatus || 'IDLE',
+  )
+  const [clientUploaderFileName, setClientUploaderFileName] = useState(
+    latestResumeFileName ?? null,
+  )
+  const [clientResumeSummaryJson, setClientResumeSummaryJson] = useState(
+    resumeSummaryJson || null,
+  )
   const [clientProfile, setClientProfile] = useState<ParsedProfile | null>(
     normalizedProfile,
   )
@@ -131,6 +140,18 @@ export function ResumePanelClient({
   }, [hasGeneral])
 
   useEffect(() => {
+    setClientUploaderStatus(latestResumeStatus || 'IDLE')
+  }, [latestResumeStatus])
+
+  useEffect(() => {
+    setClientUploaderFileName(latestResumeFileName ?? null)
+  }, [latestResumeFileName])
+
+  useEffect(() => {
+    setClientResumeSummaryJson(resumeSummaryJson || null)
+  }, [resumeSummaryJson])
+
+  useEffect(() => {
     setClientProfile(normalizedProfile)
   }, [normalizedProfile])
 
@@ -164,6 +185,9 @@ export function ResumePanelClient({
       if (!json) return
       setResumeCompleted(true)
       setIsReuploading(false)
+      setClientUploaderStatus('COMPLETED')
+      setClientResumeSummaryJson(json)
+      setClientUploaderFileName((prev) => prev ?? latestResumeFileName ?? null)
       const parsed = json?.parsed_profile_json
       const normalized = normalizeProfile(parsed)
       if (normalized) {
@@ -171,7 +195,7 @@ export function ResumePanelClient({
         setMode('profile')
       }
     },
-    [normalizeProfile],
+    [latestResumeFileName, normalizeProfile],
   )
 
   const uploaderNode = useMemo(
@@ -181,9 +205,9 @@ export function ResumePanelClient({
         className="flex-1"
         locale={locale}
         taskTemplateId="resume_summary"
-        initialStatus={latestResumeStatus || 'IDLE'}
-        initialFileName={latestResumeFileName ?? null}
-        initialSummaryJson={resumeSummaryJson || null}
+        initialStatus={clientUploaderStatus as any}
+        initialFileName={clientUploaderFileName}
+        initialSummaryJson={clientResumeSummaryJson}
         dict={uploaderDict}
         labels={{
           ...previewLabels,
@@ -204,9 +228,6 @@ export function ResumePanelClient({
     ),
     [
       locale,
-      latestResumeStatus,
-      latestResumeFileName,
-      resumeSummaryJson,
       uploaderDict,
       pdfNotice,
       previewLabels,
@@ -217,6 +238,9 @@ export function ResumePanelClient({
       detailedTitle,
       handleSummaryJson,
       isReuploading,
+      clientUploaderStatus,
+      clientUploaderFileName,
+      clientResumeSummaryJson,
     ],
   )
 

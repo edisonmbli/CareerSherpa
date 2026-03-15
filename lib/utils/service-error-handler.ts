@@ -14,7 +14,15 @@ export interface ErrorDicts {
     daily_limit?: string
     frequency_limit?: string
     resume_required?: string
+    resume_required_desc?: string
     job_text_too_long?: string
+    job_text_too_long_desc?: string
+    text_too_long?: string
+    text_too_long_desc?: string
+    invalid_file_type?: string
+    invalid_file_type_desc?: string
+    file_too_large?: string
+    file_too_large_desc?: string
     [key: string]: any
   }
   notification?: {
@@ -44,7 +52,9 @@ const PUBLIC_ERROR_WHITELIST = new Set([
   // Input validation (user-actionable)
   'resume_required',
   'job_text_too_long',
+  'text_too_long',
   'invalid_file_type',
+  'unsupported_file_type',
   'file_too_large',
 
   // Retryable errors (user can retry)
@@ -126,28 +136,48 @@ export function getServiceErrorMessage(
   if (normalizedCode === 'resume_required') {
     return {
       title: dicts.statusText?.resume_required || 'Resume Required',
-      description: 'Please upload a resume before proceeding.',
+      description:
+        dicts.statusText?.resume_required_desc ||
+        'Please upload a resume before proceeding.',
     }
   }
 
   if (normalizedCode === 'job_text_too_long') {
     return {
       title: dicts.statusText?.job_text_too_long || 'Job Description Too Long',
-      description: 'Please shorten the job description and try again.',
+      description:
+        dicts.statusText?.job_text_too_long_desc ||
+        'Please shorten the job description and try again.',
     }
   }
 
-  if (normalizedCode === 'invalid_file_type') {
+  if (normalizedCode === 'text_too_long') {
     return {
-      title: 'Invalid File Type',
-      description: 'Please upload a supported file format.',
+      title: dicts.statusText?.text_too_long || 'Text Too Long',
+      description:
+        dicts.statusText?.text_too_long_desc ||
+        'Please shorten the uploaded text and try again.',
+    }
+  }
+
+  if (
+    normalizedCode === 'invalid_file_type' ||
+    normalizedCode === 'unsupported_file_type'
+  ) {
+    return {
+      title: dicts.statusText?.invalid_file_type || 'Invalid File Type',
+      description:
+        dicts.statusText?.invalid_file_type_desc ||
+        'Please upload a supported file format.',
     }
   }
 
   if (normalizedCode === 'file_too_large') {
     return {
-      title: 'File Too Large',
-      description: 'Please upload a smaller file.',
+      title: dicts.statusText?.file_too_large || 'File Too Large',
+      description:
+        dicts.statusText?.file_too_large_desc ||
+        'Please upload a smaller file.',
     }
   }
 

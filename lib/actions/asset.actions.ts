@@ -3,7 +3,8 @@
 import type { Locale } from '@/i18n-config'
 import { processUploadedFile } from '@/lib/utils/file-processor'
 import { uploadResumeAction, uploadDetailedResumeAction } from '@/lib/actions/resume.actions'
-import { getTaskLimits } from '@/lib/llm/config'
+import { getTaskInputCharLimit } from '@/lib/llm/config'
+import { logError, logWarn } from '@/lib/logger'
 
 export async function uploadAssetFormDataAction({
   formData,
@@ -25,11 +26,33 @@ export async function uploadAssetFormDataAction({
     const processed = await processUploadedFile(file, taskTemplateId === 'resume_summary' ? 'resume' : 'detailed-resume')
     // 仅支持文本型 PDF：要求 sourceType 为 pdf_text，且有足够文本
     if (processed.metadata.sourceType !== 'pdf_text' || processed.metadata.charCount < 200) {
+      logWarn({
+        reqId: 'asset-upload',
+        route: 'actions/asset',
+        phase: 'unsupported_scan_pdf',
+        templateId: taskTemplateId,
+        meta: {
+          sourceType: processed.metadata.sourceType,
+          charCount: processed.metadata.charCount,
+          fileName: processed.metadata.fileName,
+        },
+      })
       return { success: false, error: 'unsupported_scan_pdf' }
     }
 
-    const recommendLimit = getTaskLimits(taskTemplateId).maxTokens
+    const recommendLimit = getTaskInputCharLimit(taskTemplateId)
     if (processed.metadata.charCount > recommendLimit) {
+      logWarn({
+        reqId: 'asset-upload',
+        route: 'actions/asset',
+        phase: 'text_too_long',
+        templateId: taskTemplateId,
+        meta: {
+          charCount: processed.metadata.charCount,
+          recommendLimit,
+          fileName: processed.metadata.fileName,
+        },
+      })
       return { success: false, error: 'text_too_long' }
     }
 
@@ -47,6 +70,13 @@ export async function uploadAssetFormDataAction({
       return { success: false, error: res.error, taskId, isFree }
     }
   } catch (e) {
+    logError({
+      reqId: 'asset-upload',
+      route: 'actions/asset',
+      phase: 'processing_failed',
+      templateId: taskTemplateId,
+      error: e instanceof Error ? e : String(e),
+    })
     return { success: false, error: 'processing_failed' }
   }
 }

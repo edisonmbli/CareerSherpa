@@ -11,7 +11,7 @@ import {
 } from '@/lib/worker/common'
 import { buildQueueCounterKey, queueMaxSizeFor } from '@/lib/config/concurrency'
 import { isServiceScoped } from '@/lib/llm/task-router'
-import { getTaskConfig } from '@/lib/llm/config'
+import { getDetailedResumeTaskConfig, getTaskConfig } from '@/lib/llm/config'
 import { ENV } from '@/lib/env'
 import { withRequestSampling } from '@/lib/dev/redisSampler'
 import { logEvent } from '@/lib/observability/logger'
@@ -26,7 +26,7 @@ import {
 import { publishStart, emitStreamIdle } from '@/lib/worker/pipeline'
 import { guardUser, guardModel, guardQueue } from '@/lib/worker/steps/guards'
 import { executeStreaming, executeStructured } from '@/lib/worker/steps/execute'
-import { computeDecision } from '@/lib/worker/steps/decision'
+import { computeDecision, withEnqueuedQueueId } from '@/lib/worker/steps/decision'
 import { getRequestMeta } from '@/lib/worker/steps/meta'
 import { cleanupFinal } from '@/lib/worker/steps/cleanup'
 import { getStrategy } from '@/lib/worker/strategies'
@@ -532,6 +532,7 @@ export async function handleStream(
       const {
         taskId,
         traceId: bodyTraceId,
+        queueId: enqueuedQueueId,
         userId,
         serviceId,
         locale,
@@ -552,6 +553,7 @@ export async function handleStream(
         kind: 'stream',
         meta: {
           queueWaitTime,
+          ...(enqueuedQueueId ? { queueId: enqueuedQueueId } : {}),
           requestId,
           traceId,
           retryCount: retryMeta.retryCount,
@@ -571,6 +573,7 @@ export async function handleStream(
         payload: {
           templateId,
           queueWaitTime,
+          ...(enqueuedQueueId ? { queueId: enqueuedQueueId } : {}),
           ...(enqueuedAt !== undefined ? { enqueuedAt } : {}),
           startedAt: startTime,
         },
@@ -633,7 +636,10 @@ export async function handleStream(
             : wasPaid
               ? true
               : await getUserHasQuota(userId)
-      const decision = computeDecision(templateId, preparedVars, userHasQuota)
+      const decision = withEnqueuedQueueId(
+        computeDecision(templateId, preparedVars, userHasQuota),
+        enqueuedQueueId,
+      )
 
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
@@ -1223,6 +1229,7 @@ export async function handleBatch(
       const {
         taskId,
         traceId: bodyTraceId,
+        queueId: enqueuedQueueId,
         userId,
         serviceId,
         locale,
@@ -1243,6 +1250,7 @@ export async function handleBatch(
         kind: 'batch',
         meta: {
           queueWaitTime,
+          ...(enqueuedQueueId ? { queueId: enqueuedQueueId } : {}),
           requestId,
           traceId,
           retryCount: retryMeta.retryCount,
@@ -1262,6 +1270,7 @@ export async function handleBatch(
         payload: {
           templateId,
           queueWaitTime,
+          ...(enqueuedQueueId ? { queueId: enqueuedQueueId } : {}),
           ...(enqueuedAt !== undefined ? { enqueuedAt } : {}),
           startedAt: startTime,
         },
@@ -1324,7 +1333,10 @@ export async function handleBatch(
             : wasPaid
               ? true
               : await getUserHasQuota(userId)
-      const decision = computeDecision(templateId, preparedVars, userHasQuota)
+      const decision = withEnqueuedQueueId(
+        computeDecision(templateId, preparedVars, userHasQuota),
+        enqueuedQueueId,
+      )
 
       const ttlSec = getTtlSec()
       const counterKey = buildQueueCounterKey(String(decision.queueId))
@@ -1551,6 +1563,14 @@ export async function handleBatch(
           inputTokens?: number
           outputTokens?: number
         }
+        const inputLength =
+          templateId === 'detailed_resume_summary'
+            ? String(preparedVars['detailed_resume_text'] || '').length
+            : 0
+        const selectedConfig =
+          templateId === 'detailed_resume_summary'
+            ? getDetailedResumeTaskConfig(inputLength)
+            : getTaskConfig(templateId)
 
         if (baiduOcrUsed && baiduOcrText && templateId === 'ocr_extract') {
           // Skip LLM - use Baidu OCR result directly
@@ -1569,11 +1589,21 @@ export async function handleBatch(
           }
         } else {
           // Normal LLM execution
-          const config = getTaskConfig(templateId)
+          await markTimeline(serviceId, 'worker_batch_llm_profile_selected', {
+            taskId,
+            templateId,
+            modelId: decision.modelId,
+            queueId: String(decision.queueId),
+            inputLength,
+            maxTokens: selectedConfig.maxTokens,
+            timeoutMs: selectedConfig.timeoutMs,
+            ...(selectedConfig.profile ? { profile: selectedConfig.profile } : {}),
+          })
+
           const options: any = {
-            temperature: config.temperature,
-            maxTokens: config.maxTokens,
-            timeoutMs: config.timeoutMs ?? ENV.WORKER_TIMEOUT_MS,
+            temperature: selectedConfig.temperature,
+            maxTokens: selectedConfig.maxTokens,
+            timeoutMs: selectedConfig.timeoutMs ?? ENV.WORKER_TIMEOUT_MS,
             tier: userHasQuota ? 'paid' : 'free',
           }
 
@@ -1592,11 +1622,20 @@ export async function handleBatch(
           templateId,
           latencyMs: execResult.latencyMs,
           modelId: decision.modelId,
+          maxTokens: selectedConfig.maxTokens,
           ...(typeof execResult.inputTokens === 'number'
             ? { inputTokens: execResult.inputTokens }
             : {}),
           ...(typeof execResult.outputTokens === 'number'
             ? { outputTokens: execResult.outputTokens }
+            : {}),
+          ...(typeof execResult.outputTokens === 'number' &&
+          templateId === 'detailed_resume_summary'
+            ? {
+                nearOutputLimit:
+                  execResult.outputTokens >=
+                  Math.floor(selectedConfig.maxTokens * 0.95),
+              }
             : {}),
         })
         await markTimeline(serviceId, 'worker_batch_done', {

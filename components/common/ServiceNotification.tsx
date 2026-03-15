@@ -42,7 +42,7 @@ export function ServiceNotification({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-2 px-3 py-2 text-sm leading-snug rounded-md border backdrop-blur-sm transition-[opacity,transform] duration-200 ease-out transform-gpu',
+        'flex w-full items-center gap-2 px-3 py-2 text-sm leading-snug rounded-md border backdrop-blur-sm transition-[opacity,transform] duration-200 ease-out transform-gpu',
         isClosing ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0',
         'bg-white/75 border-white/60 text-zinc-700 shadow-[0_6px_20px_rgba(0,0,0,0.08)]',
         'dark:bg-white/[0.04] dark:border-white/10 backdrop-blur-2xl dark:shadow-2xl dark:text-zinc-200',
@@ -51,7 +51,7 @@ export function ServiceNotification({
         className,
       )}
     >
-      <div className="min-w-0 flex flex-col items-center text-center sm:flex-row sm:items-center sm:gap-2 sm:text-left">
+      <div className="min-w-0 flex flex-col items-start text-left sm:flex-row sm:items-center sm:gap-2">
         <div className="flex items-center gap-2">
           {isError && (
             <AlertCircle className="h-4 w-4 shrink-0 text-zinc-500" />
