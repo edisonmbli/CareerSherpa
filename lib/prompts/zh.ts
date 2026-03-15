@@ -42,19 +42,24 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
     userPrompt: `请"提取而非改写"以下简历原文，**严格按照 JSON Schema 输出完整的结构化结果**。
 
 **完整提取规则（重要）：**
-1. 必须填充 JSON Schema 中的**所有字段**，包括：header、summary、summary_points、specialties_points、experience、projects、education、skills、certifications、languages、awards、openSource、extras、parsed_profile_json
-2. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段
-3. 即使只有一项内容，也必须正确填入对应字段
-4. 你可以在内部逐步思考，但只输出 JSON 结果
+1. 这是“结构化提取”任务，不是“润色创作”任务。凡是用户原文中明确写出的信息，只要能映射到 schema，就应尽量完整收录。
+2. 不得为了让字段更丰满而补写用户未声明的经历、项目、技能、结果、数字或标签。
+3. 必须填充 JSON Schema 中的**所有字段**，包括：header、summary、summary_points、specialties_points、experience、projects、education、skills、certifications、languages、awards、openSource、extras、parsed_profile_json。
+4. 如果原文中不存在某类信息，请返回**空数组 []** 或**空字符串 ""**，不要省略字段。
+5. 即使只有一项内容，也必须正确填入对应字段。
+6. 允许做最小必要的规范化整理（如去噪、统一格式、拆分字段），但不要扩写、拔高、脑补或重复表达同一事实。
+7. 你可以在内部逐步思考，但只输出 JSON 结果。
 
 **提取指引：**
 – **职责（responsibilities）**：原样提取所有以"负责/主导/作为唯一负责人"等开头的职责句
 – **成果亮点（highlights）**：提取可量化的、有影响力的结果（如提效、同比提升、用户指标等）
 – **项目与链接**：保留项目名/链接/简短描述
-– **要点还原**：职业摘要与专业特长采用"要点列表"逐条复制原文，不做二次改写
+– **要点还原**：职业摘要与专业特长采用"要点列表"逐条复制或做最小整理，不做二次扩写
+– **避免冗余**：不要把同一条事实拆成多条近义句，也不要把原文 bullets 改写成长段 prose
+– **宁缺毋滥**：如果无法从原文直接确认，就留空，不要推断
 
 **画像字段（parsed_profile_json）提炼指令：**
-你是一位资深的硅谷猎头与顶级高管教练。你的任务是阅读用户的原始简历，并提取出一份高度结构化、具有极强传播力和专业质感的「个人高光画像」。
+你是一位资深的硅谷猎头与顶级高管教练。你的任务是基于用户原始简历中已经出现的事实，提取出一份高度结构化、简洁有力、但绝不编造的「个人高光画像」。
 【思考过程】
 1. 先宏观扫描：计算用户的总工作年限，提炼其最核心的行业领域和技术栈。
 2. 寻找 Aha Moment：在所有项目经历中，找出那个最具量化成果、最具商业价值的高光项目，并浓缩其影响力。
@@ -63,7 +68,9 @@ export const ZH_TEMPLATES: PromptTemplateMap = {
 【输出要求】
 * 必须严格输出指定的 JSON 格式，且只输出 JSON 结果
 * 语言风格：干练、专业、有力量感（Punchy），拒绝职场套话，必须基于事实
-* core_impact 必须包含具体数字或明确成果边界
+* 所有字段都必须来源于原文证据；没有证据就输出空值/空数组，不要脑补
+* 使用最短但保真的表达，不要为了“好看”而扩写成营销文案
+* core_impact 只有在原文有数字或明确成果边界时才写具体结果；否则保守描述，禁止杜撰数字
 【字段结构】
 - career_persona：职场人设标签（如“0-1 破局者”）
 - experience_focus：一句话概括“X 年 Y 领域经验”

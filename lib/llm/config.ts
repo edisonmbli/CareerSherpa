@@ -7,7 +7,7 @@ export type TaskConfig = {
 // Centralized configuration for all LLM tasks
 // Temperature: 0.3 for extraction (default), 1.0 for analysis/creation
 export const TASK_CONFIG: Record<string, TaskConfig> = {
-  resume_summary: { maxTokens: 8000, temperature: 0.3, timeoutMs: 180000 },
+  resume_summary: { maxTokens: 5000, temperature: 0.3, timeoutMs: 180000 },
   job_summary: { maxTokens: 8000, temperature: 0.3, timeoutMs: 180000 },
   job_match: { maxTokens: 15000, temperature: 1.0, timeoutMs: 180000 },
   resume_customize: { maxTokens: 15000, temperature: 1.0, timeoutMs: 180000 },

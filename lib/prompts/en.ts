@@ -43,19 +43,24 @@ export const EN_TEMPLATES: PromptTemplateMap = {
     userPrompt: `Please **extract rather than paraphrase** and **output the complete structured result according to the JSON Schema**.
 
 **Complete Extraction Rules (IMPORTANT):**
-1. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, summary_points, specialties_points, experience, projects, education, skills, certifications, languages, awards, openSource, extras, parsed_profile_json
-2. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields
-3. Even if there is only one item, it must be correctly placed in the corresponding field
-4. You may think step-by-step internally, but output JSON only
+1. This is a **structured extraction** task, not a resume rewriting task. If the user explicitly provided a fact and it fits the schema, preserve it as completely as possible.
+2. Do NOT invent or embellish experiences, projects, skills, metrics, outcomes, titles, or persona labels just to make the output look fuller.
+3. You MUST populate **ALL fields** defined in the JSON Schema, including: header, summary, summary_points, specialties_points, experience, projects, education, skills, certifications, languages, awards, openSource, extras, parsed_profile_json.
+4. If certain information is not present in the source text, return an **empty array []** or **empty string ""** - do NOT omit any fields.
+5. Even if there is only one item, it must be correctly placed in the corresponding field.
+6. Minimal normalization is allowed (cleanup, field splitting, formatting), but do not expand, exaggerate, infer unsupported claims, or repeat the same fact in multiple phrasings.
+7. You may think step-by-step internally, but output JSON only.
 
 **Extraction Guidelines:**
 - **Responsibilities**: copy verbatim all sentences starting with "Responsible for", "Led", "As the sole owner", etc.
 - **Highlights**: retain quantifiable, impactful results (performance improvements, user metrics, etc.)
 - **Projects & Links**: preserve project name/link/brief description
-- **Bullet Preservation**: for summary/specialties, output bullet points by copying the original lines
+- **Bullet Preservation**: for summary/specialties, copy the original lines or apply only minimal cleanup
+- **Avoid Redundancy**: do not split one source fact into multiple near-duplicate bullets, and do not inflate bullets into long prose
+- **Leave Unknown Empty**: if something cannot be directly supported by the resume text, leave it empty rather than guessing
 
 **Profile Field (parsed_profile_json) Extraction Instruction:**
-You are a seasoned Silicon Valley recruiter and executive coach. Read the resume and extract a highly structured, punchy "Highlight Persona Profile".
+You are a seasoned Silicon Valley recruiter and executive coach. Read the resume and extract a highly structured, punchy, but strictly evidence-based "Highlight Persona Profile".
 【Chain of Thought】
 1. Scan broadly: compute total years of experience and identify the most central domains and tech stack.
 2. Find the Aha Moment: pick the most quantified, business-impactful project and condense its impact.
@@ -64,7 +69,9 @@ You are a seasoned Silicon Valley recruiter and executive coach. Read the resume
 【Output Requirements】
 * Output JSON only and strictly follow the schema
 * Tone: concise, professional, punchy, fact-based
-* core_impact must include a number or a clear outcome boundary
+* Every field must be grounded in resume evidence; if evidence is missing, output an empty value/array instead of inventing details
+* Use the shortest faithful wording; do not expand into marketing-style copy
+* core_impact should include a number or a clear outcome boundary only when the source supports it; never fabricate metrics
 【Schema Fields】
 - career_persona
 - experience_focus
